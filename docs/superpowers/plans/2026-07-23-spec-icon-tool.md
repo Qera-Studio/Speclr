@@ -10,6 +10,8 @@
 
 **Source of truth for content/behavior:** the marketing site at `/Users/shivanshupareek/Developer/qera/qerastudio/src/app/(utility)/kessler-spec/`. When a task says "copy verbatim", copy from there.
 
+**Stack note — shadcn primitives here are Base UI, NOT Radix.** This project's shadcn preset (`base-mira`) generates primitives on top of `@base-ui/react/*` (confirmed: `button`, `checkbox`, `progress`, `label` all import from `@base-ui/react`). Do not introduce `@radix-ui/*` imports or Radix-specific prop patterns. Notably, the Base UI `Checkbox` fires `onCheckedChange={(checked: boolean, eventDetails) => ...}` — the first arg is already a plain `boolean` (no Radix `CheckedState` union). `Badge` variants available: `default | secondary | destructive | outline`. `Alert` exports `Alert, AlertTitle, AlertDescription`. `Card` exports `Card, CardHeader, CardTitle, CardContent`. All primitives were installed in Task 2 and already typecheck.
+
 **Conventions:**
 - `@/` maps to `src/`. Import lifted logic as `@/lib/spec/...`.
 - Component files under `src/components/spec/`. Tests in a sibling `__tests__/` dir.
