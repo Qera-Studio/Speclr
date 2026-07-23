@@ -1351,11 +1351,11 @@ git commit -m "feat(spec): authenticated /spec route"
 
 - [ ] **Step 1: Add the temporary link**
 
-In the authenticated branch of `src/app/page.tsx` (after `requireAuthorizedUser()` succeeds), add a shadcn `Button asChild` wrapping a `next/link` to `/spec`, with a comment marking it temporary. Add the imports:
+In the authenticated branch of `src/app/page.tsx` (after `requireAuthorizedUser()` succeeds), add a `next/link` styled with `buttonVariants` to `/spec`, with a comment marking it temporary. **Note:** this project's Base UI `Button` does NOT support Radix's `asChild` prop — apply `buttonVariants()` classes directly to the `<Link>` instead (Base UI uses a `render` prop for polymorphism, but styling the link directly is simpler and avoids the question). Add the imports:
 
 ```tsx
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 ```
 
 And inside the returned `<main>`, above the sign-out block:
@@ -1363,9 +1363,9 @@ And inside the returned `<main>`, above the sign-out block:
 ```tsx
 {/* TEMP: direct link until Phase 4a builds real navigation. */}
 <div className="mt-6">
-  <Button asChild variant="outline">
-    <Link href="/spec">Open Icon Spec tool</Link>
-  </Button>
+  <Link href="/spec" className={buttonVariants({ variant: 'outline' })}>
+    Open Icon Spec tool
+  </Link>
 </div>
 ```
 
