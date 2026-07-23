@@ -1,7 +1,7 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { MoreHorizontal, Package } from 'lucide-react';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,9 +37,15 @@ export default function ServicesTable({
 }) {
   if (services.length === 0) {
     return (
-      <Card className="items-center px-6 py-10 text-center">
-        <p className="text-muted-foreground">No services yet — add your first one.</p>
-      </Card>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Package />
+          </EmptyMedia>
+          <EmptyTitle>No services yet</EmptyTitle>
+          <EmptyDescription>Create a service template to reuse across contracts and invoices.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

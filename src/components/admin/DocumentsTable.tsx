@@ -1,6 +1,15 @@
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { buttonVariants } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import {
   Table,
   TableBody,
@@ -30,15 +39,20 @@ function partyName(doc: AdminDocument): string {
 export default function DocumentsTable({ documents }: { documents: AdminDocument[] }) {
   if (documents.length === 0) {
     return (
-      <Card className="items-center px-6 py-10 text-center">
-        <p className="text-muted-foreground">
-          No documents yet. Start with{' '}
-          <Link href="/docs/new/invoice" className="text-primary underline underline-offset-4">
-            a new invoice
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FileText />
+          </EmptyMedia>
+          <EmptyTitle>No documents yet</EmptyTitle>
+          <EmptyDescription>Create your first invoice, receipt, contract, or letter to get started.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Link href="/docs/new/invoice" className={buttonVariants()}>
+            New invoice
           </Link>
-          .
-        </p>
-      </Card>
+        </EmptyContent>
+      </Empty>
     );
   }
 

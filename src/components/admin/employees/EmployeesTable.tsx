@@ -1,7 +1,7 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { MoreHorizontal, IdCard } from 'lucide-react';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,9 +31,15 @@ export default function EmployeesTable({
 }) {
   if (employees.length === 0) {
     return (
-      <Card className="items-center px-6 py-10 text-center">
-        <p className="text-muted-foreground">No employees yet — add your first one.</p>
-      </Card>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <IdCard />
+          </EmptyMedia>
+          <EmptyTitle>No employees yet</EmptyTitle>
+          <EmptyDescription>Add your first employee to issue offer letters, stipends, and more.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

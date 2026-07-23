@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
@@ -51,9 +52,10 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
 function CollapsibleSection({ section, pathname }: { section: NavSection; pathname: string }) {
   const Icon = section.icon;
   const hasActiveChild = section.children.some((c) => pathname === c.href);
+  const [open, setOpen] = useState(hasActiveChild);
 
   return (
-    <Collapsible defaultOpen={hasActiveChild} className="group/collapsible">
+    <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger
           render={
