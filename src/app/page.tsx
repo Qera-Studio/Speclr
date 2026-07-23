@@ -21,8 +21,11 @@ export default async function HomePage() {
   let user;
   try {
     user = await requireAuthorizedUser();
-  } catch {
-    redirect('/sign-in');
+  } catch (err) {
+    // Distinguish the two failures: not signed in → sign-in; signed in but not
+    // allowlisted → a clear no-access page (never a redirect they're past).
+    const reason = err instanceof Error ? err.message : '';
+    redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
   return (
