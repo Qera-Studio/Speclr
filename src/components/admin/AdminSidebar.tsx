@@ -31,13 +31,15 @@ export default function AdminSidebar({ email }: { email: string }) {
               <SidebarMenu>
                 {group.items.map((item) => {
                   const active = pathname === item.href;
+                  const Icon = item.icon;
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
                         render={
                           <Link href={item.href} aria-current={active ? 'page' : undefined}>
-                            {item.label}
+                            <Icon aria-hidden="true" />
+                            <span>{item.label}</span>
                           </Link>
                         }
                       />

@@ -18,6 +18,15 @@ describe('NAV_GROUPS', () => {
 
   it('links Icon spec under Tools', () => {
     const tools = NAV_GROUPS.find((g) => g.label === 'Tools')!;
-    expect(tools.items).toEqual([{ href: '/spec', label: 'Icon spec' }]);
+    expect(tools.items).toHaveLength(1);
+    expect(tools.items[0]).toMatchObject({ href: '/spec', label: 'Icon spec' });
+  });
+
+  it('gives every nav item an icon', () => {
+    for (const group of NAV_GROUPS) {
+      for (const item of group.items) {
+        expect(item.icon).toBeDefined();
+      }
+    }
   });
 });
