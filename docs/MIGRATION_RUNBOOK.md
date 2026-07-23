@@ -16,8 +16,8 @@
 - [x] 👤 Deploy to Vercel (repo made **public** to avoid the private-org Pro requirement on Hobby).
 - [x] 🤖 Copy the **8 master checklists** into `dev/`.
 - [x] 🤖 Write `CONTEXT.md`, `AGENTS.md`, `CLAUDE.md`, this runbook.
-- [ ] 👤 `npx vercel link` — link local folder to the Vercel project (creates `.vercel/`, enables `vercel env pull`).
-- [ ] 🤖 Set up **Jest + React Testing Library** (config, jsdom, scripts).
+- [x] 👤 `npx vercel link` — linked to `qerastudios-projects/speclr` (company Vercel); `.env.local` + `.vercel/` created and gitignored (verified).
+- [x] 🤖 Set up **Jest + React Testing Library** — config + jsdom stubs (ResizeObserver/IntersectionObserver/matchMedia) matching the source project so lifted tests run unchanged; `test`/`typecheck` scripts added; smoke-verified.
 - [ ] 👤 Later: add the `speclr.qera.studio` custom domain in Vercel (not needed until go-live).
 
 **✓ Checkpoint:** blank app builds and deploys; docs + checklists committed; testing harness runs.
