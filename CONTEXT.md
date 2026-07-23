@@ -60,7 +60,7 @@ form → Zod validate → Server Action → Drizzle → Postgres
 - **`src/lib/domain/`** — the portable core, lifted ~verbatim from the source project: `money`, `dates`, `amountInWords`, `gstStates`, `registry` (the doc-type spec table + Zod schemas + numbering format), `studio` (Qera's legal constants — CIN, GSTIN, bank, address), `employee`, `hrContent`, `msaBoilerplate` (the 24-clause contract text), `scheduleLetter`, `serviceTemplate`, `types`. **Pure TypeScript, zero UI, zero framework coupling.** Its tests are lifted verbatim and must pass unchanged.
 - **`src/db/`** — Drizzle schema + queries + migrations. Relational tables (`clients`, `employees`, `service_templates`, `documents`, `counters`) with JSONB for the doc-type-specific parts. Zod validates JSONB on write.
 - **`src/server/actions/`** — Server Actions (documents, clients, employees, services). Each verifies the Clerk session server-side.
-- **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Styled with **co-located CSS Modules translated 1:1 from the source SCSS** (see decision below), `@media print` co-located. Do not redesign.
+- **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Tailwind + `src/styles/print.css` for A4/print. Do not redesign.
 - **`src/components/`** — everything else, fresh shadcn (dashboard Table, forms, nav, editors, the Paginator).
 - **`src/app/(admin | spec | auth)/`** — route groups.
 
@@ -83,8 +83,8 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 - **Next.js, not TanStack Start** — maturity + Vercel + existing Server Actions.
 - **Postgres (Neon) + Drizzle, not Redis** — the source used Upstash Redis; Postgres is the right spine for queryable financial records.
 - **Clerk, not a shared password** — email allowlist, all invited users full access, **no roles yet** (addable later without rewrite).
-- **Documents pixel-faithful; all other UI fresh shadcn** — the sheets are finished, approved, legal artifacts; only their styling system changed. The chrome is where shadcn shines.
-- **Sheet styling = co-located CSS Modules, translated 1:1 from the source SCSS** (updated 2026-07-23, Phase 4b design). Supersedes the earlier "Tailwind + print.css" idea: hand-converting ~1,700 lines of exact-px legal-artifact SCSS to Tailwind utilities risked silent visual drift and was hard to verify. A near-mechanical `.module.scss`→`.module.css` copy (drop `@use`, inline `$font-sans`, flatten nesting) guarantees pixel fidelity, keeps `@media print` co-located, and is trivially diffable against source. Turbopack supports plain CSS / CSS Modules. Not a PDF renderer yet — print CSS only.
+- **Documents pixel-faithful; all other UI fresh shadcn** — the sheets are finished, approved, legal artifacts; only their styling system changed (SCSS → Tailwind + print.css). The chrome is where shadcn shines.
+- **Sheet styling = Tailwind + a small `print.css` layer** (not a PDF renderer yet).
 - **No data migration** — fresh Postgres. The old Upstash test data (incl. a test invoice `QS-INV-2627-001`) was **not** carried over. speclr's first real document starts a clean FY sequence.
 
 ## Deliberately deferred (YAGNI — noted, not built)

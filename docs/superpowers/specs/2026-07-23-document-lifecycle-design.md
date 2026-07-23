@@ -24,7 +24,7 @@ Everything needed to **create, edit, preview, finalize, view, and print** the fi
 
 ## Locked decisions
 
-- **Sheets = co-located CSS Modules, translated 1:1 from the source SCSS.** (This supersedes CONTEXT.md's earlier "Tailwind + print.css" note — CONTEXT.md to be updated.) Each source `X.module.scss` → co-located `X.module.css`: drop the `@use '.../variables'` / `'.../mixins'` imports, inline `$font-sans` → the Geist family literal, convert SCSS nesting/`&` to plain CSS, keep **every px, color, and rule literally**. `@media print` blocks stay co-located in each sheet's CSS. Rationale: the sheets are approved legal artifacts (white paper, black ink, exact typography, deliberately NOT theme-aware); a near-mechanical CSS-Modules copy guarantees pixel fidelity and is trivially verifiable against source, whereas hand-converting 1,700 lines to Tailwind utilities risks silent visual drift. Plain CSS / CSS Modules work under Turbopack (globals.css already proves it).
+- **Sheets = Tailwind utilities + a small shared `src/styles/print.css` layer** (the decision finalized in the extraction planning, per CONTEXT.md). Each sheet's SCSS is translated to Tailwind utility classes on the markup, preserving **every px, color, and rule exactly** — use arbitrary values (`w-[794px]`, `text-[12px]`, `text-black`, `p-[12px]`, etc.) where the design isn't on Tailwind's default scale, so nothing drifts. The sheets are deliberately NOT theme-aware (white paper, black ink): use literal `text-black`/`bg-white`/explicit colors, never theme tokens, so app/dark styles can't bleed in. A4/page-break/`print-color-adjust` and `@media print` rules that don't fit inline utilities live in a shared `src/styles/print.css` (imported in the print route and where needed). The source `.module.scss` is the pixel spec — translate class-for-class and **verify each sheet side-by-side against the marketing-site original in a real browser**.
 - **All chrome stays shadcn + Tailwind** (editors, toolbars, view-page shell, actions) — consistent with 4a.
 - **Forms use react-hook-form + Base UI `Field` kit** (the 4a convention; no shadcn `Form` component in this preset). The editors are the most complex forms in the app (line-item arrays, GST place-of-supply, HR engagement branching) — port their transform logic faithfully from source.
 - **One phase, executed straight through**, sheets → preview/print → view → editors → finalize → create. Frequent commits; merge when the lifecycle works end-to-end.
@@ -51,12 +51,13 @@ Source root: `/Users/shivanshupareek/Developer/qera/qerastudio/src/app/(utility)
 
 | speclr target | source | port kind |
 |---|---|---|
-| `src/components/docs/sheets/DocumentSheet.tsx` + `.module.css` | `_components/DocumentSheet/` | structure verbatim; SCSS→CSS-module 1:1; inline the Qera SVG mark; QR via `next/image` |
-| `.../ContractSheet.tsx` + `.module.css` | `_components/ContractSheet/` | same; multi-page, black cover, MSA clauses |
-| `.../LetterSheet.tsx` + `.module.css` | `_components/LetterSheet/` | same; HR letters (offer/exp/exit) |
-| `.../StipendSheet.tsx` + `.module.css` | `_components/StipendSheet/` | same; stipend slip |
-| `src/components/docs/Paginator.tsx` + `.module.css` | `_components/Paginator/` | lift verbatim; measuring engine unchanged |
-| `src/components/docs/SheetPreview.tsx` + `.module.css` | `_components/SheetPreview/` | lift verbatim |
+| `src/components/docs/sheets/DocumentSheet.tsx` | `_components/DocumentSheet/` | structure verbatim; SCSS→Tailwind (exact px); inline the Qera SVG mark; QR via `next/image` |
+| `.../ContractSheet.tsx` | `_components/ContractSheet/` | same; multi-page, black cover, MSA clauses |
+| `.../LetterSheet.tsx` | `_components/LetterSheet/` | same; HR letters (offer/exp/exit) |
+| `.../StipendSheet.tsx` | `_components/StipendSheet/` | same; stipend slip |
+| `src/components/docs/Paginator.tsx` | `_components/Paginator/` | lift verbatim; measuring engine unchanged; SCSS→Tailwind |
+| `src/components/docs/SheetPreview.tsx` | `_components/SheetPreview/` | lift verbatim; SCSS→Tailwind |
+| `src/styles/print.css` | (sheet `@media print` blocks) | shared A4/page-break/print rules extracted from the sheet SCSS |
 | `src/components/docs/PrintToolbar.tsx` | `_components/PrintToolbar/` | lift; rebuild toolbar chrome in Tailwind (it's chrome, not a sheet); keep the title-swap print trick |
 | `src/components/docs/editors/DocumentEditor.tsx` | `_components/DocumentEditor/` (+ `useDocumentForm`) | rebuild form in RHF+Field; port transforms (paise, GST, line items) |
 | `.../ContractEditor.tsx` | `_components/ContractEditor/` | rebuild; schedule/clauses |
@@ -78,7 +79,7 @@ Domain imports re-point to `@/lib/domain/*` (already lifted). Money/dates/gst/re
 - **Snapshot freeze** at finalize (client/employee copied into the doc) — sheets read the snapshot, never live data.
 - **Intern vs employee** legal split in HR docs (exit → "Internship Completion" vs "Relieving"); letter wording branches on `engagementType`.
 - **Ordinal dates** ("10th June 2026") via `dates` helpers.
-- Sheets are **paper**: explicit black ink on white, `print-color-adjust: exact`, not theme-aware. Never let app/dark styles bleed in (CSS Modules scope prevents this).
+- Sheets are **paper**: explicit black ink on white (`text-black`/`bg-white`, literal colors — never theme tokens), `print-color-adjust: exact`, not theme-aware. Never let app/dark styles bleed in.
 
 ## Testing
 
