@@ -19,9 +19,5 @@ export default async function SpecPage() {
     redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
-  return (
-    <main id="main-content">
-      <IconSpecTool />
-    </main>
-  );
+  return <IconSpecTool />;
 }
