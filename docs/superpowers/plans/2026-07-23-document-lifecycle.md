@@ -250,7 +250,8 @@ describe('Paginator (un-measured jsdom fallback)', () => {
 - [ ] **Step 2: Run → FAIL.**
 - [ ] **Step 3: Implement** — lift the source logic verbatim; translate SCSS classNames (`wrapper/toolbar/viewportFit/viewportFull/sheetSizer/sheetHolder/page/flow/coverPage/measure/...`) to Tailwind arbitrary values matching the source SCSS dims, or add the few needed rules to `print.css`. Keep `SHEET_WIDTH/HEIGHT`, `PAGE_CONTENT_HEIGHT`, the signature memo, both `ResizeObserver`s. READ source `.tsx` + `.module.scss`.
 - [ ] **Step 4: Run → PASS; typecheck.**
-- [ ] **Step 5: Commit** `feat(docs): Paginator (A4 block-measuring carousel)`.
+- [ ] **Step 5: Restore ContractSheet's `variant="paged"` branch.** Task 5 built ContractSheet WITHOUT the Paginator (it didn't exist yet) — the source `ContractSheet` takes `variant?: 'print' | 'paged'` (default `'print'` = blocks grouped into `.page` sections for the print engine; `'paged'` = blocks wrapped in `<Paginator coverFirst firstPageClassName={coverClass}>` for the on-screen editor/view preview). READ the source `ContractSheet.tsx` `variant` handling. Add the `variant` prop + the `'paged'` branch (importing the new `@/components/docs/Paginator`) to speclr's `src/components/docs/sheets/ContractSheet.tsx`, using its existing `contractBlocks` (export it if still private). Both ContractEditor (Task 14) and the view page (Task 11) will render `<ContractSheet doc={...} variant="paged" />`. Keep the existing print/default rendering unchanged. Re-run the ContractSheet test → still PASS; typecheck.
+- [ ] **Step 6: Commit** `feat(docs): Paginator (A4 block-measuring carousel) + ContractSheet paged variant`.
 
 ---
 
