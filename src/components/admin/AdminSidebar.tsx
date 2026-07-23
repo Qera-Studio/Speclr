@@ -26,7 +26,7 @@ export default function AdminSidebar({ email }: { email: string }) {
       <SidebarContent>
         {NAV_GROUPS.map((group) => (
           <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-sm">{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
@@ -36,6 +36,7 @@ export default function AdminSidebar({ email }: { email: string }) {
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
+                        className="text-sm"
                         render={
                           <Link href={item.href} aria-current={active ? 'page' : undefined}>
                             <Icon aria-hidden="true" />
