@@ -1,0 +1,166 @@
+/**
+ * Drizzle schema for speclr's Postgres store.
+ *
+ * Design (per the extraction spec §4.3): relational columns for what we query
+ * and report on; JSONB for the doc-type-specific parts that vary between
+ * document types. The domain types in `@/lib/domain/types` remain the single
+ * source of truth — the JSONB columns hold whole domain objects, validated by
+ * the existing Zod schemas on write, while the flat columns are a denormalized
+ * projection for querying/indexing.
+ *
+ * Money is integer paise. Dates that belong to a document (issueDate etc.) are
+ * ISO 'YYYY-MM-DD' strings inside the JSONB — Postgres `date` columns are used
+ * only for the queryable projections. Row lifecycle timestamps use `timestamptz`.
+ */
+
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
+import type { EmployeeRecord } from '@/lib/domain/employee';
+import type {
+  ClientSnapshot,
+  DocStatus,
+  DocTypeCode,
+  EmployeeSnapshot,
+  ContractSchedule,
+  LineItem,
+} from '@/lib/domain/types';
+
+// ─── Clients ──────────────────────────────────────────────────────────────────
+
+export const clients = pgTable('clients', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  address: text('address').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  gstin: text('gstin'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── Employees ────────────────────────────────────────────────────────────────
+
+export const employees = pgTable('employees', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  address: text('address').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  role: text('role').notNull(),
+  engagementType: text('engagement_type').notNull(), // 'intern' | 'employee'
+  pronoun: text('pronoun').notNull(), // 'he' | 'she' | 'they'
+  joiningDate: date('joining_date').notNull(),
+  endDate: date('end_date'),
+  payAmountPaise: integer('pay_amount_paise').notNull(),
+  /** { bankName, accountNo, ifsc, upiId? } */
+  bank: jsonb('bank').notNull().$type<EmployeeRecord['bank']>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── Service templates ────────────────────────────────────────────────────────
+
+export const serviceTemplates = pgTable('service_templates', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  /** The full ContractSchedule-shaped content this template seeds into a contract. */
+  content: jsonb('content').notNull().$type<Omit<ContractSchedule, 'sourceServiceId'>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+/**
+ * The doc-type-specific payload stored in `data`. A discriminated bag of the
+ * fields that vary by type: line items (INV/REC/STP), receipt payment (REC),
+ * contract schedules (CON), stipend fields (STP), letter body (OFR/EXP/EXIT),
+ * plus the shared optional presentation fields. Validated by the registry's
+ * Zod schemas on write; never trusted raw.
+ */
+export interface DocumentData {
+  lineItems?: LineItem[];
+  gstLabel?: string;
+  notes?: string;
+  terms?: string;
+  dueDate?: string; // INV
+  payment?: unknown; // REC — ReceiptDocument['payment']
+  schedules?: ContractSchedule[]; // CON
+  // STP
+  stipendPeriod?: string;
+  stipendMonth?: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  deductionsNote?: string;
+  // Letters
+  bodyParagraphs?: string[];
+  bulletSections?: { heading: string; items: string[] }[];
+  payAmountPaise?: number;
+}
+
+export const documents = pgTable(
+  'documents',
+  {
+    id: text('id').primaryKey(),
+    type: text('type').notNull().$type<DocTypeCode>(),
+    status: text('status').notNull().$type<DocStatus>().default('draft'),
+
+    // Numbering — present only once finalized (financial + hr-slip docs).
+    number: text('number'),
+    serial: integer('serial'),
+    fyYear: integer('fy_year'), // FY start, e.g. 2026 for FY 2026-27
+
+    // Queryable projections.
+    issueDate: date('issue_date').notNull(),
+    dueDate: date('due_date'),
+    clientId: text('client_id').references(() => clients.id),
+    employeeId: text('employee_id').references(() => employees.id),
+    gstRatePercent: integer('gst_rate_percent').notNull().default(0),
+    placeOfSupplyStateCode: text('place_of_supply_state_code'),
+    totalPaise: integer('total_paise').notNull().default(0),
+
+    // Variable payload + frozen party snapshot (client OR employee).
+    data: jsonb('data').notNull().$type<DocumentData>(),
+    snapshot: jsonb('snapshot').$type<ClientSnapshot | EmployeeSnapshot>(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('documents_created_at_idx').on(t.createdAt.desc()),
+    index('documents_status_idx').on(t.status),
+    index('documents_type_idx').on(t.type),
+    index('documents_client_id_idx').on(t.clientId),
+    index('documents_employee_id_idx').on(t.employeeId),
+    // A finalized number must be unique across the whole system.
+    uniqueIndex('documents_number_uniq').on(t.number),
+  ],
+);
+
+// ─── Counters (atomic FY numbering) ───────────────────────────────────────────
+
+/**
+ * One row per (doc_type, fy_code) holding the last serial issued. Finalize
+ * increments this atomically (row-lock / INSERT ... ON CONFLICT ... RETURNING)
+ * so a number is never handed out twice. Abandoned drafts never touch it.
+ */
+export const counters = pgTable(
+  'counters',
+  {
+    docType: text('doc_type').notNull(),
+    fyCode: text('fy_code').notNull(), // e.g. '2627'
+    lastSerial: integer('last_serial').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.docType, t.fyCode] })],
+);
