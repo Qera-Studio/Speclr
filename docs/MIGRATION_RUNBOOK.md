@@ -24,14 +24,15 @@
 
 ---
 
-## Phase 2 — Lift the portable core (no UI yet)
+## Phase 2 — Lift the portable core (no UI yet) — ✅ DONE
 
-- [ ] 🤖 Copy `src/lib/domain/` from the source project's `kessler-admin/_lib/`: `money`, `dates`, `amountInWords`, `gstStates`, `registry`, `studio`, `employee`, `hrContent`, `msaBoilerplate`, `scheduleLetter`, `serviceTemplate`, `types` — **and their tests** — verbatim; fix import paths only.
-- [ ] 🤖 Adjust any `zod` import differences; run typecheck.
+- [x] 🤖 Installed `zod@^4` (the only external dep of the domain core; v4's stricter `.email()` is relied on by the schemas).
+- [x] 🤖 Copied all 12 domain files + 9 test files from `kessler-admin/_lib/` into `src/lib/domain/` **verbatim** — **zero import changes needed** (the `_lib` island imports only `zod` + its own relative files; no cross-boundary imports).
+- [x] 🤖 `npm run typecheck` clean; `npm test` green.
 
 > Note the source's `lib/admin/` split: `store`, `counter`, `docNumber`, `employeeStore`, `serviceStore` are the persistence layer — their *interfaces* are reused but *bodies* rewritten in Phase 3. `session.ts` is **replaced by Clerk** (not lifted).
 
-**✓ Checkpoint:** `npm test` — all lifted domain tests pass, untouched.
+**✓ Checkpoint MET:** `npm test` → **9 suites, 114 tests, all passing, untouched.** The brain works before any UI/DB is built on it.
 
 ---
 
