@@ -42,6 +42,7 @@
 
 **Stack notes (carried from 4d — apply throughout):**
 - shadcn primitives here are **Base UI**, NOT Radix. No `@radix-ui/*` imports. Base UI `Checkbox` `onCheckedChange(checked: boolean)`; Base UI `Button` has no `asChild` (style a `Link` with `buttonVariants({...})`).
+- **`asChild` DOES NOT EXIST in this preset (confirmed in Task 3).** Base UI shadcn components compose via a **`render` prop** (Base UI `useRender`), not Radix `asChild`. Anywhere a Radix snippet would write `<X asChild><child/></X>`, write `<X render={<child/>} />` instead. Confirmed working for `SidebarMenuButton render={<Link/>}` → renders a real `<a>`. Applies to `DropdownMenuTrigger`, `SheetTrigger`, `AlertDialogTrigger`, `TooltipTrigger`, etc. When a snippet below shows `asChild`, translate it to `render={...}` and confirm against the primitive file. Passing `asChild` is silently ignored (breaks composition).
 - `jest.setup.ts` already stubs `PointerEvent` + pointer-capture (needed for Sheet/Dialog/DropdownMenu/Select). Extend `installDomStubs()` only if a NEW jsdom gap appears; report it.
 - `@/` → `src/`. Tests in `__tests__/`. No `Co-Authored-By` trailer. No `lint` script — verify with `npm run typecheck`, `npm test`, `npm run build`.
 - **CSP:** set `z.config({ jitless: true })` before any zodResolver runs (production CSP forbids eval). Do it once in a shared module (Task 6).
@@ -916,9 +917,10 @@ export default function ClientsTable({ clients, onEdit }: { clients: ClientRecor
             <TableCell>{c.name}</TableCell><TableCell>{c.email}</TableCell><TableCell>{c.phone}</TableCell><TableCell>{c.gstin || '—'}</TableCell>
             <TableCell>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label={`Actions for ${c.name}`}><MoreHorizontal /></Button>
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" size="icon" aria-label={`Actions for ${c.name}`}><MoreHorizontal /></Button>}
+                />
+                {/* Base UI: render prop, NOT asChild. If DropdownMenuTrigger's render API differs, read src/components/ui/dropdown-menu.tsx. */}
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(c)}>Edit</DropdownMenuItem>
                 </DropdownMenuContent>
@@ -932,7 +934,7 @@ export default function ClientsTable({ clients, onEdit }: { clients: ClientRecor
 }
 ```
 
-Note: if Base UI `Button` rejects `asChild` inside `DropdownMenuTrigger`, use the dropdown-menu's own trigger `render`/pattern per `src/components/ui/dropdown-menu.tsx` (READ it) — the shadcn dropdown-menu trigger typically supports `asChild` via its own slot even in the Base UI build. Report what you did.
+Note: Base UI uses `render={<Button.../>}` on `DropdownMenuTrigger` (NOT `asChild` — see the top stack note). READ `src/components/ui/dropdown-menu.tsx` to confirm the trigger's exact render/props API and adapt; the test requires the trigger to be a real button with the `aria-label`. Report what you did.
 
 - [ ] **Step 6: Implement ClientManager** `src/components/admin/clients/ClientManager.tsx`
 
