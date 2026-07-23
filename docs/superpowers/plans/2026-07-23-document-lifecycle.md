@@ -24,6 +24,7 @@
 - The Geist font is already the app font; sheets that set `font-family: $font-sans` just inherit or use `font-sans`.
 - A4 sizing / `print-color-adjust: exact` / page-break / `@media print` rules that don't express as inline utilities go in **`src/styles/print.css`** (Task 1), applied via a stable className the sheet also carries.
 - The source `.module.scss` is the spec. **Each sheet is verified side-by-side against the marketing original in a real browser** (the manual pass) — jsdom only checks content, not pixels.
+- **Source `$space-*` scale (8px base) — use these exact px when translating `$space-N`:** `$space-1`=8px, `$space-2`=16px, `$space-3`=24px, `$space-4`=32px, `$space-5`=40px, `$space-6`=48px, `$space-8`=64px, `$space-10`=80px, `$space-12`=96px, `$space-16`=128px, `$space-20`=160px. (Do NOT assume `$space-3`=12px — it's 24px.)
 
 ## Backend (already built — never modify; verified signatures)
 
