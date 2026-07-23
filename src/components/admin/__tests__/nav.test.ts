@@ -1,32 +1,44 @@
-import { NAV_GROUPS } from '../nav';
+import { DASHBOARD_LINK, DOCUMENT_SECTIONS, RECORD_LINKS, TOOL_LINKS } from '../nav';
 
-describe('NAV_GROUPS', () => {
-  it('has the three expected groups', () => {
-    expect(NAV_GROUPS.map((g) => g.label)).toEqual(['Main', 'New document', 'Tools']);
+describe('nav model', () => {
+  it('points Dashboard at the root', () => {
+    expect(DASHBOARD_LINK).toMatchObject({ href: '/', label: 'Dashboard' });
+    expect(DASHBOARD_LINK.icon).toBeDefined();
   });
 
-  it('points main links at the right routes', () => {
-    const main = NAV_GROUPS.find((g) => g.label === 'Main')!;
-    expect(main.items.map((i) => i.href)).toEqual(['/', '/clients', '/employees', '/services']);
+  it('splits documents into Client and Admin sections', () => {
+    expect(DOCUMENT_SECTIONS.map((s) => s.label)).toEqual(['Client', 'Admin']);
   });
 
-  it('has seven document-type links under New document', () => {
-    const docs = NAV_GROUPS.find((g) => g.label === 'New document')!;
-    expect(docs.items).toHaveLength(7);
-    expect(docs.items.every((i) => i.href.startsWith('/docs/new/'))).toBe(true);
+  it('puts contract/invoice/receipt under Client', () => {
+    const client = DOCUMENT_SECTIONS.find((s) => s.label === 'Client')!;
+    expect(client.children.map((c) => c.href)).toEqual([
+      '/docs/new/contract',
+      '/docs/new/invoice',
+      '/docs/new/receipt',
+    ]);
   });
 
-  it('links Icon spec under Tools', () => {
-    const tools = NAV_GROUPS.find((g) => g.label === 'Tools')!;
-    expect(tools.items).toHaveLength(1);
-    expect(tools.items[0]).toMatchObject({ href: '/spec', label: 'Icon spec' });
+  it('puts the four HR letters under Admin', () => {
+    const admin = DOCUMENT_SECTIONS.find((s) => s.label === 'Admin')!;
+    expect(admin.children).toHaveLength(4);
+    expect(admin.children.every((c) => c.href.startsWith('/docs/new/'))).toBe(true);
   });
 
-  it('gives every nav item an icon', () => {
-    for (const group of NAV_GROUPS) {
-      for (const item of group.items) {
-        expect(item.icon).toBeDefined();
-      }
+  it('lists the three record links', () => {
+    expect(RECORD_LINKS.map((r) => r.href)).toEqual(['/clients', '/employees', '/services']);
+  });
+
+  it('links Icon spec under tools', () => {
+    expect(TOOL_LINKS).toHaveLength(1);
+    expect(TOOL_LINKS[0]).toMatchObject({ href: '/spec', label: 'Icon spec' });
+  });
+
+  it('gives every nav entry an icon', () => {
+    const all = [DASHBOARD_LINK, ...RECORD_LINKS, ...TOOL_LINKS, ...DOCUMENT_SECTIONS];
+    for (const entry of all) expect(entry.icon).toBeDefined();
+    for (const section of DOCUMENT_SECTIONS) {
+      for (const child of section.children) expect(child.icon).toBeDefined();
     }
   });
 });
