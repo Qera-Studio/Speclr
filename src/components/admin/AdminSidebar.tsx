@@ -99,7 +99,7 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex-row items-center justify-between px-3 py-2">
         <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">speclr</span>
-        <SidebarTrigger className="text-muted-foreground" />
+        <SidebarTrigger className="text-muted-foreground [&_svg]:size-3.5" />
       </SidebarHeader>
 
       <SidebarContent>
