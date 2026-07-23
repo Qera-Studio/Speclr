@@ -38,16 +38,20 @@
 
 ## Phase 3 — Postgres + auth (the plumbing)
 
-- [ ] 👤 Provision **Neon Postgres** (Vercel Marketplace *or* neon.tech directly — free tier). Get `DATABASE_URL`.
-- [ ] 👤 Provision **Clerk** (Vercel Marketplace *or* clerk.com directly — free tier). Get the Clerk keys.
-- [ ] 👤 `vercel env pull .env.local` (or paste keys into `.env.local` — gitignored).
-- [ ] 🤖 Install Drizzle + drizzle-kit + the Neon driver; configure `drizzle.config.ts`.
-- [ ] 🤖 Write `src/db/schema.ts` — `clients`, `employees`, `service_templates`, `documents` (relational cols + JSONB `data`/`snapshot`), `counters`. Generate + run the first migration.
-- [ ] 🤖 Rewrite the store + Server Actions against Postgres: atomic FY numbering (counters + row-lock/sequence), immutability guards, snapshot freeze. Zod-validate JSONB on write.
-- [ ] 🤖 Wire Clerk: middleware, sign-in route, email allowlist; every action/route verifies the session server-side.
-- [ ] 🤖 Tests for the persistence layer (round-trip, atomic numbering, immutability).
+## Phase 3 — Postgres + auth — ✅ DONE
 
-**✓ Checkpoint:** create → finalize → immutability pass in tests; a document round-trips through Postgres; sign-in gated by Clerk.
+- [x] 👤 Provisioned **Neon Postgres** (Vercel) → `DATABASE_URL` pulled.
+- [x] 👤 Provisioned **Clerk** (Vercel) → keys pulled; reconciled the duplicate app; branding configured.
+- [x] 🤖 Drizzle + drizzle-kit + Neon driver; `drizzle.config.ts`; `src/db/index.ts` (server-only client).
+- [x] 🤖 `src/db/schema.ts` — 5 tables (clients, employees, service_templates, documents, counters); relational cols + JSONB `data`/`snapshot`; UNIQUE index on `documents.number`. Migrated + verified live.
+- [x] 🤖 Store + mappers + atomic counter (Postgres upsert-returning) — same contract as the source; immutability + snapshot preserved. Server Actions (documents/clients/employees/services) ported faithfully; only imports + auth call changed.
+- [x] 🤖 Clerk wired: minimal middleware (plumbing), ClerkProvider, `/sign-in`, `SPECLR_ALLOWED_EMAILS` allowlist, resource-level `requireAuthorizedUser()` on every action/protected page (NOT middleware path-matching — Clerk's current guidance + Security checklist).
+- [x] 🤖 Integration tests (live Neon, `npm run test:int`, self-cleaning): 6/6 — client/doc round-trip, atomic numbering, 10 concurrent → 10 unique serials, finalize+snapshot+immutability.
+- [x] 👤 `SPECLR_ALLOWED_EMAILS` added to Vercel (project-scoped, all environments).
+
+**✓ Checkpoint MET:** create→finalize→immutability verified against real Postgres; documents round-trip; unauthenticated `/` → 307 → branded Clerk sign-in (verified in browser). Default suite 119 green; build compiles.
+
+> Action-level end-to-end (with a live Clerk session) is deferred to the Phase 4 browser flow; the correctness-critical store/counter are already covered by the integration tests.
 
 ---
 
