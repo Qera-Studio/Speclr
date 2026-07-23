@@ -1,8 +1,14 @@
+import Paginator from '@/components/docs/Paginator';
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS } from '@/lib/domain/msaBoilerplate';
 import { scheduleLetter } from '@/lib/domain/scheduleLetter';
 import { STUDIO_INFO } from '@/lib/domain/studio';
 import type { ContractDocument } from '@/lib/domain/types';
+
+/** Cover page styling shared by the print flow and the Paginator's dedicated
+ * cover-page frame — the black, full-bleed contract cover. */
+const COVER_CLASSNAME =
+  'flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
 function QeraMark() {
@@ -46,7 +52,7 @@ function NoteBlock({ heading, note }: { heading: string; note?: string }) {
  * rely on each top-level array entry being an atomic, unsplittable block.
  * The cover is always block 0 so it can style the first page black.
  */
-function contractBlocks(doc: ContractDocument): React.ReactNode[] {
+export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const signatureStatement =
     MSA_SECTIONS.find((s) => s.number === 24)?.body[0] ??
@@ -289,10 +295,30 @@ function contractBlocks(doc: ContractDocument): React.ReactNode[] {
  * Blocks are grouped into logical page sections (cover / parties / terms /
  * one section per schedule / signatures) for print, but each MSA clause and
  * each schedule remains its own atomic block within `contractBlocks` — the
- * on-screen Paginator (Task 6) measures and packs that same flat block list.
+ * on-screen Paginator measures and packs that same flat block list.
+ *
+ * `variant="print"` (default) renders the section-grouped print flow used by
+ * `window.print()` / PDF export. `variant="paged"` instead feeds the flat
+ * block list into the `Paginator` carousel for the on-screen preview, with
+ * the cover pinned as its own full-bleed first page.
  */
-export default function ContractSheet({ doc }: { doc: ContractDocument }) {
+export default function ContractSheet({
+  doc,
+  variant = 'print',
+}: {
+  doc: ContractDocument;
+  variant?: 'print' | 'paged';
+}) {
   const blocks = contractBlocks(doc);
+
+  if (variant === 'paged') {
+    return (
+      <Paginator coverFirst firstPageClassName={COVER_CLASSNAME}>
+        {blocks}
+      </Paginator>
+    );
+  }
+
   const [cover, parties, ...rest] = blocks;
   const scheduleCount = doc.schedules.length;
   const clauses = rest.slice(0, rest.length - scheduleCount - 1);
@@ -305,7 +331,7 @@ export default function ContractSheet({ doc }: { doc: ContractDocument }) {
       aria-label="Contract agreement"
     >
       <section
-        className="[break-before:avoid] flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+        className={`[break-before:avoid] ${COVER_CLASSNAME}`}
         aria-label="Cover"
       >
         {cover}
