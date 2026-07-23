@@ -19,6 +19,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   DASHBOARD_LINK,
@@ -96,7 +97,10 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="px-3 py-2 text-sm font-semibold">speclr</SidebarHeader>
+      <SidebarHeader className="flex-row items-center justify-between px-3 py-2">
+        <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">speclr</span>
+        <SidebarTrigger className="text-muted-foreground" />
+      </SidebarHeader>
 
       <SidebarContent>
         {/* Dashboard — alone at the top */}
