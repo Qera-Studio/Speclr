@@ -4,7 +4,37 @@
 
 **Goal:** Turn speclr into a real admin app — a persistent sidebar shell, the documents dashboard, and full CRUD for clients/employees/services — all wired to the Server Actions already built in Phase 3.
 
-**Architecture:** `(admin)` route group with a shared sidebar layout. Dashboard + entity lists are Server Components reading the store. Forms are client islands (shadcn `Form` = react-hook-form + zod) inside `Sheet`s, calling existing Server Actions that return `ActionResult`. Delete via `AlertDialog`.
+**Architecture:** `(admin)` route group with a shared sidebar layout. Dashboard + entity lists are Server Components reading the store. Forms are client islands (**react-hook-form + zodResolver + Base UI `Field` layout components**) inside `Sheet`s, calling existing Server Actions that return `ActionResult`. Delete via `AlertDialog`.
+
+> **⚠️ FORM STACK CORRECTION (read before any form task).** This Base UI preset (`base-mira`) has **NO shadcn `Form`/`FormField`/`FormLabel`/`FormMessage` component** — that wrapper is Radix-only and does not exist here. `react-hook-form` (7.82) + `@hookform/resolvers` are installed manually (Task 1, done). Build every form with **react-hook-form directly** + the Base UI **`Field` layout kit** already installed at `@/components/ui/field`. The canonical pattern (use this everywhere a form task's snippet shows `<Form>`/`<FormField>`):
+>
+> ```tsx
+> 'use client';
+> import '@/lib/zod-config';
+> import { useForm } from 'react-hook-form';
+> import { zodResolver } from '@hookform/resolvers/zod';
+> import { Field, FieldLabel, FieldError, FieldGroup } from '@/components/ui/field';
+> import { Input } from '@/components/ui/input';
+> // ...
+> const { register, handleSubmit, control, formState: { errors, isSubmitting } } =
+>   useForm<Values>({ resolver: zodResolver(schema), defaultValues });
+>
+> <form onSubmit={handleSubmit(onSubmit)} noValidate>
+>   <FieldGroup>
+>     <Field>
+>       <FieldLabel htmlFor="name">Name</FieldLabel>
+>       <Input id="name" {...register('name')} />
+>       <FieldError errors={[errors.name]} />
+>     </Field>
+>     {/* ...more Fields... */}
+>   </FieldGroup>
+> </form>
+> ```
+>
+> - `FieldLabel` renders a shadcn `Label`; pairing its `htmlFor` with the control's `id` makes `getByLabelText` work in tests.
+> - `FieldError` takes `errors={[fieldError]}` (RHF's `errors.<name>` is `{ message } | undefined`, exactly its expected shape) and renders `role="alert"`.
+> - For enum `<select>`s use `@/components/ui/select` with RHF `Controller` (Base UI Select API: `value` / `onValueChange`). For dynamic arrays use RHF `useFieldArray`.
+> - Server error: keep a `useState<string|null>` and render it in an `Alert variant="destructive"` (baseline; unchanged).
 
 **Tech Stack:** Next.js 16 App Router, React 19, TS, Tailwind v4, shadcn/ui (Base UI), react-hook-form, zod v4, Jest + RTL.
 
@@ -71,22 +101,28 @@
 
 ---
 
-## Task 1: Install shadcn primitives + form deps
+## Task 1: Install shadcn primitives + form deps — ✅ DONE (completed by controller before subagent execution)
 
-**Files:** `src/components/ui/*` (generated), `package.json`
+This task was executed directly. Recorded here for completeness:
+- Installed primitives: `table sheet dialog alert-dialog dropdown-menu sidebar separator tooltip select skeleton field` (the `field` layout kit — there is **no** `form` component in this preset).
+- Installed form deps manually: `react-hook-form@7.82` + `@hookform/resolvers` (`shadcn add form` is a no-op here — no such component).
+- Verified `globals.css` unchanged (Geist guard passed).
+- The whole install is committed. Subagents start from Task 2.
 
-- [ ] **Step 1: Add primitives**
+**Original steps (for reference — do not re-run):**
+
+- [x] **Step 1: Add primitives**
 
 Run:
 ```bash
-npx shadcn@latest add form table sheet dialog alert-dialog dropdown-menu sidebar separator tooltip select skeleton --yes
+npx shadcn@latest add table sheet dialog alert-dialog dropdown-menu sidebar separator tooltip select skeleton field --yes
 ```
-Expected: new files in `src/components/ui/`. `form` pulls in `react-hook-form` + `@hookform/resolvers`. `sidebar` pulls `separator`/`tooltip`/`sheet`/`skeleton` (already requested). Some may already exist — allow overwrite prompts to be skipped by `--yes` (if it errors on an existing file, re-run without that name).
+Note: `form` is NOT available in the base-mira/Base UI preset. Use the `field` kit + react-hook-form (see the FORM STACK CORRECTION near the top).
 
-- [ ] **Step 2: Confirm form deps installed**
+- [x] **Step 2: Confirm form deps installed**
 
 Run: `node -e "require.resolve('react-hook-form'); require.resolve('@hookform/resolvers/zod'); console.log('ok')"`
-Expected: `ok`. If MISSING, run `npm install react-hook-form @hookform/resolvers`.
+Expected: `ok`. (Installed via `npm install react-hook-form @hookform/resolvers`.)
 
 - [ ] **Step 3: Verify globals.css untouched (Geist font guard)**
 
@@ -755,7 +791,7 @@ Run: `npx jest src/components/admin/clients/__tests__/ClientForm.test.tsx` → F
 
 - [ ] **Step 3: Implement ClientForm** `src/components/admin/clients/ClientForm.tsx`
 
-Uses shadcn `Form`. READ `src/components/ui/form.tsx` to confirm exports (`Form, FormControl, FormField, FormItem, FormLabel, FormMessage`). `onDone` closes the parent Sheet + refreshes.
+Uses **react-hook-form + Base UI `Field` kit** (per the FORM STACK CORRECTION near the top — there is no shadcn `Form` component). `onDone` closes the parent Sheet + refreshes.
 
 ```tsx
 'use client';
@@ -768,7 +804,7 @@ import type { z } from 'zod';
 import { clientInputSchema } from '@/lib/domain/registry';
 import type { ClientRecord } from '@/lib/domain/types';
 import { createClient, updateClient } from '@/server/actions/clients';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Field, FieldLabel, FieldError, FieldGroup } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -778,7 +814,11 @@ type Values = z.infer<typeof clientInputSchema>;
 
 export default function ClientForm({ client, onDone }: { client?: ClientRecord | null; onDone: () => void }) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const form = useForm<Values>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<Values>({
     resolver: zodResolver(clientInputSchema),
     defaultValues: client
       ? { name: client.name, address: client.address, email: client.email, phone: client.phone, gstin: client.gstin ?? '' }
@@ -796,36 +836,50 @@ export default function ClientForm({ client, onDone }: { client?: ClientRecord |
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-        <FormField control={form.control} name="name" render={({ field }) => (
-          <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="address" render={({ field }) => (
-          <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="email" render={({ field }) => (
-          <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="phone" render={({ field }) => (
-          <FormItem><FormLabel>Phone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField control={form.control} name="gstin" render={({ field }) => (
-          <FormItem><FormLabel>GSTIN (optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        {serverError && <Alert variant="destructive"><AlertDescription>{serverError}</AlertDescription></Alert>}
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? 'Saving…' : client ? 'Save changes' : 'Add client'}
-        </Button>
-      </form>
-    </Form>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="client-name">Name</FieldLabel>
+          <Input id="client-name" {...register('name')} />
+          <FieldError errors={[errors.name]} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="client-address">Address</FieldLabel>
+          <Textarea id="client-address" rows={3} {...register('address')} />
+          <FieldError errors={[errors.address]} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="client-email">Email</FieldLabel>
+          <Input id="client-email" type="email" {...register('email')} />
+          <FieldError errors={[errors.email]} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="client-phone">Phone</FieldLabel>
+          <Input id="client-phone" type="tel" {...register('phone')} />
+          <FieldError errors={[errors.phone]} />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="client-gstin">GSTIN (optional)</FieldLabel>
+          <Input id="client-gstin" {...register('gstin')} />
+          <FieldError errors={[errors.gstin]} />
+        </Field>
+      </FieldGroup>
+      {serverError && (
+        <Alert variant="destructive">
+          <AlertDescription>{serverError}</AlertDescription>
+        </Alert>
+      )}
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Saving…' : client ? 'Save changes' : 'Add client'}
+      </Button>
+    </form>
   );
 }
 ```
 
 - [ ] **Step 4: Run the form test, confirm PASS (3 tests).**
 
-If the shadcn `Form` `FormLabel` associates via `FormField` context (it does — it generates ids), `getByLabelText` resolves. If a label isn't associated and the query fails, READ `src/components/ui/form.tsx` — do NOT bypass with `aria-label`; the FormLabel/FormControl id wiring must work. Report any fix.
+`FieldLabel htmlFor` + `Input id` association makes `getByLabelText` resolve. If a label query fails, verify the `htmlFor`/`id` values match — do NOT bypass with `aria-label`.
 
 - [ ] **Step 5: Implement ClientsTable** `src/components/admin/clients/ClientsTable.tsx`
 
