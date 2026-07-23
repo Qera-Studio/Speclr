@@ -1,0 +1,41 @@
+import 'server-only';
+
+import { sql } from 'drizzle-orm';
+import { db } from './index';
+import { counters } from './schema';
+import { formatDocNumber } from '@/lib/domain/docNumber';
+import type { DocTypeCode } from '@/lib/domain/types';
+
+/**
+ * Atomic serial claim — the reason this whole system exists. Two concurrent
+ * finalizes must never receive the same number (GST Rule 46: consecutive,
+ * unique invoice numbers). Serials are claimed at finalize time only (drafts
+ * burn nothing) and keyed per Indian financial year (Apr–Mar), keeping each
+ * FY's sequence consecutive.
+ *
+ * Postgres makes this atomic with a single upsert: INSERT the (docType, fyCode)
+ * counter at 1, or on conflict bump last_serial by 1, RETURNING the new value.
+ * The row-level lock inside the statement serialises concurrent claims — no
+ * two callers can read-then-write the same serial. This is at least as strong
+ * as Redis INCR, and it lives in the same database as the documents it numbers.
+ */
+
+export interface ClaimedSerial {
+  serial: number;
+  number: string;
+}
+
+/** fyCode is the compact FY token, e.g. '2627' for FY 2026-27. */
+export async function claimSerial(code: DocTypeCode, fyCode: string): Promise<ClaimedSerial> {
+  const rows = await db
+    .insert(counters)
+    .values({ docType: code, fyCode, lastSerial: 1 })
+    .onConflictDoUpdate({
+      target: [counters.docType, counters.fyCode],
+      set: { lastSerial: sql`${counters.lastSerial} + 1`, updatedAt: new Date() },
+    })
+    .returning({ serial: counters.lastSerial });
+
+  const serial = rows[0]!.serial;
+  return { serial, number: formatDocNumber(code, fyCode, serial) };
+}

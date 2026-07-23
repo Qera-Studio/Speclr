@@ -8,6 +8,7 @@
     "start": "next start",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:int": "RUN_INTEGRATION=1 jest --runInBand integration",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -37,11 +38,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

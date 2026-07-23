@@ -11,11 +11,19 @@ const createJestConfig = nextJest({ dir: './' });
 const config = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  // Integration runs need .env.local (which Next's test transform skips) loaded
+  // before the modules import — do it via setupFiles, gated on the flag.
+  setupFiles: process.env.RUN_INTEGRATION ? ['<rootDir>/jest.setup.integration.ts'] : [],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
+  // Integration tests hit the live Neon DB — run them explicitly via `npm run
+  // test:int` (which clears this ignore), not in the default unit-test run.
+  testPathIgnorePatterns: process.env.RUN_INTEGRATION
+    ? ['/node_modules/']
+    : ['/node_modules/', '\\.integration\\.test\\.'],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
 };
 

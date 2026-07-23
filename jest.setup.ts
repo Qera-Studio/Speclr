@@ -1,5 +1,13 @@
 import '@testing-library/jest-dom';
 
+// The DOM stubs below only apply to the jsdom environment. Integration tests
+// run in the `node` environment (no `window`) — skip them there so this shared
+// setup file works for both. (`jest-dom` matchers are harmless either way.)
+if (typeof window !== 'undefined') {
+  installDomStubs();
+}
+
+function installDomStubs() {
 // ---------------------------------------------------------------------------
 // IntersectionObserver — not implemented in jsdom
 // Stub so components using IntersectionObserver don't throw in tests.
@@ -68,3 +76,4 @@ Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
   writable: true,
   value: jest.fn(),
 });
+}
