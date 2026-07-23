@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { SignOutButton } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
+import { buttonVariants } from '@/components/ui/button';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -34,6 +36,12 @@ export default async function HomePage() {
       <p className="mt-2 text-muted-foreground">
         Signed in as {user.email}. The dashboard lands in Phase 4.
       </p>
+      {/* TEMP: direct link until Phase 4a builds real navigation. */}
+      <div className="mt-6">
+        <Link href="/spec" className={buttonVariants({ variant: 'outline' })}>
+          Open Icon Spec tool
+        </Link>
+      </div>
       <div className="mt-6">
         <SignOutButton>
           <button className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent">

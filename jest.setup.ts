@@ -76,4 +76,34 @@ Object.defineProperty(HTMLMediaElement.prototype, 'pause', {
   writable: true,
   value: jest.fn(),
 });
+
+// ---------------------------------------------------------------------------
+// Pointer events / capture — jsdom has no PointerEvent constructor and no
+// pointer capture APIs, but Base UI components (e.g. Checkbox) rely on both
+// for their click/press handling. Stub so interacting with them in tests
+// doesn't throw.
+// ---------------------------------------------------------------------------
+
+if (typeof window.PointerEvent === 'undefined') {
+  class PointerEventStub extends MouseEvent {
+    pointerId: number;
+    pointerType: string;
+    isPrimary: boolean;
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 0;
+      this.pointerType = params.pointerType ?? 'mouse';
+      this.isPrimary = params.isPrimary ?? true;
+    }
+  }
+  Object.defineProperty(window, 'PointerEvent', {
+    writable: true,
+    configurable: true,
+    value: PointerEventStub,
+  });
+}
+
+Element.prototype.hasPointerCapture = jest.fn();
+Element.prototype.releasePointerCapture = jest.fn();
+Element.prototype.scrollIntoView = jest.fn();
 }
