@@ -77,6 +77,12 @@
 
 ---
 
-## Git identity reference
+## Git & account reference
 
-Personal account is a full member of Qera-Studio → one login covers both. Commit identity is set per-repo (`git config user.name/email` inside speclr) so attribution is correct without affecting personal projects. Connection chain: local `.git` → `origin` (Qera repo) → VS Code Source Control reads it automatically.
+**GitHub (one account, two orgs):** the personal GitHub account is a full member of the **Qera-Studio** org → one GitHub login covers both personal and company repos. Commit identity is set per-repo (`git config user.name/email` inside speclr → `ops@qera.studio`) so attribution is correct without affecting personal projects. Connection chain: local `.git` → `origin` (Qera-Studio/Speclr) → VS Code Source Control reads it automatically.
+
+**Vercel (TWO separate accounts — important):**
+- **Personal Vercel** — holds `qerastudio` (the marketing site, still to be migrated), `clayora`, `sunholdings`.
+- **Company Vercel** — tied to the Qera-Studio company GitHub; **this is where speclr is deployed and linked.**
+
+These are distinct accounts, not teams under one login. The Vercel CLI must be logged into the **company** account to see/link speclr (`vercel logout` then `vercel login` as the company account — this is local-token-only and never touches projects on either account). Verify with `vercel whoami` (should show the company account). This is why `vercel link` from the personal account did not list speclr.
