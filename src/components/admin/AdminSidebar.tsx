@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, PanelLeft } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +20,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   DASHBOARD_LINK,
@@ -94,12 +95,22 @@ function CollapsibleSection({ section, pathname }: { section: NavSection; pathna
 
 export default function AdminSidebar({ user }: { user: UserCardUser }) {
   const pathname = usePathname();
+  const { toggleSidebar } = useSidebar();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex-row items-center justify-between px-3 py-2">
         <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">speclr</span>
-        <SidebarTrigger className="text-muted-foreground [&_svg]:size-4" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          aria-label="Toggle sidebar"
+          className="text-muted-foreground"
+        >
+          <PanelLeft className="size-4" />
+        </Button>
       </SidebarHeader>
 
       <SidebarContent>
