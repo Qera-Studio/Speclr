@@ -30,6 +30,7 @@ import type {
   DocStatus,
   DocTypeCode,
   EmployeeSnapshot,
+  ContractMilestone,
   ContractSchedule,
   LineItem,
 } from '@/lib/domain/types';
@@ -71,12 +72,24 @@ export const employees = pgTable('employees', {
 
 export const serviceTemplates = pgTable('service_templates', {
   id: text('id').primaryKey(),
-  title: text('title').notNull(),
-  /** The full ContractSchedule-shaped content this template seeds into a contract. */
-  content: jsonb('content').notNull().$type<Omit<ContractSchedule, 'sourceServiceId'>>(),
+  name: text('name').notNull(), // queryable projection of the template name
+  /** The full ServiceTemplate record (overview, scope, milestones, notes…). */
+  content: jsonb('content').notNull().$type<ServiceTemplateContent>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** The ServiceTemplate fields stored in `content` (everything except id/name/timestamps). */
+export interface ServiceTemplateContent {
+  overview: string;
+  scopeItems: string[];
+  exclusionItems: string[];
+  priceNote: string;
+  milestones: ContractMilestone[];
+  revisionsNote: string;
+  disclaimerNote: string;
+  supportNote: string;
+}
 
 // ─── Documents ────────────────────────────────────────────────────────────────
 

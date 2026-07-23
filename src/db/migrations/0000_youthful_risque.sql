@@ -57,7 +57,7 @@ CREATE TABLE "employees" (
 --> statement-breakpoint
 CREATE TABLE "service_templates" (
 	"id" text PRIMARY KEY NOT NULL,
-	"title" text NOT NULL,
+	"name" text NOT NULL,
 	"content" jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL

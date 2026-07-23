@@ -6,6 +6,7 @@ import { clients, documents, employees, serviceTemplates } from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
 import type { AdminDocument, ClientRecord } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
+import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
 
 /**
  * Persistence for speclr documents, clients, employees, and service templates,
@@ -116,6 +117,62 @@ export async function listEmployees(): Promise<EmployeeRecord[]> {
 
 export async function deleteEmployee(id: string): Promise<void> {
   await db.delete(employees).where(eq(employees.id, id));
+}
+
+// ─── Service templates ────────────────────────────────────────────────────────
+
+export async function saveService(svc: ServiceTemplate): Promise<void> {
+  const row = {
+    id: svc.id,
+    name: svc.name,
+    content: {
+      overview: svc.overview,
+      scopeItems: svc.scopeItems,
+      exclusionItems: svc.exclusionItems,
+      priceNote: svc.priceNote,
+      milestones: svc.milestones,
+      revisionsNote: svc.revisionsNote,
+      disclaimerNote: svc.disclaimerNote,
+      supportNote: svc.supportNote,
+    },
+    createdAt: new Date(svc.createdAt),
+    updatedAt: new Date(svc.updatedAt),
+  };
+  await db
+    .insert(serviceTemplates)
+    .values(row)
+    .onConflictDoUpdate({ target: serviceTemplates.id, set: row });
+}
+
+function serviceFromRow(r: typeof serviceTemplates.$inferSelect): ServiceTemplate {
+  return {
+    id: r.id,
+    name: r.name,
+    overview: r.content.overview,
+    scopeItems: r.content.scopeItems,
+    exclusionItems: r.content.exclusionItems,
+    priceNote: r.content.priceNote,
+    milestones: r.content.milestones,
+    revisionsNote: r.content.revisionsNote,
+    disclaimerNote: r.content.disclaimerNote,
+    supportNote: r.content.supportNote,
+    createdAt: r.createdAt.getTime(),
+    updatedAt: r.updatedAt.getTime(),
+  };
+}
+
+export async function getService(id: string): Promise<ServiceTemplate | null> {
+  const rows = await db.select().from(serviceTemplates).where(eq(serviceTemplates.id, id)).limit(1);
+  return rows[0] ? serviceFromRow(rows[0]) : null;
+}
+
+export async function listServices(): Promise<ServiceTemplate[]> {
+  const rows = await db.select().from(serviceTemplates).orderBy(desc(serviceTemplates.createdAt));
+  return rows.map(serviceFromRow);
+}
+
+export async function deleteService(id: string): Promise<void> {
+  await db.delete(serviceTemplates).where(eq(serviceTemplates.id, id));
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────
