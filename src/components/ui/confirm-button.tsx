@@ -32,7 +32,13 @@ export interface ConfirmButtonProps extends VariantProps<typeof buttonVariants> 
   confirmIcon: LucideIcon;
   confirmLabel: string;
   onAction: () => void;
-  /** Hover animation for the idle icon. */
+  /**
+   * Custom idle-icon node (e.g. <TrayArrowIcon direction="down" />). When given,
+   * it replaces `idleIcon` and its own hover animation runs off the button's
+   * "rest"/"hover" variant state; `iconMotion` is ignored.
+   */
+  idleIconSlot?: React.ReactNode;
+  /** Hover animation for the (default) idle icon. */
   iconMotion?: IconMotion;
   /** Delay between click and the swap to the confirm state. */
   confirmDelayMs?: number;
@@ -55,6 +61,7 @@ export function ConfirmButton({
   confirmIcon: ConfirmIcon,
   confirmLabel,
   onAction,
+  idleIconSlot,
   iconMotion = 'bob-down',
   confirmDelayMs = 500,
   revertAfterMs = 1500,
@@ -108,13 +115,15 @@ export function ConfirmButton({
             confirmed && 'invisible',
           )}
         >
-          <motion.span
-            className="inline-flex"
-            variants={iconVariants}
-            transition={{ type: 'spring', stiffness: 400, damping: 12 }}
-          >
-            <IdleIcon aria-hidden="true" />
-          </motion.span>
+          {idleIconSlot ?? (
+            <motion.span
+              className="inline-flex"
+              variants={iconVariants}
+              transition={{ type: 'spring', stiffness: 400, damping: 12 }}
+            >
+              <IdleIcon aria-hidden="true" />
+            </motion.span>
+          )}
           {idleLabel}
         </span>
 

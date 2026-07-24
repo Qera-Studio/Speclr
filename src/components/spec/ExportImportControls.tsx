@@ -1,10 +1,11 @@
 'use client';
 
 import { useRef } from 'react';
-import { Download, Upload, CheckCheck } from 'lucide-react';
+import { Download, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { ConfirmButton } from '@/components/ui/confirm-button';
+import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExportedProgress } from '@/lib/spec/types';
 
@@ -64,11 +65,11 @@ export default function ExportImportControls({
       <ButtonGroup aria-label="Import and export progress" className="opacity-80">
         <ConfirmButton
           idleIcon={Download}
+          idleIconSlot={<TrayArrowIcon direction="down" />}
           idleLabel="Export progress"
           confirmIcon={CheckCheck}
           confirmLabel="Downloaded"
           onAction={handleExport}
-          iconMotion="bob-down"
           revertAfterMs={3000}
           className="h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
         />
@@ -79,7 +80,7 @@ export default function ExportImportControls({
           onClick={() => importInputRef.current?.click()}
           className="h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
         >
-          <Upload aria-hidden="true" />
+          <TrayArrowIcon direction="up" />
           Import progress
         </Button>
       </ButtonGroup>
