@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { currentUser } from '@clerk/nextjs/server';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import AdminSidebar from '@/components/admin/AdminSidebar';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminShell from '@/components/admin/AdminShell';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -25,13 +23,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     imageUrl: user.hasImage ? user.imageUrl : undefined,
   };
 
-  return (
-    <SidebarProvider style={{ '--sidebar-width-icon': '2.5rem' } as React.CSSProperties}>
-      <AdminSidebar user={cardUser} />
-      <SidebarInset id="main-content">
-        <AdminHeader />
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
-  );
+  return <AdminShell user={cardUser}>{children}</AdminShell>;
 }

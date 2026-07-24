@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ChevronRight, PanelLeft } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +32,7 @@ import {
   type NavSection,
 } from './nav';
 import UserCard, { type UserCardUser } from './UserCard';
+import ThemeToggle from './ThemeToggle';
 
 function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
   const Icon = item.icon;
@@ -160,7 +162,9 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="gap-3">
+        <ThemeToggle />
+        <Separator />
         <UserCard user={user} />
       </SidebarFooter>
     </Sidebar>
