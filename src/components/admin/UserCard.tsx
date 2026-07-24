@@ -34,9 +34,11 @@ export default function UserCard({ user }: { user: UserCardUser }) {
   const { isMobile } = useSidebar();
 
   const avatar = (
-    <Avatar className="h-8 w-8 rounded-lg">
-      {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" /> : null}
-      <AvatarFallback className="rounded-lg">{initials(user.name, user.email)}</AvatarFallback>
+    <Avatar className="h-8 w-8 rounded-md">
+      {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" className="rounded-md" /> : null}
+      <AvatarFallback className="rounded-md bg-accent font-medium text-foreground">
+        {initials(user.name, user.email)}
+      </AvatarFallback>
     </Avatar>
   );
 
