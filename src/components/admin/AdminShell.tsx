@@ -17,6 +17,10 @@ export default function AdminShell({ user, children }: { user: UserCardUser; chi
 
   return (
     <SidebarProvider
+      // Lock the whole shell to the viewport height so the page body never
+      // scrolls — the sidebar and the inset frame stay fixed; only the content
+      // area inside the inset scrolls.
+      className="h-svh min-h-svh overflow-hidden"
       style={
         {
           '--sidebar-width': `${width}px`,
@@ -26,9 +30,9 @@ export default function AdminShell({ user, children }: { user: UserCardUser; chi
     >
       <AdminSidebar user={user} />
       <SidebarResizeHandle width={width} onWidthChange={setWidth} />
-      <SidebarInset id="main-content">
+      <SidebarInset id="main-content" className="min-h-0 overflow-hidden">
         <AdminHeader />
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -40,7 +40,7 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
   const spec = DOC_TYPES[doc.type];
 
   const shell = (sheet: React.ReactNode, fileName: string) => (
-    <main id="main-content" className="doc-print-page">
+    <main className="doc-print-page">
       <h1 className="sr-only">
         Print view — {spec.label} {doc.number ?? 'draft'}
       </h1>

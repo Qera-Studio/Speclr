@@ -36,6 +36,17 @@
     background: #fff;
   }
 
+  /* The app shell locks itself to the viewport height and clips overflow so
+     only the content area scrolls on screen. For print, undo those caps so the
+     full document flows across pages instead of being clipped to one screen. */
+  [data-slot='sidebar-wrapper'],
+  [data-slot='sidebar-inset'],
+  [data-slot='sidebar-inset'] > * {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
   .doc-print-page {
     padding: 0;
   }
