@@ -9,6 +9,7 @@ const icoSpec = ICON_SPECS.find((s) => s.id === 'favicon-ico')!;
 const emptySlotState: SlotState = { reviewed: false, passed: null, notes: '' };
 
 beforeEach(() => {
+  localStorage.clear();
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:mock') });
   Object.defineProperty(URL, 'revokeObjectURL', { writable: true, value: jest.fn() });
 });
@@ -24,9 +25,11 @@ describe('IconSpecCard', () => {
     expect(screen.queryByText(/^(Pass|Fail|Review manually)$/)).not.toBeInTheDocument();
   });
 
-  it('shows a "Pass" verdict when the slot passed', () => {
+  it('shows a blue "Passed" tick (replacing the badge + priority text) when the slot passed', () => {
     render(<IconSpecCard spec={spec} slotState={{ reviewed: true, passed: true, notes: '' }} onUpdate={() => {}} />);
-    expect(screen.getByText('Pass')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /passed/i })).toBeInTheDocument();
+    // The "Required" priority text is replaced by the tick in this state.
+    expect(screen.queryByText('Required')).not.toBeInTheDocument();
   });
 
   it('shows a "Fail" verdict when the slot failed', () => {
@@ -58,12 +61,48 @@ describe('IconSpecCard', () => {
     expect(onUpdate).toHaveBeenCalledWith({ reviewed: true });
   });
 
-  it('notes textarea calls onUpdate as the user types', async () => {
+  it('the whole "mark reviewed" panel is clickable, not just the checkbox', async () => {
     const onUpdate = jest.fn();
     const user = userEvent.setup();
     render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={onUpdate} />);
-    await user.type(screen.getByLabelText(/notes/i), 'x');
+    // Click the label text region of the panel — the large hit target — and it
+    // still toggles the reviewed state.
+    await user.click(screen.getByText(/mark reviewed/i));
+    expect(onUpdate).toHaveBeenCalledWith({ reviewed: true });
+  });
+
+  it('hides the notes textarea behind an "add note" control when the slot has no note', () => {
+    render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={() => {}} />);
+    expect(screen.queryByLabelText(/notes/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add note/i })).toBeInTheDocument();
+  });
+
+  it('reveals the notes textarea when "add note" is clicked, and records typing', async () => {
+    const onUpdate = jest.fn();
+    const user = userEvent.setup();
+    render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={onUpdate} />);
+    await user.click(screen.getByRole('button', { name: /add note/i }));
+    const textarea = screen.getByLabelText(/notes/i);
+    await user.type(textarea, 'x');
     expect(onUpdate).toHaveBeenCalled();
+  });
+
+  it('starts expanded when the slot already has a note', () => {
+    render(<IconSpecCard spec={spec} slotState={{ reviewed: true, passed: true, notes: 'existing note' }} onUpdate={() => {}} />);
+    expect(screen.getByLabelText(/notes/i)).toHaveValue('existing note');
+    expect(screen.queryByRole('button', { name: /add note/i })).not.toBeInTheDocument();
+  });
+
+  it('deletes a note: clears the text and collapses back to "add note"', async () => {
+    const onUpdate = jest.fn();
+    const user = userEvent.setup();
+    render(<IconSpecCard spec={spec} slotState={{ reviewed: false, passed: null, notes: 'to remove' }} onUpdate={onUpdate} />);
+
+    await user.click(screen.getByRole('button', { name: /delete note/i }));
+    expect(onUpdate).toHaveBeenCalledWith({ notes: '' });
+    // Collapses back to the add-note affordance.
+    expect(screen.getByRole('button', { name: /add note/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/notes/i)).not.toBeInTheDocument();
   });
 
   it('revokes the previous object URL when a new file replaces it (no blob leak)', async () => {
@@ -84,7 +123,7 @@ describe('IconSpecCard', () => {
     });
   });
 
-  it('uploading a .ico (nothing verifiable) marks it reviewed but passed: null, not a false pass', async () => {
+  it('uploading a .ico records passed: null (not a false pass) without auto-marking reviewed', async () => {
     const onUpdate = jest.fn();
     const user = userEvent.setup();
     render(<IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={onUpdate} />);
@@ -93,7 +132,10 @@ describe('IconSpecCard', () => {
     await user.upload(screen.getByLabelText(/upload file/i), file);
 
     await waitFor(() => {
-      expect(onUpdate).toHaveBeenCalledWith({ reviewed: true, passed: null });
+      expect(onUpdate).toHaveBeenCalledWith({ passed: null });
     });
+    // A neutral/unverifiable result (.ico) must NOT auto-mark reviewed — only a
+    // fully-verified pass does; here the user still signs off manually.
+    expect(onUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ reviewed: true }));
   });
 });

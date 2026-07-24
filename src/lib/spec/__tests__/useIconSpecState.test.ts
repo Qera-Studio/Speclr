@@ -96,4 +96,32 @@ describe('useIconSpecState', () => {
       expect(result.current.slots[spec.id]).toBeDefined();
     }
   });
+
+  it('resetProgress clears client name, all slots, both storage keys, and bumps the nonce', () => {
+    const { result } = renderHook(() => useIconSpecState());
+    const firstId = ICON_SPECS[0].id;
+
+    act(() => {
+      result.current.setClientName('Acme');
+      result.current.updateSlot(firstId, { reviewed: true, passed: true, notes: 'x' });
+    });
+    localStorage.setItem('speclr_icon_spec_images', JSON.stringify({ [firstId]: 'data:...' }));
+    expect(result.current.reviewedCount).toBe(1);
+    const nonceBefore = result.current.resetNonce;
+
+    act(() => {
+      result.current.resetProgress();
+    });
+
+    expect(result.current.clientName).toBe('');
+    expect(result.current.reviewedCount).toBe(0);
+    for (const spec of ICON_SPECS) {
+      expect(result.current.slots[spec.id]).toMatchObject({ reviewed: false, passed: null, notes: '' });
+    }
+    // Both persistence keys are gone.
+    expect(localStorage.getItem('speclr_icon_spec_progress')).toBeNull();
+    expect(localStorage.getItem('speclr_icon_spec_images')).toBeNull();
+    // Nonce bumped so cards remount and drop their local preview state.
+    expect(result.current.resetNonce).not.toBe(nonceBefore);
+  });
 });

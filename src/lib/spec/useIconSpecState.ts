@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ICON_SPECS } from './iconSpecData';
+import { IMAGE_STORE_KEY } from './imageStore';
 import type { ExportedProgress, SlotState, SlotStateMap } from './types';
 
 const STORAGE_KEY = 'speclr_icon_spec_progress';
@@ -33,6 +34,9 @@ export function useIconSpecState() {
   const [clientName, setClientName] = useState('');
   const [slots, setSlots] = useState<SlotStateMap>(defaultSlots);
   const [importError, setImportError] = useState<string | null>(null);
+  // Bumped on reset so consumers can key-remount cards, dropping their local
+  // preview state (uploaded file / validation result live inside each card).
+  const [resetNonce, setResetNonce] = useState(0);
 
   // Read the localStorage cache on mount only — this is a same-session
   // convenience, not the authoritative store (that's the exported JSON file).
@@ -113,6 +117,22 @@ export function useIconSpecState() {
     }
   }, [persist]);
 
+  // Clear everything: review progress, client name, and both persisted stores
+  // (progress + uploaded images). Bumps the nonce so cards remount and shed
+  // their in-memory previews.
+  const resetProgress = useCallback(() => {
+    setClientName('');
+    setSlots(defaultSlots());
+    setImportError(null);
+    setResetNonce((n) => n + 1);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(IMAGE_STORE_KEY);
+    } catch {
+      // localStorage unavailable — in-memory state is already cleared.
+    }
+  }, []);
+
   const reviewedCount = Object.values(slots).filter((s) => s.reviewed).length;
 
   return {
@@ -123,6 +143,8 @@ export function useIconSpecState() {
     exportProgress,
     importProgress,
     importError,
+    resetProgress,
+    resetNonce,
     reviewedCount,
     totalCount: ICON_SPECS.length,
   };
