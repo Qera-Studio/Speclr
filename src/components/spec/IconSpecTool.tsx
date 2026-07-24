@@ -5,6 +5,7 @@ import { useIconSpecState } from '@/lib/spec/useIconSpecState';
 import ClientNameField from './ClientNameField';
 import SpecProgress from './SpecProgress';
 import ExportImportControls from './ExportImportControls';
+import ResetProgressButton from './ResetProgressButton';
 import IconSpecCard from './IconSpecCard';
 
 export default function IconSpecTool() {
@@ -16,6 +17,8 @@ export default function IconSpecTool() {
     exportProgress,
     importProgress,
     importError,
+    resetProgress,
+    resetNonce,
     reviewedCount,
     totalCount,
   } = useIconSpecState();
@@ -35,17 +38,22 @@ export default function IconSpecTool() {
         <SpecProgress reviewed={reviewedCount} total={totalCount} />
       </div>
 
-      <ExportImportControls
-        clientName={clientName}
-        onExport={exportProgress}
-        onImport={importProgress}
-        importError={importError}
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <ExportImportControls
+          clientName={clientName}
+          onExport={exportProgress}
+          onImport={importProgress}
+          importError={importError}
+        />
+        <ResetProgressButton onReset={resetProgress} />
+      </div>
 
       <div className="grid auto-rows-fr gap-6 md:grid-cols-2">
         {ICON_SPECS.map((spec) => (
           <IconSpecCard
-            key={spec.id}
+            // resetNonce forces a fresh mount on reset so each card drops its
+            // in-memory preview/validation state.
+            key={`${spec.id}-${resetNonce}`}
             spec={spec}
             slotState={slots[spec.id] ?? { reviewed: false, passed: null, notes: '' }}
             onUpdate={(patch) => updateSlot(spec.id, patch)}

@@ -14,24 +14,25 @@ const base: ValidationResult = {
 };
 
 describe('ValidationResultBadge', () => {
-  it('shows Pass for a fully valid opaque result', () => {
+  it('shows Pass status icons for a fully valid opaque result', () => {
     render(<ValidationResultBadge result={base} />);
     expect(screen.getByText(/dimensions/i)).toBeInTheDocument();
     expect(screen.getByText(/32×32px/)).toBeInTheDocument();
-    expect(screen.getAllByText('Pass').length).toBeGreaterThanOrEqual(2);
+    // Pass is now conveyed by a blue tick icon labelled "Pass" for assistive tech.
+    expect(screen.getAllByLabelText('Pass').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('shows a Warning row when transparency is required but detected', () => {
+  it('shows a Warning status icon when transparency is required but detected', () => {
     render(
       <ValidationResultBadge
         result={{ ...base, transparency: 'transparent', transparencyIsWarning: true }}
       />,
     );
-    expect(screen.getByText('Warning')).toBeInTheDocument();
+    expect(screen.getByLabelText('Warning')).toBeInTheDocument();
     expect(screen.getByText(/expects a solid\/opaque background/i)).toBeInTheDocument();
   });
 
-  it('shows Unknown and a note for an .ico-style result', () => {
+  it('shows Unknown status icons and a note for an .ico-style result', () => {
     render(
       <ValidationResultBadge
         result={{
@@ -42,7 +43,7 @@ describe('ValidationResultBadge', () => {
         }}
       />,
     );
-    expect(screen.getAllByText('Unknown').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText('Unknown').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/pixel inspection not supported/i)).toBeInTheDocument();
   });
 });
