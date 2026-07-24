@@ -98,7 +98,7 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader className="flex-row items-center justify-between px-3 py-2">
         <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">speclr</span>
         <Button
