@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type { IconSpec, SlotState, ValidationResult } from '@/lib/spec/types';
 import { useImageValidation } from '@/lib/spec/useImageValidation';
 import { computePassed } from '@/lib/spec/computePassed';
@@ -64,15 +65,20 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
 
   return (
     <Card aria-labelledby={`${spec.id}-heading`} className="flex h-full flex-col">
-      <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <h3 id={`${spec.id}-heading`} className="text-base font-semibold text-foreground">
           {spec.name}
         </h3>
         <div className="flex flex-shrink-0 items-center gap-2">
           {verdict && <Badge variant={verdict.variant}>{verdict.label}</Badge>}
-          <Badge variant={spec.priority === 'required' ? 'default' : 'secondary'}>
+          <span
+            className={cn(
+              'text-xs font-medium',
+              spec.priority === 'required' ? 'text-blue-500' : 'text-muted-foreground',
+            )}
+          >
             {spec.priority === 'required' ? 'Required' : 'Nice to have'}
-          </Badge>
+          </span>
         </div>
       </CardHeader>
 
