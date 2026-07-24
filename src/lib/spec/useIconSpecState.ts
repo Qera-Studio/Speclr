@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ICON_SPECS } from './iconSpecData';
 import type { ExportedProgress, SlotState, SlotStateMap } from './types';
 
-const STORAGE_KEY = 'qs_kessler_spec_progress';
+const STORAGE_KEY = 'speclr_icon_spec_progress';
 const SCHEMA_VERSION = 1;
 
 const DEFAULT_SLOT_STATE: SlotState = { reviewed: false, passed: null, notes: '' };
@@ -98,7 +98,7 @@ export function useIconSpecState() {
     try {
       const parsed = JSON.parse(raw);
       if (!isValidExport(parsed)) {
-        setImportError('This file is not a valid kessler-spec export.');
+        setImportError('This file is not a valid icon-spec export.');
         return false;
       }
       const merged = { ...defaultSlots(), ...parsed.slots };

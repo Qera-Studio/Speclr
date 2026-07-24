@@ -1,6 +1,10 @@
 'use client';
 
+import { useRef } from 'react';
+import { Download, Upload, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { ConfirmButton } from '@/components/ui/confirm-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExportedProgress } from '@/lib/spec/types';
 
@@ -17,7 +21,7 @@ function slugify(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return slug || 'kessler-spec';
+  return slug || 'icon-spec';
 }
 
 export default function ExportImportControls({
@@ -26,6 +30,8 @@ export default function ExportImportControls({
   onImport,
   importError,
 }: ExportImportControlsProps) {
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   const handleExport = () => {
     const data = onExport();
     const json = JSON.stringify(data, null, 2);
@@ -55,26 +61,37 @@ export default function ExportImportControls({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" onClick={handleExport}>
-          Export progress (JSON)
-        </Button>
-
-        <input
-          id="import-progress"
-          type="file"
-          accept="application/json"
-          aria-label="Import progress"
-          className="sr-only"
-          onChange={handleImportChange}
+      <ButtonGroup aria-label="Import and export progress" className="opacity-80">
+        <ConfirmButton
+          idleIcon={Download}
+          idleLabel="Export progress"
+          confirmIcon={CheckCheck}
+          confirmLabel="Downloaded"
+          onAction={handleExport}
+          iconMotion="bob-down"
+          revertAfterMs={3000}
+          className="h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
         />
-        <label
-          htmlFor="import-progress"
-          className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring"
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          onClick={() => importInputRef.current?.click()}
+          className="h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
         >
+          <Upload aria-hidden="true" />
           Import progress
-        </label>
-      </div>
+        </Button>
+      </ButtonGroup>
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json"
+        aria-label="Import progress file"
+        className="sr-only"
+        onChange={handleImportChange}
+      />
 
       {importError && (
         <Alert variant="destructive">

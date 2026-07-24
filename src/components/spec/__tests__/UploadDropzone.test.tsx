@@ -1,6 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import UploadDropzone from '../UploadDropzone';
+
+// userEvent has no drag-and-drop simulation, so drop events are dispatched
+// directly. A minimal DataTransfer stand-in carries the dropped files.
+function dropFiles(el: Element, files: File[]) {
+  fireEvent.drop(el, { dataTransfer: { files, items: files.map((f) => ({ kind: 'file', getAsFile: () => f })), types: ['Files'] } });
+}
 
 describe('UploadDropzone', () => {
   it('renders an Upload file control reachable by keyboard', () => {
@@ -22,5 +28,25 @@ describe('UploadDropzone', () => {
     const file = new File(['x'], 'a.png', { type: 'image/png' });
     await user.upload(screen.getByLabelText(/upload file/i), file);
     expect(onFileSelected).toHaveBeenCalledWith(file);
+  });
+
+  it('exposes a labelled drop target', () => {
+    render(<UploadDropzone id="favicon-32" format="png" fileName={null} onFileSelected={() => {}} />);
+    expect(screen.getByRole('button', { name: /drag.*drop|drop.*file|upload/i })).toBeInTheDocument();
+  });
+
+  it('calls onFileSelected with the dropped file', () => {
+    const onFileSelected = jest.fn();
+    render(<UploadDropzone id="favicon-32" format="png" fileName={null} onFileSelected={onFileSelected} />);
+    const file = new File(['x'], 'dropped.png', { type: 'image/png' });
+    dropFiles(screen.getByRole('button', { name: /drag.*drop|drop.*file|upload/i }), [file]);
+    expect(onFileSelected).toHaveBeenCalledWith(file);
+  });
+
+  it('ignores a drop that carries no files', () => {
+    const onFileSelected = jest.fn();
+    render(<UploadDropzone id="favicon-32" format="png" fileName={null} onFileSelected={onFileSelected} />);
+    dropFiles(screen.getByRole('button', { name: /drag.*drop|drop.*file|upload/i }), []);
+    expect(onFileSelected).not.toHaveBeenCalled();
   });
 });

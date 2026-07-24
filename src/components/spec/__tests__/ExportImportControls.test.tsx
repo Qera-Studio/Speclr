@@ -16,12 +16,16 @@ beforeEach(() => {
 });
 
 describe('ExportImportControls', () => {
-  it('renders export and import controls', () => {
+  it('renders export and import as a single button group', () => {
     render(
       <ExportImportControls clientName="Acme Co." onExport={() => sample} onImport={() => true} importError={null} />,
     );
+    const group = screen.getByRole('group', { name: /import.*export|export.*import|progress/i });
+    expect(group).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /export progress/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/import progress/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /import progress/i })).toBeInTheDocument();
+    // The hidden file input is still present for the import action.
+    expect(screen.getByLabelText(/import progress file/i)).toBeInTheDocument();
   });
 
   it('triggers the export handler and creates a downloadable blob', async () => {
@@ -39,7 +43,7 @@ describe('ExportImportControls', () => {
         clientName="Acme Co."
         onExport={() => sample}
         onImport={() => false}
-        importError="This file is not a valid kessler-spec export."
+        importError="This file is not a valid icon-spec export."
       />,
     );
     expect(screen.getByRole('alert')).toHaveTextContent(/not a valid/i);

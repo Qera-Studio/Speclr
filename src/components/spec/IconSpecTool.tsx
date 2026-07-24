@@ -42,7 +42,7 @@ export default function IconSpecTool() {
         importError={importError}
       />
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid auto-rows-fr gap-6 md:grid-cols-2">
         {ICON_SPECS.map((spec) => (
           <IconSpecCard
             key={spec.id}

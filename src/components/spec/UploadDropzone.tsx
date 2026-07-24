@@ -1,5 +1,8 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { IconFormat } from '@/lib/spec/types';
 
 const ACCEPT_BY_FORMAT: Record<IconFormat, string> = {
@@ -18,14 +21,48 @@ interface UploadDropzoneProps {
 
 export default function UploadDropzone({ id, format, fileName, onFileSelected }: UploadDropzoneProps) {
   const inputId = `upload-${id}`;
-  const label = fileName ? 'Replace file' : 'Upload file';
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const action = fileName ? 'Replace file' : 'Upload file';
+
+  const openPicker = () => inputRef.current?.click();
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) onFileSelected(file);
+  };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Drag and drop a file here, or activate to browse"
+      onClick={openPicker}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPicker();
+        }
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      className={cn(
+        'flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed border-input bg-background px-3 py-4 text-center text-sm transition-colors',
+        'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isDragging && 'border-primary bg-accent text-accent-foreground',
+      )}
+    >
       <input
+        ref={inputRef}
         id={inputId}
         type="file"
-        aria-label={label}
+        aria-label={action}
         className="sr-only"
         accept={ACCEPT_BY_FORMAT[format]}
         onChange={(e) => {
@@ -33,13 +70,13 @@ export default function UploadDropzone({ id, format, fileName, onFileSelected }:
           if (file) onFileSelected(file);
         }}
       />
-      <label
-        htmlFor={inputId}
-        className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring"
-      >
-        {label}
-      </label>
-      {fileName && <span className="text-sm text-muted-foreground">{fileName}</span>}
+      <Upload className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      <span className="font-medium">{isDragging ? 'Drop to upload' : action}</span>
+      {fileName ? (
+        <span className="text-muted-foreground">{fileName}</span>
+      ) : (
+        <span className="text-xs text-muted-foreground">Drag &amp; drop or click to browse</span>
+      )}
     </div>
   );
 }
