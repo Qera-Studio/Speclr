@@ -90,9 +90,12 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 ## Deliberately deferred (YAGNI — noted, not built)
 
 - **Server-side PDF renderer** — print-CSS now; PDF is a future non-breaking upgrade.
-- **Roles/permissions** — allowlist + full access now.
+- **Roles/permissions** — allowlist + full access now. *(Now scheduled: `ROADMAP.md` §1 "Admin access" is the first feature that needs them.)*
 - **Payslip document type** — until a real salaried employee exists (stipend slip ≠ payslip; kept separate).
 - **Reporting/analytics dashboards** — the schema enables them; not built this migration.
+
+> Planned features and pending work live in [`ROADMAP.md`](ROADMAP.md). When an
+> item above gets scheduled, move it there and leave a pointer here.
 
 ## Access control (two independent locks — do not weaken)
 
