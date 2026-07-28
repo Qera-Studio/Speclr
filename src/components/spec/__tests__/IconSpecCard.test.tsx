@@ -8,6 +8,14 @@ const spec = ICON_SPECS.find((s) => s.id === 'favicon-192')!;
 const icoSpec = ICON_SPECS.find((s) => s.id === 'favicon-ico')!;
 const emptySlotState: SlotState = { reviewed: false, passed: null, notes: '' };
 
+/** A .ico File whose bytes are readable via arrayBuffer() (jsdom's File lacks it). */
+function icoFileWithBytes(name: string): File {
+  const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
+  const file = new File([buffer], name, { type: 'image/x-icon' });
+  Object.defineProperty(file, 'arrayBuffer', { value: () => Promise.resolve(buffer) });
+  return file;
+}
+
 beforeEach(() => {
   localStorage.clear();
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:mock') });
@@ -37,9 +45,12 @@ describe('IconSpecCard', () => {
     expect(screen.getByText('Fail')).toBeInTheDocument();
   });
 
-  it('shows "Review manually" when reviewed but nothing could be verified', () => {
+  it('offers no manual review control — review is automatic on a pass', () => {
+    // A neutral (passed === null) slot: no "mark reviewed" affordance anywhere;
+    // there is nothing to hand-sign-off. The failure/verdict speaks for itself.
     render(<IconSpecCard spec={spec} slotState={{ reviewed: true, passed: null, notes: '' }} onUpdate={() => {}} />);
-    expect(screen.getByText('Review manually')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/mark reviewed|manually reviewed|review manually/i)).not.toBeInTheDocument();
   });
 
   it('renders the filename and a priority badge', () => {
@@ -53,22 +64,10 @@ describe('IconSpecCard', () => {
     expect(screen.getByLabelText(/upload file/i)).not.toHaveAttribute('tabindex', '-1');
   });
 
-  it('"mark reviewed" checkbox calls onUpdate when toggled', async () => {
-    const onUpdate = jest.fn();
-    const user = userEvent.setup();
-    render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={onUpdate} />);
-    await user.click(screen.getByRole('checkbox', { name: /mark reviewed/i }));
-    expect(onUpdate).toHaveBeenCalledWith({ reviewed: true });
-  });
-
-  it('the whole "mark reviewed" panel is clickable, not just the checkbox', async () => {
-    const onUpdate = jest.fn();
-    const user = userEvent.setup();
-    render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={onUpdate} />);
-    // Click the label text region of the panel — the large hit target — and it
-    // still toggles the reviewed state.
-    await user.click(screen.getByText(/mark reviewed/i));
-    expect(onUpdate).toHaveBeenCalledWith({ reviewed: true });
+  it('shows no manual review checkbox on an empty slot', () => {
+    render(<IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={() => {}} />);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/mark reviewed/i)).not.toBeInTheDocument();
   });
 
   it('hides the notes textarea behind an "add note" control when the slot has no note', () => {
@@ -112,30 +111,65 @@ describe('IconSpecCard', () => {
     const user = userEvent.setup();
     render(<IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={() => {}} />);
 
-    const input = screen.getByLabelText(/upload file/i);
-    await user.upload(input, new File(['a'], 'a.ico', { type: 'image/x-icon' }));
+    // First upload via the dropzone.
+    await user.upload(screen.getByLabelText(/^upload file$/i), icoFileWithBytes('a.ico'));
     const firstUrl = (URL.createObjectURL as jest.Mock).mock.results[0].value;
 
-    await user.upload(input, new File(['b'], 'b.ico', { type: 'image/x-icon' }));
+    // The dropzone stays as the container; once a file is present its input's
+    // label switches to "Replace file". A second file comes in through it.
+    const replace = await screen.findByLabelText(/^replace file$/i);
+    await user.upload(replace, icoFileWithBytes('b.ico'));
 
     await waitFor(() => {
       expect(revoke).toHaveBeenCalledWith(firstUrl);
     });
   });
 
-  it('uploading a .ico records passed: null (not a false pass) without auto-marking reviewed', async () => {
+  it('uploading a file that is not a valid .ico container fails (parsed, not trusted by extension)', async () => {
     const onUpdate = jest.fn();
     const user = userEvent.setup();
     render(<IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={onUpdate} />);
 
-    const file = new File(['fake-ico-bytes'], 'favicon.ico', { type: 'image/x-icon' });
+    // Garbage bytes with a .ico name — the parser rejects it as not-an-ICO.
+    const buffer = new Uint8Array([1, 2, 3, 4]).buffer;
+    const file = new File([buffer], 'favicon.ico', { type: 'image/x-icon' });
+    Object.defineProperty(file, 'arrayBuffer', { value: () => Promise.resolve(buffer) });
     await user.upload(screen.getByLabelText(/upload file/i), file);
 
     await waitFor(() => {
-      expect(onUpdate).toHaveBeenCalledWith({ passed: null });
+      expect(onUpdate).toHaveBeenCalledWith({ passed: false });
     });
-    // A neutral/unverifiable result (.ico) must NOT auto-mark reviewed — only a
-    // fully-verified pass does; here the user still signs off manually.
+    // A fail never auto-marks reviewed.
     expect(onUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ reviewed: true }));
+  });
+
+  it('shows the .ico preview as a persistent template, empty then filled', async () => {
+    const user = userEvent.setup();
+    render(<IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={() => {}} />);
+
+    // The bookmarks-bar template is visible even before an upload (no favicon img).
+    expect(screen.getByText(/sample brand/i)).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /browser favicon.*preview/i })).not.toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText(/^upload file$/i), icoFileWithBytes('a.ico'));
+
+    // After upload the uploaded favicon fills the bookmark's slot.
+    expect(await screen.findByRole('img', { name: /browser favicon.*preview/i })).toBeInTheDocument();
+  });
+
+  it('removing an uploaded file clears the slot back to empty', async () => {
+    const onUpdate = jest.fn();
+    const user = userEvent.setup();
+    render(<IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={onUpdate} />);
+
+    await user.upload(screen.getByLabelText(/^upload file$/i), icoFileWithBytes('a.ico'));
+
+    // The attachment (and its remove button) appears once a file is present.
+    const remove = await screen.findByRole('button', { name: /remove file/i });
+    await user.click(remove);
+
+    // Slot verdict + reviewed state reset, and the empty dropzone returns.
+    expect(onUpdate).toHaveBeenCalledWith({ passed: null, reviewed: false });
+    expect(screen.getByLabelText(/^upload file$/i)).toBeInTheDocument();
   });
 });

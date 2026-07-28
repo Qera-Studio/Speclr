@@ -2,6 +2,7 @@ import { X, Minus, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BlueCheck } from '@/components/ui/blue-check';
 import type { ValidationResult, ValidationTriState } from '@/lib/spec/types';
+import type { ApplicableCriteria } from '@/lib/spec/applicableCriteria';
 
 type Status = 'pass' | 'fail' | 'unknown' | 'warning';
 
@@ -29,7 +30,21 @@ function statusFor(ok: ValidationTriState): Status {
   return ok ? 'pass' : 'fail';
 }
 
-export default function ValidationResultBadge({ result }: { result: ValidationResult }) {
+interface ValidationResultBadgeProps {
+  result: ValidationResult;
+  /**
+   * Which criteria this spec actually checks. When omitted, all rows render
+   * (back-compat). When supplied, inapplicable rows are dropped so a vector
+   * spec shows only its one real check instead of padding the list with
+   * "not checked" dashes.
+   */
+  criteria?: ApplicableCriteria;
+}
+
+export default function ValidationResultBadge({ result, criteria }: ValidationResultBadgeProps) {
+  const showDimensions = criteria ? criteria.dimensions : true;
+  const showTransparency = criteria ? criteria.transparency : true;
+
   const dimensions = statusFor(result.dimensionsOk);
   const format = statusFor(result.formatOk);
 
@@ -38,27 +53,37 @@ export default function ValidationResultBadge({ result }: { result: ValidationRe
 
   return (
     <ul className="flex flex-col gap-1.5 text-sm">
-      <li className="flex items-center gap-2">
-        <StatusIcon status={dimensions} />
-        <span className="text-foreground">
-          Dimensions
-          {result.actualWidth && result.actualHeight ? ` — ${result.actualWidth}×${result.actualHeight}px` : ''}
-        </span>
-      </li>
+      {showDimensions && (
+        <li className="flex items-center gap-2">
+          <StatusIcon status={dimensions} />
+          <span className="text-foreground">
+            Dimensions
+            {result.actualWidth && result.actualHeight ? ` — ${result.actualWidth}×${result.actualHeight}px` : ''}
+          </span>
+        </li>
+      )}
       <li className="flex items-center gap-2">
         <StatusIcon status={format} />
         <span className="text-foreground">Format{result.actualFormat ? ` — ${result.actualFormat}` : ''}</span>
       </li>
-      <li className="flex items-center gap-2">
-        <StatusIcon status={transparency} />
-        <span className="text-foreground">
-          {result.transparency === 'unknown'
-            ? 'Transparency — not checked for this format'
-            : result.transparency === 'transparent'
-              ? 'Transparency detected — this slot expects a solid/opaque background'
-              : 'No transparency detected'}
-        </span>
-      </li>
+      {showTransparency && (
+        <li className="flex items-center gap-2">
+          <StatusIcon status={transparency} />
+          <span className="text-foreground">
+            {result.transparency === 'unknown'
+              ? 'Transparency — not checked for this format'
+              : result.transparency === 'transparent'
+                ? 'Transparency detected — this slot expects a solid/opaque background'
+                : 'No transparency detected'}
+          </span>
+        </li>
+      )}
+      {result.warnings?.map((w) => (
+        <li key={w.kind} className="flex items-center gap-2">
+          <StatusIcon status="warning" />
+          <span className="text-foreground">{w.message}</span>
+        </li>
+      ))}
       {result.note && <li className="text-xs text-muted-foreground">{result.note}</li>}
     </ul>
   );

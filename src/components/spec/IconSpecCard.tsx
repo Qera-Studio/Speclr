@@ -4,28 +4,35 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { BlueCheck } from '@/components/ui/blue-check';
 import { CopyButton } from '@/components/ui/copy-button';
-import type { IconSpec, SlotState, ValidationResult } from '@/lib/spec/types';
+import type { IconSpec, PreviewMockupKind, SlotState, ValidationResult } from '@/lib/spec/types';
 import { useImageValidation } from '@/lib/spec/useImageValidation';
 import { computePassed } from '@/lib/spec/computePassed';
+import { applicableCriteria } from '@/lib/spec/applicableCriteria';
 import { loadImageStore, saveSlotImage, removeSlotImage } from '@/lib/spec/imageStore';
 import UploadDropzone from './UploadDropzone';
+import UploadedAttachment from './UploadedAttachment';
 import SpecDetailsTabs from './SpecDetailsTabs';
-import ValidationResultBadge from './ValidationResultBadge';
+import ReviewedItem from './ReviewedItem';
 import PreviewMockup from './PreviewMockups/PreviewMockup';
 
 interface IconSpecCardProps {
   spec: IconSpec;
   slotState: SlotState;
   onUpdate: (patch: Partial<SlotState>) => void;
+  /** Client/project name, shown as the brand label in previews (e.g. the browser tab). */
+  clientName?: string;
 }
 
 type Verdict = { label: string; variant: 'default' | 'destructive' | 'secondary' } | null;
+
+// Mockups shown as a persistent, centred template in the card body (visible
+// before upload). Others still live inside the checks dropdown post-upload.
+const CENTER_PREVIEW_KINDS: PreviewMockupKind[] = ['browserTab', 'bookmarksBar'];
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -51,18 +58,23 @@ function dataUrlToFile(dataUrl: string, name: string): File | null {
   }
 }
 
-/** Map a reviewed slot's pass/fail/neutral outcome to a header pill, or null before review. */
+/**
+ * Map a reviewed slot's pass/fail outcome to a header pill, or null. A neutral
+ * (passed === null) slot shows no badge — the mark-reviewed panel itself now
+ * carries the "Manually reviewed" wording, so a top-right tag would be
+ * redundant. Before review, no badge either.
+ */
 function verdictFor(slotState: SlotState): Verdict {
   if (!slotState.reviewed) return null;
   if (slotState.passed === true) return { label: 'Pass', variant: 'default' };
   if (slotState.passed === false) return { label: 'Fail', variant: 'destructive' };
-  return { label: 'Review manually', variant: 'secondary' };
+  return null;
 }
 
-export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCardProps) {
+export default function IconSpecCard({ spec, slotState, onUpdate, clientName }: IconSpecCardProps) {
   const { validateFile } = useImageValidation();
   const [result, setResult] = useState<ValidationResult | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Notes are collapsed by default to keep cards light; opened on demand, or
   // already-open when the slot arrives with a note (e.g. from an import).
@@ -74,6 +86,12 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
   const objectUrlRef = useRef<string | null>(null);
 
   const verdict = verdictFor(slotState);
+  const reviewedAndPassed = slotState.reviewed && slotState.passed === true;
+  // A centred live preview claims the card's free vertical space; when it's
+  // shown the upload block drops its `mt-auto` so the preview can centre. These
+  // mockups are persistent templates — visible even before a file is uploaded
+  // (they show an empty favicon slot until then).
+  const showCenterPreview = CENTER_PREVIEW_KINDS.includes(spec.previewMockup);
 
   // Validate a file and refresh the preview/result. `persist` controls whether
   // the image is written to localStorage (true for a fresh upload, false when
@@ -85,8 +103,8 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = validation.objectUrl;
       setResult(validation);
-      setFileName(file.name);
-      const passed = computePassed(validation);
+      setFileMeta({ name: file.name, size: file.size });
+      const passed = computePassed(validation, applicableCriteria(spec));
       if (persist) {
         const dataUrl = await fileToDataUrl(file);
         saveSlotImage(spec.id, dataUrl);
@@ -116,7 +134,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
 
   const handleFileSelected = async (file: File) => {
     setError(null);
-    setFileName(file.name);
+    setFileMeta({ name: file.name, size: file.size });
     const passed = await runValidation(file, true);
     if (passed !== 'error') {
       // A fully-verified pass auto-marks the slot reviewed (one-step done). A
@@ -124,6 +142,18 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
       // outcome and leaves the explicit "reviewed" sign-off to the user.
       onUpdate(passed === true ? { passed, reviewed: true } : { passed });
     }
+  };
+
+  // Remove the uploaded file: clear local preview/validation, drop the stored
+  // image, and reset the slot's verdict + reviewed state back to empty.
+  const handleRemoveFile = () => {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = null;
+    setResult(null);
+    setFileMeta(null);
+    setError(null);
+    removeSlotImage(spec.id);
+    onUpdate({ passed: null, reviewed: false });
   };
 
   return (
@@ -136,7 +166,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
           {slotState.reviewed && slotState.passed === true ? (
             // Reviewed AND passed: a single blue tick replaces both the verdict
             // badge and the priority text.
-            <BlueCheck aria-label="Passed" className="rounded-xs" />
+            <BlueCheck aria-label="Passed" className="size-3.5 rounded-xs" />
           ) : (
             <>
               {verdict && <Badge variant={verdict.variant}>{verdict.label}</Badge>}
@@ -163,7 +193,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
               </span>
               <CopyButton
                 value={spec.filename}
-                label="Copy filename"
+                label="Copy file name"
                 className="size-5 shrink-0"
               />
             </dd>
@@ -172,7 +202,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
             <dt className="text-xs text-muted-foreground">Size</dt>
             <dd className="text-sm text-foreground">
               {spec.acceptedDimensions.length > 0
-                ? spec.acceptedDimensions.map((d) => `${d.width}×${d.height}px`).join(' or ')
+                ? spec.acceptedDimensions.map((d) => `${d.width}×${d.height}px`).join(' / ')
                 : 'Vector — no fixed pixel size'}
             </dd>
           </div>
@@ -186,27 +216,46 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
           ]}
         />
 
-        <div className="mt-auto flex flex-col gap-4 pt-2">
-          <UploadDropzone id={spec.id} format={spec.format} fileName={fileName} onFileSelected={handleFileSelected} />
-
-          {/* The primary per-card action — a full-width, easy-to-hit panel. The
-              whole label toggles the checkbox natively. */}
-          <label
-            htmlFor={`${spec.id}-reviewed`}
-            className={cn(
-              'flex w-full cursor-pointer select-none items-center gap-3 rounded-md border px-4 py-3 text-sm font-medium transition-colors',
-              slotState.reviewed
-                ? 'border-primary/40 bg-primary/10 text-foreground'
-                : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-            )}
+        {/* Live preview — how the uploaded asset actually looks where it's used.
+            Centred in the card's middle space, always visible once a file is in.
+            Rolling out one mockup kind at a time (browser tab first). */}
+        {showCenterPreview && (
+          <div
+            className="flex flex-1 items-center justify-center py-4"
+            // Fade the browser-chrome out at the left/right edges so it blends
+            // into the card instead of hard-cutting.
+            style={{
+              maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+            }}
           >
-            <Checkbox
-              id={`${spec.id}-reviewed`}
-              checked={slotState.reviewed}
-              onCheckedChange={(checked) => onUpdate({ reviewed: Boolean(checked) })}
+            <PreviewMockup
+              kind={spec.previewMockup}
+              imageUrl={result?.objectUrl}
+              alt={`${spec.name} preview`}
+              brandName={clientName}
             />
-            {slotState.reviewed ? 'Reviewed' : 'Mark reviewed'}
-          </label>
+          </div>
+        )}
+
+        <div className={cn('flex flex-col gap-4 pt-2', !showCenterPreview && 'mt-auto')}>
+          <UploadDropzone
+            id={spec.id}
+            format={spec.format}
+            fileName={fileMeta?.name ?? null}
+            onFileSelected={handleFileSelected}
+            attachment={
+              fileMeta && result ? (
+                <UploadedAttachment
+                  name={fileMeta.name}
+                  size={fileMeta.size}
+                  format={spec.format}
+                  objectUrl={result.objectUrl}
+                  onRemove={handleRemoveFile}
+                />
+              ) : undefined
+            }
+          />
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -215,12 +264,22 @@ export default function IconSpecCard({ spec, slotState, onUpdate }: IconSpecCard
           )}
 
           {result && (
-            <div className="flex flex-col gap-3">
-              <ValidationResultBadge result={result} />
-              {spec.previewMockup !== 'none' && (
-                <PreviewMockup kind={spec.previewMockup} imageUrl={result.objectUrl} alt={`${spec.name} preview`} />
-              )}
-            </div>
+            // After any upload → a compact Item-style verdict row. It reads blue
+            // "All checks passed" on a clean pass, or amber "N passed · M failed
+            // · K warnings" otherwise. The individual check rows and the preview
+            // live inside its collapsible body.
+            <ReviewedItem
+              result={result}
+              criteria={applicableCriteria(spec)}
+              preview={
+                // Kinds already surfaced centrally are omitted here to avoid
+                // duplication; the rest still live inside the dropdown until
+                // they're moved out too.
+                spec.previewMockup !== 'none' && !showCenterPreview ? (
+                  <PreviewMockup kind={spec.previewMockup} imageUrl={result.objectUrl} alt={`${spec.name} preview`} />
+                ) : undefined
+              }
+            />
           )}
 
           {showNotes ? (
