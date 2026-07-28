@@ -52,6 +52,59 @@ describe('useIconSpecState', () => {
     });
   });
 
+  it('round-trips the domain through export then import', () => {
+    const { result } = renderHook(() => useIconSpecState());
+
+    act(() => {
+      result.current.setClientName('Qera Studio');
+      result.current.setDomain('qera.studio');
+    });
+
+    const json = JSON.stringify(result.current.exportProgress());
+
+    const { result: freshResult } = renderHook(() => useIconSpecState());
+    act(() => {
+      freshResult.current.importProgress(json);
+    });
+
+    expect(freshResult.current.clientName).toBe('Qera Studio');
+    expect(freshResult.current.domain).toBe('qera.studio');
+  });
+
+  it('imports an older export that predates the domain field', () => {
+    // schemaVersion stays 1, so files saved before `domain` existed must still
+    // load — they simply come in with an empty domain.
+    const legacyExport = {
+      schemaVersion: 1,
+      clientName: 'Acme Co.',
+      exportedAt: new Date().toISOString(),
+      slots: {},
+    };
+
+    const { result } = renderHook(() => useIconSpecState());
+    let success = false;
+    act(() => {
+      success = result.current.importProgress(JSON.stringify(legacyExport));
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.clientName).toBe('Acme Co.');
+    expect(result.current.domain).toBe('');
+  });
+
+  it('clears the domain on reset', () => {
+    const { result } = renderHook(() => useIconSpecState());
+
+    act(() => {
+      result.current.setDomain('qera.studio');
+    });
+    act(() => {
+      result.current.resetProgress();
+    });
+
+    expect(result.current.domain).toBe('');
+  });
+
   it('rejects malformed JSON without throwing', () => {
     const { result } = renderHook(() => useIconSpecState());
     let success: boolean = true;

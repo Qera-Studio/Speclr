@@ -40,4 +40,29 @@ describe('PreviewMockup dispatcher', () => {
     render(<PreviewMockup kind="googleSerp" imageUrl="blob:y" alt="serp favicon" />);
     expect(screen.getByAltText('serp favicon')).toHaveAttribute('src', 'blob:y');
   });
+
+  it('shows the entered domain in the browser-tab address bar', () => {
+    // "Qera Studio" must not be slugged into "qerastudio.com" when a real
+    // domain is supplied.
+    render(
+      <PreviewMockup kind="browserTab" imageUrl="blob:x" alt="x" brandName="Qera Studio" domain="qera.studio" />,
+    );
+    expect(screen.getByText('qera.studio')).toBeInTheDocument();
+    expect(screen.queryByText('qerastudio.com')).not.toBeInTheDocument();
+  });
+
+  it('falls back to a slugged brand name in the address bar when no domain is set', () => {
+    render(<PreviewMockup kind="browserTab" imageUrl="blob:x" alt="x" brandName="Acme Co" />);
+    expect(screen.getByText('acmeco.com')).toBeInTheDocument();
+  });
+
+  it('shows the entered domain in the googleSerp mockup', () => {
+    render(<PreviewMockup kind="googleSerp" imageUrl="blob:y" alt="x" domain="qera.studio" />);
+    expect(screen.getByText(/qera\.studio/)).toBeInTheDocument();
+  });
+
+  it('shows the entered domain in the socialCard mockup', () => {
+    render(<PreviewMockup kind="socialCard" imageUrl="blob:z" alt="x" domain="qera.studio" />);
+    expect(screen.getByText('qera.studio')).toBeInTheDocument();
+  });
 });

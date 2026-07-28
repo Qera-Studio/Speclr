@@ -77,6 +77,12 @@ export type SlotStateMap = Record<string, SlotState>;
 export interface ExportedProgress {
   schemaVersion: 1;
   clientName: string;
+  /**
+   * Website/domain shown in preview mockups. Optional so exports written before
+   * this field existed still import cleanly — the schema version stays at 1
+   * rather than rejecting every file already saved.
+   */
+  domain?: string;
   exportedAt: string;
   slots: SlotStateMap;
 }

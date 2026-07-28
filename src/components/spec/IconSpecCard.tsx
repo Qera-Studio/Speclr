@@ -26,6 +26,8 @@ interface IconSpecCardProps {
   onUpdate: (patch: Partial<SlotState>) => void;
   /** Client/project name, shown as the brand label in previews (e.g. the browser tab). */
   clientName?: string;
+  /** Website/domain, surfaced in preview mockups that show a URL. */
+  domain?: string;
 }
 
 type Verdict = { label: string; variant: 'default' | 'destructive' | 'secondary' } | null;
@@ -71,7 +73,7 @@ function verdictFor(slotState: SlotState): Verdict {
   return null;
 }
 
-export default function IconSpecCard({ spec, slotState, onUpdate, clientName }: IconSpecCardProps) {
+export default function IconSpecCard({ spec, slotState, onUpdate, clientName, domain }: IconSpecCardProps) {
   const { validateFile } = useImageValidation();
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(null);
@@ -234,6 +236,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName }: 
               imageUrl={result?.objectUrl}
               alt={`${spec.name} preview`}
               brandName={clientName}
+              domain={domain}
             />
           </div>
         )}

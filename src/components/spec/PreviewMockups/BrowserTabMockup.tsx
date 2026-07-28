@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { displayDomain } from '@/lib/spec/displayDomain';
 
 interface BrowserTabMockupProps {
   /** Uploaded favicon; when absent the tab shows an empty placeholder slot. */
@@ -6,6 +7,8 @@ interface BrowserTabMockupProps {
   alt: string;
   /** Tab title — the client/project name, falling back to a placeholder. */
   brandName?: string;
+  /** Address-bar domain; falls back to a slugged brand name. */
+  domain?: string;
 }
 
 /**
@@ -21,12 +24,13 @@ interface BrowserTabMockupProps {
  * All internal SVG ids are namespaced with a `useId()` prefix so several of
  * these can co-exist on one page without filter/clip-path collisions.
  */
-export default function BrowserTabMockup({ imageUrl, alt, brandName }: BrowserTabMockupProps) {
+export default function BrowserTabMockup({ imageUrl, alt, brandName, domain }: BrowserTabMockupProps) {
   const raw = useId();
   const uid = raw.replace(/:/g, ''); // ':' is invalid inside SVG url(#…) references
   const id = (name: string) => `${name}_${uid}`;
 
   const title = brandName?.trim() || 'Sample Brand';
+  const url = displayDomain(brandName, domain);
 
   return (
     <svg
@@ -128,7 +132,7 @@ export default function BrowserTabMockup({ imageUrl, alt, brandName }: BrowserTa
           className="fill-muted-foreground"
         />
         <text x="272" y="123" fontSize="12" fontFamily="Arial, sans-serif" className="fill-foreground/80">
-          {title.toLowerCase().replace(/\s+/g, '')}.com
+          {url}
         </text>
       </g>
     </svg>

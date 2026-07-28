@@ -13,12 +13,14 @@ interface PreviewMockupProps {
   alt: string;
   /** Client/project name, surfaced in contexts that show a brand label (e.g. the browser tab). */
   brandName?: string;
+  /** Website/domain, surfaced wherever a URL appears (address bar, SERP, social card). */
+  domain?: string;
 }
 
-export default function PreviewMockup({ kind, imageUrl, alt, brandName }: PreviewMockupProps) {
+export default function PreviewMockup({ kind, imageUrl, alt, brandName, domain }: PreviewMockupProps) {
   switch (kind) {
     case 'browserTab':
-      return <BrowserTabMockup imageUrl={imageUrl} alt={alt} brandName={brandName} />;
+      return <BrowserTabMockup imageUrl={imageUrl} alt={alt} brandName={brandName} domain={domain} />;
     case 'bookmarksBar':
       return <BookmarksBarMockup imageUrl={imageUrl} alt={alt} brandName={brandName} />;
     case 'iosHomeScreen':
@@ -26,9 +28,9 @@ export default function PreviewMockup({ kind, imageUrl, alt, brandName }: Previe
     case 'maskableSafeZone':
       return <MaskableSafeZoneMockup imageUrl={imageUrl ?? ''} alt={alt} />;
     case 'googleSerp':
-      return <GoogleSerpMockup imageUrl={imageUrl ?? ''} alt={alt} />;
+      return <GoogleSerpMockup imageUrl={imageUrl ?? ''} alt={alt} brandName={brandName} domain={domain} />;
     case 'socialCard':
-      return <SocialCardMockup imageUrl={imageUrl ?? ''} alt={alt} />;
+      return <SocialCardMockup imageUrl={imageUrl ?? ''} alt={alt} brandName={brandName} domain={domain} />;
     case 'none':
     default:
       return null;

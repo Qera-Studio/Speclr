@@ -3,7 +3,7 @@
 import { ICON_SPECS } from '@/lib/spec/iconSpecData';
 import { useIconSpecState } from '@/lib/spec/useIconSpecState';
 import { ButtonGroup } from '@/components/ui/button-group';
-import ClientNameField from './ClientNameField';
+import ClientDetailsFields from './ClientDetailsFields';
 import SpecProgress from './SpecProgress';
 import ImportProgressControls from './ImportProgressControls';
 import ExportProgressButton from './ExportProgressButton';
@@ -14,6 +14,8 @@ export default function IconSpecTool() {
   const {
     clientName,
     setClientName,
+    domain,
+    setDomain,
     slots,
     updateSlot,
     exportProgress,
@@ -35,9 +37,18 @@ export default function IconSpecTool() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <ClientNameField value={clientName} onChange={setClientName} />
-        <SpecProgress reviewed={reviewedCount} total={totalCount} />
+      {/* Identity block — these two fields drive every preview mockup, so they
+          lead the page rather than sitting inline with the progress meter. */}
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card/50 p-4 sm:p-5">
+        <ClientDetailsFields
+          clientName={clientName}
+          domain={domain}
+          onClientNameChange={setClientName}
+          onDomainChange={setDomain}
+        />
+        <div className="flex justify-end border-t border-border pt-3">
+          <SpecProgress reviewed={reviewedCount} total={totalCount} />
+        </div>
       </div>
 
       <ImportProgressControls onImport={importProgress} importError={importError} />
@@ -52,6 +63,7 @@ export default function IconSpecTool() {
             slotState={slots[spec.id] ?? { reviewed: false, passed: null, notes: '' }}
             onUpdate={(patch) => updateSlot(spec.id, patch)}
             clientName={clientName}
+            domain={domain}
           />
         ))}
       </div>
