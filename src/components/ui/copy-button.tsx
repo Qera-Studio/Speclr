@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
  */
 export interface CopyButtonProps {
   value: string;
-  /** Accessible label / tooltip text for the idle state (e.g. "Copy filename"). */
+  /** Accessible label / tooltip text for the idle state (e.g. "Copy file name"). */
   label?: string;
   copiedLabel?: string;
   revertAfterMs?: number;

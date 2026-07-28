@@ -6,9 +6,11 @@ import { cn } from '@/lib/utils';
  * tray bar, while a fresh arrow slides in from the opposite edge to the rest
  * position. The tray (the static U-shaped bar) never moves.
  *
- * Driven purely by the parent's hover via Tailwind `group-hover` + CSS
- * transitions — so it animates once on hover-in and re-arms on hover-out, and
- * works inside ANY button that carries the `group` class (no Motion / JS state).
+ * Driven purely by CSS: give the icon's hoverable container the `group/tray`
+ * class and the arrow animates on that container's hover (once per hover,
+ * re-arming on leave). No Motion / JS. This is the one animated up/down icon —
+ * use it everywhere instead of the raw Lucide Upload/Download, and add
+ * `group/tray` to whatever wraps it.
  *
  * Geometry is lifted verbatim from lucide-react's `download` / `upload` icons
  * (24×24 viewBox, 2px stroke) so it renders identically to the Lucide set;
@@ -45,15 +47,15 @@ export function TrayArrowIcon({ direction = 'down', className }: TrayArrowIconPr
     direction === 'down'
       ? {
           restingRest: '-translate-y-[2px]',
-          restingHover: 'group-hover/button:translate-y-[18px]',
+          restingHover: 'group-hover/tray:translate-y-[18px]',
           incomingRest: '-translate-y-[18px]',
-          incomingHover: 'group-hover/button:-translate-y-[2px]',
+          incomingHover: 'group-hover/tray:-translate-y-[2px]',
         }
       : {
           restingRest: 'translate-y-[2px]',
-          restingHover: 'group-hover/button:-translate-y-[18px]',
+          restingHover: 'group-hover/tray:-translate-y-[18px]',
           incomingRest: 'translate-y-[18px]',
-          incomingHover: 'group-hover/button:translate-y-[2px]',
+          incomingHover: 'group-hover/tray:translate-y-[2px]',
         };
 
   const arrowTransition = 'transition-transform duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)]';

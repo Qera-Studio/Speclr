@@ -15,10 +15,22 @@ describe('UploadDropzone', () => {
     expect(input).not.toHaveAttribute('tabindex', '-1');
   });
 
-  it('shows the selected file name and switches label to Replace file', () => {
+  it('switches the label to Replace file once a file is present', () => {
     render(<UploadDropzone id="favicon-32" format="png" fileName="logo.png" onFileSelected={() => {}} />);
-    expect(screen.getByText('logo.png')).toBeInTheDocument();
     expect(screen.getByLabelText(/replace file/i)).toBeInTheDocument();
+  });
+
+  it('renders the attachment slot inside the box when provided', () => {
+    render(
+      <UploadDropzone
+        id="favicon-32"
+        format="png"
+        fileName="logo.png"
+        onFileSelected={() => {}}
+        attachment={<div>logo.png · PNG</div>}
+      />,
+    );
+    expect(screen.getByText('logo.png · PNG')).toBeInTheDocument();
   });
 
   it('calls onFileSelected when a file is chosen', async () => {

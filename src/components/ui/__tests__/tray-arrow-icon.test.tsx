@@ -17,12 +17,13 @@ describe('TrayArrowIcon', () => {
     expect(container.querySelector('path[d="m17 8-5-5-5 5"]')).toBeInTheDocument();
   });
 
-  it('animates off the parent button hover group', () => {
+  it('animates off the parent group/tray hover group', () => {
     const { container } = render(<TrayArrowIcon direction="down" />);
     const groups = container.querySelectorAll('g > g');
-    // Both arrows key their transition to the named button hover group.
+    // Both arrows key their transition to the shared group/tray hover marker, so
+    // the icon animates inside any container carrying `group/tray`.
     for (const g of groups) {
-      expect(g.getAttribute('class') ?? '').toMatch(/group-hover\/button:/);
+      expect(g.getAttribute('class') ?? '').toMatch(/group-hover\/tray:/);
     }
   });
 });

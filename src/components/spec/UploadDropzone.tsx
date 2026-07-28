@@ -1,11 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
+import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
 import { cn } from '@/lib/utils';
 import type { IconFormat } from '@/lib/spec/types';
 
-const ACCEPT_BY_FORMAT: Record<IconFormat, string> = {
+export const ACCEPT_BY_FORMAT: Record<IconFormat, string> = {
   ico: '.ico',
   png: 'image/png',
   svg: 'image/svg+xml,.svg',
@@ -17,13 +17,19 @@ interface UploadDropzoneProps {
   format: IconFormat;
   fileName: string | null;
   onFileSelected: (file: File) => void;
+  /**
+   * When a file is present, its Attachment card — rendered inside the box below
+   * a divider. The box itself remains the re-upload affordance (click/drop).
+   */
+  attachment?: ReactNode;
 }
 
-export default function UploadDropzone({ id, format, fileName, onFileSelected }: UploadDropzoneProps) {
+export default function UploadDropzone({ id, format, fileName, onFileSelected, attachment }: UploadDropzoneProps) {
   const inputId = `upload-${id}`;
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const action = fileName ? 'Replace file' : 'Upload file';
+  const hasFile = Boolean(fileName || attachment);
+  const action = hasFile ? 'Replace file' : 'Upload file';
 
   const openPicker = () => inputRef.current?.click();
 
@@ -53,7 +59,7 @@ export default function UploadDropzone({ id, format, fileName, onFileSelected }:
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       className={cn(
-        'flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed border-input bg-background px-3 py-4 text-center text-sm transition-colors',
+        'group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-sm transition-colors',
         'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isDragging && 'border-primary bg-accent text-accent-foreground',
       )}
@@ -70,12 +76,19 @@ export default function UploadDropzone({ id, format, fileName, onFileSelected }:
           if (file) onFileSelected(file);
         }}
       />
-      <Upload className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-      <span className="font-medium">{isDragging ? 'Drop to upload' : action}</span>
-      {fileName ? (
-        <span className="text-muted-foreground">{fileName}</span>
-      ) : (
-        <span className="text-xs text-muted-foreground">Drag &amp; drop or click to browse</span>
+
+      {/* Prompt — always the top section; it is the click/drop target. */}
+      <div className="flex flex-col items-center gap-1 px-3 py-4 text-center">
+        <TrayArrowIcon direction="up" className="text-muted-foreground" />
+        <span className="font-medium">{isDragging ? 'Drop to upload' : action}</span>
+        {!hasFile && <span className="text-xs text-muted-foreground">Drag &amp; drop or click to browse</span>}
+      </div>
+
+      {/* Uploaded file — inside the box, below a divider, no extra background. */}
+      {attachment && (
+        <div className="border-t border-border/60 px-2 py-2" onClick={(e) => e.stopPropagation()}>
+          {attachment}
+        </div>
       )}
     </div>
   );
