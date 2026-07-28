@@ -1,8 +1,17 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { IconSpec, ValidationResult } from './types';
-import { detectTransparency, isIcoFile, isSvgFile, loadImageDimensions } from './imageAnalysis';
+import type { IconSpec, QualityWarning, ValidationResult } from './types';
+import { analyzePixels, checkSafeZone, isIcoFile, isSvgFile, loadImageDimensions } from './imageAnalysis';
+import { parseIco } from './parseIco';
+import { evaluateIcoDimensions } from './evaluateIco';
+import { checkAspectRatio, checkFileWeight } from './qualityChecks';
+import { analyzeSvg } from './svgHygiene';
+
+/** Drop nulls from a list of optional warnings. */
+function compact(...ws: (QualityWarning | null)[]): QualityWarning[] {
+  return ws.filter((w): w is QualityWarning => w !== null);
+}
 
 function matchesAcceptedDimensions(spec: IconSpec, width: number, height: number): boolean {
   if (spec.acceptedDimensions.length === 0) return true; // vector formats — no fixed px spec
@@ -25,26 +34,50 @@ export function useImageValidation() {
     try {
       const formatOk = formatMatches(spec, file);
 
-      // .ico can't be reliably decoded by Image() cross-browser — skip pixel
-      // checks entirely and report the limitation honestly rather than guess.
+      // .ico can't be rendered reliably by Image()/canvas — but it's a
+      // documented binary container, so we parse its bytes directly to verify
+      // the embedded sizes, that it's really an ICO, and per-layer transparency.
       if (spec.format === 'ico') {
         const objectUrl = URL.createObjectURL(file);
+        const info = parseIco(await file.arrayBuffer());
+
+        if (!info.isValidIco) {
+          return {
+            dimensionsOk: 'unknown',
+            formatOk: false,
+            transparency: 'unknown',
+            transparencyIsWarning: false,
+            objectUrl,
+            actualFormat: file.type || file.name.split('.').pop(),
+            note: "This file isn't a valid .ico container (its bytes don't match the ICO format).",
+          };
+        }
+
+        const { dimensionsOk, note } = evaluateIcoDimensions(info.layers, spec.acceptedDimensions);
+        const anyAlpha = info.layers.some((l) => l.hasAlpha);
+        const transparency: ValidationResult['transparency'] = anyAlpha ? 'transparent' : 'opaque';
+        const sizes = info.layers.map((l) => `${l.width}×${l.height}`).join(', ');
+
         return {
-          dimensionsOk: 'unknown',
+          dimensionsOk,
           formatOk,
-          transparency: 'unknown',
-          transparencyIsWarning: false,
+          transparency,
+          transparencyIsWarning: anyAlpha && spec.requireOpaque,
           objectUrl,
-          actualFormat: file.type || file.name.split('.').pop(),
-          note: "Automatic pixel inspection isn't supported for .ico in-browser — open it in an OS previewer to confirm the embedded 16/32/48px layers.",
+          actualFormat: `ICO (${info.layers.length} layer${info.layers.length === 1 ? '' : 's'}: ${sizes})`,
+          note,
+          warnings: compact(checkFileWeight(file.size, spec)),
         };
       }
 
       const { width, height, objectUrl } = await loadImageDimensions(file);
       const dimensionsOk = matchesAcceptedDimensions(spec, width, height);
 
-      // SVG is vector — no meaningful rasterized alpha channel to sample.
+      // SVG is vector — no meaningful rasterized alpha channel to sample. Its
+      // quality checks are text-based hygiene (viewBox, no embedded raster,
+      // no external refs, monochrome for the pinned-tab) plus file weight.
       if (spec.format === 'svg' || isSvgFile(file)) {
+        const svgText = await file.text();
         return {
           dimensionsOk: 'unknown',
           formatOk,
@@ -55,6 +88,7 @@ export function useImageValidation() {
           actualFormat: file.type || 'image/svg+xml',
           objectUrl,
           note: 'Transparency is a design choice for vector assets, not checked automatically.',
+          warnings: compact(checkFileWeight(file.size, spec), ...analyzeSvg(svgText, spec)),
         };
       }
 
@@ -64,9 +98,20 @@ export function useImageValidation() {
         img.onerror = () => reject(new Error('Could not decode image for transparency check'));
         img.src = objectUrl;
       });
-      const transparencyResult = detectTransparency(width, height, decodedForCanvas);
+      const pixels = analyzePixels(width, height, decodedForCanvas);
       const transparency: ValidationResult['transparency'] =
-        transparencyResult === 'unknown' ? 'unknown' : transparencyResult ? 'transparent' : 'opaque';
+        pixels === null ? 'unknown' : pixels.hasAlpha ? 'transparent' : 'opaque';
+
+      // Advisory quality nudges — never affect the pass/fail verdict.
+      const warnings = compact(
+        checkAspectRatio(width, height, spec),
+        checkFileWeight(file.size, spec),
+        pixels?.isBlank
+          ? ({ kind: 'blank', message: 'Image appears blank — every pixel is identical (likely a placeholder or failed export)' } satisfies QualityWarning)
+          : null,
+        // The maskable safe-zone check only applies to maskable manifest icons.
+        spec.previewMockup === 'maskableSafeZone' ? checkSafeZone(width, height, decodedForCanvas) : null,
+      );
 
       return {
         dimensionsOk,
@@ -77,6 +122,7 @@ export function useImageValidation() {
         actualHeight: height,
         actualFormat: file.type,
         objectUrl,
+        warnings,
       };
     } finally {
       setIsValidating(false);

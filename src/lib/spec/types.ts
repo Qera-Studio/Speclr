@@ -4,6 +4,7 @@ export type IconFormat = 'ico' | 'png' | 'svg' | 'jpeg';
 
 export type PreviewMockupKind =
   | 'browserTab'
+  | 'bookmarksBar'
   | 'iosHomeScreen'
   | 'maskableSafeZone'
   | 'googleSerp'
@@ -31,6 +32,26 @@ export interface IconSpec {
 
 export type ValidationTriState = boolean | 'unknown';
 
+export type QualityWarningKind =
+  | 'aspect-ratio'
+  | 'file-weight'
+  | 'blank'
+  | 'safe-zone'
+  | 'svg-viewbox'
+  | 'svg-raster'
+  | 'svg-external-ref'
+  | 'svg-monochrome';
+
+/**
+ * A non-blocking, advisory quality nudge (e.g. "not square", "heavy file").
+ * Warnings never change a slot's pass/fail verdict — they surface things worth
+ * improving for the best-quality logo, but a slot can pass with warnings.
+ */
+export interface QualityWarning {
+  kind: QualityWarningKind;
+  message: string;
+}
+
 export interface ValidationResult {
   dimensionsOk: ValidationTriState;
   formatOk: ValidationTriState;
@@ -41,6 +62,8 @@ export interface ValidationResult {
   actualFormat?: string;
   objectUrl: string;
   note?: string;
+  /** Advisory-only quality nudges; do not affect pass/fail. */
+  warnings?: QualityWarning[];
 }
 
 export interface SlotState {

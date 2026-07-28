@@ -43,4 +43,26 @@ describe('computePassed', () => {
   it('fails an SVG uploaded to a PNG slot (format known-bad) despite unknown dimensions', () => {
     expect(computePassed(result({ dimensionsOk: 'unknown', formatOk: false, transparency: 'unknown' }))).toBe(false);
   });
+
+  it('passes a vector spec on format alone when dimensions/transparency are not applicable', () => {
+    // A vector spec (SVG) checks only format. When the only applicable check
+    // passes, the slot is a genuine pass — not "review manually".
+    expect(
+      computePassed(result({ dimensionsOk: 'unknown', formatOk: true, transparency: 'unknown' }), {
+        dimensions: false,
+        format: true,
+        transparency: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('still fails a vector spec when the one applicable check (format) fails', () => {
+    expect(
+      computePassed(result({ dimensionsOk: 'unknown', formatOk: false, transparency: 'unknown' }), {
+        dimensions: false,
+        format: true,
+        transparency: false,
+      }),
+    ).toBe(false);
+  });
 });
