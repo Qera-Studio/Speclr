@@ -36,6 +36,15 @@ describe('PreviewMockup dispatcher', () => {
     expect(screen.queryByAltText('x')).not.toBeInTheDocument();
   });
 
+  it('scales the bookmarks bar up so it overflows into the card edge fade', () => {
+    // The bar is drawn at natural size then transform-scaled, so the strip runs
+    // past the card's width and meets the same left/right mask as the browser
+    // tab. Without the scale it fits entirely and never reaches the fade.
+    const { container } = render(<PreviewMockup kind="bookmarksBar" alt="x" brandName="Qera Studio" />);
+    const scaled = container.querySelector('[data-testid="bookmarks-bar-scale"]');
+    expect(scaled).toHaveClass('scale-[3]');
+  });
+
   it('renders the uploaded image for a googleSerp mockup', () => {
     render(<PreviewMockup kind="googleSerp" imageUrl="blob:y" alt="serp favicon" />);
     expect(screen.getByAltText('serp favicon')).toHaveAttribute('src', 'blob:y');

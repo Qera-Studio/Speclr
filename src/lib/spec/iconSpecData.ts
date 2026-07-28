@@ -164,9 +164,9 @@ export const ICON_SPECS: IconSpec[] = [
     format: 'svg',
     usedIn: '<link rel="mask-icon" href="..." color="#hex"> — legacy Safari "pin tab" feature',
     whyItMatters:
-      'Mostly a legacy/dead feature today, but still recognized by Safari — a single-color monochrome silhouette on a transparent background is the correct format here (unlike every other slot on this page, transparency is expected and correct for this one).',
+      'Deprecated by Apple in Safari 12 (2018) — modern Safari uses the regular favicon for pinned tabs, so mask-icon only still applies to older macOS Safari. Ship it only if you need that long tail; skipping it costs nothing on current browsers.',
     industryStandard:
-      'Must be a single-color (monochrome) SVG silhouette — Safari recolors it using the color attribute, so any color information in the file itself is ignored.',
+      'Not a picture but a mask: Safari reads only the alpha channel and repaints the shape in the user\'s accent colour via the link tag\'s color attribute, so colour inside the file is ignored. Must be a single-colour SVG silhouette on a transparent background — the one slot here where transparency is required rather than disallowed, which usually means simplifying the logo to a shape that survives being flattened to one colour.',
     priority: 'nice-to-have',
     requireOpaque: false,
     previewMockup: 'none',

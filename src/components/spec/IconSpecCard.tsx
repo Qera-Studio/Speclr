@@ -223,7 +223,10 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             Rolling out one mockup kind at a time (browser tab first). */}
         {showCenterPreview && (
           <div
-            className="flex flex-1 items-center justify-center py-4"
+            // overflow-hidden contains transform-scaled mockups (the bookmarks
+            // bar renders small then scales 3x) so they can't bleed into the
+            // tabs above or the dropzone below.
+            className="flex flex-1 items-center justify-center overflow-hidden py-4"
             // Fade the browser-chrome out at the left/right edges so it blends
             // into the card instead of hard-cutting.
             style={{
