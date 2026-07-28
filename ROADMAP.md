@@ -1,15 +1,38 @@
 # ROADMAP — speclr
 
-> The tracked backlog: features, future plans, and pending work not yet started.
+> The tracked backlog: features, future plans, deferred work, and pending items.
 > Complements the other docs rather than repeating them —
-> `CONTEXT.md` holds domain rules and decisions already made,
-> `AGENTS.md` holds standards, `dev/` holds the checklists.
->
-> **A `## Deliberately deferred` list also lives in `CONTEXT.md`** (YAGNI items:
-> PDF renderer, roles, payslip, analytics). When something there gets scheduled,
-> move it here and leave a pointer — don't let the two lists drift.
+> `CONTEXT.md` holds domain rules and **decisions already made**, `AGENTS.md`
+> holds standards, `dev/` holds the checklists. **This file is the single home
+> for work not yet done**, including the YAGNI list that used to sit in
+> `CONTEXT.md`.
 >
 > Items are unordered within a section; nothing here is committed to a date.
+
+---
+
+## The three that need thought before code
+
+Most items below are ordinary work. These three interact with decisions already
+made, and getting them wrong is expensive to undo.
+
+**#2 Public access — isolate structurally, not conditionally.**
+The two access locks are marked *"do not weaken"* in `CONTEXT.md`. The icon tool
+is genuinely safe to expose (client-side, no financial data), but if public access
+is built as a conditional inside the existing guard, one bad edit later exposes
+documents. It must be a separate route group sharing **no layout, middleware path,
+or auth surface** with `(admin)`. Structural isolation, not a flag.
+
+**#1 Admin access — "admin" is meaningless until a non-admin tier exists.**
+Every invited user currently has full access and there are no roles. A role named
+admin, with nothing beneath it, is a label with no teeth. Scope the non-admin tier
+first, or the work has no observable effect.
+
+**#5 Client portal — larger than the other five, and a different security posture.**
+A portal means external users, not an invite-only internal tool. It also sharpens
+the snapshot pattern: if clients can edit their own details, an already-issued
+invoice must still show them as they were at issue time. Probably wants its own
+spec before implementation — and **#6 depends on it**.
 
 ---
 
@@ -19,10 +42,8 @@
 Give an admin a full view across documents and clients, distinct from ordinary
 access.
 
-- **Prerequisite:** this is the first real test of the deferred *roles/permissions*
-  decision. Today every invited user has full access and there are no roles
-  (`CONTEXT.md`). "Admin" only means something once a non-admin tier exists —
-  so scope the non-admin tier first, or "admin" is a label with no teeth.
+- **Prerequisite:** needs the deferred *roles/permissions* work — see the note
+  above on scoping a non-admin tier first.
 - **Non-negotiable:** authorization is verified **server-side on every action and
   route**, never inferred from a layout or client state. A layout is not a security
   boundary (Security checklist).
@@ -34,13 +55,13 @@ Expose the icon spec tool publicly, without weakening document security.
 
 - **Hard constraint:** speclr's two access locks — Clerk invite-only sign-up and
   the fail-closed `SPECLR_ALLOWED_EMAILS` allowlist — are marked *"do not weaken"*
-  in `CONTEXT.md`. This must **not** be built by relaxing either one.
+  in `CONTEXT.md`. This must **not** be built by relaxing either one. See the
+  structural-isolation note above.
 - The icon tool is entirely client-side and holds no financial/legal data, so it
   is genuinely safe to expose. The document tool is not, and never becomes public.
-- **Approach:** a separate public route group that shares **no layout, middleware
-  path, or auth surface** with `(admin)`. Isolation must be structural, not a
-  conditional inside a shared guard.
 - Public routes still stay `noindex` unless deliberately decided otherwise.
+- If the tool is public, its client-side inputs are now untrusted input from
+  strangers — the `.ico`/SVG parsers must not assume well-formed files.
 
 ### 3. Full view editor
 A full-screen editing surface for documents, beyond the current form + preview.
@@ -64,9 +85,7 @@ A second sidebar panel alongside the existing resizable one.
 ### 5. Client database and portal
 Extend clients from an internal record into something clients themselves access.
 
-- **Largest item here** — a portal means external users, which is a different
-  security posture from an invite-only internal tool. Likely wants its own spec
-  before implementation.
+- **Largest item here** — see the note above; likely wants its own spec first.
 - **The snapshot pattern is load-bearing:** editing a client must never mutate an
   already-issued document. Finalized docs read their frozen JSONB snapshot, never
   live client data. A portal that lets clients edit their own details makes this
@@ -87,6 +106,23 @@ Sync clients across tools and services so they aren't re-entered per surface.
   integer paise, atomic FY numbering, immutability.
 
 ---
+
+## Deliberately deferred (YAGNI — noted, not built)
+
+Moved here from `CONTEXT.md`. Deferred on purpose, with the reasoning intact —
+if one of these gets picked up, the reasoning is what to re-examine first.
+
+- **Server-side PDF renderer** — print-CSS now. Sheets stay pure `data → markup`
+  precisely so this lands later as a non-breaking, additive upgrade. Don't couple
+  sheets to the DOM in the meantime (see §3, which touches the same surface).
+- **Roles/permissions** — allowlist + full access now. **No longer really
+  deferred:** §1 needs them, and the original bet was that adding roles "must not
+  require a rewrite." §1 is where that bet gets tested.
+- **Payslip document type** — until a real salaried employee exists. A stipend
+  slip is *not* a payslip; they are kept separate deliberately, and the intern vs.
+  employee split is a legal distinction, not a cosmetic one.
+- **Reporting/analytics dashboards** — the schema already enables them; not built
+  during the migration.
 
 ## Pending work (in flight)
 

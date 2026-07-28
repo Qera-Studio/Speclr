@@ -87,15 +87,14 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 - **Sheet styling = Tailwind + a small `print.css` layer** (not a PDF renderer yet).
 - **No data migration** — fresh Postgres. The old Upstash test data (incl. a test invoice `QS-INV-2627-001`) was **not** carried over. speclr's first real document starts a clean FY sequence.
 
-## Deliberately deferred (YAGNI — noted, not built)
+## Deferred work → `ROADMAP.md`
 
-- **Server-side PDF renderer** — print-CSS now; PDF is a future non-breaking upgrade.
-- **Roles/permissions** — allowlist + full access now. *(Now scheduled: `ROADMAP.md` §1 "Admin access" is the first feature that needs them.)*
-- **Payslip document type** — until a real salaried employee exists (stipend slip ≠ payslip; kept separate).
-- **Reporting/analytics dashboards** — the schema enables them; not built this migration.
+The YAGNI list that used to live here (PDF renderer, roles/permissions, payslip
+document type, analytics dashboards) now lives in [`ROADMAP.md`](ROADMAP.md)
+under *Deliberately deferred*, alongside every other piece of unbuilt work.
 
-> Planned features and pending work live in [`ROADMAP.md`](ROADMAP.md). When an
-> item above gets scheduled, move it there and leave a pointer here.
+This file records **decisions already made**; the roadmap records **work not yet
+done**. Keeping deferred items in one place stops the two lists drifting apart.
 
 ## Access control (two independent locks — do not weaken)
 
