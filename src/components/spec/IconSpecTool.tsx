@@ -2,9 +2,11 @@
 
 import { ICON_SPECS } from '@/lib/spec/iconSpecData';
 import { useIconSpecState } from '@/lib/spec/useIconSpecState';
+import { ButtonGroup } from '@/components/ui/button-group';
 import ClientNameField from './ClientNameField';
 import SpecProgress from './SpecProgress';
-import ExportImportControls from './ExportImportControls';
+import ImportProgressControls from './ImportProgressControls';
+import ExportProgressButton from './ExportProgressButton';
 import ResetProgressButton from './ResetProgressButton';
 import IconSpecCard from './IconSpecCard';
 
@@ -38,15 +40,7 @@ export default function IconSpecTool() {
         <SpecProgress reviewed={reviewedCount} total={totalCount} />
       </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <ExportImportControls
-          clientName={clientName}
-          onExport={exportProgress}
-          onImport={importProgress}
-          importError={importError}
-        />
-        <ResetProgressButton onReset={resetProgress} />
-      </div>
+      <ImportProgressControls onImport={importProgress} importError={importError} />
 
       <div className="grid auto-rows-fr gap-6 md:grid-cols-2">
         {ICON_SPECS.map((spec) => (
@@ -57,8 +51,18 @@ export default function IconSpecTool() {
             spec={spec}
             slotState={slots[spec.id] ?? { reviewed: false, passed: null, notes: '' }}
             onUpdate={(patch) => updateSlot(spec.id, patch)}
+            clientName={clientName}
           />
         ))}
+      </div>
+
+      {/* Exit actions — save your work, then optionally wipe. Grouped at the
+          bottom, out of the primary flow. */}
+      <div className="flex justify-start border-t border-border pt-4">
+        <ButtonGroup aria-label="Export or reset progress" className="opacity-80">
+          <ExportProgressButton clientName={clientName} onExport={exportProgress} />
+          <ResetProgressButton onReset={resetProgress} />
+        </ButtonGroup>
       </div>
     </div>
   );

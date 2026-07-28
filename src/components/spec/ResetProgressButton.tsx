@@ -40,15 +40,15 @@ export default function ResetProgressButton({ onReset }: { onReset: () => void }
           </Button>
         }
       />
-      <AlertDialogContent>
+      <AlertDialogContent className="gap-6 [&_[data-slot=alert-dialog-header]]:place-items-center [&_[data-slot=alert-dialog-header]]:text-center">
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset the whole checklist?</AlertDialogTitle>
-          <AlertDialogDescription>
+          <AlertDialogTitle className="text-xl">Reset the whole checklist?</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm/snug text-muted-foreground/60">
             This clears every uploaded file, validation result, reviewed mark, and note across all slots, and empties the
             saved progress. This can’t be undone. Export first if you want a copy.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        <AlertDialogFooter className="justify-center sm:justify-center">
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
