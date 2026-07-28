@@ -50,7 +50,7 @@ export default function SpecDetailsTabs({ tabs }: { tabs: DetailTab[] }) {
       {/* Fixed-height viewport onto a horizontal track holding every body. The
           track scrubs to the active panel; a long body scrolls within its cell
           so the card never jumps height. */}
-      <div className="h-24 overflow-hidden">
+      <div className="h-16 overflow-hidden">
         <motion.div
           className="flex h-full"
           animate={{ x: `-${activeIndex * 100}%` }}

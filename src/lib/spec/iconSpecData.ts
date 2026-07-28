@@ -18,7 +18,7 @@ export const ICON_SPECS: IconSpec[] = [
       'A single .ico container bundling 16×16, 32×32, and 48×48 layers — legacy browsers/Windows pick whichever embedded size fits the context.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'browserTab',
+    previewMockup: 'bookmarksBar',
   },
   {
     id: 'favicon-32',
