@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import LetterEditor from '../LetterEditor';
 import type { EmployeeRecord } from '@/lib/domain/employee';
@@ -37,7 +38,7 @@ describe('LetterEditor (offer letter)', () => {
     const u = userEvent.setup();
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
-    await u.selectOptions(screen.getByLabelText(/employee/i), 'e1');
+    await selectComboboxOption(u, /employee/i, /Riya/);
     // seeding fills in editable paragraphs (add-paragraph control is present)
     expect(screen.getByRole('button', { name: /add paragraph/i })).toBeInTheDocument();
 

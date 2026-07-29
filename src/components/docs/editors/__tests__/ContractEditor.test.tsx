@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import ContractEditor from '../ContractEditor';
 import type { ClientRecord } from '@/lib/domain/types';
@@ -42,8 +43,8 @@ describe('ContractEditor (new)', () => {
     const u = userEvent.setup();
     render(<ContractEditor clients={clients} services={services} title="New contract" />);
 
-    await u.selectOptions(screen.getByLabelText(/client/i), 'c1');
-    await u.selectOptions(screen.getByLabelText(/add schedule from service/i), 's1');
+    await selectComboboxOption(u, /client/i, 'Acme Co.');
+    await selectComboboxOption(u, /add schedule from service/i, 'Branding');
     await u.click(screen.getByRole('button', { name: /^add schedule$/i }));
     // schedule card now visible (its "Schedule title" field appears)
     expect(screen.getByLabelText(/schedule title/i)).toBeInTheDocument();

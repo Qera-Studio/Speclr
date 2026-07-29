@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Combobox } from '@/components/ui/combobox';
+import { DatePicker } from '@/components/ui/date-picker';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 
@@ -63,8 +65,6 @@ function seedContent(type: LetterType, e: EmployeeRecord) {
   return { bodyParagraphs: content.bodyParagraphs, bulletSections: content.bulletSections };
 }
 
-const selectClass =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
 
 interface LetterEditorProps {
   type: LetterType;
@@ -210,28 +210,24 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="letter-employee">Employee</FieldLabel>
-          <select
+          <Combobox
             id="letter-employee"
-            className={selectClass}
+            size="form"
+            options={employees.map((e) => ({ value: e.id, label: `${e.name} — ${e.role}` }))}
             value={employeeId}
-            onChange={(e) => onSelectEmployee(e.target.value)}
-          >
-            <option value="">Select an employee…</option>
-            {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name} — {e.role}
-              </option>
-            ))}
-          </select>
+            onValueChange={onSelectEmployee}
+            placeholder="Select an employee…"
+            emptyMessage="No matching employees."
+          />
         </Field>
 
         <Field>
           <FieldLabel htmlFor="letter-issue-date">Issue date</FieldLabel>
-          <Input
+          <DatePicker
             id="letter-issue-date"
-            type="date"
+            size="form"
             value={issueDate}
-            onChange={(e) => setIssueDate(e.target.value)}
+            onValueChange={setIssueDate}
           />
         </Field>
 

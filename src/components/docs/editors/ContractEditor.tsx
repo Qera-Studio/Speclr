@@ -20,14 +20,14 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Combobox } from '@/components/ui/combobox';
+import { DatePicker } from '@/components/ui/date-picker';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import ScheduleCard from './ScheduleCard';
 
 const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
 
-const selectClass =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
 
 interface ContractEditorProps {
   clients: ClientRecord[];
@@ -156,47 +156,39 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="con-client">Client</FieldLabel>
-          <select
+          <Combobox
             id="con-client"
-            className={selectClass}
+            size="form"
+            options={clients.map((c) => ({ value: c.id, label: c.name }))}
             value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-          >
-            <option value="">Select a client…</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setClientId}
+            placeholder="Select a client…"
+            emptyMessage="No matching clients."
+          />
         </Field>
 
         <Field>
           <FieldLabel htmlFor="con-issue-date">Agreement date</FieldLabel>
-          <Input
+          <DatePicker
             id="con-issue-date"
-            type="date"
+            size="form"
             value={issueDate}
-            onChange={(e) => setIssueDate(e.target.value)}
+            onValueChange={setIssueDate}
           />
         </Field>
 
         <div className="flex flex-wrap items-end gap-2">
           <Field className="flex-1">
             <FieldLabel htmlFor="con-add-service">Add schedule from service</FieldLabel>
-            <select
+            <Combobox
               id="con-add-service"
-              className={selectClass}
+              size="form"
+              options={services.map((service) => ({ value: service.id, label: service.name }))}
               value={selectedServiceId}
-              onChange={(e) => setSelectedServiceId(e.target.value)}
-            >
-              <option value="">Select a service…</option>
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setSelectedServiceId}
+              placeholder="Select a service…"
+              emptyMessage="No matching services."
+            />
           </Field>
           <Button type="button" variant="outline" onClick={addSchedule} disabled={!selectedServiceId}>
             Add schedule

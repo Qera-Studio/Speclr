@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import StipendEditor from '../StipendEditor';
 import type { EmployeeRecord } from '@/lib/domain/employee';
@@ -38,7 +39,7 @@ describe('StipendEditor (new)', () => {
     const u = userEvent.setup();
     render(<StipendEditor employees={employees} title="New stipend slip" />);
 
-    await u.selectOptions(screen.getByLabelText(/employee/i), 'e1');
+    await selectComboboxOption(u, /employee/i, /Riya/);
     // selecting an employee pre-fills amount from payAmountPaise (2000000 → "20000")
     await u.click(screen.getByRole('button', { name: /save draft/i }));
 
