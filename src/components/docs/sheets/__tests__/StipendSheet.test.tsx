@@ -41,4 +41,36 @@ describe('StipendSheet', () => {
     expect(screen.getByText('NET STIPEND PAID')).toBeInTheDocument();
     expect(screen.getAllByText('₹ 15,000.00').length).toBeGreaterThan(0);
   });
+
+  it('prints the recipient UPI QR from the snapshot', () => {
+    const qr = 'data:image/png;base64,QRDATA';
+    render(
+      <StipendSheet
+        doc={
+          {
+            ...baseStipend,
+            employeeSnapshot: {
+              ...baseStipend.employeeSnapshot,
+              bank: { ...baseStipend.employeeSnapshot.bank, upiQrDataUrl: qr },
+            },
+          } as StipendDocument
+        }
+      />,
+    );
+
+    // Read from the frozen snapshot, never live — an issued slip must keep
+    // showing the QR that was current when it was issued.
+    expect(screen.getByAltText(/upi qr code for ravi kumar/i)).toHaveAttribute('src', qr);
+    expect(screen.getByText('scan to pay')).toBeInTheDocument();
+  });
+
+  it('renders normally for a slip issued before QR codes existed', () => {
+    render(<StipendSheet doc={baseStipend} />);
+
+    // Snapshots written before this field simply have no QR; the block must
+    // collapse away rather than leaving a gap or a broken image.
+    expect(screen.queryByAltText(/upi qr code/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('scan to pay')).not.toBeInTheDocument();
+    expect(screen.getByText('HDFC Bank')).toBeInTheDocument();
+  });
 });

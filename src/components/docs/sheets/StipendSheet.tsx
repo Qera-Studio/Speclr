@@ -204,28 +204,51 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
             <h3 className="text-black text-[24px] font-bold tracking-[-0.02em] mb-[8px]">
               {accountHeading}
             </h3>
-            <dl className="m-0">
-              <div className="flex gap-[16px]">
-                <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">Bank</dt>
-                <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.bankName}</dd>
-              </div>
-              <div className="flex gap-[16px]">
-                <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">
-                  Account No.
-                </dt>
-                <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.accountNo}</dd>
-              </div>
-              <div className="flex gap-[16px]">
-                <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">IFSC code</dt>
-                <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.ifsc}</dd>
-              </div>
-              {emp.bank.upiId ? (
+            <div className="flex items-start gap-[12px]">
+              <dl className="m-0 flex-1">
                 <div className="flex gap-[16px]">
-                  <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">UPI ID</dt>
-                  <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.upiId}</dd>
+                  <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">Bank</dt>
+                  <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.bankName}</dd>
                 </div>
+                <div className="flex gap-[16px]">
+                  <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">
+                    Account No.
+                  </dt>
+                  <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.accountNo}</dd>
+                </div>
+                <div className="flex gap-[16px]">
+                  <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">IFSC code</dt>
+                  <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.ifsc}</dd>
+                </div>
+                {emp.bank.upiId ? (
+                  <div className="flex gap-[16px]">
+                    <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">UPI ID</dt>
+                    <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.upiId}</dd>
+                  </div>
+                ) : null}
+              </dl>
+
+              {/*
+                The recipient's UPI QR, read from the frozen snapshot — an
+                issued slip keeps showing the QR that was current when it was
+                issued, even if they later change bank. Slips issued before
+                QRs existed simply have none, and this collapses away.
+                print-color-adjust keeps it from being dropped when printing.
+              */}
+              {emp.bank.upiQrDataUrl ? (
+                <figure className="m-0 shrink-0 text-center [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={emp.bank.upiQrDataUrl}
+                    alt={`UPI QR code for ${emp.name || 'the recipient'}`}
+                    className="w-[28mm] h-[28mm] object-contain bg-white"
+                  />
+                  <figcaption className="text-black/70 text-[9px] font-normal mt-[2px]">
+                    scan to pay
+                  </figcaption>
+                </figure>
               ) : null}
-            </dl>
+            </div>
           </section>
 
           <section aria-label="Stipend and payment details">

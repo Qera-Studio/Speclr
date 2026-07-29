@@ -43,6 +43,12 @@ function snapshotOf(e: EmployeeRecord): EmployeeSnapshot {
     pronoun: e.pronoun,
     joiningDate: e.joiningDate,
     endDate: e.endDate,
+    /**
+     * Includes `upiQrDataUrl` deliberately: the QR prints on the slip, so an
+     * issued slip has to keep showing the QR that was current at issue time,
+     * even if the employee later changes bank. That is the whole point of the
+     * snapshot. The uploader caps the image so this stays small.
+     */
     bank: e.bank,
   };
 }

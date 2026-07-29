@@ -62,6 +62,13 @@ function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
     pronoun: employee.pronoun,
     joiningDate: employee.joiningDate,
     endDate: employee.endDate,
+    /**
+     * Carries `bank.upiQrDataUrl` deliberately. The QR prints on the stipend
+     * slip, so a slip issued today must keep showing the QR that was current
+     * today, even if the employee changes bank next year — that is what the
+     * snapshot is for. This runs at finalize and writes the permanent record,
+     * so the inclusion is intentional, not incidental.
+     */
     bank: employee.bank,
   };
 }

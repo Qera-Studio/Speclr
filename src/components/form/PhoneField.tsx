@@ -34,6 +34,24 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
   label: `${c.flag} ${c.name} +${c.dialCode}`,
 }));
 
+/**
+ * The strict phone check, for a form's resolver to call.
+ *
+ * It lives here rather than in the shared zod schema because that schema
+ * re-validates whole records on every edit, and records written before phones
+ * were structured would become permanently un-editable under a strict rule.
+ * Returns an error message, or null when the value is acceptable.
+ */
+export function validatePhoneValue(
+  value: unknown,
+  { required = true }: { required?: boolean } = {},
+): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return required ? 'Phone is required.' : null;
+  const { iso2, national } = parsePhone(raw);
+  return isValidPhone(national, iso2) ? null : phoneHintFor(iso2);
+}
+
 interface PhoneFieldProps<T extends FieldValues> {
   control: Control<T>;
   name: Path<T>;
@@ -51,18 +69,13 @@ export default function PhoneField<T extends FieldValues>({
   size = 'form',
   required = true,
 }: PhoneFieldProps<T>) {
-  const { field, fieldState } = useController({
-    control,
-    name,
-    rules: {
-      validate: (value) => {
-        const raw = String(value ?? '').trim();
-        if (!raw) return required ? 'Phone is required.' : true;
-        const { iso2, national } = parsePhone(raw);
-        return isValidPhone(national, iso2) || phoneHintFor(iso2);
-      },
-    },
-  });
+  /**
+   * No `rules` here on purpose: a form-level resolver overrides them entirely,
+   * and every form using this field has one. Phone validation lives in each
+   * form's resolver — see the note in ClientForm — and surfaces back through
+   * `fieldState.error` below.
+   */
+  const { field, fieldState } = useController({ control, name });
 
   const stored = String(field.value ?? '');
 
