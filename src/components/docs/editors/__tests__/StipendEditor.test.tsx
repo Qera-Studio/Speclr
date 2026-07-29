@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe('StipendEditor (new)', () => {
   it('renders the employee picker and amount field', () => {
-    render(<StipendEditor employees={employees} />);
+    render(<StipendEditor employees={employees} title="New stipend slip" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/stipend amount/i)).toBeInTheDocument();
   });
@@ -36,7 +36,7 @@ describe('StipendEditor (new)', () => {
   it('creates a draft with the amount in paise on save', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} />);
+    render(<StipendEditor employees={employees} title="New stipend slip" />);
 
     await u.selectOptions(screen.getByLabelText(/employee/i), 'e1');
     // selecting an employee pre-fills amount from payAmountPaise (2000000 → "20000")

@@ -9,10 +9,10 @@ import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import StipendEditor from '@/components/docs/editors/StipendEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
-import ContractSheet from '@/components/docs/sheets/ContractSheet';
+import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
-import SheetPreview from '@/components/docs/SheetPreview';
+import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import FinalizedActions from '@/components/docs/FinalizedActions';
 
 export const metadata: Metadata = {
@@ -45,44 +45,43 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       ? `Edit ${spec.label.toLowerCase()} draft`
       : `${spec.label} ${doc.number ?? ''}`.trim();
 
-  const page = (body: React.ReactNode) => (
-    <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">{heading}</h1>
-      {body}
-    </div>
-  );
-
   // ── Draft → editor ──────────────────────────────────────────────
+  // The editors own the full-height workspace layout; the route adds no wrapper.
   if (doc.status === 'draft') {
     if (doc.type === 'STP') {
       const employees = await listEmployees();
-      return page(<StipendEditor employees={employees} doc={doc} />);
+      return <StipendEditor employees={employees} doc={doc} title={heading} />;
     }
     if (isLetter(doc)) {
       const employees = await listEmployees();
-      return page(<LetterEditor type={doc.type} employees={employees} doc={doc} />);
+      return <LetterEditor type={doc.type} employees={employees} doc={doc} title={heading} />;
     }
     const clients = await listClients();
     if (doc.type === 'CON') {
       const services = await listServices();
-      return page(<ContractEditor clients={clients} services={services} doc={doc} />);
+      return <ContractEditor clients={clients} services={services} doc={doc} title={heading} />;
     }
-    return page(<DocumentEditor typeCode={doc.type} clients={clients} doc={doc} />);
+    return <DocumentEditor typeCode={doc.type} clients={clients} doc={doc} title={heading} />;
   }
 
   // ── Finalized → read-only sheet + actions (immutable — no edit/delete) ──
-  const shell = (sheet: React.ReactNode) =>
-    page(
-      <>
-        <FinalizedActions docId={doc.id} />
-        <div>{sheet}</div>
-      </>,
-    );
+  // Same workspace as the editors, but the rail holds actions rather than a
+  // form: a finalized document has nothing editable by design.
+  const shell = (
+    preview: React.ReactNode,
+    opts?: { coverFirst?: boolean; firstPageClassName?: string },
+  ) => (
+    <DocumentWorkspace title={heading} preview={preview} {...opts}>
+      <FinalizedActions docId={doc.id} />
+    </DocumentWorkspace>
+  );
 
   // Sequential returns so each branch narrows `doc`.
-  if (doc.type === 'STP') return shell(<SheetPreview><StipendSheet doc={doc} /></SheetPreview>);
-  if (isLetter(doc)) return shell(<SheetPreview><LetterSheet doc={doc} /></SheetPreview>);
-  // The contract paginates itself into a page carousel (own zoom) — not wrapped.
-  if (doc.type === 'CON') return shell(<ContractSheet doc={doc} variant="paged" />);
-  return shell(<SheetPreview><DocumentSheet doc={doc} /></SheetPreview>);
+  if (doc.type === 'STP') return shell(<StipendSheet doc={doc} />);
+  if (isLetter(doc)) return shell(<LetterSheet doc={doc} />);
+  // Contracts feed their flat block list in so the preview can paginate them,
+  // with the black cover pinned as its own full-bleed first page.
+  if (doc.type === 'CON')
+    return shell(contractBlocks(doc), { coverFirst: true, firstPageClassName: COVER_CLASSNAME });
+  return shell(<DocumentSheet doc={doc} />);
 }

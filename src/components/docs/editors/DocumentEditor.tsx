@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
-import SheetPreview from '@/components/docs/SheetPreview';
+import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import LineItemsEditor from './LineItemsEditor';
 import TotalsPanel from './TotalsPanel';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
@@ -84,12 +84,14 @@ interface DocumentEditorProps {
   typeCode: FinancialTypeCode;
   clients: ClientRecord[];
   doc?: FinancialDocument | null;
+  /** Shown in the workspace bar; supplied by the route page. */
+  title: string;
 }
 
 const selectClass =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
 
-export default function DocumentEditor({ typeCode, clients, doc }: DocumentEditorProps) {
+export default function DocumentEditor({ typeCode, clients, doc, title }: DocumentEditorProps) {
   const router = useRouter();
   const spec = DOC_TYPES[typeCode];
   const { form, lineItems } = useDocumentForm(typeCode, doc);
@@ -159,7 +161,7 @@ export default function DocumentEditor({ typeCode, clients, doc }: DocumentEdito
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <DocumentWorkspace title={title} preview={<DocumentSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="doc-client">Client</FieldLabel>
@@ -277,12 +279,6 @@ export default function DocumentEditor({ typeCode, clients, doc }: DocumentEdito
           ) : null}
         </div>
       </form>
-
-      <section aria-label="Live preview">
-        <SheetPreview>
-          <DocumentSheet doc={previewDoc} />
-        </SheetPreview>
-      </section>
-    </div>
+    </DocumentWorkspace>
   );
 }

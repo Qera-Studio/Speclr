@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import SheetPreview from '@/components/docs/SheetPreview';
+import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
 
 const EMPTY_SNAPSHOT: EmployeeSnapshot = {
@@ -53,9 +53,11 @@ const selectClass =
 interface StipendEditorProps {
   employees: EmployeeRecord[];
   doc?: StipendDocument | null;
+  /** Shown in the workspace bar; supplied by the route page. */
+  title: string;
 }
 
-export default function StipendEditor({ employees, doc }: StipendEditorProps) {
+export default function StipendEditor({ employees, doc, title }: StipendEditorProps) {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -185,7 +187,7 @@ export default function StipendEditor({ employees, doc }: StipendEditorProps) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <DocumentWorkspace title={title} preview={<StipendSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="stp-employee">Employee</FieldLabel>
@@ -296,12 +298,6 @@ export default function StipendEditor({ employees, doc }: StipendEditorProps) {
           ) : null}
         </div>
       </form>
-
-      <section aria-label="Live preview">
-        <SheetPreview>
-          <StipendSheet doc={previewDoc} />
-        </SheetPreview>
-      </section>
-    </div>
+    </DocumentWorkspace>
   );
 }

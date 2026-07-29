@@ -153,16 +153,31 @@ function Sidebar({
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
+  state: stateProp,
   className,
   children,
   dir,
+  style,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  /**
+   * Overrides the open/collapsed state from `SidebarContext`.
+   *
+   * A `SidebarProvider` carries one shared open state, so two `Sidebar`s under
+   * it would expand and collapse together. Pass `state` to make a second rail
+   * (e.g. the right-hand editor panel) independent while still living in the
+   * same provider — everything downstream reads `data-state` off the DOM, not
+   * context, so overriding it here is sufficient. Such a sidebar must also
+   * carry its own `--sidebar-width`, and must not contain `SidebarTrigger` or
+   * `SidebarRail` (both toggle the *shared* state via context).
+   */
+  state?: "expanded" | "collapsed"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state: contextState, openMobile, setOpenMobile } = useSidebar()
+  const state = stateProp ?? contextState
 
   if (collapsible === "none") {
     return (
@@ -213,6 +228,12 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      // Hoisted to the wrapper so a per-sidebar `--sidebar-width` override
+      // cascades to BOTH the gap div (which reserves the layout space) and the
+      // fixed container (the visible panel). Left on the container alone, the
+      // gap would keep reading the provider's width and the panel would overlap
+      // the content card instead of sitting beside it.
+      style={style}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
@@ -302,12 +323,32 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+/**
+ * The floating content card beside the sidebar(s).
+ *
+ * Upstream shadcn only handles a *left* inset sidebar: every rule below is
+ * gated on `peer-data-[variant=inset]`, which matches the **preceding**
+ * `Sidebar` sibling. A right-hand sidebar renders *after* this element, so no
+ * CSS sibling selector can reach it and a mirrored `peer-*` rule would silently
+ * never match.
+ *
+ * `insetRight` therefore applies the card treatment unconditionally rather than
+ * via a peer selector — use it when this inset is followed by an inset sidebar
+ * instead of (or as well as) preceded by one, so the card floats symmetrically
+ * between two rails.
+ */
+function SidebarInset({
+  className,
+  insetRight = false,
+  ...props
+}: React.ComponentProps<"main"> & { insetRight?: boolean }) {
   return (
     <main
       data-slot="sidebar-inset"
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-md md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        // Not peer-gated: the sidebar this pairs with is a *following* sibling.
+        insetRight && "md:m-2 md:mr-0 md:rounded-md md:shadow-sm",
         className
       )}
       {...props}

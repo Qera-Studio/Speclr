@@ -7,30 +7,48 @@ export const SIDEBAR_DEFAULT_WIDTH = 256;
 export const SIDEBAR_MAX_WIDTH = 360;
 
 /** Clamp a proposed sidebar width (px) into the allowed range. */
-export function clampWidth(px: number): number {
-  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, px));
+export function clampWidth(px: number, min = SIDEBAR_MIN_WIDTH, max = SIDEBAR_MAX_WIDTH): number {
+  return Math.min(max, Math.max(min, px));
 }
 
 interface SidebarResizeHandleProps {
   width: number;
   onWidthChange: (next: number) => void;
+  /**
+   * Which sidebar edge this handle belongs to. On a right-hand sidebar the drag
+   * axis is inverted (dragging left widens) and the handle pins to the sidebar's
+   * left edge instead of its right.
+   */
+  side?: 'left' | 'right';
+  min?: number;
+  max?: number;
+  label?: string;
 }
 
 /**
- * A thin drag handle on the sidebar's right edge. Dragging resizes the sidebar
- * live within [MIN, MAX]; arrow keys nudge it for keyboard users. Session-only —
+ * A thin drag handle on a sidebar's inner edge. Dragging resizes the sidebar
+ * live within [min, max]; arrow keys nudge it for keyboard users. Session-only —
  * the width isn't persisted. Hidden when the sidebar is collapsed to the rail.
  */
-export default function SidebarResizeHandle({ width, onWidthChange }: SidebarResizeHandleProps) {
+export default function SidebarResizeHandle({
+  width,
+  onWidthChange,
+  side = 'left',
+  min = SIDEBAR_MIN_WIDTH,
+  max = SIDEBAR_MAX_WIDTH,
+  label = 'Resize sidebar',
+}: SidebarResizeHandleProps) {
   const startX = useRef(0);
   const startWidth = useRef(width);
+  // A right-hand sidebar grows as the pointer moves *left*, so invert the delta.
+  const direction = side === 'right' ? -1 : 1;
 
   const onPointerMove = useCallback(
     (e: PointerEvent) => {
-      const delta = e.clientX - startX.current;
-      onWidthChange(clampWidth(startWidth.current + delta));
+      const delta = (e.clientX - startX.current) * direction;
+      onWidthChange(clampWidth(startWidth.current + delta, min, max));
     },
-    [onWidthChange],
+    [onWidthChange, direction, min, max],
   );
 
   const onPointerUp = useCallback(() => {
@@ -53,10 +71,10 @@ export default function SidebarResizeHandle({ width, onWidthChange }: SidebarRes
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      onWidthChange(clampWidth(width - 16));
+      onWidthChange(clampWidth(width - 16 * direction, min, max));
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      onWidthChange(clampWidth(width + 16));
+      onWidthChange(clampWidth(width + 16 * direction, min, max));
     }
   };
 
@@ -64,14 +82,18 @@ export default function SidebarResizeHandle({ width, onWidthChange }: SidebarRes
     <div
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize sidebar"
-      aria-valuemin={SIDEBAR_MIN_WIDTH}
-      aria-valuemax={SIDEBAR_MAX_WIDTH}
+      aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
       aria-valuenow={width}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
-      className="absolute inset-y-0 left-(--sidebar-width) z-20 hidden w-1.5 -translate-x-1/2 cursor-col-resize focus-visible:outline-none md:block peer-data-[state=collapsed]:hidden"
+      className={
+        side === 'right'
+          ? 'absolute inset-y-0 right-(--sidebar-width) z-20 hidden w-1.5 translate-x-1/2 cursor-col-resize focus-visible:outline-none md:block peer-data-[state=collapsed]:hidden'
+          : 'absolute inset-y-0 left-(--sidebar-width) z-20 hidden w-1.5 -translate-x-1/2 cursor-col-resize focus-visible:outline-none md:block peer-data-[state=collapsed]:hidden'
+      }
     />
   );
 }

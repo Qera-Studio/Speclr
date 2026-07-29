@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import RecordPanel from '../RecordPanel';
+import { useRecordPanel } from '../useRecordPanel';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,15 +22,18 @@ import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
 
 export default function ServiceManager({ services }: { services: ServiceTemplate[] }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<ServiceTemplate | null>(null);
+  const {
+    editing,
+    open,
+    guardedSelect,
+    onDone,
+    dirtyProps,
+    pendingDiscard,
+    confirmDiscard,
+    cancelDiscard,
+  } = useRecordPanel<ServiceTemplate>();
   const [deleting, setDeleting] = useState<ServiceTemplate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const onDone = () => {
-    setOpen(false);
-    router.refresh();
-  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -43,35 +47,27 @@ export default function ServiceManager({ services }: { services: ServiceTemplate
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          Add service
-        </Button>
+        <Button onClick={() => guardedSelect(null)}>Add service</Button>
       </div>
 
       <ServicesTable
         services={services}
-        onEdit={(service) => {
-          setEditing(service);
-          setOpen(true);
-        }}
+        onEdit={(service) => guardedSelect(service)}
         onDelete={(service) => setDeleting(service)}
       />
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Edit service' : 'Add service'}</SheetTitle>
-          </SheetHeader>
-          <div className="px-4 pb-4">
-            <ServiceForm key={editing?.id ?? 'new'} service={editing} onDone={onDone} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <RecordPanel
+        title={editing ? 'Edit service' : 'Add service'}
+        open={open}
+        dirtyProps={dirtyProps}
+        pendingDiscard={pendingDiscard}
+        onConfirmDiscard={confirmDiscard}
+        onCancelDiscard={cancelDiscard}
+      >
+        {/* `key` remounts the form so react-hook-form re-reads defaultValues —
+            without it, switching records would show the previous one's values. */}
+        <ServiceForm key={editing?.id ?? 'new'} service={editing} onDone={onDone} />
+      </RecordPanel>
 
       <AlertDialog open={deleting !== null} onOpenChange={(next) => !next && setDeleting(null)}>
         <AlertDialogContent>

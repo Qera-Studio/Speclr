@@ -25,7 +25,7 @@ beforeEach(() => {
 
 describe('DocumentEditor (new invoice)', () => {
   it('renders the client select, a line item, and GST fields', () => {
-    render(<DocumentEditor typeCode="INV" clients={clients} />);
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
     expect(screen.getByLabelText(/client/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/gst rate/i)).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe('DocumentEditor (new invoice)', () => {
   it('creates a draft with rupees converted to paise on save', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-doc' });
     const u = userEvent.setup();
-    render(<DocumentEditor typeCode="INV" clients={clients} />);
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     await u.selectOptions(screen.getByLabelText(/client/i), 'c1');
     await u.type(screen.getByLabelText(/description/i), 'Design');

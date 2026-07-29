@@ -20,7 +20,8 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import ContractSheet from '@/components/docs/sheets/ContractSheet';
+import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
+import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import ScheduleCard from './ScheduleCard';
 
 const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
@@ -32,9 +33,11 @@ interface ContractEditorProps {
   clients: ClientRecord[];
   services: ServiceTemplate[];
   doc?: ContractDocument | null;
+  /** Shown in the workspace bar; supplied by the route page. */
+  title: string;
 }
 
-export default function ContractEditor({ clients, services, doc }: ContractEditorProps) {
+export default function ContractEditor({ clients, services, doc, title }: ContractEditorProps) {
   const router = useRouter();
   const [clientId, setClientId] = useState(doc?.clientId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -144,7 +147,12 @@ export default function ContractEditor({ clients, services, doc }: ContractEdito
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <DocumentWorkspace
+      title={title}
+      coverFirst
+      firstPageClassName={COVER_CLASSNAME}
+      preview={contractBlocks(previewDoc)}
+    >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="con-client">Client</FieldLabel>
@@ -232,10 +240,6 @@ export default function ContractEditor({ clients, services, doc }: ContractEdito
           ) : null}
         </div>
       </form>
-
-      <section aria-label="Live preview">
-        <ContractSheet doc={previewDoc} variant="paged" />
-      </section>
-    </div>
+    </DocumentWorkspace>
   );
 }

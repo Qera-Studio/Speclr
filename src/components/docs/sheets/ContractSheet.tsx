@@ -1,13 +1,12 @@
-import Paginator from '@/components/docs/Paginator';
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS } from '@/lib/domain/msaBoilerplate';
 import { scheduleLetter } from '@/lib/domain/scheduleLetter';
 import { STUDIO_INFO } from '@/lib/domain/studio';
 import type { ContractDocument } from '@/lib/domain/types';
 
-/** Cover page styling shared by the print flow and the Paginator's dedicated
+/** Cover page styling shared by the print flow and the preview's dedicated
  * cover-page frame — the black, full-bleed contract cover. */
-const COVER_CLASSNAME =
+export const COVER_CLASSNAME =
   'flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
@@ -48,7 +47,7 @@ function NoteBlock({ heading, note }: { heading: string; note?: string }) {
  * The contract as a flat list of atomic content blocks. Each entry is one
  * indivisible unit (the cover, the parties grid, one MSA clause, one
  * schedule, the signatures). This is the single source of truth the print
- * layout groups into logical `<section>`s below — the Paginator (Task 6) can
+ * layout groups into logical `<section>`s below — `DocumentPreview` can
  * rely on each top-level array entry being an atomic, unsplittable block.
  * The cover is always block 0 so it can style the first page black.
  */
@@ -295,29 +294,16 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
  * Blocks are grouped into logical page sections (cover / parties / terms /
  * one section per schedule / signatures) for print, but each MSA clause and
  * each schedule remains its own atomic block within `contractBlocks` — the
- * on-screen Paginator measures and packs that same flat block list.
+ * on-screen `DocumentPreview` measures and packs that same flat block list.
  *
- * `variant="print"` (default) renders the section-grouped print flow used by
- * `window.print()` / PDF export. `variant="paged"` instead feeds the flat
- * block list into the `Paginator` carousel for the on-screen preview, with
- * the cover pinned as its own full-bleed first page.
+ * This renders the section-grouped print flow used by `window.print()` / PDF
+ * export. The on-screen preview does **not** go through this component — it
+ * feeds the flat `contractBlocks(doc)` list straight into `DocumentPreview`,
+ * which measures and packs the blocks into pages with the cover pinned as its
+ * own full-bleed first page (`COVER_CLASSNAME`).
  */
-export default function ContractSheet({
-  doc,
-  variant = 'print',
-}: {
-  doc: ContractDocument;
-  variant?: 'print' | 'paged';
-}) {
+export default function ContractSheet({ doc }: { doc: ContractDocument }) {
   const blocks = contractBlocks(doc);
-
-  if (variant === 'paged') {
-    return (
-      <Paginator coverFirst firstPageClassName={COVER_CLASSNAME}>
-        {blocks}
-      </Paginator>
-    );
-  }
 
   const [cover, parties, ...rest] = blocks;
   const scheduleCount = doc.schedules.length;

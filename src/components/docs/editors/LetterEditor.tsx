@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
-import SheetPreview from '@/components/docs/SheetPreview';
+import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 
 type LetterType = 'OFR' | 'EXP' | 'EXIT';
 
@@ -69,9 +69,11 @@ interface LetterEditorProps {
   type: LetterType;
   employees: EmployeeRecord[];
   doc?: LetterDocument | null;
+  /** Shown in the workspace bar; supplied by the route page. */
+  title: string;
 }
 
-export default function LetterEditor({ type, employees, doc }: LetterEditorProps) {
+export default function LetterEditor({ type, employees, doc, title }: LetterEditorProps) {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -203,7 +205,7 @@ export default function LetterEditor({ type, employees, doc }: LetterEditorProps
     );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <DocumentWorkspace title={title} preview={<LetterSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="letter-employee">Employee</FieldLabel>
@@ -330,12 +332,6 @@ export default function LetterEditor({ type, employees, doc }: LetterEditorProps
           ) : null}
         </div>
       </form>
-
-      <section aria-label="Live preview">
-        <SheetPreview>
-          <LetterSheet doc={previewDoc} />
-        </SheetPreview>
-      </section>
-    </div>
+    </DocumentWorkspace>
   );
 }

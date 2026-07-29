@@ -28,14 +28,14 @@ beforeEach(() => {
 
 describe('LetterEditor (offer letter)', () => {
   it('renders the employee picker', () => {
-    render(<LetterEditor type="OFR" employees={employees} />);
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
   });
 
   it('seeds the body on employee select and creates a draft', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
     const u = userEvent.setup();
-    render(<LetterEditor type="OFR" employees={employees} />);
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
     await u.selectOptions(screen.getByLabelText(/employee/i), 'e1');
     // seeding fills in editable paragraphs (add-paragraph control is present)

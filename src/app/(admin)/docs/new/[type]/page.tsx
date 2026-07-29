@@ -28,29 +28,27 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
   const spec = DOC_TYPE_BY_SLUG[type];
   if (!spec) notFound();
 
-  const page = (body: React.ReactNode) => (
-    <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">New {spec.label.toLowerCase()}</h1>
-      {body}
-    </div>
-  );
+  // The editors own the full-height workspace layout (preview card + edit
+  // rail), so the route adds no wrapper or heading — the title goes into the
+  // workspace bar instead.
+  const title = `New ${spec.label.toLowerCase()}`;
 
   // ── HR documents (employee-based) ──────────────────────────────
   if (spec.code === 'STP') {
     const employees = await listEmployees();
-    return page(<StipendEditor employees={employees} />);
+    return <StipendEditor employees={employees} title={title} />;
   }
   if (spec.code === 'OFR' || spec.code === 'EXP' || spec.code === 'EXIT') {
     const employees = await listEmployees();
-    return page(<LetterEditor type={spec.code} employees={employees} />);
+    return <LetterEditor type={spec.code} employees={employees} title={title} />;
   }
 
   // ── Client-based documents ─────────────────────────────────────
   const clients = await listClients();
   if (spec.code === 'CON') {
     const services = await listServices();
-    return page(<ContractEditor clients={clients} services={services} />);
+    return <ContractEditor clients={clients} services={services} title={title} />;
   }
 
-  return page(<DocumentEditor typeCode={spec.code} clients={clients} />);
+  return <DocumentEditor typeCode={spec.code} clients={clients} title={title} />;
 }

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import RecordPanel from '../RecordPanel';
+import { useRecordPanel } from '../useRecordPanel';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,15 +22,18 @@ import type { EmployeeRecord } from '@/lib/domain/employee';
 
 export default function EmployeeManager({ employees }: { employees: EmployeeRecord[] }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<EmployeeRecord | null>(null);
+  const {
+    editing,
+    open,
+    guardedSelect,
+    onDone,
+    dirtyProps,
+    pendingDiscard,
+    confirmDiscard,
+    cancelDiscard,
+  } = useRecordPanel<EmployeeRecord>();
   const [deleting, setDeleting] = useState<EmployeeRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const onDone = () => {
-    setOpen(false);
-    router.refresh();
-  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -43,35 +47,27 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          Add employee
-        </Button>
+        <Button onClick={() => guardedSelect(null)}>Add employee</Button>
       </div>
 
       <EmployeesTable
         employees={employees}
-        onEdit={(employee) => {
-          setEditing(employee);
-          setOpen(true);
-        }}
+        onEdit={(employee) => guardedSelect(employee)}
         onDelete={(employee) => setDeleting(employee)}
       />
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Edit employee' : 'Add employee'}</SheetTitle>
-          </SheetHeader>
-          <div className="px-4 pb-4">
-            <EmployeeForm key={editing?.id ?? 'new'} employee={editing} onDone={onDone} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <RecordPanel
+        title={editing ? 'Edit employee' : 'Add employee'}
+        open={open}
+        dirtyProps={dirtyProps}
+        pendingDiscard={pendingDiscard}
+        onConfirmDiscard={confirmDiscard}
+        onCancelDiscard={cancelDiscard}
+      >
+        {/* `key` remounts the form so react-hook-form re-reads defaultValues —
+            without it, switching records would show the previous one's values. */}
+        <EmployeeForm key={editing?.id ?? 'new'} employee={editing} onDone={onDone} />
+      </RecordPanel>
 
       <AlertDialog open={deleting !== null} onOpenChange={(next) => !next && setDeleting(null)}>
         <AlertDialogContent>
