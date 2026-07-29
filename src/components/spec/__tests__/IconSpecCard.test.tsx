@@ -157,6 +157,59 @@ describe('IconSpecCard', () => {
     expect(await screen.findByRole('img', { name: /browser favicon.*preview/i })).toBeInTheDocument();
   });
 
+  it('fades strip mockups sideways at the card, and the phone on its own svg', () => {
+    // Strips run off both sides, so the card's preview area fades them
+    // horizontally. The phone's svg is h-auto and shorter than that container,
+    // so a mask there would resolve in empty space below it — its bottom fade
+    // lives on the svg itself, which is what actually gets cropped.
+    const { container: icoContainer } = render(
+      <IconSpecCard spec={icoSpec} slotState={emptySlotState} onUpdate={() => {}} />,
+    );
+    const icoPreview = icoContainer.querySelector<HTMLElement>('[style*="mask-image"]');
+    expect(icoPreview?.style.maskImage).toContain('to right');
+
+    const appleSpec = ICON_SPECS.find((s) => s.id === 'apple-touch-icon')!;
+    const { container: appleContainer } = render(
+      <IconSpecCard spec={appleSpec} slotState={emptySlotState} onUpdate={() => {}} />,
+    );
+    const masked = appleContainer.querySelector<HTMLElement>('[style*="mask-image"]');
+    // The mask is on the svg, not the preview wrapper.
+    expect(masked?.tagName.toLowerCase()).toBe('svg');
+    expect(masked?.style.maskImage).toContain('to bottom');
+  });
+
+  it('fades the serp preview on all four edges, composited', () => {
+    // The page is a zoomed crop meeting the frame on every side. Two gradients
+    // must intersect — stacked without compositing they union, and nothing
+    // fades at all.
+    const serpSpec = ICON_SPECS.find((s) => s.id === 'favicon-192')!;
+    const { container } = render(
+      <IconSpecCard spec={serpSpec} slotState={emptySlotState} onUpdate={() => {}} />,
+    );
+    const frame = container.querySelector<HTMLElement>('[style*="mask-image"]');
+    // Each axis fades at both ends, so each gradient carries two transparent stops.
+    for (const axis of ['to right', 'to bottom']) {
+      expect(frame?.style.maskImage).toContain(axis);
+    }
+    expect(frame?.style.maskImage?.match(/transparent/g)).toHaveLength(4);
+    expect(frame?.style.maskComposite).toBe('intersect');
+  });
+
+  it('gives every centred preview the same 500x250 frame', async () => {
+    // The frame is what keeps cards level: without a shared size, a tall mockup
+    // sets its card's height and the row's other card grows a gap to match.
+    const kinds = ['favicon-ico', 'favicon-32', 'favicon-192', 'apple-touch-icon'] as const;
+    for (const id of kinds) {
+      const spec = ICON_SPECS.find((s) => s.id === id)!;
+      const { container, unmount } = render(
+        <IconSpecCard spec={spec} slotState={emptySlotState} onUpdate={() => {}} />,
+      );
+      const frame = container.querySelector('.max-w-\\[500px\\]');
+      expect(frame?.getAttribute('class')).toContain('h-[250px]');
+      unmount();
+    }
+  });
+
   it('removing an uploaded file clears the slot back to empty', async () => {
     const onUpdate = jest.fn();
     const user = userEvent.setup();
