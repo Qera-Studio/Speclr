@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from './index';
 import { clients, documents, employees, serviceTemplates } from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
@@ -26,6 +26,10 @@ export async function saveClient(client: ClientRecord): Promise<void> {
     id: client.id,
     name: client.name,
     address: client.address,
+    // Explicitly null rather than omitted: this same object is the
+    // `onConflictDoUpdate` set, so leaving the key out would keep stale parts
+    // on the row after an edit that cleared them.
+    addressParts: client.addressParts ?? null,
     email: client.email,
     phone: client.phone,
     gstin: client.gstin ?? null,
@@ -43,6 +47,7 @@ function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
     id: r.id,
     name: r.name,
     address: r.address,
+    addressParts: r.addressParts ?? undefined,
     email: r.email,
     phone: r.phone,
     gstin: r.gstin ?? undefined,
@@ -68,6 +73,8 @@ export async function saveEmployee(emp: EmployeeRecord): Promise<void> {
     id: emp.id,
     name: emp.name,
     address: emp.address,
+    // Explicit null — see the note in saveClient.
+    addressParts: emp.addressParts ?? null,
     email: emp.email,
     phone: emp.phone,
     role: emp.role,
@@ -76,6 +83,7 @@ export async function saveEmployee(emp: EmployeeRecord): Promise<void> {
     joiningDate: emp.joiningDate,
     endDate: emp.endDate ?? null,
     payAmountPaise: emp.payAmountPaise,
+    payCurrency: emp.payCurrency ?? null,
     bank: emp.bank,
     createdAt: new Date(emp.createdAt),
     updatedAt: new Date(emp.updatedAt),
@@ -91,6 +99,7 @@ function employeeFromRow(r: typeof employees.$inferSelect): EmployeeRecord {
     id: r.id,
     name: r.name,
     address: r.address,
+    addressParts: r.addressParts ?? undefined,
     email: r.email,
     phone: r.phone,
     role: r.role,
@@ -99,6 +108,7 @@ function employeeFromRow(r: typeof employees.$inferSelect): EmployeeRecord {
     joiningDate: r.joiningDate,
     endDate: r.endDate ?? undefined,
     payAmountPaise: r.payAmountPaise,
+    payCurrency: (r.payCurrency ?? undefined) as EmployeeRecord['payCurrency'],
     bank: r.bank,
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
@@ -199,6 +209,32 @@ export async function getDocument(id: string): Promise<AdminDocument | null> {
 
 export async function listDocuments(): Promise<AdminDocument[]> {
   const rows = await db.select().from(documents).orderBy(desc(documents.createdAt));
+  return rows.map((r) => fromRow(r as DocumentRow));
+}
+
+/**
+ * Finalized invoices for one client, newest first — the source for the
+ * receipt's "against invoice" picker.
+ *
+ * Drafts are excluded on purpose: a draft has no number yet, so it isn't
+ * something a receipt can reference. Uses the existing client_id/type/status
+ * indexes. Capped because a picker never needs more than a page of history.
+ */
+export async function listFinalizedInvoicesForClient(
+  clientId: string,
+): Promise<AdminDocument[]> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.clientId, clientId),
+        eq(documents.type, 'INV'),
+        eq(documents.status, 'finalized'),
+      ),
+    )
+    .orderBy(desc(documents.issueDate), desc(documents.createdAt))
+    .limit(100);
   return rows.map((r) => fromRow(r as DocumentRow));
 }
 

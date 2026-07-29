@@ -8,6 +8,7 @@ import {
   todayISO,
 } from '@/lib/domain/dates';
 import { DOC_TYPES, type DocFields } from '@/lib/domain/registry';
+import { computeTotals } from '@/lib/domain/money';
 import type {
   ActionResult,
   AdminDocument,
@@ -17,6 +18,7 @@ import type {
   DocTypeCode,
   EmployeeSnapshot,
   InvoiceDocument,
+  InvoiceOption,
   LetterDocument,
   ReceiptDocument,
   StipendDocument,
@@ -28,6 +30,7 @@ import {
   getClient,
   getDocument,
   getEmployee,
+  listFinalizedInvoicesForClient,
   saveDocument,
 } from '@/db/store';
 import { logger } from '@/lib/logger';
@@ -404,4 +407,39 @@ export async function deleteDraftAction(id: unknown): Promise<ActionResult> {
 
   revalidatePath('/');
   return { success: true };
+}
+
+/**
+ * Finalized invoices for a client, newest first.
+ *
+ * Auth-gated like every other action — the list of a client's invoices is not
+ * public just because the caller knows a client id.
+ */
+export async function listInvoicesForClient(clientId: unknown): Promise<InvoiceOption[]> {
+  if (!(await authorized())) return [];
+  if (typeof clientId !== 'string' || clientId.length === 0) return [];
+
+  try {
+    const docs = await listFinalizedInvoicesForClient(clientId);
+    return docs.flatMap((doc) => {
+      // A finalized invoice always has a number; skip anything that somehow
+      // doesn't rather than offering an unidentifiable row.
+      if (doc.type !== 'INV' || !doc.number) return [];
+      return [
+        {
+          id: doc.id,
+          number: doc.number,
+          issueDate: doc.issueDate,
+          totalPaise: computeTotals(doc.lineItems, doc.gstRatePercent).totalPaise,
+          lineItems: doc.lineItems,
+          gstRatePercent: doc.gstRatePercent,
+          placeOfSupplyStateCode: doc.placeOfSupplyStateCode,
+          gstLabel: doc.gstLabel,
+        },
+      ];
+    });
+  } catch (err) {
+    logger.error({ action: 'listInvoicesForClient', event: 'query_failed', error: err });
+    return [];
+  }
 }

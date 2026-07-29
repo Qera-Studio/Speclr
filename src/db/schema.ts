@@ -24,6 +24,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import type { AddressParts } from '@/lib/domain/address';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type {
   ClientSnapshot,
@@ -40,8 +41,16 @@ import type {
 export const clients = pgTable('clients', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  /** Flat printable address — what documents render. Stays authoritative. */
   address: text('address').notNull(),
+  /**
+   * Structured address for editing and pincode autofill, composed into
+   * `address` at save time. Nullable: rows written before this existed have no
+   * parts, and that must keep working.
+   */
+  addressParts: jsonb('address_parts').$type<AddressParts>(),
   email: text('email').notNull(),
+  /** E.164 for new writes; legacy rows may hold arbitrary text. */
   phone: text('phone').notNull(),
   gstin: text('gstin'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -53,8 +62,12 @@ export const clients = pgTable('clients', {
 export const employees = pgTable('employees', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  /** Flat printable address — what HR documents render. */
   address: text('address').notNull(),
+  /** Structured parts for editing; null on rows that predate them. */
+  addressParts: jsonb('address_parts').$type<AddressParts>(),
   email: text('email').notNull(),
+  /** E.164 for new writes; legacy rows may hold arbitrary text. */
   phone: text('phone').notNull(),
   role: text('role').notNull(),
   engagementType: text('engagement_type').notNull(), // 'intern' | 'employee'
@@ -62,7 +75,9 @@ export const employees = pgTable('employees', {
   joiningDate: date('joining_date').notNull(),
   endDate: date('end_date'),
   payAmountPaise: integer('pay_amount_paise').notNull(),
-  /** { bankName, accountNo, ifsc, upiId? } */
+  /** Record-keeping only — documents still print INR. Null means INR. */
+  payCurrency: text('pay_currency'),
+  /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
   bank: jsonb('bank').notNull().$type<EmployeeRecord['bank']>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

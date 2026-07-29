@@ -221,6 +221,23 @@ export type AdminDocument =
   | StipendDocument
   | LetterDocument;
 
+/**
+ * Slim view of a finalized invoice, for the receipt's "against invoice" picker.
+ * Carries just enough to identify the invoice and to autofill a receipt from
+ * it — never the whole document.
+ */
+export interface InvoiceOption {
+  id: string;
+  /** e.g. 'QS-INV-2627-001'. Always present: only finalized invoices qualify. */
+  number: string;
+  issueDate: string;
+  totalPaise: number;
+  lineItems: LineItem[];
+  gstRatePercent: number;
+  placeOfSupplyStateCode?: string;
+  gstLabel?: string;
+}
+
 export interface DocTotals {
   subtotalPaise: number;
   gstPaise: number;

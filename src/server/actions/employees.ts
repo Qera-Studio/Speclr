@@ -8,6 +8,7 @@ import type { ActionResult } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { deleteEmployee, getEmployee, saveEmployee } from '@/db/store';
 import { logger } from '@/lib/logger';
+import { withComposedAddress } from './address';
 
 export async function createEmployee(data: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
@@ -18,7 +19,7 @@ export async function createEmployee(data: unknown): Promise<ActionResult> {
   const now = Date.now();
   const employee: EmployeeRecord = {
     id: randomUUID(),
-    ...parsed.data,
+    ...withComposedAddress(parsed.data),
     createdAt: now,
     updatedAt: now,
   };
@@ -48,7 +49,11 @@ export async function updateEmployee(id: unknown, data: unknown): Promise<Action
   if (!existing) return { success: false, error: 'Employee not found.' };
 
   try {
-    await saveEmployee({ ...existing, ...parsed.data, updatedAt: Date.now() });
+    await saveEmployee({
+      ...existing,
+      ...withComposedAddress(parsed.data),
+      updatedAt: Date.now(),
+    });
   } catch (err) {
     logger.error({ action: 'updateEmployee', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to save employee.' };
