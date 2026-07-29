@@ -5,10 +5,14 @@ export type IconFormat = 'ico' | 'png' | 'svg' | 'jpeg';
 export type PreviewMockupKind =
   | 'browserTab'
   | 'bookmarksBar'
+  | 'safariPinnedTab'
   | 'iosHomeScreen'
   | 'maskableSafeZone'
   | 'googleSerp'
   | 'socialCard'
+  | 'socialCardSquare'
+  | 'androidLauncher'
+  | 'pwaInstall'
   | 'none';
 
 export interface IconDimensions {

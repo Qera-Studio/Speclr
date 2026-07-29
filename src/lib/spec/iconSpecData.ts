@@ -61,7 +61,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: 'Square, non-transparent, exactly 512×512 for manifest compliance.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'none',
+    previewMockup: 'pwaInstall',
   },
   {
     id: 'apple-touch-icon',
@@ -92,7 +92,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: 'Full-bleed square PNG at 192×192 and 512×512, opaque background recommended.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'none',
+    previewMockup: 'androidLauncher',
   },
   {
     id: 'manifest-icon-maskable',
@@ -139,7 +139,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: '1200×1200px, same content-safety principles as the landscape OG image.',
     priority: 'nice-to-have',
     requireOpaque: false,
-    previewMockup: 'socialCard',
+    previewMockup: 'socialCardSquare',
   },
   {
     id: 'svg-favicon',
@@ -166,9 +166,9 @@ export const ICON_SPECS: IconSpec[] = [
     whyItMatters:
       'Deprecated by Apple in Safari 12 (2018) — modern Safari uses the regular favicon for pinned tabs, so mask-icon only still applies to older macOS Safari. Ship it only if you need that long tail; skipping it costs nothing on current browsers.',
     industryStandard:
-      'Not a picture but a mask: Safari reads only the alpha channel and repaints the shape in the user\'s accent colour via the link tag\'s color attribute, so colour inside the file is ignored. Must be a single-colour SVG silhouette on a transparent background — the one slot here where transparency is required rather than disallowed, which usually means simplifying the logo to a shape that survives being flattened to one colour.',
+      'Two behaviours, depending on the Safari version. Where mask-icon still applies (pre-Safari 12) it is a mask, not a picture: only the alpha channel is read and the shape is repainted in the accent colour set by the link tag, so the file must be a single-colour SVG silhouette on transparency — the one slot here where transparency is required rather than disallowed. Modern Safari ignores mask-icon entirely and pins the regular favicon in full colour, which is what the preview shows.',
     priority: 'nice-to-have',
     requireOpaque: false,
-    previewMockup: 'none',
+    previewMockup: 'safariPinnedTab',
   },
 ];
