@@ -17,6 +17,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -248,14 +249,10 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
                 value={p}
                 onChange={(e) => updateParagraph(i, e.target.value)}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => removeParagraph(i)}
-                aria-label={`Remove paragraph ${i + 1}`}
-              >
-                Remove
-              </Button>
+              <RemoveButton
+                label={`Remove paragraph ${i + 1}`}
+                onConfirm={() => removeParagraph(i)}
+              />
             </div>
           ))}
           <div>
@@ -287,14 +284,10 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
                   value={item}
                   onChange={(e) => updateBulletItem(si, ii, e.target.value)}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => removeBulletItem(si, ii)}
-                  aria-label={`Remove bullet ${ii + 1} in section ${si + 1}`}
-                >
-                  Remove
-                </Button>
+                <RemoveButton
+                  label={`Remove bullet ${ii + 1} in section ${si + 1}`}
+                  onConfirm={() => removeBulletItem(si, ii)}
+                />
               </div>
             ))}
             <div>

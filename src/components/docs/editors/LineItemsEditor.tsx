@@ -5,6 +5,7 @@ import { rupeesToPaise } from '@/lib/domain/money';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { RemoveButton } from '@/components/ui/remove-button';
 import { emptyLineItem, type EditorFormValues } from './useDocumentForm';
 
 interface LineItemsEditorProps {
@@ -44,15 +45,11 @@ export default function LineItemsEditor({ register, fieldArray }: LineItemsEdito
               <FieldLabel htmlFor={`item-qty-${index}`}>Qty</FieldLabel>
               <Input id={`item-qty-${index}`} inputMode="decimal" {...register(`lineItems.${index}.qty`)} />
             </Field>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => remove(index)}
+            <RemoveButton
+              label={`Remove line item ${index + 1}`}
+              onConfirm={() => remove(index)}
               disabled={fields.length === 1}
-              aria-label={`Remove line item ${index + 1}`}
-            >
-              Remove
-            </Button>
+            />
           </div>
         </div>
       ))}
