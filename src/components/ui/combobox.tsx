@@ -100,14 +100,20 @@ function Combobox({
       </div>
 
       <ComboboxPrimitive.Portal>
+        {/*
+          `min-w`, not `w`: in the 384px editor rail, pinning the popup to the
+          trigger width truncated option labels to "01 — Stat…". The popup may
+          grow past the field to show the full label, capped so it can't run
+          off-screen.
+        */}
         <ComboboxPrimitive.Positioner
           sideOffset={4}
-          className="isolate z-50 w-(--anchor-width)"
+          className="isolate z-50 min-w-(--anchor-width) max-w-(--available-width)"
         >
           <ComboboxPrimitive.Popup
             data-slot="combobox-content"
             data-size={size}
-            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
+            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-max min-w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
           >
             <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
               {emptyMessage}
@@ -120,9 +126,10 @@ function Combobox({
                   className="relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 pr-7 text-xs/relaxed outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:pr-8 group-data-[size=form]/combobox-content:text-sm"
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate">{item.label}</span>
+                    {/* No truncate — the popup sizes to its content instead. */}
+                    <span className="whitespace-nowrap">{item.label}</span>
                     {item.hint ? (
-                      <span className="truncate text-xs/relaxed text-muted-foreground">
+                      <span className="whitespace-nowrap text-xs/relaxed text-muted-foreground">
                         {item.hint}
                       </span>
                     ) : null}

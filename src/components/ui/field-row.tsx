@@ -14,10 +14,15 @@ import { cn } from "@/lib/utils"
  * neighbour's control, and `min-w-0` lets long option text truncate instead of
  * forcing the column wider.
  *
- * The breakpoint is `@xs` (20rem/320px), not `@md`: the editor rail is 384px
- * wide (EDITOR_RAIL_WIDTH) and its padding leaves roughly 340px of content, so
- * an `@md` (448px) query would never fire and every row would silently stack.
- * Below 320px — genuinely cramped — stacking is the right answer anyway.
+ * The query is against the enclosing `field-group` container, not the row
+ * itself — an element cannot answer its own container query, and doing so
+ * silently leaves every row stacked at one column.
+ *
+ * The breakpoint is `@2xs` (18rem/288px). The editor rail is 384px wide
+ * (EDITOR_RAIL_WIDTH) and its padding leaves roughly 300px of content, so
+ * anything larger — `@xs` is already 320px — never fires there and every row
+ * silently stacks. Measured in a browser, not guessed. Below 288px, genuinely
+ * cramped, stacking is the right answer anyway.
  */
 function FieldRow({
   className,
@@ -28,8 +33,10 @@ function FieldRow({
     <div
       data-slot="field-row"
       className={cn(
-        "@container/field-row grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
-        columns === 2 ? "@xs/field-row:grid-cols-2" : "@xs/field-row:grid-cols-3",
+        "grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
+        columns === 2
+          ? "@2xs/field-group:grid-cols-2"
+          : "@2xs/field-group:grid-cols-3",
         className
       )}
       {...props}

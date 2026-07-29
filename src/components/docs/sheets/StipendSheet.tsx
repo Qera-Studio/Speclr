@@ -199,13 +199,25 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[1fr_1fr_1.4fr] gap-[24px] items-start border-t border-[#d9d9d9] pt-[16px] mb-[24px]">
+        {/*
+          minmax(0,…) pins the tracks to their share of the width. Bare `fr`
+          floors at the content width, so the QR added to the first column
+          would widen it and pull the other two in — a couple of pixels of
+          drift on an artifact that is meant to be pixel-faithful.
+        */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)] gap-[24px] items-start border-t border-[#d9d9d9] pt-[16px] mb-[24px]">
           <section aria-label="Recipient bank account">
             <h3 className="text-black text-[24px] font-bold tracking-[-0.02em] mb-[8px]">
               {accountHeading}
             </h3>
-            <div className="flex items-start gap-[12px]">
-              <dl className="m-0 flex-1">
+            {/*
+              Stacked, not side by side: the account column is ~212px wide and
+              a 28mm QR beside the details overflowed into the DETAILS column
+              next to it. Verified in a browser — the numeric width checks
+              didn't catch it because the block's own width stayed correct.
+            */}
+            <div className="flex flex-col gap-[8px]">
+              <dl className="m-0">
                 <div className="flex gap-[16px]">
                   <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">Bank</dt>
                   <dd className="m-0 text-black text-[11px] font-medium">{emp.bank.bankName}</dd>
@@ -236,12 +248,12 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
                 print-color-adjust keeps it from being dropped when printing.
               */}
               {emp.bank.upiQrDataUrl ? (
-                <figure className="m-0 shrink-0 text-center [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
+                <figure className="m-0 w-[24mm] [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={emp.bank.upiQrDataUrl}
                     alt={`UPI QR code for ${emp.name || 'the recipient'}`}
-                    className="w-[28mm] h-[28mm] object-contain bg-white"
+                    className="w-[24mm] h-[24mm] object-contain bg-white"
                   />
                   <figcaption className="text-black/70 text-[9px] font-normal mt-[2px]">
                     scan to pay
