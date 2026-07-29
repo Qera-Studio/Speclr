@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Controller } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import {
   createDraft,
@@ -17,15 +18,28 @@ import type {
   InvoiceDocument,
   ReceiptDocument,
 } from '@/lib/domain/types';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Combobox } from '@/components/ui/combobox';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import LineItemsEditor from './LineItemsEditor';
+import InvoicePicker from './InvoicePicker';
 import TotalsPanel from './TotalsPanel';
+import { paiseToRupees } from '@/lib/domain/money';
+import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
 
 /** DocumentEditor only handles financial docs; contracts use ContractEditor. */
@@ -88,8 +102,7 @@ interface DocumentEditorProps {
   title: string;
 }
 
-const selectClass =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
+const PAYMENT_METHODS: PaymentMethod[] = ['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other'];
 
 export default function DocumentEditor({ typeCode, clients, doc, title }: DocumentEditorProps) {
   const router = useRouter();
@@ -99,6 +112,8 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
     register,
     handleSubmit,
     watch,
+    setValue,
+    control,
     formState: { isSubmitting },
   } = form;
   const [serverError, setServerError] = useState<string | null>(null);
@@ -148,6 +163,50 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
     router.push(`/docs/${doc.id}/print`);
   });
 
+  /**
+   * Copies an invoice's billing detail into this receipt.
+   *
+   * Everything stays editable afterwards — a receipt can settle part of an
+   * invoice, so this is a starting point, not a lock. Both the id and the
+   * printed number are set together; see `clearInvoiceLink` for why they must
+   * never drift apart.
+   */
+  const applyInvoice = (invoice: InvoiceOption | null) => {
+    if (!invoice) {
+      setValue('againstInvoiceId', '', { shouldDirty: true });
+      setValue('againstInvoiceNumber', '', { shouldDirty: true });
+      return;
+    }
+
+    setValue('againstInvoiceId', invoice.id, { shouldDirty: true });
+    setValue('againstInvoiceNumber', invoice.number, { shouldDirty: true });
+    setValue('gstRatePercent', String(invoice.gstRatePercent), { shouldDirty: true });
+    setValue('placeOfSupplyStateCode', invoice.placeOfSupplyStateCode ?? '', { shouldDirty: true });
+    setValue('gstLabel', invoice.gstLabel ?? '', { shouldDirty: true });
+    lineItems.replace(
+      invoice.lineItems.map((item) => ({
+        description: item.description,
+        detail: item.detail ?? '',
+        rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : '',
+        qty: String(item.qty),
+      })),
+    );
+  };
+
+  /**
+   * Hand-editing the invoice number drops the stored id.
+   *
+   * The id and the number must always point at the same invoice. If someone
+   * retypes the number, we can no longer vouch for the id — and a receipt whose
+   * stored link quietly disagrees with the number printed on it is worse than
+   * one with no link at all.
+   */
+  const clearInvoiceLink = () => {
+    if (watch('againstInvoiceId')) {
+      setValue('againstInvoiceId', '', { shouldDirty: true });
+    }
+  };
+
   const onDelete = async () => {
     if (!doc) return;
     if (!window.confirm('Delete this draft? This cannot be undone.')) return;
@@ -163,92 +222,178 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
   return (
     <DocumentWorkspace title={title} preview={<DocumentSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
-        <Field>
-          <FieldLabel htmlFor="doc-client">Client</FieldLabel>
-          <select id="doc-client" className={selectClass} {...register('clientId')}>
-            <option value="">Select a client…</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <div className="flex flex-wrap gap-4">
-          <Field className="flex-1">
-            <FieldLabel htmlFor="doc-issue-date">Issue date</FieldLabel>
-            <Input id="doc-issue-date" type="date" {...register('issueDate')} />
+        <FieldGroup size="form">
+          <Field>
+            <FieldLabel htmlFor="doc-client">Client</FieldLabel>
+            <Controller
+              control={control}
+              name="clientId"
+              render={({ field }) => (
+                <Combobox
+                  id="doc-client"
+                  size="form"
+                  options={clients.map((client) => ({ value: client.id, label: client.name }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select a client…"
+                  emptyMessage="No matching clients."
+                />
+              )}
+            />
           </Field>
-          {spec.hasDueDate ? (
-            <Field className="flex-1">
-              <FieldLabel htmlFor="doc-due-date">Due date (optional)</FieldLabel>
-              <Input id="doc-due-date" type="date" {...register('dueDate')} />
+
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="doc-issue-date">Issue date</FieldLabel>
+              <Controller
+                control={control}
+                name="issueDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="doc-issue-date"
+                    size="form"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                )}
+              />
             </Field>
-          ) : null}
-        </div>
-
-        <LineItemsEditor register={register} fieldArray={lineItems} />
-
-        <div className="flex flex-wrap gap-4">
-          <Field className="flex-1">
-            <FieldLabel htmlFor="doc-gst-rate">GST rate (%)</FieldLabel>
-            <Input id="doc-gst-rate" inputMode="numeric" {...register('gstRatePercent')} />
-          </Field>
-          <Field className="flex-1">
-            <FieldLabel htmlFor="doc-place-of-supply">Place of supply (required when GST applies)</FieldLabel>
-            <select id="doc-place-of-supply" className={selectClass} {...register('placeOfSupplyStateCode')}>
-              <option value="">Select a state…</option>
-              {GST_STATES.map((state) => (
-                <option key={state.code} value={state.code}>
-                  {state.code} — {state.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <Field>
-          <FieldLabel htmlFor="doc-gst-label">GST note (shown when rate is 0)</FieldLabel>
-          <Input id="doc-gst-label" {...register('gstLabel')} />
-        </Field>
-
-        {spec.hasPayment ? (
-          <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
-            <legend className="px-1 text-sm font-medium">Payment</legend>
-            <div className="flex flex-wrap gap-4">
-              <Field className="flex-1">
-                <FieldLabel htmlFor="doc-payment-date">Payment date</FieldLabel>
-                <Input id="doc-payment-date" type="date" {...register('paymentDate')} />
+            {spec.hasDueDate ? (
+              <Field>
+                <FieldLabel htmlFor="doc-due-date">Due date (optional)</FieldLabel>
+                <Controller
+                  control={control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <DatePicker
+                      id="doc-due-date"
+                      size="form"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="No due date"
+                    />
+                  )}
+                />
               </Field>
-              <Field className="flex-1">
-                <FieldLabel htmlFor="doc-payment-method">Method</FieldLabel>
-                <select id="doc-payment-method" className={selectClass} {...register('paymentMethod')}>
-                  <option>Bank Transfer</option>
-                  <option>UPI</option>
-                  <option>Cash</option>
-                  <option>Card</option>
-                  <option>Other</option>
-                </select>
+            ) : null}
+          </FieldRow>
+
+          <LineItemsEditor register={register} fieldArray={lineItems} />
+
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="doc-gst-rate">GST rate (%)</FieldLabel>
+              <Input id="doc-gst-rate" size="form" inputMode="numeric" {...register('gstRatePercent')} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="doc-place-of-supply">Place of supply</FieldLabel>
+              <Controller
+                control={control}
+                name="placeOfSupplyStateCode"
+                render={({ field }) => (
+                  <Combobox
+                    id="doc-place-of-supply"
+                    size="form"
+                    options={GST_STATES.map((state) => ({
+                      value: state.code,
+                      label: `${state.code} — ${state.name}`,
+                    }))}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select a state…"
+                    emptyMessage="No matching states."
+                  />
+                )}
+              />
+              <FieldDescription>Required when GST applies.</FieldDescription>
+            </Field>
+          </FieldRow>
+
+          <Field>
+            <FieldLabel htmlFor="doc-gst-label">GST note (shown when rate is 0)</FieldLabel>
+            <Input id="doc-gst-label" size="form" {...register('gstLabel')} />
+          </Field>
+
+          {spec.hasPayment ? (
+            <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
+              <legend className="px-1 text-sm font-medium">Payment</legend>
+
+              <Field>
+                <FieldLabel htmlFor="doc-against-invoice-picker">Against invoice</FieldLabel>
+                <InvoicePicker
+                  id="doc-against-invoice-picker"
+                  clientId={watch('clientId')}
+                  value={watch('againstInvoiceId')}
+                  onSelect={applyInvoice}
+                />
+                <FieldDescription>
+                  Fills in the line items and GST from that invoice. You can still edit them.
+                </FieldDescription>
               </Field>
-            </div>
-            <div className="flex flex-wrap gap-4">
-              <Field className="flex-1">
+
+              <Field>
+                <FieldLabel htmlFor="doc-against-invoice">Invoice number</FieldLabel>
+                <Input
+                  id="doc-against-invoice"
+                  size="form"
+                  {...register('againstInvoiceNumber', { onChange: clearInvoiceLink })}
+                />
+              </Field>
+
+              <FieldRow>
+                <Field>
+                  <FieldLabel htmlFor="doc-payment-date">Payment date</FieldLabel>
+                  <Controller
+                    control={control}
+                    name="paymentDate"
+                    render={({ field }) => (
+                      <DatePicker
+                        id="doc-payment-date"
+                        size="form"
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      />
+                    )}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="doc-payment-method">Method</FieldLabel>
+                  <Controller
+                    control={control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) => field.onChange(v as PaymentMethod)}
+                      >
+                        <SelectTrigger id="doc-payment-method" size="form" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent size="form">
+                          {PAYMENT_METHODS.map((method) => (
+                            <SelectItem key={method} value={method}>
+                              {method}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+              </FieldRow>
+
+              <Field>
                 <FieldLabel htmlFor="doc-payment-ref">Reference (optional)</FieldLabel>
-                <Input id="doc-payment-ref" {...register('paymentReference')} />
+                <Input id="doc-payment-ref" size="form" {...register('paymentReference')} />
               </Field>
-              <Field className="flex-1">
-                <FieldLabel htmlFor="doc-against-invoice">Against invoice # (optional)</FieldLabel>
-                <Input id="doc-against-invoice" {...register('againstInvoiceNumber')} />
-              </Field>
-            </div>
-          </fieldset>
-        ) : null}
+            </fieldset>
+          ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="doc-notes">Notes (optional)</FieldLabel>
-          <Textarea id="doc-notes" rows={2} {...register('notes')} />
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="doc-notes">Notes (optional)</FieldLabel>
+            <Textarea id="doc-notes" size="form" rows={2} {...register('notes')} />
+          </Field>
+        </FieldGroup>
 
         <TotalsPanel totals={totals} gstRatePercent={previewDoc.gstRatePercent} />
 
