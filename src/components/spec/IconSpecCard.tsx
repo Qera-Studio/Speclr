@@ -34,7 +34,45 @@ type Verdict = { label: string; variant: 'default' | 'destructive' | 'secondary'
 
 // Mockups shown as a persistent, centred template in the card body (visible
 // before upload). Others still live inside the checks dropdown post-upload.
-const CENTER_PREVIEW_KINDS: PreviewMockupKind[] = ['browserTab', 'bookmarksBar'];
+const CENTER_PREVIEW_KINDS: PreviewMockupKind[] = [
+  'browserTab',
+  'bookmarksBar',
+  'safariPinnedTab',
+  'iosHomeScreen',
+  'androidLauncher',
+  'pwaInstall',
+  'googleSerp',
+];
+
+// How each centred mockup meets the card's edges. Browser chrome and the
+// bookmarks bar are strips that run off both sides, so they fade left/right.
+// The phone is a whole object that must stay fully visible — it only runs off
+// the bottom, so it fades there instead. Fading a phone at its sides would clip
+// its frame and read as a rendering bug.
+const EDGE_FADE: Partial<Record<PreviewMockupKind, string>> = {
+  browserTab: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+  bookmarksBar: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+  // The pinned-tab row starts at the card's centre and runs off the right, so it
+  // only fades on that side — fading the left would cut the uploaded tab.
+  safariPinnedTab: 'linear-gradient(to right, black 55%, transparent)',
+  // No entry for iosHomeScreen: that svg is h-auto and shorter than this
+  // container, so a mask here would resolve in empty space below the phone. It
+  // carries its own bottom fade instead.
+  //
+  // The SERP page is a zoomed crop, so it meets the frame on all four edges.
+  // Both gradients fade at each end, intersected. The ramps are deliberately
+  // tight — 2% leading, 4% trailing — because this preview is dense text: a
+  // wider ramp reads as a shadow washing over the content rather than an edge.
+  googleSerp:
+    'linear-gradient(to right, transparent, black 2%, black 96%, transparent), linear-gradient(to bottom, transparent, black 2%, black 96%, transparent)',
+};
+
+/** Mask sources that layer two gradients need composited, not just stacked. */
+const EDGE_FADE_COMPOSITE: Partial<Record<PreviewMockupKind, string>> = {
+  // Without `intersect` the two gradients union, which leaves both edges opaque
+  // and fades nothing.
+  googleSerp: 'intersect',
+};
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -223,15 +261,19 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             Rolling out one mockup kind at a time (browser tab first). */}
         {showCenterPreview && (
           <div
-            // overflow-hidden contains transform-scaled mockups (the bookmarks
-            // bar renders small then scales 3x) so they can't bleed into the
-            // tabs above or the dropzone below.
-            className="flex flex-1 items-center justify-center overflow-hidden py-4"
-            // Fade the browser-chrome out at the left/right edges so it blends
-            // into the card instead of hard-cutting.
+            // The shared 500x250 frame — every preview gets the same one, so no
+            // mockup can set its card's height by being unusually tall, and
+            // overflow-hidden contains the ones that scale up or bleed past it.
+            // Fixed size, so the card's spare height is left to the spacer below
+            // rather than padding this frame out.
+            className="mx-auto flex h-[250px] w-full max-w-[500px] flex-none items-center justify-center overflow-hidden"
+            // Blend the mockup into the card instead of hard-cutting it. The
+            // direction depends on which way the mockup overflows — see EDGE_FADE.
             style={{
-              maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
-              WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+              maskImage: EDGE_FADE[spec.previewMockup],
+              WebkitMaskImage: EDGE_FADE[spec.previewMockup],
+              maskComposite: EDGE_FADE_COMPOSITE[spec.previewMockup],
+              WebkitMaskComposite: EDGE_FADE_COMPOSITE[spec.previewMockup] && 'source-in',
             }}
           >
             <PreviewMockup
@@ -325,6 +367,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             </button>
           )}
         </div>
+
       </CardContent>
     </Card>
   );

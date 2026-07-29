@@ -53,6 +53,9 @@ export default function IconSpecTool() {
 
       <ImportProgressControls onImport={importProgress} importError={importError} />
 
+      {/* Equal-height rows. Safe now that every preview sits in the same fixed
+          500x250 frame — cards differ only by their text, so the slack a short
+          card absorbs is small rather than a visible hole. */}
       <div className="grid auto-rows-fr gap-6 md:grid-cols-2">
         {ICON_SPECS.map((spec) => (
           <IconSpecCard
