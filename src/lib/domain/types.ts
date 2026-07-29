@@ -3,14 +3,29 @@
  * Client-safe: no server imports — these types cross the RSC boundary.
  */
 
+import type { AddressParts } from './address';
+
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'OFR' | 'EXP' | 'EXIT';
 
 export interface ClientRecord {
   id: string;
   name: string;
+  /**
+   * The flat, printable address — the source of truth for rendering. When
+   * `addressParts` is present this is composed from it at save time; older
+   * records carry hand-typed text.
+   */
   address: string;
+  /**
+   * Structured address, for editing and pincode autofill. Optional: records
+   * created before structured addresses existed simply don't have it, and
+   * `ClientSnapshot` deliberately excludes it so issued documents keep their
+   * frozen shape.
+   */
+  addressParts?: AddressParts;
   email: string;
+  /** E.164, e.g. '+919876543210'. Legacy rows may hold arbitrary text. */
   phone: string;
   gstin?: string;
   createdAt: number;
@@ -30,6 +45,16 @@ export interface LineItem {
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */
 export type DocStatus = 'draft' | 'finalized';
 
+/**
+ * Frozen copy of the client at finalize time.
+ *
+ * The `Pick` is load-bearing: it lists the fields exactly, so adding anything
+ * to `ClientRecord` cannot silently widen what gets written into an issued
+ * document. `addressParts` is deliberately excluded — documents print the flat
+ * `address` string, and a finalized document must reprint byte-identically
+ * years later. Do not add fields here without deciding what happens to every
+ * snapshot already stored.
+ */
 export type ClientSnapshot = Pick<
   ClientRecord,
   'name' | 'address' | 'email' | 'phone' | 'gstin'
@@ -90,8 +115,18 @@ export interface ReceiptDocument extends ClientDocument {
     date: string;
     method: PaymentMethod;
     reference?: string;
-    /** The invoice this receipt settles, e.g. 'QS-INV-2026-002'. */
+    /**
+     * The invoice this receipt settles, e.g. 'QS-INV-2026-002'. This is what
+     * prints on the receipt, so it stays the authoritative reference.
+     */
     againstInvoiceNumber?: string;
+    /**
+     * Id of the same invoice, so the link survives even if the number is
+     * re-typed. Kept in step with `againstInvoiceNumber`: picking an invoice
+     * sets both, and hand-editing the number clears this. A stored id that
+     * silently disagrees with the printed number would be worse than no id.
+     */
+    againstInvoiceId?: string;
   };
 }
 
@@ -122,7 +157,14 @@ export interface ContractDocument extends ClientDocument {
 export type EngagementType = 'intern' | 'employee';
 export type PronounKey = 'he' | 'she' | 'they';
 
-/** Frozen-at-finalize copy of the employee, mirroring ClientSnapshot. */
+/**
+ * Frozen-at-finalize copy of the employee, mirroring ClientSnapshot.
+ *
+ * Unlike ClientSnapshot this is written out by hand, so there is no `Pick` to
+ * stop a field being added by accident. Every field here is copied into issued
+ * documents and must stay optional-or-present forever. Structured address
+ * parts are deliberately absent: slips print the flat `address` string.
+ */
 export interface EmployeeSnapshot {
   name: string;
   address: string;
@@ -133,7 +175,21 @@ export interface EmployeeSnapshot {
   pronoun: PronounKey;
   joiningDate: string;
   endDate?: string;
-  bank: { bankName: string; accountNo: string; ifsc: string; upiId?: string };
+  bank: {
+    bankName: string;
+    accountNo: string;
+    ifsc: string;
+    upiId?: string;
+    /**
+     * The employee's receiving UPI QR, as a compressed data URL.
+     *
+     * This is snapshotted on purpose — the QR prints on the stipend slip, so an
+     * issued slip must keep showing the QR that was current when it was issued,
+     * even if the employee later changes bank. Optional, so slips issued before
+     * this existed stay valid.
+     */
+    upiQrDataUrl?: string;
+  };
 }
 
 /** Stipend slip — financial-shaped (line items, totals) but for an employee. */

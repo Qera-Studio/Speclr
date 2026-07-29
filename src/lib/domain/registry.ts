@@ -9,6 +9,7 @@
 
 import { z } from 'zod';
 import { isISODate } from './dates';
+import { addressPartsSchema } from './address';
 import { contractScheduleSchema } from './serviceTemplate';
 import type { ContractSchedule, DocTypeCode, LineItem, ReceiptDocument } from './types';
 
@@ -43,8 +44,17 @@ export const draftLineItemSchema = z.object({
 
 export const clientInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  /** The flat printable address; composed from `addressParts` when present. */
   address: z.string().trim().min(1).max(500),
+  addressParts: addressPartsSchema.optional(),
   email: z.string().trim().email().max(200),
+  /**
+   * Intentionally lenient — a length check, not an E.164 regex. This schema
+   * re-validates the whole record on every edit, and clients created before
+   * phones were structured hold arbitrary text. A strict rule here would make
+   * those rows permanently un-editable. Strict per-country validation lives in
+   * the form layer (see lib/domain/phone.ts).
+   */
   phone: z.string().trim().min(1).max(30),
   gstin: z.string().trim().max(20).optional(),
 });
@@ -53,7 +63,10 @@ const paymentSchema = z.object({
   date: isoDate,
   method: z.enum(['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other']),
   reference: z.string().trim().max(100).optional(),
+  /** What prints on the receipt. Authoritative. */
   againstInvoiceNumber: z.string().trim().max(40).optional(),
+  /** Id of that same invoice — see ReceiptDocument['payment'] in types.ts. */
+  againstInvoiceId: z.string().trim().max(64).optional(),
 });
 
 // ── Document field schemas (shared base + per-type extensions) ───────────────
