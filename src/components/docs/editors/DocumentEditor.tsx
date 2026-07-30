@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useWatch } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import {
   createDraft,
@@ -42,6 +42,7 @@ import TotalsPanel from './TotalsPanel';
 import { paiseToRupees } from '@/lib/domain/money';
 import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
+import { workspaceTitle } from '../workspaceTitle';
 
 /** DocumentEditor only handles financial docs; contracts use ContractEditor. */
 type FinancialDocument = InvoiceDocument | ReceiptDocument;
@@ -112,7 +113,7 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
   const {
     register,
     handleSubmit,
-    watch,
+    getValues,
     setValue,
     control,
     formState: { isSubmitting },
@@ -120,9 +121,28 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const values = watch();
+  /**
+   * Live form values, driving the preview and the totals as the user types.
+   *
+   * This MUST be `useWatch` — never the form's own `watch` method. The app
+   * builds with `reactCompiler: true`, and that method is an ordinary function
+   * call taking no arguments, so the compiler treats it as pure and caches its
+   * first result for the life of the component: the preview then freezes on the
+   * empty form and never updates again. `useWatch` is a hook, so it
+   * re-subscribes and returns fresh values every render. Same reason the named
+   * reads below go through `values.x` instead of a per-field call.
+   *
+   * The cast is sound: `useDocumentForm` seeds `defaultValues` for every field,
+   * so nothing here is ever actually absent.
+   */
+  const values = useWatch({ control }) as EditorFormValues;
   const previewDoc = buildPreviewDoc(typeCode, values, clients, doc);
   const totals = computeTotals(previewDoc.lineItems, previewDoc.gstRatePercent);
+  const heading = workspaceTitle(
+    title,
+    spec.label,
+    clients.find((c) => c.id === values.clientId)?.name,
+  );
 
   const onSaveDraft = handleSubmit(async (formValues) => {
     setServerError(null);
@@ -200,7 +220,7 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
    * one with no link at all.
    */
   const clearInvoiceLink = () => {
-    if (watch('againstInvoiceId')) {
+    if (getValues('againstInvoiceId')) {
       setValue('againstInvoiceId', '', { shouldDirty: true });
     }
   };
@@ -217,7 +237,7 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
   };
 
   return (
-    <DocumentWorkspace title={title} preview={<DocumentSheet doc={previewDoc} />}>
+    <DocumentWorkspace title={heading} preview={<DocumentSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
           <Field>
@@ -319,8 +339,8 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
                 <FieldLabel htmlFor="doc-against-invoice-picker">Against invoice</FieldLabel>
                 <InvoicePicker
                   id="doc-against-invoice-picker"
-                  clientId={watch('clientId')}
-                  value={watch('againstInvoiceId')}
+                  clientId={values.clientId}
+                  value={values.againstInvoiceId}
                   onSelect={applyInvoice}
                 />
                 <FieldDescription>

@@ -9,6 +9,7 @@ import {
   updateDraft,
 } from '@/server/actions/documents';
 import { todayISO } from '@/lib/domain/dates';
+import { DOC_TYPES } from '@/lib/domain/registry';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { EmployeeSnapshot, LineItem, StipendDocument } from '@/lib/domain/types';
@@ -22,6 +23,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
+import { workspaceTitle } from '../workspaceTitle';
 
 const EMPTY_SNAPSHOT: EmployeeSnapshot = {
   name: '',
@@ -84,6 +86,7 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const employee = employees.find((e) => e.id === employeeId);
+  const heading = workspaceTitle(title, DOC_TYPES.STP.label, employee?.name);
   const employeeSnapshot: EmployeeSnapshot = employee
     ? snapshotOf(employee)
     : (doc?.employeeSnapshot ?? EMPTY_SNAPSHOT);
@@ -191,7 +194,7 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
   };
 
   return (
-    <DocumentWorkspace title={title} preview={<StipendSheet doc={previewDoc} />}>
+    <DocumentWorkspace title={heading} preview={<StipendSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="stp-employee">Employee</FieldLabel>

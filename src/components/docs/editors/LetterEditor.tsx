@@ -9,6 +9,7 @@ import {
   updateDraft,
 } from '@/server/actions/documents';
 import { formatDisplayDate, todayISO } from '@/lib/domain/dates';
+import { DOC_TYPES } from '@/lib/domain/registry';
 import { defaultLetterContent } from '@/lib/domain/hrContent';
 import { pronounSet, type EmployeeRecord } from '@/lib/domain/employee';
 import { formatINR } from '@/lib/domain/money';
@@ -24,6 +25,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
+import { workspaceTitle } from '../workspaceTitle';
 
 type LetterType = 'OFR' | 'EXP' | 'EXIT';
 
@@ -89,6 +91,7 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const employee = employees.find((e) => e.id === employeeId);
+  const heading = workspaceTitle(title, DOC_TYPES[type].label, employee?.name);
   const employeeSnapshot: EmployeeSnapshot = employee
     ? snapshotOf(employee)
     : (doc?.employeeSnapshot ?? EMPTY_SNAPSHOT);
@@ -205,7 +208,7 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
     );
 
   return (
-    <DocumentWorkspace title={title} preview={<LetterSheet doc={previewDoc} />}>
+    <DocumentWorkspace title={heading} preview={<LetterSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <Field>
           <FieldLabel htmlFor="letter-employee">Employee</FieldLabel>

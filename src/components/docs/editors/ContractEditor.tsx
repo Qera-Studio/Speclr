@@ -9,6 +9,7 @@ import {
   updateDraft,
 } from '@/server/actions/documents';
 import { todayISO } from '@/lib/domain/dates';
+import { DOC_TYPES } from '@/lib/domain/registry';
 import { serviceToSchedule, type ServiceTemplate } from '@/lib/domain/serviceTemplate';
 import type {
   ClientRecord,
@@ -26,6 +27,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import ScheduleCard from './ScheduleCard';
+import { workspaceTitle } from '../workspaceTitle';
 
 const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
 
@@ -49,6 +51,7 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const client = clients.find((c) => c.id === clientId);
+  const heading = workspaceTitle(title, DOC_TYPES.CON.label, client?.name);
   const clientSnapshot: ClientSnapshot = client
     ? {
         name: client.name,
@@ -147,7 +150,7 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
 
   return (
     <DocumentWorkspace
-      title={title}
+      title={heading}
       coverFirst
       firstPageClassName={COVER_CLASSNAME}
       preview={contractBlocks(previewDoc)}

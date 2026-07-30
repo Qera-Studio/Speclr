@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentEditor from '../DocumentEditor';
@@ -90,6 +92,41 @@ describe('DocumentEditor (new invoice)', () => {
   it('has no invoice picker — that belongs to receipts', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
     expect(screen.queryByLabelText(/against invoice/i)).not.toBeInTheDocument();
+  });
+
+  it('shows typed line-item text on the document before anything is saved', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await u.type(screen.getByLabelText(/^description$/i), 'Hosting for August');
+
+    // The whole point of the preview: what you type is on the paper at once,
+    // not after saving a draft and finding the mistake there.
+    const sheet = document.querySelector('.print-sheet');
+    expect(sheet).toHaveTextContent('Hosting for August');
+  });
+
+  it('names the client in the heading as soon as one is picked', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('New invoice');
+    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Acme Co.’s invoice');
+  });
+
+  it('reads live form values through a hook, not form.watch()', () => {
+    // Guard rail, not style policing. This app builds with `reactCompiler:
+    // true`, which memoises an argument-less `watch()` call to its first result
+    // for the life of the component — the preview then freezes on the empty
+    // form for ever. jsdom runs uncompiled, so no behavioural test above can
+    // catch a reintroduction; this can.
+    const source = readFileSync(join(__dirname, '..', 'DocumentEditor.tsx'), 'utf8');
+    // Both ways it could come back: pulled off the form, or called on it.
+    expect(source).not.toMatch(/^\s*watch,\s*$/m);
+    expect(source).not.toMatch(/form\.watch\(/);
+    expect(source).toMatch(/useWatch\(\{\s*control\s*\}\)/);
   });
 });
 
