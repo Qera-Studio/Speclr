@@ -23,6 +23,7 @@ import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -145,9 +146,6 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
 
   const onFinalize = handleSubmit(async (formValues) => {
     if (!doc) return;
-    if (!window.confirm('Finalize this document? A number will be assigned and it becomes immutable.')) {
-      return;
-    }
     setServerError(null);
     // Persist any unsaved edits first, then finalize the stored draft.
     const saveResult = await updateDraft(doc.id, formValues.clientId, toPayload(typeCode, formValues));
@@ -209,7 +207,6 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
 
   const onDelete = async () => {
     if (!doc) return;
-    if (!window.confirm('Delete this draft? This cannot be undone.')) return;
     setServerError(null);
     const result = await deleteDraftAction(doc.id);
     if (!result.success) {
@@ -414,12 +411,24 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
           </Button>
           {doc ? (
             <>
-              <Button type="button" variant="outline" onClick={onFinalize} disabled={isSubmitting}>
-                Finalize &amp; assign number
-              </Button>
-              <Button type="button" variant="destructive" onClick={onDelete} disabled={isSubmitting}>
-                Delete draft
-              </Button>
+              <ConfirmActionButton
+                label="Finalize & assign number"
+                title="Finalize this document?"
+                description="A number will be assigned and the document becomes immutable. Corrections after this mean duplicating it as a new draft."
+                confirmLabel="Finalize"
+                onConfirm={onFinalize}
+                disabled={isSubmitting}
+              />
+              <ConfirmActionButton
+                label="Delete draft"
+                title="Delete this draft?"
+                description="This cannot be undone."
+                confirmLabel="Delete"
+                variant="destructive"
+                confirmVariant="destructive"
+                onConfirm={onDelete}
+                disabled={isSubmitting}
+              />
             </>
           ) : null}
         </div>

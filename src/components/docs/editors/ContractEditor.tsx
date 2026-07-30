@@ -19,6 +19,7 @@ import type {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -109,7 +110,6 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
 
   const onFinalize = async () => {
     if (!doc) return;
-    if (!window.confirm('Finalize this contract? It becomes immutable.')) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -131,7 +131,6 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
 
   const onDelete = async () => {
     if (!doc) return;
-    if (!window.confirm('Delete this draft? This cannot be undone.')) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -222,12 +221,24 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
           </Button>
           {doc ? (
             <>
-              <Button type="button" variant="outline" onClick={onFinalize} disabled={isSubmitting}>
-                Finalize
-              </Button>
-              <Button type="button" variant="destructive" onClick={onDelete} disabled={isSubmitting}>
-                Delete draft
-              </Button>
+              <ConfirmActionButton
+                label="Finalize"
+                title="Finalize this contract?"
+                description="The contract becomes immutable. Corrections after this mean duplicating it as a new draft."
+                confirmLabel="Finalize"
+                onConfirm={onFinalize}
+                disabled={isSubmitting}
+              />
+              <ConfirmActionButton
+                label="Delete draft"
+                title="Delete this draft?"
+                description="This cannot be undone."
+                confirmLabel="Delete"
+                variant="destructive"
+                confirmVariant="destructive"
+                onConfirm={onDelete}
+                disabled={isSubmitting}
+              />
             </>
           ) : null}
         </div>

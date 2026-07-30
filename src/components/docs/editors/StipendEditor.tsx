@@ -16,6 +16,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -154,8 +155,6 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
 
   const onFinalize = async () => {
     if (!doc) return;
-    if (!window.confirm('Finalize this stipend slip? A number will be assigned and it becomes immutable.'))
-      return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -177,7 +176,6 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
 
   const onDelete = async () => {
     if (!doc) return;
-    if (!window.confirm('Delete this draft? This cannot be undone.')) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -290,12 +288,24 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
           </Button>
           {doc ? (
             <>
-              <Button type="button" variant="outline" onClick={onFinalize} disabled={isSubmitting}>
-                Finalize &amp; assign number
-              </Button>
-              <Button type="button" variant="destructive" onClick={onDelete} disabled={isSubmitting}>
-                Delete draft
-              </Button>
+              <ConfirmActionButton
+                label="Finalize & assign number"
+                title="Finalize this stipend slip?"
+                description="A number will be assigned and the slip becomes immutable. Corrections after this mean duplicating it as a new draft."
+                confirmLabel="Finalize"
+                onConfirm={onFinalize}
+                disabled={isSubmitting}
+              />
+              <ConfirmActionButton
+                label="Delete draft"
+                title="Delete this draft?"
+                description="This cannot be undone."
+                confirmLabel="Delete"
+                variant="destructive"
+                confirmVariant="destructive"
+                onConfirm={onDelete}
+                disabled={isSubmitting}
+              />
             </>
           ) : null}
         </div>

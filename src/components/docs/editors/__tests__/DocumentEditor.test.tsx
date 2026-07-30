@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentEditor from '../DocumentEditor';
 import { selectComboboxOption } from '@/test-utils/combobox';
@@ -8,13 +8,15 @@ const push = jest.fn();
 const createDraft = jest.fn();
 const updateDraft = jest.fn();
 const listInvoicesForClient = jest.fn();
+const finalizeDocument = jest.fn();
+const deleteDraftAction = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }) }));
 jest.mock('@/server/actions/documents', () => ({
   createDraft: (...a: unknown[]) => createDraft(...a),
   updateDraft: (...a: unknown[]) => updateDraft(...a),
   listInvoicesForClient: (...a: unknown[]) => listInvoicesForClient(...a),
-  finalizeDocument: jest.fn(),
-  deleteDraftAction: jest.fn(),
+  finalizeDocument: (...a: unknown[]) => finalizeDocument(...a),
+  deleteDraftAction: (...a: unknown[]) => deleteDraftAction(...a),
 }));
 
 const clients = [
@@ -165,5 +167,50 @@ describe('DocumentEditor (new receipt)', () => {
     const payload = createDraft.mock.calls[0][2] as { payment: Record<string, unknown> };
     expect(payload.payment.againstInvoiceNumber).toBe('QS-INV-2627-001-AMENDED');
     expect(payload.payment.againstInvoiceId).toBeUndefined();
+  });
+});
+
+describe('DocumentEditor (existing draft)', () => {
+  const draft = {
+    id: 'd1', type: 'INV', status: 'draft', clientId: 'c1',
+    clientSnapshot: { name: 'Acme Co.', address: 'Road', email: 'a@b.com', phone: '9' },
+    issueDate: '2026-06-10',
+    lineItems: [{ description: 'Design', ratePaise: 150000, qty: 1 }],
+    gstRatePercent: 18, placeOfSupplyStateCode: '09',
+    createdAt: 0, updatedAt: 0,
+  } as unknown as Parameters<typeof DocumentEditor>[0]['doc'];
+
+  it('will not finalize on a single click', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} doc={draft} title="Edit invoice draft" />);
+
+    await u.click(screen.getByRole('button', { name: /finalize/i }));
+
+    // Finalizing claims a permanent GST number and makes the document
+    // immutable. It must never happen from one stray click.
+    expect(finalizeDocument).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('will not delete a draft on a single click', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} doc={draft} title="Edit invoice draft" />);
+
+    await u.click(screen.getByRole('button', { name: /delete draft/i }));
+
+    expect(deleteDraftAction).not.toHaveBeenCalled();
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+  });
+
+  it('deletes once confirmed', async () => {
+    deleteDraftAction.mockResolvedValue({ success: true });
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} doc={draft} title="Edit invoice draft" />);
+
+    await u.click(screen.getByRole('button', { name: /delete draft/i }));
+    const dialog = await screen.findByRole('alertdialog');
+    await u.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+
+    expect(deleteDraftAction).toHaveBeenCalledWith('d1');
   });
 });

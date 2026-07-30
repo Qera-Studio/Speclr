@@ -17,6 +17,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
@@ -150,7 +151,6 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
 
   const onFinalize = async () => {
     if (!doc) return;
-    if (!window.confirm('Finalize this letter? It becomes immutable.')) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -172,7 +172,6 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
 
   const onDelete = async () => {
     if (!doc) return;
-    if (!window.confirm('Delete this draft? This cannot be undone.')) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
@@ -311,12 +310,24 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
           </Button>
           {doc ? (
             <>
-              <Button type="button" variant="outline" onClick={onFinalize} disabled={isSubmitting}>
-                Finalize
-              </Button>
-              <Button type="button" variant="destructive" onClick={onDelete} disabled={isSubmitting}>
-                Delete draft
-              </Button>
+              <ConfirmActionButton
+                label="Finalize"
+                title="Finalize this letter?"
+                description="The letter becomes immutable. Corrections after this mean duplicating it as a new draft."
+                confirmLabel="Finalize"
+                onConfirm={onFinalize}
+                disabled={isSubmitting}
+              />
+              <ConfirmActionButton
+                label="Delete draft"
+                title="Delete this draft?"
+                description="This cannot be undone."
+                confirmLabel="Delete"
+                variant="destructive"
+                confirmVariant="destructive"
+                onConfirm={onDelete}
+                disabled={isSubmitting}
+              />
             </>
           ) : null}
         </div>
