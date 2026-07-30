@@ -21,40 +21,49 @@ describe('composeAddress', () => {
     // STUDIO_INFO.address is the reference the document sheets were designed
     // around; a composed address has to sit in the same block without looking
     // out of place.
-    expect(composeAddress({ ...full, state: '' })).toBe(
+    expect(composeAddress({ ...full, state: '', country: '' })).toBe(
       'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017',
     );
   });
 
-  it('includes the state when given', () => {
+  it('includes the state and the country name when given', () => {
     expect(composeAddress(full)).toBe(
-      'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nUttar Pradesh',
+      'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nUttar Pradesh\nIndia',
     );
   });
 
   it('drops the optional street line without leaving a stray comma', () => {
-    expect(composeAddress({ ...full, line2: '', state: '' })).toBe(
+    expect(composeAddress({ ...full, line2: '', state: '', country: '' })).toBe(
       'C-204,\nGhaziabad - 201017',
     );
   });
 
   it('handles a city with no pincode and a pincode with no city', () => {
-    expect(composeAddress({ ...emptyAddressParts, city: 'Pune' })).toBe('Pune');
-    expect(composeAddress({ ...emptyAddressParts, pincode: '411001' })).toBe('411001');
+    expect(composeAddress({ ...emptyAddressParts, city: 'Pune' })).toBe('Pune\nIndia');
+    expect(composeAddress({ ...emptyAddressParts, pincode: '411001' })).toBe('411001\nIndia');
   });
 
-  it('prints the country only when it is not India', () => {
-    expect(composeAddress({ ...full, country: 'IN' })).not.toContain('IN');
-    expect(composeAddress({ ...full, country: 'us' })).toContain('US');
+  it('prints the full country name, not the ISO code', () => {
+    // An invoice line reading 'AU' is not an address.
+    expect(composeAddress({ ...full, country: 'AU' })).toContain('Australia');
+    expect(composeAddress({ ...full, country: 'us' })).toContain('United States');
+    expect(composeAddress({ ...full, country: 'IN' })).toContain('India');
+  });
+
+  it('falls back to the raw code for an unlisted country', () => {
+    // Better a code on the document than the country silently vanishing.
+    expect(composeAddress({ ...full, country: 'ZZ' })).toContain('ZZ');
   });
 
   it('returns an empty string when there is nothing to compose', () => {
+    // `country` defaults to 'IN' on an untouched form, so this also guards
+    // against a blank address composing to the single word "India".
     expect(composeAddress(emptyAddressParts)).toBe('');
   });
 
   it('trims stray whitespace rather than baking it into a document', () => {
     expect(composeAddress({ ...emptyAddressParts, line1: '  C-204  ', city: ' Pune ' })).toBe(
-      'C-204,\nPune',
+      'C-204,\nPune\nIndia',
     );
   });
 });

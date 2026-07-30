@@ -62,7 +62,7 @@ describe('ClientForm', () => {
         name: 'Acme Co.',
         email: 'a@b.com',
         phone: '+919876543210',
-        address: 'C-204,\nGhaziabad - 201017',
+        address: 'C-204,\nGhaziabad - 201017\nIndia',
         addressParts: expect.objectContaining({ city: 'Ghaziabad', pincode: '201017' }),
       }),
     );

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { countryName } from './countries';
 
 /**
  * Structured address parts.
@@ -91,13 +92,20 @@ export function composeAddress(parts: AddressParts): string {
   const cityLine = city && pincode ? `${city} - ${pincode}` : city || pincode;
   if (cityLine) lines.push(cityLine);
 
-  // State and a non-India country are only worth printing when they aren't
-  // already implied by the city line.
   const state = clean(parts.state);
   if (state) lines.push(state);
 
-  const country = clean(parts.country).toUpperCase();
-  if (country && country !== 'IN') lines.push(country);
+  // Full name, not the ISO code — an invoice reading 'AU' is not an address.
+  // Printed for India too: these documents go to overseas clients, and an
+  // export invoice should say plainly which country it was issued from.
+  //
+  // Only once there's an address to attach it to. `country` defaults to 'IN' on
+  // an untouched form, so without this guard a blank address would compose to
+  // the single word "India".
+  if (lines.length > 0) {
+    const country = countryName(clean(parts.country));
+    if (country) lines.push(country);
+  }
 
   return lines.join('\n');
 }

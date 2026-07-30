@@ -63,7 +63,7 @@ describe('EmployeeForm', () => {
         payAmountPaise: 2000000,
         payCurrency: 'INR',
         phone: '+919876543210',
-        address: 'C-204,\nGhaziabad - 201017',
+        address: 'C-204,\nGhaziabad - 201017\nIndia',
         bank: expect.objectContaining({ bankName: 'Kotak', accountNo: '123', ifsc: 'KKBK0' }),
       }),
     );

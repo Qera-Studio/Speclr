@@ -4,6 +4,7 @@ import {
   parsePhoneNumberFromString,
   type CountryCode,
 } from 'libphonenumber-js/min';
+import { COUNTRY_SEED } from './countries';
 
 /**
  * Phone numbers are stored as a single E.164 string, e.g. '+919876543210'.
@@ -31,39 +32,11 @@ export interface PhoneCountry {
   flag: string;
 }
 
-/** India first — it's the default and by far the common case here. */
-const COUNTRY_SEED: Array<[CountryCode, string, string]> = [
-  ['IN', 'India', '🇮🇳'],
-  ['US', 'United States', '🇺🇸'],
-  ['GB', 'United Kingdom', '🇬🇧'],
-  ['AE', 'United Arab Emirates', '🇦🇪'],
-  ['SG', 'Singapore', '🇸🇬'],
-  ['AU', 'Australia', '🇦🇺'],
-  ['CA', 'Canada', '🇨🇦'],
-  ['DE', 'Germany', '🇩🇪'],
-  ['FR', 'France', '🇫🇷'],
-  ['NL', 'Netherlands', '🇳🇱'],
-  ['IE', 'Ireland', '🇮🇪'],
-  ['CH', 'Switzerland', '🇨🇭'],
-  ['SE', 'Sweden', '🇸🇪'],
-  ['ES', 'Spain', '🇪🇸'],
-  ['IT', 'Italy', '🇮🇹'],
-  ['JP', 'Japan', '🇯🇵'],
-  ['NZ', 'New Zealand', '🇳🇿'],
-  ['ZA', 'South Africa', '🇿🇦'],
-  ['MY', 'Malaysia', '🇲🇾'],
-  ['SA', 'Saudi Arabia', '🇸🇦'],
-  ['QA', 'Qatar', '🇶🇦'],
-  ['HK', 'Hong Kong', '🇭🇰'],
-  ['NP', 'Nepal', '🇳🇵'],
-  ['LK', 'Sri Lanka', '🇱🇰'],
-  ['BD', 'Bangladesh', '🇧🇩'],
-];
-
-export const COUNTRIES: PhoneCountry[] = COUNTRY_SEED.map(([iso2, name, flag]) => ({
-  iso2,
+/** Dial codes layered onto the shared country list — see countries.ts. */
+export const COUNTRIES: PhoneCountry[] = COUNTRY_SEED.map(({ iso2, name, flag }) => ({
+  iso2: iso2 as CountryCode,
   name,
-  dialCode: getCountryCallingCode(iso2),
+  dialCode: getCountryCallingCode(iso2 as CountryCode),
   flag,
 }));
 

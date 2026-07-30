@@ -5,7 +5,9 @@
 export const STUDIO_INFO = {
   brandMark: 'qera studio',
   legalName: 'Qera Private Limited',
-  address: 'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017',
+  // Ends with the country so the "from:" block matches composed client
+  // addresses, which now print a country name — these go to overseas clients.
+  address: 'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nIndia',
   phone: '+91 72001 24605',
   email: 'sales@qera.studio',
   thanksLine: 'Thank you for partnering with Qera Studio',
