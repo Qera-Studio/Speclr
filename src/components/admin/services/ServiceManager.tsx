@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { AddButton } from '@/components/ui/add-button';
 import RecordPanel from '../RecordPanel';
 import { useRecordPanel } from '../useRecordPanel';
 import {
@@ -46,13 +46,17 @@ export default function ServiceManager({ services }: { services: ServiceTemplate
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button onClick={() => guardedSelect(null)}>Add service</Button>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Services</h1>
+        {services.length > 0 ? (
+          <AddButton onClick={() => guardedSelect(null)}>Add service</AddButton>
+        ) : null}
       </div>
 
       <ServicesTable
         services={services}
         onEdit={(service) => guardedSelect(service)}
+        onAdd={() => guardedSelect(null)}
         onDelete={(service) => setDeleting(service)}
       />
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import { AddButton } from '@/components/ui/add-button';
 import RecordPanel from '../RecordPanel';
 import { useRecordPanel } from '../useRecordPanel';
 import {
@@ -46,13 +46,17 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button onClick={() => guardedSelect(null)}>Add employee</Button>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Employees</h1>
+        {employees.length > 0 ? (
+          <AddButton onClick={() => guardedSelect(null)}>Add employee</AddButton>
+        ) : null}
       </div>
 
       <EmployeesTable
         employees={employees}
         onEdit={(employee) => guardedSelect(employee)}
+        onAdd={() => guardedSelect(null)}
         onDelete={(employee) => setDeleting(employee)}
       />
 

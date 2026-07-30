@@ -5,7 +5,15 @@ import { useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
-import { Field, FieldLabel, FieldError, FieldGroup, FieldSet, FieldLegend } from '@/components/ui/field';
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -121,6 +129,8 @@ export default function ClientForm({
           <Input id="client-gstin" size="form" {...register('gstin')} />
           <FieldError errors={[errors.gstin]} />
         </Field>
+
+        <FieldSeparator />
 
         <FieldSet>
           <FieldLegend variant="label">Address</FieldLegend>

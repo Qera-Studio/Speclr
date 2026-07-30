@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { AddButton } from '@/components/ui/add-button';
 import RecordPanel from '../RecordPanel';
 import { useRecordPanel } from '../useRecordPanel';
 import ClientForm from './ClientForm';
@@ -21,11 +21,18 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button onClick={() => guardedSelect(null)}>Add client</Button>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Clients</h1>
+        {clients.length > 0 ? (
+          <AddButton onClick={() => guardedSelect(null)}>Add client</AddButton>
+        ) : null}
       </div>
 
-      <ClientsTable clients={clients} onEdit={(client) => guardedSelect(client)} />
+      <ClientsTable
+        clients={clients}
+        onEdit={(client) => guardedSelect(client)}
+        onAdd={() => guardedSelect(null)}
+      />
 
       <RecordPanel
         title={editing ? 'Edit client' : 'Add client'}

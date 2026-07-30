@@ -1,7 +1,15 @@
 'use client';
 
 import { MoreHorizontal, Package } from 'lucide-react';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { AddButton } from '@/components/ui/add-button';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,10 +38,12 @@ export default function ServicesTable({
   services,
   onEdit,
   onDelete,
+  onAdd,
 }: {
   services: ServiceTemplate[];
   onEdit: (service: ServiceTemplate) => void;
   onDelete: (service: ServiceTemplate) => void;
+  onAdd?: () => void;
 }) {
   if (services.length === 0) {
     return (
@@ -45,6 +55,9 @@ export default function ServicesTable({
           <EmptyTitle>No services yet</EmptyTitle>
           <EmptyDescription>Create a service template to reuse across contracts and invoices.</EmptyDescription>
         </EmptyHeader>
+        <EmptyContent>
+          <AddButton onClick={onAdd}>Add service</AddButton>
+        </EmptyContent>
       </Empty>
     );
   }

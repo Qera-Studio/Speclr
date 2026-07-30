@@ -1,7 +1,15 @@
 'use client';
 
 import { MoreHorizontal, IdCard } from 'lucide-react';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { AddButton } from '@/components/ui/add-button';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,10 +32,12 @@ export default function EmployeesTable({
   employees,
   onEdit,
   onDelete,
+  onAdd,
 }: {
   employees: EmployeeRecord[];
   onEdit: (employee: EmployeeRecord) => void;
   onDelete: (employee: EmployeeRecord) => void;
+  onAdd?: () => void;
 }) {
   if (employees.length === 0) {
     return (
@@ -39,6 +49,9 @@ export default function EmployeesTable({
           <EmptyTitle>No employees yet</EmptyTitle>
           <EmptyDescription>Add your first employee to issue offer letters, stipends, and more.</EmptyDescription>
         </EmptyHeader>
+        <EmptyContent>
+          <AddButton onClick={onAdd}>Add employee</AddButton>
+        </EmptyContent>
       </Empty>
     );
   }

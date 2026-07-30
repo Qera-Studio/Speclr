@@ -35,10 +35,6 @@ function setup() {
   );
 }
 
-const openActions = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
-  await user.click(screen.getByRole('button', { name }));
-};
-
 describe('ClientManager', () => {
   it('opens an empty form from Add client', async () => {
     const user = userEvent.setup();
@@ -85,12 +81,10 @@ describe('ClientManager', () => {
     const user = userEvent.setup();
     setup();
 
-    await openActions(user, /actions for acme co\./i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
     expect(screen.getByLabelText(/name/i)).toHaveValue('Acme Co.');
 
-    await openActions(user, /actions for beta ltd/i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
     expect(screen.getByLabelText(/name/i)).toHaveValue('Beta Ltd');
   });
 
@@ -98,12 +92,10 @@ describe('ClientManager', () => {
     const user = userEvent.setup();
     setup();
 
-    await openActions(user, /actions for acme co\./i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
     await user.type(screen.getByLabelText(/name/i), ' edited');
 
-    await openActions(user, /actions for beta ltd/i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
 
     // The switch is held back until the user decides.
     expect(screen.getByRole('alertdialog', { name: /discard unsaved changes/i })).toBeInTheDocument();
@@ -117,12 +109,10 @@ describe('ClientManager', () => {
     const user = userEvent.setup();
     setup();
 
-    await openActions(user, /actions for acme co\./i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
     await user.type(screen.getByLabelText(/name/i), ' edited');
 
-    await openActions(user, /actions for beta ltd/i);
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
     await user.click(screen.getByRole('button', { name: /keep editing/i }));
 
     expect(screen.getByLabelText(/name/i)).toHaveValue('Acme Co. edited');

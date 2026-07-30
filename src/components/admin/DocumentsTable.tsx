@@ -1,7 +1,7 @@
 import Link from 'next/link';
+import { AddLink } from '@/components/ui/add-button';
 import { FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
 import {
   Empty,
   EmptyContent,
@@ -48,9 +48,7 @@ export default function DocumentsTable({ documents }: { documents: AdminDocument
           <EmptyDescription>Create your first invoice, receipt, contract, or letter to get started.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link href="/docs/new/invoice" className={buttonVariants()}>
-            New invoice
-          </Link>
+          <AddLink href="/docs/new/invoice">New invoice</AddLink>
         </EmptyContent>
       </Empty>
     );

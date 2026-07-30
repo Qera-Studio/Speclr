@@ -303,6 +303,8 @@ export default function EmployeeForm({
           </Field>
         </FieldRow>
 
+        <FieldSeparator />
+
         <FieldSet>
           <FieldLegend variant="label">Address</FieldLegend>
           <AddressFields control={control} name="addressParts" idPrefix="employee" />

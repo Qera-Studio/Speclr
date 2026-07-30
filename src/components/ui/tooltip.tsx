@@ -17,8 +17,20 @@ function TooltipProvider({
   )
 }
 
+/**
+ * Carries its own Provider.
+ *
+ * Base UI's Root needs a Provider ancestor or the tooltip never opens, and
+ * there is no app-level one — so every caller had to remember. RemoveButton
+ * didn't, and its tooltips silently never appeared. Nesting Providers is
+ * harmless, so making Tooltip self-sufficient removes the whole footgun.
+ */
 function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
