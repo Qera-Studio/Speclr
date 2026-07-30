@@ -114,6 +114,14 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         </div>
       </section>
 
+      {/*
+        The line-items region is the one flexible band on the page.
+        `min-h-0` + `flex-1` lets it give up space as items are added, so the
+        totals and the footer below stay on the paper instead of being pushed
+        past the fixed A4 height and silently clipped by the frame's
+        overflow-hidden. Long item lists lose room here, never the money.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <table className="w-full border-collapse table-fixed mb-[24px]">
         <caption className="absolute w-px h-px p-0 -m-px overflow-hidden [clip:rect(0,0,0,0)] whitespace-nowrap">
           Line items
@@ -128,25 +136,25 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
           <tr>
             <th
               scope="col"
-              className="text-left text-black text-[11px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black overflow-hidden [overflow-wrap:anywhere] break-words"
+              className="text-left text-black text-[13px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black overflow-hidden [overflow-wrap:anywhere] break-words"
             >
               Description
             </th>
             <th
               scope="col"
-              className="text-left text-black text-[11px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
+              className="text-left text-black text-[13px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
             >
               Rate
             </th>
             <th
               scope="col"
-              className="text-left text-black text-[11px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
+              className="text-left text-black text-[13px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
             >
               Qty.
             </th>
             <th
               scope="col"
-              className="text-left text-black text-[11px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
+              className="text-left text-black text-[13px] font-semibold py-[8px] pr-[8px] pl-0 border-b-2 border-black [font-variant-numeric:tabular-nums] whitespace-nowrap"
             >
               Amount
             </th>
@@ -156,33 +164,34 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
           {doc.lineItems.map((item, index) => (
             <tr key={index}>
               <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
-                <span className="block text-black font-medium text-[12px] [overflow-wrap:anywhere]">
+                <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
                   {item.description || '—'}
                 </span>
                 {item.detail ? (
-                  <span className="block text-black/70 text-[8px] font-normal mt-[2px] [overflow-wrap:anywhere]">
+                  <span className="block text-black/70 text-[10px] font-normal mt-[2px] [overflow-wrap:anywhere]">
                     {item.detail}
                   </span>
                 ) : null}
               </td>
-              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[11px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
                 {formatINR(item.ratePaise)}
               </td>
-              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[11px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
                 {item.qty}
               </td>
-              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[11px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+              <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
                 {formatINR(lineAmountPaise(item))}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       <div className="ml-auto w-[60%] mb-[24px]">
         <div className="flex justify-between gap-[16px] py-[3px]">
-          <span className="text-black/70 text-[10px] font-normal">subtotal</span>
-          <span className="text-black/70 text-[10px] font-normal [font-variant-numeric:tabular-nums] text-right">
+          <span className="text-black/70 text-[12px] font-normal">subtotal</span>
+          <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
             {formatINR(totals.subtotalPaise)}
           </span>
         </div>
@@ -190,52 +199,52 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
           intraState ? (
             <>
               <div className="flex justify-between gap-[16px] py-[3px]">
-                <span className="text-black/70 text-[10px] font-normal">
+                <span className="text-black/70 text-[12px] font-normal">
                   CGST ({doc.gstRatePercent / 2}%)
                 </span>
-                <span className="text-black/70 text-[10px] font-normal [font-variant-numeric:tabular-nums] text-right">
+                <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
                   {formatINR(cgstPaise)}
                 </span>
               </div>
               <div className="flex justify-between gap-[16px] py-[3px]">
-                <span className="text-black/70 text-[10px] font-normal">
+                <span className="text-black/70 text-[12px] font-normal">
                   SGST ({doc.gstRatePercent / 2}%)
                 </span>
-                <span className="text-black/70 text-[10px] font-normal [font-variant-numeric:tabular-nums] text-right">
+                <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
                   {formatINR(sgstPaise)}
                 </span>
               </div>
             </>
           ) : (
             <div className="flex justify-between gap-[16px] py-[3px]">
-              <span className="text-black/70 text-[10px] font-normal">
+              <span className="text-black/70 text-[12px] font-normal">
                 IGST ({doc.gstRatePercent}%)
               </span>
-              <span className="text-black/70 text-[10px] font-normal [font-variant-numeric:tabular-nums] text-right">
+              <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
                 {formatINR(totals.gstPaise)}
               </span>
             </div>
           )
         ) : (
           <div className="flex justify-between gap-[16px] py-[3px]">
-            <span className="text-black/70 text-[10px] font-normal">GST</span>
-            <span className="text-black/70 text-[10px] font-normal text-right">
+            <span className="text-black/70 text-[12px] font-normal">GST</span>
+            <span className="text-black/70 text-[12px] font-normal text-right">
               {doc.gstLabel ?? 'not applicable'}
             </span>
           </div>
         )}
         {hasGst && supplyStateName ? (
-          <p className="text-black/70 text-[10px] font-normal text-right py-[2px]">
+          <p className="text-black/70 text-[12px] font-normal text-right py-[2px]">
             Place of supply: {supplyStateName}
           </p>
         ) : null}
         <div className="flex justify-between gap-[16px] py-[3px] border-t border-black mt-[3px] pt-[6px]">
-          <span className="text-black text-[12px] font-medium">TOTAL DUE</span>
-          <span className="text-black text-[12px] font-medium [font-variant-numeric:tabular-nums] text-right">
+          <span className="text-black text-[14px] font-medium">TOTAL DUE</span>
+          <span className="text-black text-[14px] font-medium [font-variant-numeric:tabular-nums] text-right">
             {formatINR(totals.totalPaise)}
           </span>
         </div>
-        <p className="text-right text-black/70 text-[10px] font-normal">
+        <p className="text-right text-black/70 text-[12px] font-normal">
           {amountInWords(totals.totalPaise)}
         </p>
       </div>
