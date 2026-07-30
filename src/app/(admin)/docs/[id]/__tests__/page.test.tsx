@@ -1,3 +1,4 @@
+import { STUDIO_INFO } from '@/lib/domain/studio';
 import { render, screen } from '@testing-library/react';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -18,6 +19,10 @@ jest.mock('@/lib/auth/session', () => ({
 }));
 jest.mock('@/db/store', () => ({
   getDocument: (...a: unknown[]) => getDocument(...a),
+  // The routes read the studio's live details for a draft's preview; the real
+  // constant is the fallback these documents printed before settings existed.
+  getStudioSettings: () => STUDIO_INFO,
+
   listClients: () => listClients(),
   listEmployees: () => listEmployees(),
   listServices: () => listServices(),

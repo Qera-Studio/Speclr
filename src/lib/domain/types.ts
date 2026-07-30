@@ -4,13 +4,26 @@
  */
 
 import type { AddressParts } from './address';
+import type { StudioInfo } from './studio';
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'OFR' | 'EXP' | 'EXIT';
 
 export interface ClientRecord {
   id: string;
+  /**
+   * The short reference name — what lists, dropdowns and the preview heading
+   * show. Not what documents print.
+   */
   name: string;
+  /**
+   * The legal entity name printed on documents ("Clayora Private Limited").
+   *
+   * Optional here, required by `clientInputSchema`: clients created before this
+   * field existed have none, and those rows must still load. Nothing saved from
+   * now on can be missing it.
+   */
+  companyName?: string;
   /**
    * The flat, printable address — the source of truth for rendering. When
    * `addressParts` is present this is composed from it at save time; older
@@ -54,11 +67,33 @@ export type DocStatus = 'draft' | 'finalized';
  * `address` string, and a finalized document must reprint byte-identically
  * years later. Do not add fields here without deciding what happens to every
  * snapshot already stored.
+ *
+ * `companyName` is optional for exactly that reason: snapshots frozen before it
+ * existed don't have one, so every sheet prints `companyName || name`.
  */
 export type ClientSnapshot = Pick<
   ClientRecord,
-  'name' | 'address' | 'email' | 'phone' | 'gstin'
+  'name' | 'companyName' | 'address' | 'email' | 'phone' | 'gstin'
 >;
+
+/**
+ * The one place a client is copied into a snapshot.
+ *
+ * Three callers need this shape — the two live previews and the server's
+ * finalize path — and they must never drift: a field the preview shows but
+ * finalize forgets to freeze would print differently once issued. Keeping it
+ * here, beside the type, means adding a snapshot field is a single edit.
+ */
+export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
+  return {
+    name: client.name,
+    companyName: client.companyName,
+    address: client.address,
+    email: client.email,
+    phone: client.phone,
+    gstin: client.gstin,
+  };
+}
 
 export interface BaseDocument {
   id: string;
@@ -76,6 +111,16 @@ export interface BaseDocument {
   clientId?: string;
   /** Frozen copy of the client at finalize time; drafts render live client data. */
   clientSnapshot?: ClientSnapshot;
+  /**
+   * Frozen copy of the studio's own identity block at finalize time.
+   *
+   * Absent on drafts (which render the live settings, as they should) and on
+   * every document issued before this existed — sheets read
+   * `studioSnapshot ?? STUDIO_INFO`. This exists because the studio details are
+   * editable: an issued tax invoice must keep the supplier address it carried at
+   * issue (CGST s.36 / Rule 46), so changing the settings must never rewrite it.
+   */
+  studioSnapshot?: StudioInfo;
   /** ISO date 'YYYY-MM-DD'. The numbering year derives from this, not the server clock. */
   issueDate: string;
   lineItems: LineItem[];

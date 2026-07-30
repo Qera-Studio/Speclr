@@ -66,6 +66,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     gstLabel: doc.gstLabel,
     notes: doc.notes,
     terms: doc.terms,
+    studioSnapshot: doc.studioSnapshot,
   };
   let snapshot: ClientSnapshot | EmployeeSnapshot | null = null;
   let clientId: string | null = null;
@@ -145,6 +146,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
     gstLabel: row.data.gstLabel,
     notes: row.data.notes,
     terms: row.data.terms,
+    studioSnapshot: row.data.studioSnapshot,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     finalizedAt: row.finalizedAt ? row.finalizedAt.getTime() : undefined,

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getDocument } from '@/db/store';
+import { getDocument, getStudioSettings } from '@/db/store';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
@@ -34,8 +34,16 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
   }
 
   const { id } = await params;
-  const doc = await getDocument(id);
-  if (!doc) notFound();
+  const stored = await getDocument(id);
+  if (!stored) notFound();
+
+  // A finalized document prints the studio details frozen onto it; a draft has
+  // none yet, so it prints the live settings — matching what the editor preview
+  // showed. The cast restores the discriminated union that the spread widens;
+  // the shape is unchanged, only one optional field is filled in.
+  const doc: AdminDocument = stored.studioSnapshot
+    ? stored
+    : ({ ...stored, studioSnapshot: await getStudioSettings() } as AdminDocument);
 
   const spec = DOC_TYPES[doc.type];
 

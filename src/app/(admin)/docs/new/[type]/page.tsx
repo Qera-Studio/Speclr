@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { listClients, listEmployees, listServices } from '@/db/store';
+import { getStudioSettings, listClients, listEmployees, listServices } from '@/db/store';
 import { DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
@@ -33,22 +33,29 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
   // workspace bar instead.
   const title = `New ${spec.label.toLowerCase()}`;
 
+  // The studio's own details as they stand right now, so the preview shows what
+  // the document would actually print. They are frozen onto the document only at
+  // finalize — see `studioSnapshot` in types.ts.
+  const studio = await getStudioSettings();
+
   // ── HR documents (employee-based) ──────────────────────────────
   if (spec.code === 'STP') {
     const employees = await listEmployees();
-    return <StipendEditor employees={employees} title={title} />;
+    return <StipendEditor employees={employees} studio={studio} title={title} />;
   }
   if (spec.code === 'OFR' || spec.code === 'EXP' || spec.code === 'EXIT') {
     const employees = await listEmployees();
-    return <LetterEditor type={spec.code} employees={employees} title={title} />;
+    return <LetterEditor type={spec.code} employees={employees} studio={studio} title={title} />;
   }
 
   // ── Client-based documents ─────────────────────────────────────
   const clients = await listClients();
   if (spec.code === 'CON') {
     const services = await listServices();
-    return <ContractEditor clients={clients} services={services} title={title} />;
+    return (
+      <ContractEditor clients={clients} services={services} studio={studio} title={title} />
+    );
   }
 
-  return <DocumentEditor typeCode={spec.code} clients={clients} title={title} />;
+  return <DocumentEditor typeCode={spec.code} clients={clients} studio={studio} title={title} />;
 }

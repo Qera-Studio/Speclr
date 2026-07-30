@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getDocument, listClients, listEmployees, listServices } from '@/db/store';
+import { getDocument, getStudioSettings, listClients, listEmployees, listServices } from '@/db/store';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
@@ -48,20 +48,47 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   // ── Draft → editor ──────────────────────────────────────────────
   // The editors own the full-height workspace layout; the route adds no wrapper.
   if (doc.status === 'draft') {
+    // Drafts have no frozen studio snapshot yet, so the preview reads the live
+    // settings — same values the document would print if finalized now.
+    const studio = await getStudioSettings();
     if (doc.type === 'STP') {
       const employees = await listEmployees();
-      return <StipendEditor employees={employees} doc={doc} title={heading} />;
+      return <StipendEditor employees={employees} doc={doc} studio={studio} title={heading} />;
     }
     if (isLetter(doc)) {
       const employees = await listEmployees();
-      return <LetterEditor type={doc.type} employees={employees} doc={doc} title={heading} />;
+      return (
+        <LetterEditor
+          type={doc.type}
+          employees={employees}
+          doc={doc}
+          studio={studio}
+          title={heading}
+        />
+      );
     }
     const clients = await listClients();
     if (doc.type === 'CON') {
       const services = await listServices();
-      return <ContractEditor clients={clients} services={services} doc={doc} title={heading} />;
+      return (
+        <ContractEditor
+          clients={clients}
+          services={services}
+          doc={doc}
+          studio={studio}
+          title={heading}
+        />
+      );
     }
-    return <DocumentEditor typeCode={doc.type} clients={clients} doc={doc} title={heading} />;
+    return (
+      <DocumentEditor
+        typeCode={doc.type}
+        clients={clients}
+        doc={doc}
+        studio={studio}
+        title={heading}
+      />
+    );
   }
 
   // ── Finalized → read-only sheet + actions (immutable — no edit/delete) ──

@@ -9,19 +9,19 @@ import {
 } from '@/lib/domain/dates';
 import { DOC_TYPES, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
-import type {
-  ActionResult,
-  AdminDocument,
-  ClientRecord,
-  ClientSnapshot,
-  ContractDocument,
-  DocTypeCode,
-  EmployeeSnapshot,
-  InvoiceDocument,
-  InvoiceOption,
-  LetterDocument,
-  ReceiptDocument,
-  StipendDocument,
+import {
+  clientSnapshotOf,
+  type ActionResult,
+  type AdminDocument,
+  type ClientSnapshot,
+  type ContractDocument,
+  type DocTypeCode,
+  type EmployeeSnapshot,
+  type InvoiceDocument,
+  type InvoiceOption,
+  type LetterDocument,
+  type ReceiptDocument,
+  type StipendDocument,
 } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import { claimSerial } from '@/db/counter';
@@ -30,6 +30,7 @@ import {
   getClient,
   getDocument,
   getEmployee,
+  getStudioSettings,
   listFinalizedInvoicesForClient,
   saveDocument,
 } from '@/db/store';
@@ -39,16 +40,6 @@ import { authorized } from './authGate';
 /** True for HR documents (stipend slip + letters) — employee-based, not client. */
 function isHrKind(kind: string): boolean {
   return kind === 'hr-slip' || kind === 'hr-letter';
-}
-
-function snapshotOf(client: ClientRecord): ClientSnapshot {
-  return {
-    name: client.name,
-    address: client.address,
-    email: client.email,
-    phone: client.phone,
-    gstin: client.gstin,
-  };
 }
 
 function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
@@ -202,7 +193,7 @@ export async function createDraft(
     base = {
       ...identity,
       clientId,
-      clientSnapshot: snapshotOf(client),
+      clientSnapshot: clientSnapshotOf(client),
     } as DocBase;
   }
 
@@ -258,7 +249,7 @@ export async function updateDraft(
     base = {
       ...existing,
       clientId,
-      clientSnapshot: snapshotOf(client),
+      clientSnapshot: clientSnapshotOf(client),
       updatedAt: Date.now(),
     } as DocBase;
   }
@@ -308,7 +299,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     const clientId = (existing as InvoiceDocument | ReceiptDocument | ContractDocument).clientId;
     const client = await getClient(clientId);
     if (!client) return { success: false, error: 'Client not found.' };
-    clientSnapshot = snapshotOf(client);
+    clientSnapshot = clientSnapshotOf(client);
   }
 
   // Numbered docs: financial (invoices/receipts) and hr-slip (stipend). Letters
@@ -333,6 +324,12 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     }
   }
 
+  // Freeze the studio's own identity block too. The details are editable, so
+  // without this a later address change would silently rewrite the "from:" block
+  // of every invoice already filed — which CGST s.36 (72-month unaltered
+  // retention) and Rule 46 (supplier address as at issue) do not allow.
+  const studioSnapshot = await getStudioSettings();
+
   // `existing` is already a well-formed union member; we only refresh the one
   // subject snapshot that applies to its kind.
   const finalized = {
@@ -340,6 +337,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     status: 'finalized',
     ...(number ? { number, serial, year } : {}),
     ...(hr ? { employeeSnapshot } : { clientSnapshot }),
+    studioSnapshot,
     updatedAt: Date.now(),
     finalizedAt: Date.now(),
   } as AdminDocument;
@@ -384,6 +382,9 @@ export async function duplicateDocument(id: unknown): Promise<ActionResult> {
     serial: undefined,
     year: undefined,
     finalizedAt: undefined,
+    // A duplicate is a fresh draft: it should show the studio's current details
+    // and freeze them again when it is finalized in its own right.
+    studioSnapshot: undefined,
     issueDate: todayISO(),
     createdAt: now,
     updatedAt: now,

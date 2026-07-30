@@ -11,11 +11,13 @@ import {
 import { todayISO } from '@/lib/domain/dates';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { serviceToSchedule, type ServiceTemplate } from '@/lib/domain/serviceTemplate';
-import type {
-  ClientRecord,
-  ClientSnapshot,
-  ContractDocument,
-  ContractSchedule,
+import type { StudioInfo } from '@/lib/domain/studio';
+import {
+  clientSnapshotOf,
+  type ClientRecord,
+  type ClientSnapshot,
+  type ContractDocument,
+  type ContractSchedule,
 } from '@/lib/domain/types';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -36,11 +38,19 @@ interface ContractEditorProps {
   clients: ClientRecord[];
   services: ServiceTemplate[];
   doc?: ContractDocument | null;
+  /** Live studio details, for a draft's preview. See the note in DocumentEditor. */
+  studio?: StudioInfo;
   /** Shown in the workspace bar; supplied by the route page. */
   title: string;
 }
 
-export default function ContractEditor({ clients, services, doc, title }: ContractEditorProps) {
+export default function ContractEditor({
+  clients,
+  services,
+  doc,
+  studio,
+  title,
+}: ContractEditorProps) {
   const router = useRouter();
   const [clientId, setClientId] = useState(doc?.clientId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -53,17 +63,12 @@ export default function ContractEditor({ clients, services, doc, title }: Contra
   const client = clients.find((c) => c.id === clientId);
   const heading = workspaceTitle(title, DOC_TYPES.CON.label, client?.name);
   const clientSnapshot: ClientSnapshot = client
-    ? {
-        name: client.name,
-        address: client.address,
-        email: client.email,
-        phone: client.phone,
-        gstin: client.gstin,
-      }
+    ? clientSnapshotOf(client)
     : (doc?.clientSnapshot ?? EMPTY_SNAPSHOT);
 
   const previewDoc: ContractDocument = {
     id: doc?.id ?? 'preview',
+    studioSnapshot: doc?.studioSnapshot ?? studio,
     type: 'CON',
     status: doc?.status ?? 'draft',
     clientId,

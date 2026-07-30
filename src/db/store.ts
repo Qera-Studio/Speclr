@@ -2,8 +2,9 @@ import 'server-only';
 
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from './index';
-import { clients, documents, employees, serviceTemplates } from './schema';
+import { clients, documents, employees, serviceTemplates, studioSettings } from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
+import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
 import type { AdminDocument, ClientRecord } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
@@ -25,6 +26,7 @@ export async function saveClient(client: ClientRecord): Promise<void> {
   const row = {
     id: client.id,
     name: client.name,
+    companyName: client.companyName ?? null,
     address: client.address,
     // Explicitly null rather than omitted: this same object is the
     // `onConflictDoUpdate` set, so leaving the key out would keep stale parts
@@ -46,6 +48,7 @@ function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
   return {
     id: r.id,
     name: r.name,
+    companyName: r.companyName ?? undefined,
     address: r.address,
     addressParts: r.addressParts ?? undefined,
     email: r.email,
@@ -64,6 +67,36 @@ export async function getClient(id: string): Promise<ClientRecord | null> {
 export async function listClients(): Promise<ClientRecord[]> {
   const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
   return rows.map(clientFromRow);
+}
+
+// ─── Studio settings ──────────────────────────────────────────────────────────
+
+/** The single row's key. There is only ever one studio. */
+const STUDIO_SETTINGS_ID = 'studio';
+
+/**
+ * The studio's live identity block, falling back to the `STUDIO_INFO` constant
+ * when the row has never been saved.
+ *
+ * The fallback is the seeding strategy: nothing changes on day one, and the
+ * settings page starts pre-filled with what documents already print. No seed
+ * migration to keep in step with the constant.
+ */
+export async function getStudioSettings(): Promise<StudioInfo> {
+  const rows = await db
+    .select()
+    .from(studioSettings)
+    .where(eq(studioSettings.id, STUDIO_SETTINGS_ID))
+    .limit(1);
+  return rows[0]?.info ?? STUDIO_INFO;
+}
+
+export async function saveStudioSettings(info: StudioInfo): Promise<void> {
+  const row = { id: STUDIO_SETTINGS_ID, info, updatedAt: new Date() };
+  await db
+    .insert(studioSettings)
+    .values(row)
+    .onConflictDoUpdate({ target: studioSettings.id, set: row });
 }
 
 // ─── Employees ────────────────────────────────────────────────────────────────

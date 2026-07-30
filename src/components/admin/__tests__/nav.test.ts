@@ -29,9 +29,8 @@ describe('nav model', () => {
     expect(RECORD_LINKS.map((r) => r.href)).toEqual(['/clients', '/employees', '/services']);
   });
 
-  it('links Icon spec under tools', () => {
-    expect(TOOL_LINKS).toHaveLength(1);
-    expect(TOOL_LINKS[0]).toMatchObject({ href: '/spec', label: 'Icon spec' });
+  it('links Icon spec and Settings under tools', () => {
+    expect(TOOL_LINKS.map((t) => t.href)).toEqual(['/spec', '/settings']);
   });
 
   it('gives every nav entry an icon', () => {

@@ -1,7 +1,7 @@
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS } from '@/lib/domain/msaBoilerplate';
 import { scheduleLetter } from '@/lib/domain/scheduleLetter';
-import { STUDIO_INFO } from '@/lib/domain/studio';
+import { studioOf } from '@/lib/domain/studio';
 import type { ContractDocument } from '@/lib/domain/types';
 
 /** Cover page styling shared by the print flow and the preview's dedicated
@@ -52,6 +52,7 @@ function NoteBlock({ heading, note }: { heading: string; note?: string }) {
  * The cover is always block 0 so it can style the first page black.
  */
 export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
+  const studio = studioOf(doc);
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const signatureStatement =
     MSA_SECTIONS.find((s) => s.number === 24)?.body[0] ??
@@ -62,7 +63,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
       <div className="flex justify-between items-start gap-[24px]">
         <p className="flex items-center gap-[6px] text-white">
           <QeraMark />
-          <span className="font-semibold text-[18px] text-white">{STUDIO_INFO.brandMark}</span>
+          <span className="font-semibold text-[18px] text-white">{studio.brandMark}</span>
         </p>
         <p className="font-semibold text-[12px] text-white text-right">{displayDate}</p>
       </div>
@@ -87,21 +88,21 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
           <dl className="m-0">
             <div className="flex gap-[16px] py-[3px]">
               <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Name</dt>
-              <dd className="m-0 text-black text-[12px] font-medium">{STUDIO_INFO.legalName}</dd>
+              <dd className="m-0 text-black text-[12px] font-medium">{studio.legalName}</dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
               <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Address</dt>
               <dd className="m-0 text-black text-[12px] font-medium whitespace-pre-line">
-                {STUDIO_INFO.address}
+                {studio.address}
               </dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
               <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Email</dt>
-              <dd className="m-0 text-black text-[12px] font-medium">{STUDIO_INFO.email}</dd>
+              <dd className="m-0 text-black text-[12px] font-medium">{studio.email}</dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
               <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Number</dt>
-              <dd className="m-0 text-black text-[12px] font-medium">{STUDIO_INFO.phone}</dd>
+              <dd className="m-0 text-black text-[12px] font-medium">{studio.phone}</dd>
             </div>
           </dl>
         </div>
@@ -111,8 +112,9 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
           <dl className="m-0">
             <div className="flex gap-[16px] py-[3px]">
               <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Name</dt>
+              {/* Legal name; older snapshots fall back to the short name. */}
               <dd className="m-0 text-black text-[12px] font-medium">
-                {doc.clientSnapshot.name || '—'}
+                {doc.clientSnapshot.companyName || doc.clientSnapshot.name || '—'}
               </dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
@@ -260,7 +262,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
             Qera Studio (Service Provider)
           </p>
           <p className="text-black/70 text-[12px] font-normal mb-[2px]">
-            Name: {STUDIO_INFO.legalName}
+            Name: {studio.legalName}
           </p>
           <p className="text-black/70 text-[12px] font-normal mb-[2px]">Date: {displayDate}</p>
           <div className="border-b border-black h-[40px] mt-[24px]" />
@@ -271,7 +273,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
         <div className="[break-inside:avoid]">
           <p className="text-black text-[13px] font-bold mb-[16px]">Client</p>
           <p className="text-black/70 text-[12px] font-normal mb-[2px]">
-            Name: {doc.clientSnapshot.name || '—'}
+            Name: {doc.clientSnapshot.companyName || doc.clientSnapshot.name || '—'}
           </p>
           <p className="text-black/70 text-[12px] font-normal mb-[2px]">Date: {displayDate}</p>
           <div className="border-b border-black h-[40px] mt-[24px]" />

@@ -10,6 +10,7 @@ import {
 } from '@/server/actions/documents';
 import { formatDisplayDate, todayISO } from '@/lib/domain/dates';
 import { DOC_TYPES } from '@/lib/domain/registry';
+import type { StudioInfo } from '@/lib/domain/studio';
 import { defaultLetterContent } from '@/lib/domain/hrContent';
 import { pronounSet, type EmployeeRecord } from '@/lib/domain/employee';
 import { formatINR } from '@/lib/domain/money';
@@ -73,11 +74,19 @@ interface LetterEditorProps {
   type: LetterType;
   employees: EmployeeRecord[];
   doc?: LetterDocument | null;
+  /** Live studio details, for a draft's preview. See the note in DocumentEditor. */
+  studio?: StudioInfo;
   /** Shown in the workspace bar; supplied by the route page. */
   title: string;
 }
 
-export default function LetterEditor({ type, employees, doc, title }: LetterEditorProps) {
+export default function LetterEditor({
+  type,
+  employees,
+  doc,
+  studio,
+  title,
+}: LetterEditorProps) {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -111,6 +120,7 @@ export default function LetterEditor({ type, employees, doc, title }: LetterEdit
 
   const previewDoc: LetterDocument = {
     id: doc?.id ?? 'preview',
+    studioSnapshot: doc?.studioSnapshot ?? studio,
     type,
     status: doc?.status ?? 'draft',
     employeeId,

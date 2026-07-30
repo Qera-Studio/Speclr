@@ -12,11 +12,12 @@ import {
 import { computeTotals } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { GST_STATES } from '@/lib/domain/gstStates';
-import type {
-  ClientRecord,
-  ClientSnapshot,
-  InvoiceDocument,
-  ReceiptDocument,
+import {
+  clientSnapshotOf,
+  type ClientRecord,
+  type ClientSnapshot,
+  type InvoiceDocument,
+  type ReceiptDocument,
 } from '@/lib/domain/types';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
@@ -41,6 +42,7 @@ import InvoicePicker from './InvoicePicker';
 import TotalsPanel from './TotalsPanel';
 import { paiseToRupees } from '@/lib/domain/money';
 import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
+import type { StudioInfo } from '@/lib/domain/studio';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
 import { workspaceTitle } from '../workspaceTitle';
 
@@ -55,21 +57,19 @@ function buildPreviewDoc(
   values: EditorFormValues,
   clients: ClientRecord[],
   doc?: FinancialDocument | null,
+  studio?: StudioInfo,
 ): FinancialDocument {
   const client = clients.find((c) => c.id === values.clientId);
   const fields = toPayload(typeCode, values);
   const snapshot: ClientSnapshot = client
-    ? {
-        name: client.name,
-        address: client.address,
-        email: client.email,
-        phone: client.phone,
-        gstin: client.gstin,
-      }
+    ? clientSnapshotOf(client)
     : (doc?.clientSnapshot ?? EMPTY_SNAPSHOT);
 
   const base = {
     id: doc?.id ?? 'preview',
+    // A finalized document prints its own frozen studio details; a draft shows
+    // whatever the settings say right now.
+    studioSnapshot: doc?.studioSnapshot ?? studio,
     status: doc?.status ?? ('draft' as const),
     number: doc?.number,
     serial: doc?.serial,
@@ -100,13 +100,26 @@ interface DocumentEditorProps {
   typeCode: FinancialTypeCode;
   clients: ClientRecord[];
   doc?: FinancialDocument | null;
+  /**
+   * The studio's live details, for the preview of a document that has no frozen
+   * snapshot yet. Optional: when it's absent the sheets fall back to the
+   * `STUDIO_INFO` constant, which is exactly what they printed before the
+   * settings page existed.
+   */
+  studio?: StudioInfo;
   /** Shown in the workspace bar; supplied by the route page. */
   title: string;
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = ['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other'];
 
-export default function DocumentEditor({ typeCode, clients, doc, title }: DocumentEditorProps) {
+export default function DocumentEditor({
+  typeCode,
+  clients,
+  doc,
+  studio,
+  title,
+}: DocumentEditorProps) {
   const router = useRouter();
   const spec = DOC_TYPES[typeCode];
   const { form, lineItems } = useDocumentForm(typeCode, doc);
@@ -136,7 +149,7 @@ export default function DocumentEditor({ typeCode, clients, doc, title }: Docume
    * so nothing here is ever actually absent.
    */
   const values = useWatch({ control }) as EditorFormValues;
-  const previewDoc = buildPreviewDoc(typeCode, values, clients, doc);
+  const previewDoc = buildPreviewDoc(typeCode, values, clients, doc, studio);
   const totals = computeTotals(previewDoc.lineItems, previewDoc.gstRatePercent);
   const heading = workspaceTitle(
     title,

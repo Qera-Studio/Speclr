@@ -43,7 +43,15 @@ export const draftLineItemSchema = z.object({
 });
 
 export const clientInputSchema = z.object({
+  /** Short reference name — lists, dropdowns, the editor heading. */
   name: z.string().trim().min(1).max(200),
+  /**
+   * The legal name documents print. Required: an invoice addressed to a pet
+   * name is not a valid tax document. `ClientRecord.companyName` stays optional
+   * so the rows written before this existed still load — but they cannot be
+   * saved again until one is supplied.
+   */
+  companyName: z.string().trim().min(1).max(200),
   /** The flat printable address; composed from `addressParts` when present. */
   address: z.string().trim().min(1).max(500),
   addressParts: addressPartsSchema.optional(),

@@ -42,7 +42,7 @@ describe('ClientManager', () => {
     expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /add client/i }));
-    expect(screen.getByLabelText(/name/i)).toHaveValue('');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('');
   });
 
   /**
@@ -82,10 +82,10 @@ describe('ClientManager', () => {
     setup();
 
     await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Acme Co.');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co.');
 
     await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Beta Ltd');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Beta Ltd');
   });
 
   it('warns before discarding unsaved edits when switching records', async () => {
@@ -93,16 +93,16 @@ describe('ClientManager', () => {
     setup();
 
     await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    await user.type(screen.getByLabelText(/name/i), ' edited');
+    await user.type(screen.getByLabelText(/^name$/i), ' edited');
 
     await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
 
     // The switch is held back until the user decides.
     expect(screen.getByRole('alertdialog', { name: /discard unsaved changes/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Acme Co. edited');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co. edited');
 
     await user.click(screen.getByRole('button', { name: /discard changes/i }));
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Beta Ltd');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Beta Ltd');
   });
 
   it('keeps the current record when the discard is cancelled', async () => {
@@ -110,11 +110,11 @@ describe('ClientManager', () => {
     setup();
 
     await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    await user.type(screen.getByLabelText(/name/i), ' edited');
+    await user.type(screen.getByLabelText(/^name$/i), ' edited');
 
     await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
     await user.click(screen.getByRole('button', { name: /keep editing/i }));
 
-    expect(screen.getByLabelText(/name/i)).toHaveValue('Acme Co. edited');
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co. edited');
   });
 });

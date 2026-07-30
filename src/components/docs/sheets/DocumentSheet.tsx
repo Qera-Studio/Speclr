@@ -4,7 +4,7 @@ import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { gstStateName } from '@/lib/domain/gstStates';
 import { computeTotals, formatINR, lineAmountPaise, splitGST } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
-import { STUDIO_INFO } from '@/lib/domain/studio';
+import { studioOf } from '@/lib/domain/studio';
 import type { InvoiceDocument, ReceiptDocument } from '@/lib/domain/types';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined in full black. */
@@ -34,11 +34,12 @@ function QeraMark() {
  */
 export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptDocument }) {
   const spec = DOC_TYPES[doc.type];
+  const studio = studioOf(doc);
   const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
 
   const hasGst = doc.gstRatePercent > 0;
-  const intraState = doc.placeOfSupplyStateCode === STUDIO_INFO.stateCode;
+  const intraState = doc.placeOfSupplyStateCode === studio.stateCode;
   const supplyStateName = gstStateName(doc.placeOfSupplyStateCode);
   const { cgstPaise, sgstPaise } = splitGST(totals.gstPaise);
 
@@ -54,7 +55,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         <div className="text-right shrink-0 pt-[4px]">
           <p className="flex items-center justify-end gap-[6px] text-black">
             <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{STUDIO_INFO.brandMark}</span>
+            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
           </p>
           <p className="font-semibold text-[12px] text-black mt-[4px]">{displayDate}</p>
           {doc.type === 'REC' && doc.payment.againstInvoiceNumber ? (
@@ -80,7 +81,11 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
       >
         <div>
           <h3 className="text-black/70 text-[10px] font-normal mb-[4px]">billed to:</h3>
-          <p className="text-black font-semibold text-[16px]">{doc.clientSnapshot.name || '—'}</p>
+          {/* The legal name, not the short reference name. Snapshots frozen
+              before companyName existed fall back to `name`. */}
+          <p className="text-black font-semibold text-[16px]">
+            {doc.clientSnapshot.companyName || doc.clientSnapshot.name || '—'}
+          </p>
           <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
             {doc.clientSnapshot.address}
           </p>
@@ -98,18 +103,18 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         </div>
         <div>
           <h3 className="text-black/70 text-[10px] font-normal mb-[4px]">from:</h3>
-          <p className="text-black font-semibold text-[16px]">{STUDIO_INFO.legalName}</p>
+          <p className="text-black font-semibold text-[16px]">{studio.legalName}</p>
           <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.address}
+            {studio.address}
           </p>
           <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.phone}
+            {studio.phone}
           </p>
           <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.email}
+            {studio.email}
           </p>
           <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
-            GSTIN: {STUDIO_INFO.gstin}
+            GSTIN: {studio.gstin}
           </p>
         </div>
       </section>
@@ -273,7 +278,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
                   <div className="flex">
                     <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">Bank</dt>
                     <dd className="m-0 text-black text-[11px] font-medium">
-                      {STUDIO_INFO.bank.bankName}
+                      {studio.bank.bankName}
                     </dd>
                   </div>
                   <div className="flex">
@@ -281,7 +286,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
                       Account No.
                     </dt>
                     <dd className="m-0 text-black text-[11px] font-medium">
-                      {STUDIO_INFO.bank.accountNo}
+                      {studio.bank.accountNo}
                     </dd>
                   </div>
                   <div className="flex">
@@ -289,13 +294,13 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
                       IFSC code
                     </dt>
                     <dd className="m-0 text-black text-[11px] font-medium">
-                      {STUDIO_INFO.bank.ifsc}
+                      {studio.bank.ifsc}
                     </dd>
                   </div>
                   <div className="flex">
                     <dt className="text-black/70 text-[10px] font-normal min-w-[90px]">UPI ID</dt>
                     <dd className="m-0 text-black text-[11px] font-medium">
-                      {STUDIO_INFO.bank.upiId}
+                      {studio.bank.upiId}
                     </dd>
                   </div>
                 </dl>
@@ -369,8 +374,8 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         </div>
 
         <footer className="flex justify-between gap-[16px] flex-wrap border-t border-[#d9d9d9] pt-[8px] text-black/70 text-[10px] font-normal">
-          <span>{STUDIO_INFO.thanksLine}</span>
-          <span>Queries: {STUDIO_INFO.email}</span>
+          <span>{studio.thanksLine}</span>
+          <span>Queries: {studio.email}</span>
           <span>{displayDate}</span>
           <span>{doc.number ? `#${doc.number}` : 'DRAFT'}</span>
         </footer>

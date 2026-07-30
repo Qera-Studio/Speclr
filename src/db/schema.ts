@@ -26,6 +26,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { AddressParts } from '@/lib/domain/address';
 import type { EmployeeRecord } from '@/lib/domain/employee';
+import type { StudioInfo } from '@/lib/domain/studio';
 import type {
   ClientSnapshot,
   DocStatus,
@@ -41,6 +42,11 @@ import type {
 export const clients = pgTable('clients', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  /**
+   * Legal entity name printed on documents. Nullable: the rows written before
+   * this column existed have none, and they must keep loading.
+   */
+  companyName: text('company_name'),
   /** Flat printable address — what documents render. Stays authoritative. */
   address: text('address').notNull(),
   /**
@@ -106,6 +112,22 @@ export interface ServiceTemplateContent {
   supportNote: string;
 }
 
+// ─── Studio settings ──────────────────────────────────────────────────────────
+
+/**
+ * The studio's own identity block ("from:", bank, GSTIN, CIN), editable at
+ * /settings. Exactly one row, keyed by the constant `STUDIO_SETTINGS_ID`.
+ *
+ * One JSONB blob rather than columns: nothing here is ever queried or reported
+ * on — it is read whole, rendered whole, and frozen whole onto a document at
+ * finalize. Validated by `studioInputSchema` on write.
+ */
+export const studioSettings = pgTable('studio_settings', {
+  id: text('id').primaryKey(),
+  info: jsonb('info').notNull().$type<StudioInfo>(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─── Documents ────────────────────────────────────────────────────────────────
 
 /**
@@ -117,6 +139,12 @@ export interface ServiceTemplateContent {
  */
 export interface DocumentData {
   lineItems?: LineItem[];
+  /**
+   * The studio's identity block as at finalize. Lives here rather than in its
+   * own column for the same reason as everything else in `data`: nothing queries
+   * it. Absent on drafts and on documents issued before it existed.
+   */
+  studioSnapshot?: StudioInfo;
   gstLabel?: string;
   notes?: string;
   terms?: string;

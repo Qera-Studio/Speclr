@@ -9,6 +9,7 @@ import {
   updateDraft,
 } from '@/server/actions/documents';
 import { todayISO } from '@/lib/domain/dates';
+import type { StudioInfo } from '@/lib/domain/studio';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import type { EmployeeRecord } from '@/lib/domain/employee';
@@ -62,11 +63,13 @@ function snapshotOf(e: EmployeeRecord): EmployeeSnapshot {
 interface StipendEditorProps {
   employees: EmployeeRecord[];
   doc?: StipendDocument | null;
+  /** Live studio details, for a draft's preview. See the note in DocumentEditor. */
+  studio?: StudioInfo;
   /** Shown in the workspace bar; supplied by the route page. */
   title: string;
 }
 
-export default function StipendEditor({ employees, doc, title }: StipendEditorProps) {
+export default function StipendEditor({ employees, doc, studio, title }: StipendEditorProps) {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
@@ -102,6 +105,7 @@ export default function StipendEditor({ employees, doc, title }: StipendEditorPr
 
   const previewDoc: StipendDocument = {
     id: doc?.id ?? 'preview',
+    studioSnapshot: doc?.studioSnapshot ?? studio,
     type: 'STP',
     status: doc?.status ?? 'draft',
     number: doc?.number,

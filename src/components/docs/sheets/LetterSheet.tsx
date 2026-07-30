@@ -1,6 +1,6 @@
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
-import { exitMasthead, HR_FOOTER } from '@/lib/domain/hrContent';
-import { STUDIO_INFO } from '@/lib/domain/studio';
+import { exitMasthead } from '@/lib/domain/hrContent';
+import { studioOf, type StudioInfo } from '@/lib/domain/studio';
 import type { LetterDocument } from '@/lib/domain/types';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
@@ -38,11 +38,17 @@ function mastheadFor(doc: LetterDocument): string {
   }
 }
 
-function SharedFooter({ displayDate }: { displayDate: string }) {
+/**
+ * Reads the studio's CIN and query address from the document's own studio
+ * details, not `HR_FOOTER` — the same values, but now editable at /settings and
+ * frozen at finalize. `HR_FOOTER` remains the source of the letter *body*
+ * boilerplate.
+ */
+function SharedFooter({ displayDate, studio }: { displayDate: string; studio: StudioInfo }) {
   return (
     <footer className="flex justify-between gap-[16px] flex-wrap mt-auto border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
-      <span>Queries: {HR_FOOTER.queryEmail}</span>
-      <span>CIN: {HR_FOOTER.cin}</span>
+      <span>Queries: {studio.queryEmailHr}</span>
+      <span>CIN: {studio.cin}</span>
       <span>{displayDate}</span>
     </footer>
   );
@@ -84,6 +90,7 @@ function SignatureBlock({
 export default function LetterSheet({ doc }: { doc: LetterDocument }) {
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const emp = doc.employeeSnapshot;
+  const studio = studioOf(doc);
   const masthead = mastheadFor(doc);
 
   // ── Offer letter — black cover page + body page ──────────────────────────
@@ -101,7 +108,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
             <p className="flex items-center gap-[6px] text-white">
               <QeraMark />
               <span className="font-semibold text-[18px] text-white">
-                {STUDIO_INFO.brandMark}
+                {studio.brandMark}
               </span>
             </p>
             <p className="font-semibold text-[12px] text-white text-right">{displayDate}</p>
@@ -127,7 +134,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
         >
           <div className="flex items-center gap-[6px] text-black mb-[40px]">
             <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{STUDIO_INFO.brandMark}</span>
+            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
           </div>
           {doc.bodyParagraphs.map((p, i) => (
             <p key={i} className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
@@ -141,7 +148,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
             </p>
             <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
           </div>
-          <SharedFooter displayDate={displayDate} />
+          <SharedFooter displayDate={displayDate} studio={studio} />
         </section>
       </article>
     );
@@ -160,7 +167,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
         <div className="flex justify-between items-start gap-[24px] mb-[32px]">
           <div className="flex items-center gap-[6px] text-black">
             <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{STUDIO_INFO.brandMark}</span>
+            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
           </div>
           <p className="text-black text-[12px] font-semibold text-right">{displayDate}</p>
         </div>
@@ -208,7 +215,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
           <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
         </div>
 
-        <SharedFooter displayDate={displayDate} />
+        <SharedFooter displayDate={displayDate} studio={studio} />
       </section>
     </article>
   );

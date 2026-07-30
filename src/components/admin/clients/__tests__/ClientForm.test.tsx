@@ -12,9 +12,15 @@ jest.mock('@/server/actions/clients', () => ({
 /** Fills the minimum a client needs. Phone must be a real Indian mobile now. */
 async function fillClient(
   user: ReturnType<typeof userEvent.setup>,
-  { name = 'Acme Co.', email = 'a@b.com', phone = '9876543210' } = {},
+  {
+    name = 'Acme Co.',
+    companyName = 'Acme Company Private Limited',
+    email = 'a@b.com',
+    phone = '9876543210',
+  } = {},
 ) {
   await user.type(screen.getByLabelText(/^name$/i), name);
+  await user.type(screen.getByLabelText(/^company name$/i), companyName);
   await user.type(screen.getByLabelText(/^email$/i), email);
   await user.type(screen.getByLabelText(/^phone$/i), phone);
   await user.type(screen.getByLabelText(/building \/ flat/i), 'C-204');
@@ -32,6 +38,7 @@ describe('ClientForm', () => {
     render(<ClientForm onDone={() => {}} />);
 
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^company name$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^phone$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/gstin/i)).toBeInTheDocument();
@@ -60,6 +67,7 @@ describe('ClientForm', () => {
     expect(createClient).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Acme Co.',
+        companyName: 'Acme Company Private Limited',
         email: 'a@b.com',
         phone: '+919876543210',
         address: 'C-204,\nGhaziabad - 201017\nIndia',
@@ -110,6 +118,9 @@ describe('ClientForm', () => {
     );
 
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('Existing Co');
+    // A client saved before company names existed starts blank here, and the
+    // field is required — so saving it forces the legal name to be supplied.
+    expect(screen.getByLabelText(/^company name$/i)).toHaveValue('');
     // A client saved before structured addresses simply starts with blank
     // parts — it must still load and be editable.
     expect(screen.getByLabelText(/building \/ flat/i)).toHaveValue('');

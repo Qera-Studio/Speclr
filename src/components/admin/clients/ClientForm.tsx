@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -75,6 +76,9 @@ export default function ClientForm({
     defaultValues: client
       ? {
           name: client.name,
+          // Clients created before this field existed have none — blank, and
+          // required, so saving forces it to be filled in.
+          companyName: client.companyName ?? '',
           address: client.address,
           // Clients created before structured addresses existed have no parts;
           // they start blank and the old flat address is kept until edited.
@@ -85,6 +89,7 @@ export default function ClientForm({
         }
       : {
           name: '',
+          companyName: '',
           address: '',
           addressParts: { ...emptyAddressParts },
           email: '',
@@ -113,7 +118,19 @@ export default function ClientForm({
         <Field>
           <FieldLabel htmlFor="client-name">Name</FieldLabel>
           <Input id="client-name" size="form" {...register('name')} />
+          <FieldDescription>
+            Short name for lists and dropdowns, e.g. “Clayora”.
+          </FieldDescription>
           <FieldError errors={[errors.name]} />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="client-company-name">Company name</FieldLabel>
+          <Input id="client-company-name" size="form" {...register('companyName')} />
+          <FieldDescription>
+            The legal name printed on documents, e.g. “Clayora Private Limited”.
+          </FieldDescription>
+          <FieldError errors={[errors.companyName]} />
         </Field>
 
         <Field>

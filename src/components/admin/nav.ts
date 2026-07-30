@@ -14,6 +14,7 @@ import {
   Wallet,
   FileBadge,
   FileOutput,
+  Settings,
 } from 'lucide-react';
 
 /** A single navigable destination. */
@@ -68,4 +69,7 @@ export const RECORD_LINKS: NavLink[] = [
 ];
 
 /** Tools — plain links at the bottom of the nav. */
-export const TOOL_LINKS: NavLink[] = [{ href: '/spec', label: 'Icon spec', icon: Image }];
+export const TOOL_LINKS: NavLink[] = [
+  { href: '/spec', label: 'Icon spec', icon: Image },
+  { href: '/settings', label: 'Settings', icon: Settings },
+];

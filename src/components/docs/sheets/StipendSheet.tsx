@@ -2,7 +2,7 @@ import { amountInWords } from '@/lib/domain/amountInWords';
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { computeTotals, formatINR, lineAmountPaise } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
-import { STUDIO_INFO } from '@/lib/domain/studio';
+import { studioOf } from '@/lib/domain/studio';
 import type { StipendDocument } from '@/lib/domain/types';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined in full black. */
@@ -32,6 +32,7 @@ function QeraMark() {
  */
 export default function StipendSheet({ doc }: { doc: StipendDocument }) {
   const spec = DOC_TYPES[doc.type];
+  const studio = studioOf(doc);
   const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const numberLabel = doc.status === 'finalized' && doc.number ? `#${doc.number}` : 'DRAFT';
@@ -52,7 +53,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
         <div className="text-right shrink-0 pt-[4px]">
           <p className="flex items-center justify-end gap-[6px] text-black">
             <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{STUDIO_INFO.brandMark}</span>
+            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
           </p>
           <p className="font-semibold text-[12px] text-black mt-[4px]">{displayDate}</p>
           <p className="text-black/70 text-[10px] font-normal mt-[4px]">
@@ -80,13 +81,13 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
           <h3 className="text-black/70 text-[10px] font-normal mb-[4px]">from:</h3>
           <p className="text-black font-semibold text-[14px]">Qera Studio</p>
           <p className="text-black/70 text-[10px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.address}
+            {studio.address}
           </p>
           <p className="text-black/70 text-[10px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.phone}
+            {studio.phone}
           </p>
           <p className="text-black/70 text-[10px] font-normal whitespace-pre-line">
-            {STUDIO_INFO.email}
+            {studio.email}
           </p>
         </div>
       </section>
@@ -328,9 +329,9 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
         </div>
 
         <footer className="flex justify-between gap-[16px] flex-wrap border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
-          <span>{STUDIO_INFO.thanksLine}</span>
-          <span>Queries: {STUDIO_INFO.queryEmailHr}</span>
-          <span>CIN: {STUDIO_INFO.cin}</span>
+          <span>{studio.thanksLine}</span>
+          <span>Queries: {studio.queryEmailHr}</span>
+          <span>CIN: {studio.cin}</span>
           <span>{displayDate}</span>
           <span>{numberLabel}</span>
         </footer>
