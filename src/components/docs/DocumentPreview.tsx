@@ -30,10 +30,17 @@ export type DocumentPreviewHandle = {
 };
 
 /**
- * A cheap content fingerprint of the block list: block count plus the length of
- * each block's serialized text. Changes whenever a block is added/removed or its
- * text grows/shrinks — i.e. whenever the pagination could change — without a
- * deep structural compare. Used to decide when to re-measure.
+ * A cheap content fingerprint of the block list, used to decide when to
+ * re-measure pagination.
+ *
+ * It walks a block's `children` for text AND its remaining props. The props
+ * matter: a sheet like `<DocumentSheet doc={…} />` has no children at all, it
+ * renders everything from `doc`. A children-only fingerprint was therefore
+ * constant while the user typed, so the cached pagination — and the stale
+ * render with it — was reused and the preview never updated.
+ *
+ * Props are reduced to a length, not deep-compared, keeping this cheap. Any
+ * edit that could change the layout also changes some prop's serialized size.
  */
 function blocksSignature(blocks: ReactNode[]): string {
   const textLength = (node: ReactNode): number => {
@@ -41,10 +48,28 @@ function blocksSignature(blocks: ReactNode[]): string {
     if (typeof node === 'string' || typeof node === 'number') return String(node).length;
     if (Array.isArray(node)) return node.reduce((sum: number, n) => sum + textLength(n), 0);
     if (isValidElement(node)) {
-      return textLength((node.props as { children?: ReactNode }).children);
+      const { children, ...rest } = node.props as { children?: ReactNode };
+      return textLength(children) + dataLength(rest);
     }
     return 0;
   };
+
+  /** Serialized size of a block's data props, ignoring functions. */
+  const dataLength = (props: object): number => {
+    try {
+      return (
+        JSON.stringify(props, (_key, value) =>
+          typeof value === 'function' ? undefined : value,
+        )?.length ?? 0
+      );
+    } catch {
+      // Circular or non-serializable props. Return 0 rather than a sentinel:
+      // such a block contributes nothing to the fingerprint, so it relies on
+      // its siblings to trigger a re-measure. No sheet has such props today.
+      return 0;
+    }
+  };
+
   return `${blocks.length}:${blocks.map(textLength).join(',')}`;
 }
 
