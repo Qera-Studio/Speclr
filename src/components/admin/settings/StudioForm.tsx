@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import IfscField from '@/components/form/IfscField';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import { studioInputSchema, type StudioInfo } from '@/lib/domain/studio';
 import { updateStudioSettings } from '@/server/actions/studio';
@@ -46,6 +47,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
   const {
     register,
     control,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -183,17 +185,25 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             </Field>
           </FieldRow>
           <FieldRow>
+            <IfscField
+              control={control}
+              name="bank.ifsc"
+              bankNameField="bank.bankName"
+              branchField="bank.branch"
+              setValue={setValue}
+              id="studio-bank-ifsc"
+            />
             <Field>
-              <FieldLabel htmlFor="studio-bank-ifsc">IFSC</FieldLabel>
-              <Input id="studio-bank-ifsc" size="form" {...register('bank.ifsc')} />
-              <FieldError errors={[errors.bank?.ifsc]} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="studio-bank-upi">UPI ID</FieldLabel>
-              <Input id="studio-bank-upi" size="form" {...register('bank.upiId')} />
-              <FieldError errors={[errors.bank?.upiId]} />
+              <FieldLabel htmlFor="studio-bank-branch">Branch (optional)</FieldLabel>
+              <Input id="studio-bank-branch" size="form" {...register('bank.branch')} />
+              <FieldError errors={[errors.bank?.branch]} />
             </Field>
           </FieldRow>
+          <Field>
+            <FieldLabel htmlFor="studio-bank-upi">UPI ID</FieldLabel>
+            <Input id="studio-bank-upi" size="form" {...register('bank.upiId')} />
+            <FieldError errors={[errors.bank?.upiId]} />
+          </Field>
         </FieldSet>
 
         <FieldSeparator />

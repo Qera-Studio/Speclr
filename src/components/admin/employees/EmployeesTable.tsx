@@ -1,22 +1,15 @@
 'use client';
 
-import { MoreHorizontal, IdCard } from 'lucide-react';
+import { IdCard } from 'lucide-react';
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { AddButton } from '@/components/ui/add-button';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { RemoveButton } from '@/components/ui/remove-button';
+import { EditButton, RowActions } from '../RowActions';
 import {
   Table,
   TableBody,
@@ -32,12 +25,10 @@ export default function EmployeesTable({
   employees,
   onEdit,
   onDelete,
-  onAdd,
 }: {
   employees: EmployeeRecord[];
   onEdit: (employee: EmployeeRecord) => void;
   onDelete: (employee: EmployeeRecord) => void;
-  onAdd?: () => void;
 }) {
   if (employees.length === 0) {
     return (
@@ -49,9 +40,6 @@ export default function EmployeesTable({
           <EmptyTitle>No employees yet</EmptyTitle>
           <EmptyDescription>Add your first employee to issue offer letters, stipends, and more.</EmptyDescription>
         </EmptyHeader>
-        <EmptyContent>
-          <AddButton onClick={onAdd}>Add employee</AddButton>
-        </EmptyContent>
       </Empty>
     );
   }
@@ -65,36 +53,28 @@ export default function EmployeesTable({
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Engagement</TableHead>
-          <TableHead>
+          <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {employees.map((employee) => (
-          <TableRow key={employee.id}>
+          <TableRow key={employee.id} className="group/row">
             <TableCell>{employee.name}</TableCell>
             <TableCell>{employee.email}</TableCell>
             <TableCell>{employee.role}</TableCell>
             <TableCell>{employee.engagementType}</TableCell>
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Actions for ${employee.name}`}
-                    />
-                  }
-                >
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEdit(employee)}>Edit</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete(employee)}>Delete</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <TableCell className="py-0 text-right">
+              <RowActions>
+                <EditButton label={`Edit ${employee.name}`} onClick={() => onEdit(employee)} />
+                <RemoveButton
+                  label={`Delete ${employee.name}`}
+                  confirmTitle="Delete employee"
+                  confirmDescription={`This will permanently remove ${employee.name}. This action cannot be undone.`}
+                  onConfirm={() => onDelete(employee)}
+                />
+              </RowActions>
             </TableCell>
           </TableRow>
         ))}

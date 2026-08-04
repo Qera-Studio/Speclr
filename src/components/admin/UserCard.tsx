@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
 import { SignOutButton } from '@clerk/nextjs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { SETTINGS_LINK } from './nav';
 
 export interface UserCardUser {
   name: string;
@@ -74,6 +76,15 @@ export default function UserCard({ user }: { user: UserCardUser }) {
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </div>
             </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <Link href={SETTINGS_LINK.href}>
+                  <SETTINGS_LINK.icon aria-hidden="true" />
+                  {SETTINGS_LINK.label}
+                </Link>
+              }
+            />
             <DropdownMenuSeparator />
             <SignOutButton>
               <DropdownMenuItem>

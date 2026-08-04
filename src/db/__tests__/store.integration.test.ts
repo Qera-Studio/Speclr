@@ -19,6 +19,9 @@ import {
   getClient,
   getDocument,
   listDocuments,
+  getLatestFinalizedInvoice,
+  searchEverything,
+  listDocumentsByType,
   listFinalizedInvoicesForClient,
   saveClient,
   saveDocument,
@@ -247,5 +250,36 @@ describe('Postgres store (integration)', () => {
     expect(ids).toEqual([newer, older]);
     expect(ids).not.toContain(draftId);
     expect(ids).not.toContain(othersId);
+
+    // The per-type list is the working surface, so it keeps drafts too.
+    const invoices = await listDocumentsByType('INV');
+    const invoiceIds = invoices.map((d) => d.id);
+    expect(invoiceIds).toEqual(expect.arrayContaining([older, newer, draftId, othersId]));
+    expect(invoices.every((d) => d.type === 'INV')).toBe(true);
+
+    // Receipts share the table but must never appear in the invoice list.
+    expect(await listDocumentsByType('REC')).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ id: newer })]),
+    );
+
+    // The newest *issued* invoice — never a draft.
+    const latest = await getLatestFinalizedInvoice();
+    expect(latest?.status).toBe('finalized');
+    expect(latest?.id).not.toBe(draftId);
+
+    // Search: a client by name, and that client's documents by foreign key.
+    const byClient = await searchEverything('Payer');
+    expect(byClient.clients.map((c) => c.id)).toContain(clientId);
+    expect(byClient.documents.some((d) => d.clientId === clientId)).toBe(true);
+
+    // ...and a document by its number, case-insensitively.
+    const numbered = (await getLatestFinalizedInvoice())!.number!;
+    const byNumber = await searchEverything(numbered.toLowerCase());
+    expect(byNumber.documents.map((d) => d.number)).toContain(numbered);
+
+    // A one-character query is not a search — it would match everything.
+    expect(await searchEverything('P')).toEqual({
+      documents: [], clients: [], employees: [], services: [],
+    });
   });
 });

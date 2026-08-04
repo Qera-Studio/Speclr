@@ -1,8 +1,16 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getDocument, getStudioSettings, listClients, listEmployees, listServices } from '@/db/store';
-import { DOC_TYPES } from '@/lib/domain/registry';
+import {
+  getDocument,
+  getLatestFinalizedInvoice,
+  getStudioSettings,
+  listClients,
+  listDocumentsByType,
+  listEmployees,
+  listServices,
+} from '@/db/store';
+import { DOC_TYPES, DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
@@ -12,6 +20,7 @@ import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
+import DocumentTypeList from '@/components/admin/DocumentTypeList';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import FinalizedActions from '@/components/docs/FinalizedActions';
 
@@ -36,6 +45,21 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   }
 
   const { id } = await params;
+
+  // `/docs/invoice` is the invoice *list*; `/docs/<uuid>` is one document.
+  // Sharing the segment keeps both URLs clean, and they can never collide —
+  // document ids are UUIDs, and a doc-type slug is never one.
+  const listSpec = DOC_TYPE_BY_SLUG[id];
+  if (listSpec) {
+    const [documents, latestInvoice] = await Promise.all([
+      listDocumentsByType(listSpec.code),
+      listSpec.code === 'REC' ? getLatestFinalizedInvoice() : Promise.resolve(null),
+    ]);
+    return (
+      <DocumentTypeList spec={listSpec} documents={documents} latestInvoice={latestInvoice} />
+    );
+  }
+
   const doc = await getDocument(id);
   if (!doc) notFound();
 

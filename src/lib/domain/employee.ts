@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema, type AddressParts } from './address';
+import { IFSC_RE } from './bank';
 import { CURRENCY_CODES, DEFAULT_CURRENCY, type CurrencyCode } from './currency';
 import type { EngagementType, PronounKey } from './types';
 
@@ -35,6 +36,8 @@ export interface EmployeeRecord {
     bankName: string;
     accountNo: string;
     ifsc: string;
+    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    branch?: string;
     upiId?: string;
     /** Compressed data URL of the employee's receiving UPI QR. */
     upiQrDataUrl?: string;
@@ -75,7 +78,18 @@ export const employeeInputSchema = z.object({
   bank: z.object({
     bankName: z.string().trim().max(120),
     accountNo: z.string().trim().max(40),
-    ifsc: z.string().trim().max(20),
+    /**
+     * Optional (an employee record can be saved before bank details are known),
+     * but if given it must be a real IFSC. Unlike `phone` above, a malformed
+     * IFSC is never a legacy-formatting quirk — it is simply wrong, and it is
+     * what a stipend gets paid against.
+     */
+    ifsc: z
+      .string()
+      .trim()
+      .refine((v) => v === '' || IFSC_RE.test(v), { message: 'Expected an IFSC like KKBK0000677.' }),
+    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    branch: z.string().trim().max(120).optional(),
     upiId: z.string().trim().max(60).optional(),
     upiQrDataUrl: z
       .string()

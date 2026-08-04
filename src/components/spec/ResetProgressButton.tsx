@@ -48,7 +48,7 @@ export default function ResetProgressButton({ onReset }: { onReset: () => void }
             saved progress. This can’t be undone. Export first if you want a copy.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="justify-center sm:justify-center">
+        <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"

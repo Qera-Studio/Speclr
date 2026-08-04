@@ -1,4 +1,4 @@
-import { DASHBOARD_LINK, DOCUMENT_SECTIONS, RECORD_LINKS, TOOL_LINKS } from './nav';
+import { DASHBOARD_LINK, DOCUMENT_SECTIONS, RECORD_LINKS, SETTINGS_LINK, TOOL_LINKS } from './nav';
 
 export interface Crumb {
   label: string;
@@ -11,6 +11,7 @@ const LEAF_LABELS: Record<string, string> = {
   [DASHBOARD_LINK.href]: DASHBOARD_LINK.label,
   ...Object.fromEntries(RECORD_LINKS.map((l) => [l.href, l.label])),
   ...Object.fromEntries(TOOL_LINKS.map((l) => [l.href, l.label])),
+  [SETTINGS_LINK.href]: SETTINGS_LINK.label,
   ...Object.fromEntries(DOCUMENT_SECTIONS.flatMap((s) => s.children.map((c) => [c.href, c.label]))),
 };
 
@@ -46,10 +47,26 @@ export function breadcrumbForPath(pathname: string): Crumb[] {
     return trail;
   }
 
-  // Unknown route. Group document routes under a "Documents" crumb; otherwise
-  // humanize the last segment as a best-effort leaf label.
   const segments = clean.split('/').filter(Boolean);
   const leaf = segments[segments.length - 1];
+
+  // `/docs/new/<slug>` — the create form for a type whose list is `/docs/<slug>`.
+  // Trail through the list so the section and the type stay navigable.
+  if (segments[0] === 'docs' && segments[1] === 'new' && segments.length === 3) {
+    const listHref = `/docs/${leaf}`;
+    const label = LEAF_LABELS[listHref];
+    if (label) {
+      const section = SECTION_FOR_HREF[listHref];
+      const trail: Crumb[] = [root];
+      if (section) trail.push({ label: section, href: undefined });
+      trail.push({ label, href: listHref });
+      trail.push({ label: 'New', href: clean });
+      return trail;
+    }
+  }
+
+  // Unknown route. Group document routes under a "Documents" crumb; otherwise
+  // humanize the last segment as a best-effort leaf label.
   const trail: Crumb[] = [root];
   if (segments[0] === 'docs') {
     // Under /docs, an unknown leaf is a document id — show it verbatim.

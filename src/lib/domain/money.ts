@@ -57,6 +57,32 @@ export function rupeesToPaise(input: string): number | null {
   return Number.isSafeInteger(paise) ? paise : null;
 }
 
+/**
+ * Keeps only what `rupeesToPaise` can parse: digits and a single decimal point,
+ * capped at two decimal places. The transform-on-keystroke rule from
+ * `normalizeIfscInput` — never hold a value the parser will reject.
+ */
+export function normalizeRupeeInput(input: string): string {
+  const cleaned = input.replace(/[^\d.]/g, '');
+  const [whole = '', ...rest] = cleaned.split('.');
+  if (rest.length === 0) return whole;
+  return `${whole}.${rest.join('').slice(0, 2)}`;
+}
+
+/**
+ * '1234567.5' → '12,34,567.5' — display grouping for a rupee input.
+ *
+ * Indian grouping, matching `formatINR` above: the same amount must not be
+ * punctuated one way in a filter and another way in the table beside it. Only
+ * the whole part is grouped, and the string is otherwise passed through — a
+ * half-typed '12.' stays '12.' so the decimal point survives being typed.
+ */
+export function groupRupeeInput(input: string): string {
+  const [whole, fraction] = input.split('.');
+  const grouped = whole ? inrIntegerFormat.format(Number(whole)) : '';
+  return input.includes('.') ? `${grouped}.${fraction ?? ''}` : grouped;
+}
+
 /** 150050 → '1500.50' — plain decimal string for form inputs (no grouping/symbol). */
 export function paiseToRupees(paise: number): string {
   if (!Number.isInteger(paise) || paise < 0) {

@@ -64,7 +64,7 @@ function RemoveButton({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
                   disabled={disabled}
                   aria-label={label}
                   className={cn(
@@ -72,7 +72,9 @@ function RemoveButton({
                     className
                   )}
                 >
-                  <Trash2 aria-hidden="true" />
+                  {/* size-4 to match the sidebar's icons — the button size
+                      variants top out at size-3.5. */}
+                  <Trash2 aria-hidden="true" className="size-4" />
                 </Button>
               }
             />

@@ -224,6 +224,8 @@ export interface EmployeeSnapshot {
     bankName: string;
     accountNo: string;
     ifsc: string;
+    /** Filled from the IFSC lookup. Record-keeping only — no sheet prints it. */
+    branch?: string;
     upiId?: string;
     /**
      * The employee's receiving UPI QR, as a compressed data URL.

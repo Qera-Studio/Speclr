@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { db } from './index';
 import { counters } from './schema';
 import { formatDocNumber } from '@/lib/domain/docNumber';
+import { DEV_UNLIMITED } from '@/lib/devMode';
 import type { DocTypeCode } from '@/lib/domain/types';
 
 /**
@@ -27,6 +28,15 @@ export interface ClaimedSerial {
 
 /** fyCode is the compact FY token, e.g. '2627' for FY 2026-27. */
 export async function claimSerial(code: DocTypeCode, fyCode: string): Promise<ClaimedSerial> {
+  // Outside production no real serial is claimed, so sample finalizes are
+  // unlimited and the live FY sequence stays untouched. Clock-based so the
+  // unique index on documents.number still holds, and deliberately 6 digits —
+  // an obviously-fake number nobody mistakes for an issued one.
+  if (DEV_UNLIMITED) {
+    const serial = 100000 + (Date.now() % 900000);
+    return { serial, number: formatDocNumber(code, fyCode, serial) };
+  }
+
   const rows = await db
     .insert(counters)
     .values({ docType: code, fyCode, lastSerial: 1 })

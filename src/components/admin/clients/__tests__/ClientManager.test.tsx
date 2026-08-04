@@ -46,6 +46,21 @@ describe('ClientManager', () => {
   });
 
   /**
+   * The CTA used to live in the empty state when the list was empty and in the
+   * header otherwise, so it moved the moment you added your first client. One
+   * fixed home, both states.
+   */
+  it('keeps the create button in the header when there are no clients', () => {
+    render(
+      <EditorPanelProvider>
+        <ClientManager clients={[]} />
+      </EditorPanelProvider>,
+    );
+    expect(screen.getByText(/no clients yet/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /add client/i })).toHaveLength(1);
+  });
+
+  /**
    * Regression: the rail's open state is shared app-wide, so deriving this
    * manager's visibility straight from it made the form appear whenever
    * anything else expanded the rail — landing on Clients popped an empty "Add

@@ -27,21 +27,23 @@ describe('ServicesTable', () => {
     expect(screen.getByText(/full brand identity package/i)).toBeInTheDocument();
   });
 
-  it('calls onEdit when the row Edit action is chosen', async () => {
+  it('calls onEdit from the row Edit action', async () => {
     const onEdit = jest.fn();
     const user = userEvent.setup();
     render(<ServicesTable services={services} onEdit={onEdit} onDelete={() => {}} />);
-    await user.click(screen.getByRole('button', { name: /actions for branding/i }));
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit branding/i }));
     expect(onEdit).toHaveBeenCalledWith(services[0]);
   });
 
-  it('calls onDelete when the row Delete action is chosen', async () => {
+  it('confirms before deleting', async () => {
     const onDelete = jest.fn();
     const user = userEvent.setup();
     render(<ServicesTable services={services} onEdit={() => {}} onDelete={onDelete} />);
-    await user.click(screen.getByRole('button', { name: /actions for branding/i }));
-    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+    await user.click(screen.getByRole('button', { name: /delete branding/i }));
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await user.click(await screen.findByRole('button', { name: /^remove$/i }));
     expect(onDelete).toHaveBeenCalledWith(services[0]);
   });
 

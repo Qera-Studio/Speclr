@@ -7,6 +7,8 @@ const getDocument = jest.fn();
 const listClients = jest.fn(() => Promise.resolve([]));
 const listEmployees = jest.fn(() => Promise.resolve([]));
 const listServices = jest.fn(() => Promise.resolve([]));
+const listDocumentsByType = jest.fn(() => Promise.resolve([]));
+const getLatestFinalizedInvoice = jest.fn(() => Promise.resolve(null));
 const redirect = jest.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`);
 });
@@ -26,6 +28,8 @@ jest.mock('@/db/store', () => ({
   listClients: () => listClients(),
   listEmployees: () => listEmployees(),
   listServices: () => listServices(),
+  listDocumentsByType: (...a: unknown[]) => listDocumentsByType(...(a as [])),
+  getLatestFinalizedInvoice: () => getLatestFinalizedInvoice(),
 }));
 jest.mock('next/navigation', () => ({
   redirect: (u: string) => redirect(u),
@@ -40,6 +44,7 @@ jest.mock('@/server/actions/documents', () => ({
   finalizeDocument: jest.fn(),
   duplicateDocument: jest.fn(),
   deleteDraftAction: jest.fn(),
+  createReceiptForInvoice: jest.fn(),
 }));
 
 import DocumentPage from '../page';
@@ -79,6 +84,41 @@ describe('/docs/[id]', () => {
     expect(screen.getByRole('button', { name: /duplicate/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
+  });
+
+  it('renders the type list — not a document — for a doc-type slug', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    render(await DocumentPage({ params: Promise.resolve({ id: 'invoice' }) }));
+
+    expect(screen.getByRole('heading', { name: 'Invoices' })).toBeInTheDocument();
+    // Two of them while the list is empty: the header CTA and the empty state.
+    for (const link of screen.getAllByRole('link', { name: /new invoice/i })) {
+      expect(link).toHaveAttribute('href', '/docs/new/invoice');
+    }
+    expect(listDocumentsByType).toHaveBeenCalledWith('INV');
+    // A slug must never be looked up as a document id.
+    expect(getDocument).not.toHaveBeenCalled();
+  });
+
+  it('offers a receipt against the latest invoice, on the receipt list only', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    getLatestFinalizedInvoice.mockResolvedValue({
+      id: 'inv-1',
+      number: 'QS-INV-2627-001',
+    } as never);
+
+    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }) }));
+
+    expect(screen.getByRole('button', { name: /receipt for QS-INV-2627-001/i })).toBeInTheDocument();
+  });
+
+  it('hides the receipt shortcut when nothing has been invoiced yet', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    getLatestFinalizedInvoice.mockResolvedValue(null);
+
+    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }) }));
+
+    expect(screen.queryByRole('button', { name: /receipt for/i })).not.toBeInTheDocument();
   });
 
   it('redirects an unauthorized user', async () => {

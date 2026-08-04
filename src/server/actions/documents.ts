@@ -401,6 +401,48 @@ export async function duplicateDocument(id: unknown): Promise<ActionResult> {
   return { success: true, id: copy.id };
 }
 
+/**
+ * Starts a receipt draft that settles an already-issued invoice.
+ *
+ * The one-click path behind "Receipt for QS-INV-…" on the receipt list. It
+ * carries across exactly what the editor's own invoice picker carries (see
+ * `applyInvoice` in `DocumentEditor`) — line items, GST rate, GST label, place
+ * of supply — and links the receipt to the invoice by *both* id and printed
+ * number, which must always be set together.
+ *
+ * Finalized invoices only. A draft has no number, so there is nothing for a
+ * receipt to reference; and everything stays editable afterwards, because a
+ * receipt may settle part of an invoice.
+ */
+export async function createReceiptForInvoice(invoiceId: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof invoiceId !== 'string') return { success: false, error: 'Invalid input.' };
+
+  const invoice = await getDocument(invoiceId);
+  if (!invoice) return { success: false, error: 'Invoice not found.' };
+  if (invoice.type !== 'INV' || invoice.status !== 'finalized' || !invoice.number) {
+    return { success: false, error: 'Only a finalized invoice can be receipted.' };
+  }
+
+  // Delegated rather than assembled here: `createDraft` owns validation, the
+  // client snapshot, the save, and the revalidate. One path, one set of rules.
+  return createDraft('REC', invoice.clientId, {
+    issueDate: todayISO(),
+    lineItems: invoice.lineItems,
+    gstRatePercent: invoice.gstRatePercent,
+    gstLabel: invoice.gstLabel,
+    placeOfSupplyStateCode: invoice.placeOfSupplyStateCode,
+    notes: invoice.notes,
+    payment: {
+      date: todayISO(),
+      method: 'Bank Transfer',
+      againstInvoiceId: invoice.id,
+      againstInvoiceNumber: invoice.number,
+    },
+  });
+}
+
 export async function deleteDraftAction(id: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
 

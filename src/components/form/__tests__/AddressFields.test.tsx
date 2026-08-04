@@ -50,6 +50,58 @@ describe('AddressFields', () => {
     }
   });
 
+  it('locks the fields it filled, and unlocks them when the pincode changes', async () => {
+    mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByLabelText(/pincode/i), '201017');
+    await settleDebounce();
+
+    expect(screen.getByLabelText(/^city$/i)).toHaveAttribute('readonly');
+    expect(screen.getByLabelText(/^state$/i)).toHaveAttribute('readonly');
+
+    // Correcting the pincode hands control back — an autofill is never a trap.
+    await user.type(screen.getByLabelText(/pincode/i), '1');
+
+    expect(screen.getByLabelText(/^city$/i)).not.toHaveAttribute('readonly');
+    expect(screen.getByLabelText(/^state$/i)).not.toHaveAttribute('readonly');
+  });
+
+  /**
+   * The explanation used to be a standing line of text under the pincode. It
+   * is now behind an icon — but it must still be a real, focusable control
+   * (not hover-only) and the sentence must still reach a screen reader the
+   * moment the lock happens, without anyone going to look for it.
+   */
+  it('explains the lock through a focusable icon and a live region', async () => {
+    mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.queryByRole('button', { name: /why are city and state locked/i })).toBeNull();
+
+    await user.type(screen.getByLabelText(/pincode/i), '201017');
+    await settleDebounce();
+
+    expect(
+      screen.getByRole('button', { name: /why are city and state locked/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/filled from this pincode/i);
+  });
+
+  it('leaves a hand-typed city editable', async () => {
+    mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
+    const user = userEvent.setup();
+    render(<Harness initial={{ city: 'Noida' }} />);
+
+    await user.type(screen.getByLabelText(/pincode/i), '201017');
+    await settleDebounce();
+
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Noida');
+    expect(screen.getByLabelText(/^city$/i)).not.toHaveAttribute('readonly');
+  });
+
   it('fills city and state from a six-digit Indian pincode', async () => {
     mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
     const user = userEvent.setup();

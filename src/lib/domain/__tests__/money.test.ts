@@ -1,7 +1,9 @@
 import {
   computeTotals,
   formatINR,
+  groupRupeeInput,
   lineAmountPaise,
+  normalizeRupeeInput,
   paiseToRupees,
   rupeesToPaise,
   splitGST,
@@ -124,5 +126,49 @@ describe('paiseToRupees', () => {
 
   it('throws on non-integer input', () => {
     expect(() => paiseToRupees(1.5)).toThrow();
+  });
+});
+
+describe('normalizeRupeeInput', () => {
+  it('drops everything the parser would reject', () => {
+    expect(normalizeRupeeInput('werwerwe')).toBe('');
+    expect(normalizeRupeeInput('1a2b3')).toBe('123');
+    expect(normalizeRupeeInput('₹1,500')).toBe('1500');
+    expect(normalizeRupeeInput('-500')).toBe('500');
+  });
+
+  it('keeps one decimal point and at most two places', () => {
+    expect(normalizeRupeeInput('15.5')).toBe('15.5');
+    expect(normalizeRupeeInput('15.567')).toBe('15.56');
+    expect(normalizeRupeeInput('1.2.3')).toBe('1.23');
+  });
+
+  /** A decimal point has to survive being typed, before its digits exist. */
+  it('leaves a half-typed decimal alone', () => {
+    expect(normalizeRupeeInput('12.')).toBe('12.');
+  });
+
+  it('always produces something rupeesToPaise accepts', () => {
+    expect(rupeesToPaise(normalizeRupeeInput('₹1,367.86x'))).toBe(136786);
+  });
+});
+
+describe('groupRupeeInput', () => {
+  /** Indian grouping, matching formatINR — the same amount must not be
+      punctuated one way in a filter and another in the table beside it. */
+  it('groups in the Indian system', () => {
+    expect(groupRupeeInput('1000')).toBe('1,000');
+    expect(groupRupeeInput('100000')).toBe('1,00,000');
+    expect(groupRupeeInput('1234567')).toBe('12,34,567');
+  });
+
+  it('leaves short numbers and empty input alone', () => {
+    expect(groupRupeeInput('')).toBe('');
+    expect(groupRupeeInput('999')).toBe('999');
+  });
+
+  it('groups only the whole part, and keeps a trailing point', () => {
+    expect(groupRupeeInput('123456.78')).toBe('1,23,456.78');
+    expect(groupRupeeInput('12.')).toBe('12.');
   });
 });

@@ -47,6 +47,16 @@
     overflow: visible !important;
   }
 
+  /* The inset is a floating card on screen — inset by a margin, rounded, with a
+     shadow. On paper that offset shifts the sheet off the page origin, so flatten
+     it back to a plain block. */
+  [data-slot='sidebar-inset'] {
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
   .doc-print-page {
     padding: 0;
   }
@@ -58,8 +68,13 @@
     box-shadow: none;
   }
 
-  /* Chrome (the print toolbar, any app nav) is hidden in the printed output. */
-  [data-print-hidden] {
+  /* Chrome is hidden in the printed output: the print toolbar and the header
+     carry `data-print-hidden`; both rails are matched by their slot, because
+     `Sidebar` spreads props onto the inner fixed container while the *wrapper*
+     is what reserves the horizontal gap. Hiding only the container would leave
+     that gap and push the sheet sideways. */
+  [data-print-hidden],
+  [data-slot='sidebar'] {
     display: none !important;
   }
 }

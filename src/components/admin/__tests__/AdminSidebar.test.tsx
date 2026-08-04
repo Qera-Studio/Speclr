@@ -26,6 +26,11 @@ describe('AdminSidebar', () => {
     }
   });
 
+  it('no longer lists Settings in the nav — it moved into the account menu', () => {
+    renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
+  });
+
   it('renders the collapsible document sections as triggers', () => {
     renderSidebar();
     expect(screen.getByRole('button', { name: /^client/i })).toBeInTheDocument();
@@ -37,7 +42,7 @@ describe('AdminSidebar', () => {
     renderSidebar();
     await u.click(screen.getByRole('button', { name: /^client/i }));
     expect(await screen.findByRole('link', { name: 'Invoice' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Contract' })).toHaveAttribute('href', '/docs/new/contract');
+    expect(screen.getByRole('link', { name: 'Contract' })).toHaveAttribute('href', '/docs/contract');
   });
 
   it('marks the active route with aria-current', () => {

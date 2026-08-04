@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listDocuments } from '@/db/store';
-import DocumentsTable from '@/components/admin/DocumentsTable';
+import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
+import { AddLink } from '@/components/ui/add-button';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -29,8 +30,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Documents</h1>
-      <DocumentsTable documents={documents} />
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Documents</h1>
+        <AddLink href="/docs/new/invoice">New invoice</AddLink>
+      </div>
+      <DocumentsBrowser documents={documents} />
     </div>
   );
 }

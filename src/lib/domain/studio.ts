@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { addressPartsSchema, type AddressParts } from './address';
+import { IFSC_RE } from './bank';
 
 /**
  * The "from:" block, bank details, GST identity, and footer line printed on
@@ -34,6 +35,8 @@ export interface StudioInfo {
     bankName: string;
     accountNo: string;
     ifsc: string;
+    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    branch?: string;
     upiId: string;
   };
 }
@@ -102,7 +105,9 @@ export const studioInputSchema = z.object({
   bank: z.object({
     bankName: z.string().trim().min(1).max(120),
     accountNo: z.string().trim().min(1).max(40),
-    ifsc: z.string().trim().min(1).max(20),
+    ifsc: z.string().trim().regex(IFSC_RE, { message: 'Expected an IFSC like KKBK0000677.' }),
+    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    branch: z.string().trim().max(120).optional(),
     upiId: z.string().trim().min(1).max(120),
   }),
 });

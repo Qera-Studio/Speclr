@@ -22,10 +22,12 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AddressFields from '@/components/form/AddressFields';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
+import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';
 import { createEmployee, updateEmployee } from '@/server/actions/employees';
 import { rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
 import { composeAddress, emptyAddressParts, addressPartsSchema } from '@/lib/domain/address';
+import { isIfsc } from '@/lib/domain/bank';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
@@ -45,7 +47,9 @@ const formSchema = z.object({
   payCurrency: z.string().trim().min(1),
   bankName: z.string(),
   accountNo: z.string(),
-  ifsc: z.string(),
+  // Optional — bank details can be filled in later — but wrong is not allowed.
+  ifsc: z.string().refine((v) => v === '' || isIfsc(v), 'Enter a valid IFSC, e.g. KKBK0000677.'),
+  branch: z.string(),
   upiId: z.string(),
   upiQrDataUrl: z.string(),
 });
@@ -83,6 +87,7 @@ export default function EmployeeForm({
   const {
     register,
     control,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -105,6 +110,7 @@ export default function EmployeeForm({
           bankName: employee.bank.bankName,
           accountNo: employee.bank.accountNo,
           ifsc: employee.bank.ifsc,
+          branch: employee.bank.branch ?? '',
           upiId: employee.bank.upiId ?? '',
           upiQrDataUrl: employee.bank.upiQrDataUrl ?? '',
         }
@@ -123,6 +129,7 @@ export default function EmployeeForm({
           bankName: '',
           accountNo: '',
           ifsc: '',
+          branch: '',
           upiId: '',
           upiQrDataUrl: '',
         },
@@ -152,6 +159,7 @@ export default function EmployeeForm({
         bankName: values.bankName,
         accountNo: values.accountNo,
         ifsc: values.ifsc,
+        branch: values.branch || undefined,
         upiId: values.upiId || undefined,
         upiQrDataUrl: values.upiQrDataUrl || undefined,
       },
@@ -328,12 +336,21 @@ export default function EmployeeForm({
               <FieldError errors={[errors.accountNo]} />
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="employee-ifsc">IFSC</FieldLabel>
-              <Input id="employee-ifsc" size="form" {...register('ifsc')} />
-              <FieldError errors={[errors.ifsc]} />
-            </Field>
+            <IfscField
+              control={control}
+              name="ifsc"
+              bankNameField="bankName"
+              branchField="branch"
+              setValue={setValue}
+              id="employee-ifsc"
+            />
           </FieldRow>
+
+          <Field>
+            <FieldLabel htmlFor="employee-branch">Branch (optional)</FieldLabel>
+            <Input id="employee-branch" size="form" {...register('branch')} />
+            <FieldError errors={[errors.branch]} />
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="employee-upi">UPI ID (optional)</FieldLabel>

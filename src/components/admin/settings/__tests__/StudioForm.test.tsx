@@ -67,7 +67,8 @@ describe('StudioForm', () => {
     await u.click(screen.getByRole('button', { name: /save settings/i }));
 
     // The one thing the user must be able to trust about this page.
-    expect(await screen.findByRole('status')).toHaveTextContent(/already issued/i);
+    // Scoped by name: the IFSC field owns a second (usually empty) live region.
+    expect(await screen.findByText(/already issued/i)).toHaveAttribute('role', 'status');
   });
 
   it('shows a server error when the action fails', async () => {

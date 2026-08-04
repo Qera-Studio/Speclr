@@ -1,10 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: jest.fn() }),
+}));
+jest.mock('@clerk/nextjs', () => ({
+  SignOutButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+// See AdminHeader.test.tsx — the search field pulls in a Server Action.
+jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => []) }));
+
 import AdminShell from '../AdminShell';
 import { EditorPanelContent } from '../EditorPanel';
 import { SIDEBAR_MIN_WIDTH } from '../SidebarResizeHandle';
-
-jest.mock('next/navigation', () => ({ usePathname: () => '/' }));
 
 const user = { name: 'Shivanshu', email: 'shivanshu@qera.studio' } as never;
 

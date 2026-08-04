@@ -21,7 +21,7 @@ async function fillEmployee(user: ReturnType<typeof userEvent.setup>, { phone = 
   await user.type(screen.getByLabelText(/^city$/i), 'Ghaziabad');
   await user.type(screen.getByLabelText(/bank name/i), 'Kotak');
   await user.type(screen.getByLabelText(/account number/i), '123');
-  await user.type(screen.getByLabelText(/ifsc/i), 'KKBK0');
+  await user.type(screen.getByLabelText(/ifsc/i), 'kkbk0000677');
 }
 
 beforeEach(() => {
@@ -64,7 +64,7 @@ describe('EmployeeForm', () => {
         payCurrency: 'INR',
         phone: '+919876543210',
         address: 'C-204,\nGhaziabad - 201017\nIndia',
-        bank: expect.objectContaining({ bankName: 'Kotak', accountNo: '123', ifsc: 'KKBK0' }),
+        bank: expect.objectContaining({ bankName: 'Kotak', accountNo: '123', ifsc: 'KKBK0000677' }),
       }),
     );
   });

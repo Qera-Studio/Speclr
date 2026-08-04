@@ -44,19 +44,19 @@ export const DOCUMENT_SECTIONS: NavSection[] = [
     label: 'Client',
     icon: Handshake,
     children: [
-      { href: '/docs/new/contract', label: 'Contract', icon: FileSignature },
-      { href: '/docs/new/invoice', label: 'Invoice', icon: ReceiptIndianRupee },
-      { href: '/docs/new/receipt', label: 'Receipt', icon: Receipt },
+      { href: '/docs/contract', label: 'Contract', icon: FileSignature },
+      { href: '/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee },
+      { href: '/docs/receipt', label: 'Receipt', icon: Receipt },
     ],
   },
   {
     label: 'Admin',
     icon: Briefcase,
     children: [
-      { href: '/docs/new/offer-letter', label: 'Offer letter', icon: FileText },
-      { href: '/docs/new/stipend', label: 'Stipend', icon: Wallet },
-      { href: '/docs/new/experience-letter', label: 'Experience letter', icon: FileBadge },
-      { href: '/docs/new/exit-letter', label: 'Exit letter', icon: FileOutput },
+      { href: '/docs/offer-letter', label: 'Offer letter', icon: FileText },
+      { href: '/docs/stipend', label: 'Stipend', icon: Wallet },
+      { href: '/docs/experience-letter', label: 'Experience letter', icon: FileBadge },
+      { href: '/docs/exit-letter', label: 'Exit letter', icon: FileOutput },
     ],
   },
 ];
@@ -69,7 +69,11 @@ export const RECORD_LINKS: NavLink[] = [
 ];
 
 /** Tools — plain links at the bottom of the nav. */
-export const TOOL_LINKS: NavLink[] = [
-  { href: '/spec', label: 'Icon spec', icon: Image },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+export const TOOL_LINKS: NavLink[] = [{ href: '/spec', label: 'Icon spec', icon: Image }];
+
+/**
+ * Settings lives in the account menu at the foot of the nav, not in the nav
+ * itself — it configures *you and the studio*, not a document surface. Exported
+ * so `UserCard` renders it and `breadcrumb.ts` can still label `/settings`.
+ */
+export const SETTINGS_LINK: NavLink = { href: '/settings', label: 'Settings', icon: Settings };

@@ -23,6 +23,7 @@ jest.mock('@/db/store', () => ({
 jest.mock('next/navigation', () => ({
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 import PrintPage from '../page';

@@ -4,9 +4,11 @@ import FinalizedActions from '../FinalizedActions';
 
 const push = jest.fn();
 const duplicateDocument = jest.fn();
+const deleteDraftAction = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: (u: string) => push(u) }) }));
 jest.mock('@/server/actions/documents', () => ({
   duplicateDocument: (...a: unknown[]) => duplicateDocument(...a),
+  deleteDraftAction: (...a: unknown[]) => deleteDraftAction(...a),
 }));
 
 describe('FinalizedActions', () => {
@@ -33,5 +35,17 @@ describe('FinalizedActions', () => {
     render(<FinalizedActions docId="doc-1" />);
     await u.click(screen.getByRole('button', { name: /duplicate/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Nope.');
+  });
+
+  // Pre-launch escape hatch. NODE_ENV is 'test' here, so DEV_UNLIMITED is on;
+  // a production build inlines it false and drops the button entirely.
+  it('deletes a finalized document via the dev-only button', async () => {
+    deleteDraftAction.mockResolvedValue({ success: true });
+    const u = userEvent.setup();
+    render(<FinalizedActions docId="doc-1" />);
+    await u.click(screen.getByRole('button', { name: /delete \(dev only\)/i }));
+    await u.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(deleteDraftAction).toHaveBeenCalledWith('doc-1');
+    expect(push).toHaveBeenCalledWith('/');
   });
 });

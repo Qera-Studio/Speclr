@@ -1,11 +1,12 @@
 import 'server-only';
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { db } from './index';
 import { clients, documents, employees, serviceTemplates, studioSettings } from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
+import { DEV_UNLIMITED } from '@/lib/devMode';
 import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
-import type { AdminDocument, ClientRecord } from '@/lib/domain/types';
+import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
 
@@ -246,6 +247,36 @@ export async function listDocuments(): Promise<AdminDocument[]> {
 }
 
 /**
+ * One document type, newest first — what each per-type list page shows.
+ * Both drafts and finalized documents: the list is the working surface for a
+ * type, not an archive of issued ones. Uses `documents_type_idx`.
+ */
+export async function listDocumentsByType(type: DocTypeCode): Promise<AdminDocument[]> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.type, type))
+    .orderBy(desc(documents.createdAt));
+  return rows.map((r) => fromRow(r as DocumentRow));
+}
+
+/**
+ * The most recently issued invoice, or null if none has been.
+ *
+ * Backs the receipt list's one-click "receipt for the latest invoice". Finalized
+ * only — a draft has no number, so nothing can be receipted against it.
+ */
+export async function getLatestFinalizedInvoice(): Promise<AdminDocument | null> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(and(eq(documents.type, 'INV'), eq(documents.status, 'finalized')))
+    .orderBy(desc(documents.issueDate), desc(documents.createdAt))
+    .limit(1);
+  return rows[0] ? fromRow(rows[0] as DocumentRow) : null;
+}
+
+/**
  * Finalized invoices for one client, newest first — the source for the
  * receipt's "against invoice" picker.
  *
@@ -271,12 +302,98 @@ export async function listFinalizedInvoicesForClient(
   return rows.map((r) => fromRow(r as DocumentRow));
 }
 
-/** Drafts only — finalized documents are part of the permanent record. */
+/**
+ * Drafts only — finalized documents are part of the permanent record.
+ * `DEV_UNLIMITED` lifts that while speclr is pre-launch, so sample finalizes
+ * can be cleared out; in production the guard always holds.
+ */
 export async function deleteDraft(id: string): Promise<void> {
   const existing = await getDocument(id);
   if (!existing) return;
-  if (existing.status === 'finalized') {
+  if (existing.status === 'finalized' && !DEV_UNLIMITED) {
     throw new Error(`Document ${id} is finalized and cannot be deleted.`);
   }
   await db.delete(documents).where(eq(documents.id, id));
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+
+/** How many hits of each kind the palette shows. */
+const SEARCH_LIMIT = 5;
+
+export interface SearchResults {
+  documents: AdminDocument[];
+  clients: ClientRecord[];
+  employees: EmployeeRecord[];
+  services: ServiceTemplate[];
+}
+
+const EMPTY_SEARCH: SearchResults = { documents: [], clients: [], employees: [], services: [] };
+
+/**
+ * The header palette's one query: documents, clients, employees and services.
+ *
+ * Plain `ilike '%q%'` rather than full-text search — this is a single studio's
+ * records, a few hundred rows at most, and a substring match is what someone
+ * typing half an invoice number actually wants. Revisit if the tables grow.
+ *
+ * Documents match on their number, or on the party they concern. The party's
+ * name lives inside the JSONB snapshot, so rather than reach into it, the
+ * matching clients/employees are resolved first and their documents pulled by
+ * foreign key — the indexed path, and it keeps snapshot shape out of SQL.
+ */
+export async function searchEverything(query: string): Promise<SearchResults> {
+  const q = query.trim();
+  if (q.length < 2) return EMPTY_SEARCH;
+  const pattern = `%${q}%`;
+
+  const [clientHits, employeeHits, serviceHits] = await Promise.all([
+    db
+      .select()
+      .from(clients)
+      .where(
+        or(
+          ilike(clients.name, pattern),
+          ilike(clients.companyName, pattern),
+          ilike(clients.email, pattern),
+        ),
+      )
+      .orderBy(clients.name)
+      .limit(SEARCH_LIMIT),
+    db
+      .select()
+      .from(employees)
+      .where(or(ilike(employees.name, pattern), ilike(employees.email, pattern)))
+      .orderBy(employees.name)
+      .limit(SEARCH_LIMIT),
+    db
+      .select()
+      .from(serviceTemplates)
+      .where(ilike(serviceTemplates.name, pattern))
+      .orderBy(serviceTemplates.name)
+      .limit(SEARCH_LIMIT),
+  ]);
+
+  const clientIds = clientHits.map((c) => c.id);
+  const employeeIds = employeeHits.map((e) => e.id);
+
+  const documentMatch = [
+    ilike(documents.number, pattern),
+    ...(clientIds.length ? [inArray(documents.clientId, clientIds)] : []),
+    ...(employeeIds.length ? [inArray(documents.employeeId, employeeIds)] : []),
+  ];
+
+  const documentHits = await db
+    .select()
+    .from(documents)
+    .where(or(...documentMatch))
+    .orderBy(desc(documents.createdAt))
+    .limit(SEARCH_LIMIT);
+
+  return {
+    documents: documentHits.map((r) => fromRow(r as DocumentRow)),
+    clients: clientHits.map(clientFromRow),
+    employees: employeeHits.map(employeeFromRow),
+    services: serviceHits.map(serviceFromRow),
+  };
 }

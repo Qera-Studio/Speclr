@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronRight, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { ChevronRight } from 'lucide-react';
 import { breadcrumbForPath } from './breadcrumb';
+import SearchCommand from './SearchCommand';
 
 /**
  * The sticky site header, pinned to the top of the inset content panel. The
@@ -16,7 +16,7 @@ export default function AdminHeader() {
   const crumbs = breadcrumbForPath(pathname);
 
   return (
-    <header className="z-30 flex h-14 shrink-0 items-center gap-3 rounded-t-md border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header data-print-hidden className="z-30 flex h-14 shrink-0 items-center gap-3 rounded-t-md border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <nav aria-label="Breadcrumb" className="min-w-0">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((crumb, i) => {
@@ -41,13 +41,7 @@ export default function AdminHeader() {
         </ol>
       </nav>
 
-      <div className="relative ml-auto w-full max-w-xs">
-        <Search
-          className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input type="search" placeholder="Search…" aria-label="Search" className="pl-8" />
-      </div>
+      <SearchCommand />
     </header>
   );
 }

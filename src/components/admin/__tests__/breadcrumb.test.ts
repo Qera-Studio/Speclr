@@ -19,11 +19,20 @@ describe('breadcrumbForPath', () => {
     ]);
   });
 
-  it('maps a new-document route through its section', () => {
+  it('maps a document list through its section', () => {
+    expect(breadcrumbForPath('/docs/invoice')).toEqual([
+      { label: 'Dashboard', href: '/' },
+      { label: 'Client', href: undefined },
+      { label: 'Invoice', href: '/docs/invoice' },
+    ]);
+  });
+
+  it('trails a new-document route through its list, so the type stays navigable', () => {
     expect(breadcrumbForPath('/docs/new/invoice')).toEqual([
       { label: 'Dashboard', href: '/' },
       { label: 'Client', href: undefined },
-      { label: 'Invoice', href: '/docs/new/invoice' },
+      { label: 'Invoice', href: '/docs/invoice' },
+      { label: 'New', href: '/docs/new/invoice' },
     ]);
   });
 
@@ -31,7 +40,8 @@ describe('breadcrumbForPath', () => {
     expect(breadcrumbForPath('/docs/new/stipend')).toEqual([
       { label: 'Dashboard', href: '/' },
       { label: 'Admin', href: undefined },
-      { label: 'Stipend', href: '/docs/new/stipend' },
+      { label: 'Stipend', href: '/docs/stipend' },
+      { label: 'New', href: '/docs/new/stipend' },
     ]);
   });
 

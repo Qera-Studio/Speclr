@@ -1,22 +1,15 @@
 'use client';
 
-import { MoreHorizontal, Package } from 'lucide-react';
+import { Package } from 'lucide-react';
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { AddButton } from '@/components/ui/add-button';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { RemoveButton } from '@/components/ui/remove-button';
+import { EditButton, RowActions } from '../RowActions';
 import {
   Table,
   TableBody,
@@ -38,12 +31,10 @@ export default function ServicesTable({
   services,
   onEdit,
   onDelete,
-  onAdd,
 }: {
   services: ServiceTemplate[];
   onEdit: (service: ServiceTemplate) => void;
   onDelete: (service: ServiceTemplate) => void;
-  onAdd?: () => void;
 }) {
   if (services.length === 0) {
     return (
@@ -55,9 +46,6 @@ export default function ServicesTable({
           <EmptyTitle>No services yet</EmptyTitle>
           <EmptyDescription>Create a service template to reuse across contracts and invoices.</EmptyDescription>
         </EmptyHeader>
-        <EmptyContent>
-          <AddButton onClick={onAdd}>Add service</AddButton>
-        </EmptyContent>
       </Empty>
     );
   }
@@ -69,34 +57,26 @@ export default function ServicesTable({
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Overview</TableHead>
-          <TableHead>
+          <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {services.map((service) => (
-          <TableRow key={service.id}>
+          <TableRow key={service.id} className="group/row">
             <TableCell>{service.name}</TableCell>
             <TableCell>{truncate(service.overview)}</TableCell>
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Actions for ${service.name}`}
-                    />
-                  }
-                >
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEdit(service)}>Edit</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete(service)}>Delete</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <TableCell className="py-0 text-right">
+              <RowActions>
+                <EditButton label={`Edit ${service.name}`} onClick={() => onEdit(service)} />
+                <RemoveButton
+                  label={`Delete ${service.name}`}
+                  confirmTitle="Delete service"
+                  confirmDescription={`This will permanently remove ${service.name}. This action cannot be undone.`}
+                  onConfirm={() => onDelete(service)}
+                />
+              </RowActions>
             </TableCell>
           </TableRow>
         ))}

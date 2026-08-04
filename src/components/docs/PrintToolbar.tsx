@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 
 /** Print-view toolbar — hidden in the printed output via @media print (data-print-hidden). */
@@ -27,6 +28,17 @@ export default function PrintToolbar({
     // Fallback for browsers that don't fire afterprint reliably.
     window.setTimeout(restore, 1000);
   }, [fileName]);
+
+  // `?auto=1` — arrived here from the list's Print icon, which means "print
+  // this", not "show me this". Open the dialog straight away. The ref guards
+  // against strict mode's double mount firing it twice.
+  const auto = useSearchParams().get('auto') === '1';
+  const printed = useRef(false);
+  useEffect(() => {
+    if (!auto || printed.current) return;
+    printed.current = true;
+    handlePrint();
+  }, [auto, handlePrint]);
 
   return (
     <div

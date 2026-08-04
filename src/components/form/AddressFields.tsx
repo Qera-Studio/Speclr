@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useController, type Control, type FieldValues, type Path } from 'react-hook-form';
+import { Info } from 'lucide-react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { isIndianPincode } from '@/lib/domain/address';
 import { COUNTRIES } from '@/lib/domain/phone';
 
@@ -24,6 +26,8 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
 }));
 
 const DEBOUNCE_MS = 400;
+
+const LOCK_HINT = 'City and state filled from this pincode. Change it to edit them.';
 
 interface AddressFieldsProps<T extends FieldValues> {
   control: Control<T>;
@@ -48,6 +52,17 @@ export default function AddressFields<T extends FieldValues>({
   const country = useController({ control, name: `${name}.country` as Path<T> });
 
   const [lookingUp, setLookingUp] = useState(false);
+  /**
+   * Which fields the postal lookup filled in. Those go read-only, so a typo
+   * can't leave a client's city and pincode disagreeing.
+   *
+   * Read-only rather than disabled: a disabled input is skipped on submit and
+   * is skipped by screen readers. And the lock is always escapable — editing or
+   * clearing the pincode clears these flags (see the effect below), so a wrong
+   * district from India Post is never something you're stuck with.
+   */
+  const [autofilled, setAutofilled] = useState({ city: false, state: false });
+  const locked = autofilled.city || autofilled.state;
 
   const pincodeValue = String(pincode.field.value ?? '');
   const countryValue = String(country.field.value ?? 'IN');
@@ -63,6 +78,10 @@ export default function AddressFields<T extends FieldValues>({
   const setState = state.field.onChange;
 
   useEffect(() => {
+    // A new pincode (or leaving India) invalidates whatever the last one filled
+    // in — unlock first, then look up again.
+    setAutofilled({ city: false, state: false });
+
     if (countryValue !== 'IN' || !isIndianPincode(pincodeValue)) {
       setLookingUp(false);
       return;
@@ -84,8 +103,13 @@ export default function AddressFields<T extends FieldValues>({
 
         // Only fill what's empty. Someone who has typed a city meant it, and a
         // postal database shouldn't overrule them.
-        if (result.city && !latest.current.city.trim()) setCity(result.city);
-        if (result.state && !latest.current.state.trim()) setState(result.state);
+        const filledCity = Boolean(result.city) && !latest.current.city.trim();
+        const filledState = Boolean(result.state) && !latest.current.state.trim();
+        if (filledCity) setCity(result.city);
+        if (filledState) setState(result.state);
+        if (filledCity || filledState) {
+          setAutofilled({ city: filledCity, state: filledState });
+        }
       } catch {
         // Aborted, offline, or upstream down — all no-ops by design.
       } finally {
@@ -127,7 +151,37 @@ export default function AddressFields<T extends FieldValues>({
 
       <FieldRow>
         <Field>
-          <FieldLabel htmlFor={`${idPrefix}-pincode`}>Pincode</FieldLabel>
+          {/* The icon sits beside the label, never inside it — anything within
+              a `<label>` becomes part of the input's accessible name. */}
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor={`${idPrefix}-pincode`}>Pincode</FieldLabel>
+            {/*
+              A standing warning line under the field pushed the layout around
+              and shouted at someone who had done nothing wrong. The icon says
+              "there is something to know here" without taking a row.
+
+              It is a real button, not a hover-only affordance, so the
+              explanation is reachable by keyboard; the same sentence also
+              stays in the live region below, which is what actually announces
+              the lock to a screen reader.
+            */}
+            {locked ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label="Why are city and state locked?"
+                      className="text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground"
+                    />
+                  }
+                >
+                  <Info className="size-3.5" aria-hidden="true" />
+                </TooltipTrigger>
+                <TooltipContent>{LOCK_HINT}</TooltipContent>
+              </Tooltip>
+            ) : null}
+          </div>
           <Input
             id={`${idPrefix}-pincode`}
             size={size}
@@ -138,7 +192,7 @@ export default function AddressFields<T extends FieldValues>({
             value={pincodeValue}
           />
           <span id={`${idPrefix}-pincode-hint`} className="sr-only" role="status">
-            {lookingUp ? 'Looking up city and state…' : ''}
+            {locked ? LOCK_HINT : lookingUp ? 'Looking up city and state…' : ''}
           </span>
           <FieldError errors={[pincode.fieldState.error]} />
         </Field>
@@ -149,6 +203,9 @@ export default function AddressFields<T extends FieldValues>({
             id={`${idPrefix}-city`}
             size={size}
             autoComplete="address-level2"
+            readOnly={autofilled.city}
+            aria-readonly={autofilled.city || undefined}
+            className={autofilled.city ? 'text-muted-foreground' : undefined}
             {...city.field}
             value={String(city.field.value ?? '')}
           />
@@ -163,6 +220,9 @@ export default function AddressFields<T extends FieldValues>({
             id={`${idPrefix}-state`}
             size={size}
             autoComplete="address-level1"
+            readOnly={autofilled.state}
+            aria-readonly={autofilled.state || undefined}
+            className={autofilled.state ? 'text-muted-foreground' : undefined}
             {...state.field}
             value={String(state.field.value ?? '')}
           />

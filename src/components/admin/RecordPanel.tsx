@@ -58,7 +58,10 @@ export default function RecordPanel({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={onCancelDiscard}>Keep editing</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirmDiscard}>Discard changes</AlertDialogAction>
+            {/* Destructive: this throws away work you typed. */}
+            <AlertDialogAction variant="destructive" onClick={onConfirmDiscard}>
+              Discard changes
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
