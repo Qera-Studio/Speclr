@@ -14,7 +14,7 @@ function StatusIcon({ status }: { status: Status }) {
 
   const meta = {
     fail: { label: 'Fail', Icon: X, className: 'text-destructive' },
-    warning: { label: 'Warning', Icon: TriangleAlert, className: 'text-amber-500' },
+    warning: { label: 'Warning', Icon: TriangleAlert, className: 'text-warning' },
     unknown: { label: 'Unknown', Icon: Minus, className: 'text-muted-foreground' },
   }[status];
 

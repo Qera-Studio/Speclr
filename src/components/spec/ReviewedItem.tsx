@@ -35,7 +35,7 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
       <div
         className={cn(
           'rounded-md border transition-colors',
-          attention ? 'border-amber-500/30 bg-amber-500/5' : 'border-primary/30 bg-primary/5',
+          attention ? 'border-warning/30 bg-warning/5' : 'border-primary/30 bg-primary/5',
         )}
       >
         <CollapsibleTrigger
@@ -46,7 +46,7 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
             aria-label={attention ? 'Needs attention' : 'Passed'}
             variant="outline"
             icon={attention ? TriangleAlert : undefined}
-            className={cn('size-5 shrink-0 rounded-sm', attention ? 'text-amber-500' : 'text-primary')}
+            className={cn('size-5 shrink-0 rounded-sm', attention ? 'text-warning' : 'text-primary')}
           />
           <span className="text-sm font-medium text-foreground">Reviewed</span>
           <span className="ml-auto text-xs text-muted-foreground">{summary}</span>

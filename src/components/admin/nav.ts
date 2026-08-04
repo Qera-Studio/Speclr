@@ -15,6 +15,7 @@ import {
   FileBadge,
   FileOutput,
   Settings,
+  SwatchBook,
 } from 'lucide-react';
 
 /** A single navigable destination. */
@@ -69,7 +70,10 @@ export const RECORD_LINKS: NavLink[] = [
 ];
 
 /** Tools — plain links at the bottom of the nav. */
-export const TOOL_LINKS: NavLink[] = [{ href: '/spec', label: 'Icon spec', icon: Image }];
+export const TOOL_LINKS: NavLink[] = [
+  { href: '/spec', label: 'Icon spec', icon: Image },
+  { href: '/kit', label: 'Kit', icon: SwatchBook },
+];
 
 /**
  * Settings lives in the account menu at the foot of the nav, not in the nav

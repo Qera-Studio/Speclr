@@ -213,7 +213,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
               <span
                 className={cn(
                   'text-xs font-medium',
-                  spec.priority === 'required' ? 'text-blue-500' : 'text-muted-foreground',
+                  spec.priority === 'required' ? 'text-primary' : 'text-muted-foreground',
                 )}
               >
                 {spec.priority === 'required' ? 'Required' : 'Nice to have'}

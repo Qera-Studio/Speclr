@@ -32,8 +32,8 @@ describe('nav model', () => {
     expect(RECORD_LINKS.map((r) => r.href)).toEqual(['/clients', '/employees', '/services']);
   });
 
-  it('leaves only Icon spec under tools', () => {
-    expect(TOOL_LINKS.map((t) => t.href)).toEqual(['/spec']);
+  it('lists the tools: Icon spec and the design Kit', () => {
+    expect(TOOL_LINKS.map((t) => t.href)).toEqual(['/spec', '/kit']);
   });
 
   it('keeps Settings out of the nav — it belongs to the account menu', () => {
