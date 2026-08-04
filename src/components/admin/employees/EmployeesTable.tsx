@@ -70,6 +70,7 @@ export default function EmployeesTable({
                 <EditButton label={`Edit ${employee.name}`} onClick={() => onEdit(employee)} />
                 <RemoveButton
                   label={`Delete ${employee.name}`}
+                  tooltip="Delete"
                   confirmTitle="Delete employee"
                   confirmDescription={`This will permanently remove ${employee.name}. This action cannot be undone.`}
                   onConfirm={() => onDelete(employee)}

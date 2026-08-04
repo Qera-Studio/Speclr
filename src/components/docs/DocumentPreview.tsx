@@ -22,8 +22,6 @@ const PAGE_CONTENT_HEIGHT = SHEET_HEIGHT - 96;
 // Vertical gap between stacked pages in the scrolling column.
 const PAGE_GAP = 24;
 
-export type PreviewZoom = 'fit' | 'full';
-
 export type DocumentPreviewHandle = {
   /** Scroll the page at `index` (0-based) to the top of the viewport. */
   scrollToPage: (index: number) => void;
@@ -102,7 +100,6 @@ export default function DocumentPreview({
   firstPageClassName,
   coverFirst = false,
   selfPaddedSheet = false,
-  zoom = 'fit',
   onPageCountChange,
   onCurrentPageChange,
   ref,
@@ -118,7 +115,6 @@ export default function DocumentPreview({
    * frame for their A4 margins.
    */
   selfPaddedSheet?: boolean;
-  zoom?: PreviewZoom;
   onPageCountChange?: (count: number) => void;
   onCurrentPageChange?: (index: number) => void;
   ref?: Ref<DocumentPreviewHandle>;
@@ -199,9 +195,6 @@ export default function DocumentPreview({
     onPageCountChange?.(pageCount);
   }, [pageCount, onPageCountChange]);
 
-  const fitting = zoom === 'fit';
-  const effectiveScale = fitting ? scale : 1;
-
   // Phase 1 — not yet measured: render the flow un-paginated so heights can be
   // read. The visible pane shows all blocks until measured.
   const measuring = flowPages === null;
@@ -215,7 +208,7 @@ export default function DocumentPreview({
         if (!page || !viewport) return;
         // offsetTop is in unscaled space; the column is transform-scaled, so
         // convert to on-screen pixels before scrolling.
-        const top = page.offsetTop * effectiveScale;
+        const top = page.offsetTop * scale;
         // jsdom (and very old browsers) have no Element.scrollTo — fall back to
         // assigning scrollTop so paging never throws.
         if (typeof viewport.scrollTo === 'function') {
@@ -225,7 +218,7 @@ export default function DocumentPreview({
         }
       },
     }),
-    [effectiveScale],
+    [scale],
   );
 
   // Track which page occupies the viewport as the user scrolls, so the counter
@@ -298,8 +291,8 @@ export default function DocumentPreview({
       <div
         className="relative mx-auto"
         style={{
-          width: SHEET_WIDTH * effectiveScale,
-          height: columnHeight === undefined ? undefined : columnHeight * effectiveScale,
+          width: SHEET_WIDTH * scale,
+          height: columnHeight === undefined ? undefined : columnHeight * scale,
         }}
       >
         <div
@@ -312,7 +305,7 @@ export default function DocumentPreview({
               ? 'flex flex-col [transform-origin:top_left]'
               : 'absolute top-0 left-0 flex flex-col [transform-origin:top_left]'
           }
-          style={{ transform: `scale(${effectiveScale})`, gap: PAGE_GAP }}
+          style={{ transform: `scale(${scale})`, gap: PAGE_GAP }}
         >
           {coverBlock ? (
             <div

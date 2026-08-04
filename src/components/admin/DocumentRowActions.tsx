@@ -42,7 +42,9 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
     router.refresh();
   };
 
-  const iconLink = (href: string, label: string, Icon: typeof Printer) => (
+  // `label` is the accessible name (specific); `tooltip` is the on-screen hint
+  // (short) — the row already says which document this is.
+  const iconLink = (href: string, label: string, tooltip: string, Icon: typeof Printer) => (
     <Tooltip>
       <TooltipTrigger
         render={
@@ -58,7 +60,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
           </Link>
         }
       />
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{tooltip}</TooltipContent>
     </Tooltip>
   );
 
@@ -67,12 +69,12 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
   return (
     <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
       {isDraft ? (
-        iconLink(`/docs/${doc.id}`, 'Edit draft', Pencil)
+        iconLink(`/docs/${doc.id}`, 'Edit draft', 'Edit', Pencil)
       ) : (
         <>
           {/* `auto=1` prints on arrival — from a list row, Print means print.
               The document number in the first column is the way to preview. */}
-          {iconLink(`/docs/${doc.id}/print?auto=1`, 'Print', Printer)}
+          {iconLink(`/docs/${doc.id}/print?auto=1`, 'Print', 'Print', Printer)}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -89,7 +91,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
                 </Button>
               }
             />
-            <TooltipContent>Duplicate as new draft</TooltipContent>
+            <TooltipContent>Duplicate</TooltipContent>
           </Tooltip>
         </>
       )}
@@ -97,6 +99,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
       {isDraft ? (
         <RemoveButton
           label="Delete draft"
+          tooltip="Delete"
           confirmTitle="Delete this draft?"
           confirmDescription="This cannot be undone."
           onConfirm={onDelete}
@@ -104,6 +107,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
       ) : DEV_UNLIMITED ? (
         <RemoveButton
           label="Delete (dev only)"
+          tooltip="Delete"
           confirmTitle="Delete this finalized document?"
           confirmDescription="Testing escape hatch — finalized documents are permanent in production. This cannot be undone."
           onConfirm={onDelete}

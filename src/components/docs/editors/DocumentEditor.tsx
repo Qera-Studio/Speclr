@@ -22,11 +22,12 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
+import { Switch } from '@/components/ui/switch';
+import FieldInfo from '@/components/form/FieldInfo';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
@@ -133,6 +134,35 @@ export default function DocumentEditor({
   } = form;
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  /**
+   * Which GST branch the editor is showing. Seeded from the document itself —
+   * a stored rate above zero means GST applied — and defaulting to on for a
+   * new one, since the studio is GST-registered.
+   *
+   * Not a stored field: the document already says whether GST applies, by
+   * carrying a rate. A second flag could disagree with the rate, and then the
+   * printed invoice and the record would be telling different stories.
+   */
+  const [gstApplies, setGstAppliesState] = useState(
+    doc ? doc.gstRatePercent > 0 : true,
+  );
+
+  /**
+   * Switching branch clears the one being hidden. This is the part that
+   * matters: `computeTotals` reads `gstRatePercent`, so a hidden 18% would go
+   * on charging tax on a document whose editor says GST does not apply — a
+   * defect in an issued invoice, not a cosmetic one.
+   */
+  const setGstApplies = (next: boolean) => {
+    setGstAppliesState(next);
+    if (next) {
+      setValue('gstLabel', '', { shouldDirty: true });
+    } else {
+      setValue('gstRatePercent', '0', { shouldDirty: true });
+      setValue('placeOfSupplyStateCode', '', { shouldDirty: true });
+    }
+  };
 
   /**
    * Live form values, driving the preview and the totals as the user types.
@@ -310,39 +340,61 @@ export default function DocumentEditor({
 
           <LineItemsEditor register={register} fieldArray={lineItems} />
 
-          <FieldRow>
-            <Field>
-              <FieldLabel htmlFor="doc-gst-rate">GST rate (%)</FieldLabel>
-              <Input id="doc-gst-rate" size="form" inputMode="numeric" {...register('gstRatePercent')} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="doc-place-of-supply">Place of supply</FieldLabel>
-              <Controller
-                control={control}
-                name="placeOfSupplyStateCode"
-                render={({ field }) => (
-                  <Combobox
-                    id="doc-place-of-supply"
-                    size="form"
-                    options={GST_STATES.map((state) => ({
-                      value: state.code,
-                      label: `${state.code} — ${state.name}`,
-                    }))}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Select a state…"
-                    emptyMessage="No matching states."
-                  />
-                )}
-              />
-              <FieldDescription>Required when GST applies.</FieldDescription>
-            </Field>
-          </FieldRow>
-
-          <Field>
-            <FieldLabel htmlFor="doc-gst-label">GST note (shown when rate is 0)</FieldLabel>
-            <Input id="doc-gst-label" size="form" {...register('gstLabel')} />
+          {/*
+            GST either applies or it doesn't — a rate, a place of supply and a
+            "GST not applicable" note are never all true of the same document.
+            Showing them together invited exactly that contradiction onto an
+            issued invoice, so one switch picks the branch.
+          */}
+          <Field orientation="horizontal">
+            <FieldLabel htmlFor="doc-gst-applies">GST applies</FieldLabel>
+            <Switch id="doc-gst-applies" checked={gstApplies} onCheckedChange={setGstApplies} />
           </Field>
+
+          {gstApplies ? (
+            <FieldRow>
+              <Field>
+                <FieldLabel htmlFor="doc-gst-rate">GST rate (%)</FieldLabel>
+                <Input
+                  id="doc-gst-rate"
+                  size="form"
+                  inputMode="numeric"
+                  {...register('gstRatePercent')}
+                />
+              </Field>
+              <Field>
+                <FieldInfo
+                  htmlFor="doc-place-of-supply"
+                  label="Place of supply"
+                  info="Required when GST applies — it decides the CGST/SGST versus IGST split."
+                  infoLabel="Why is place of supply required?"
+                />
+                <Controller
+                  control={control}
+                  name="placeOfSupplyStateCode"
+                  render={({ field }) => (
+                    <Combobox
+                      id="doc-place-of-supply"
+                      size="form"
+                      options={GST_STATES.map((state) => ({
+                        value: state.code,
+                        label: `${state.code} — ${state.name}`,
+                      }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select a state…"
+                      emptyMessage="No matching states."
+                    />
+                  )}
+                />
+              </Field>
+            </FieldRow>
+          ) : (
+            <Field>
+              <FieldLabel htmlFor="doc-gst-label">GST note</FieldLabel>
+              <Input id="doc-gst-label" size="form" {...register('gstLabel')} />
+            </Field>
+          )}
 
           {spec.hasPayment ? (
             <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
@@ -419,10 +471,6 @@ export default function DocumentEditor({
             </fieldset>
           ) : null}
 
-          <Field>
-            <FieldLabel htmlFor="doc-notes">Notes (optional)</FieldLabel>
-            <Textarea id="doc-notes" size="form" rows={2} {...register('notes')} />
-          </Field>
         </FieldGroup>
 
         <TotalsPanel totals={totals} gstRatePercent={previewDoc.gstRatePercent} />

@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
 
 /**
  * Tripwire tests.
@@ -73,5 +75,37 @@ describe('control sizing defaults', () => {
       'data-size',
       'form',
     );
+  });
+});
+
+describe('Button sizing', () => {
+  /**
+   * `Button` was the only kit primitive without a `form` size, so a button set
+   * beside a `size="form"` Input/Combobox/DatePicker came out 8px shorter. The
+   * pairing is what this guards.
+   */
+  it('matches the roomy control height on size="form"', () => {
+    render(<Button size="form">Add schedule</Button>);
+    const classes = screen.getByRole('button').className.split(/\s+/);
+    expect(classes).toContain('h-9');
+  });
+
+  it('still defaults to the compact height', () => {
+    render(<Button>Compact</Button>);
+    const classes = screen.getByRole('button').className.split(/\s+/);
+    expect(classes).toContain('h-7');
+    expect(classes).not.toContain('h-9');
+  });
+});
+
+describe('tooltip timing', () => {
+  /**
+   * Tooltips wait before opening, app-wide. With no delay, sweeping the cursor
+   * across a row of icon buttons fires a trail of popups. `Tooltip` carries its
+   * own Provider, so this default is the only switch — a caller passing their
+   * own would be the regression.
+   */
+  it('defaults to a 200ms delay', () => {
+    expect(TOOLTIP_DELAY_MS).toBe(200);
   });
 });

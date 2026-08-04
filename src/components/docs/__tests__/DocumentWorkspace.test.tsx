@@ -29,18 +29,6 @@ describe('DocumentWorkspace', () => {
     expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
   });
 
-  it('toggles zoom from the bar', async () => {
-    const user = userEvent.setup();
-    render(
-      <DocumentWorkspace title="New invoice" preview={<div>Body</div>}>
-        <div />
-      </DocumentWorkspace>,
-    );
-    await user.click(screen.getByRole('button', { name: /100%/ }));
-    expect(screen.getByRole('button', { name: /100%/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /^fit$/i })).toHaveAttribute('aria-pressed', 'false');
-  });
-
   /**
    * Sheets (invoice/receipt/letter/stipend) paint their own A4 margins, so the
    * page frame must add none — otherwise the sheet is pushed right and clipped.

@@ -72,6 +72,7 @@ export default function ServicesTable({
                 <EditButton label={`Edit ${service.name}`} onClick={() => onEdit(service)} />
                 <RemoveButton
                   label={`Delete ${service.name}`}
+                  tooltip="Delete"
                   confirmTitle="Delete service"
                   confirmDescription={`This will permanently remove ${service.name}. This action cannot be undone.`}
                   onConfirm={() => onDelete(service)}

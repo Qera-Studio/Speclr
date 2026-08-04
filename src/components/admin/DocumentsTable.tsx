@@ -43,12 +43,14 @@ export interface DocumentsTableProps {
   onSortChange?: (column: SortColumn) => void;
 }
 
-const COLUMNS: { column: SortColumn; label: string; align?: 'right' }[] = [
+// Total is left-aligned like the rest. Right-aligned figures compare better by
+// digit position, but with a single money column consistency wins.
+const COLUMNS: { column: SortColumn; label: string }[] = [
   { column: 'number', label: 'Number' },
   { column: 'type', label: 'Type' },
   { column: 'party', label: 'Client' },
   { column: 'date', label: 'Date' },
-  { column: 'total', label: 'Total', align: 'right' },
+  { column: 'total', label: 'Total' },
   { column: 'status', label: 'Status' },
 ];
 
@@ -78,13 +80,12 @@ export default function DocumentsTable({
       <TableCaption className="sr-only">All documents, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          {COLUMNS.map(({ column, label, align }) => {
+          {COLUMNS.map(({ column, label }) => {
             const active = sort?.column === column;
             const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
             return (
               <TableHead
                 key={column}
-                className={align === 'right' ? 'text-right' : undefined}
                 // Announced only for the column actually sorted; the rest are
                 // 'none', which is what tells a screen reader they're sortable.
                 aria-sort={
@@ -103,7 +104,6 @@ export default function DocumentsTable({
                     onClick={() => onSortChange(column)}
                     className={cn(
                       'inline-flex items-center gap-1 transition-colors hover:text-foreground',
-                      align === 'right' && 'flex-row-reverse',
                       !active && 'text-muted-foreground',
                     )}
                   >
@@ -136,9 +136,7 @@ export default function DocumentsTable({
               <TableCell>{DOC_TYPES[doc.type].label}</TableCell>
               <TableCell>{partyName(doc) || '—'}</TableCell>
               <TableCell>{formatDisplayDate(doc.issueDate)}</TableCell>
-              <TableCell className="text-right">
-                {hasMoney ? formatINR(totals.totalPaise) : '—'}
-              </TableCell>
+              <TableCell>{hasMoney ? formatINR(totals.totalPaise) : '—'}</TableCell>
               <TableCell>
                 <Badge variant={doc.status === 'finalized' ? 'default' : 'secondary'}>
                   {doc.status === 'finalized' ? 'Finalized' : 'Draft'}

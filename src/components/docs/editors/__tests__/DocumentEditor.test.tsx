@@ -51,11 +51,51 @@ describe('DocumentEditor (new invoice)', () => {
     expect(screen.getByLabelText(/gst rate/i)).toBeInTheDocument();
   });
 
+  /**
+   * The explanation moved behind an info icon, but it must still be a real
+   * focusable control rather than a hover-only affordance — and the label must
+   * stay exactly "Place of supply", since anything rendered inside a `<label>`
+   * joins the input's accessible name.
+   */
   it('states the place-of-supply requirement without crowding the label', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     expect(screen.getByLabelText('Place of supply')).toBeInTheDocument();
-    expect(screen.getByText('Required when GST applies.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /why is place of supply required/i }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * GST either applies or it does not. Switching it off must actually zero the
+   * rate and clear the place of supply — a rate that is merely hidden would go
+   * on feeding `computeTotals` and put tax on an invoice whose editor says
+   * there is none.
+   */
+  it('zeroes the rate and place of supply when GST is switched off', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await u.clear(screen.getByLabelText(/gst rate/i));
+    await u.type(screen.getByLabelText(/gst rate/i), '18');
+    await selectComboboxOption(u, 'Place of supply', '09 — Uttar Pradesh');
+
+    await u.click(screen.getByRole('switch', { name: /gst applies/i }));
+
+    // The rate branch is gone, the note branch is here instead.
+    expect(screen.queryByLabelText(/gst rate/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Place of supply')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('GST note')).toBeInTheDocument();
+
+    // And the preview is charging nothing — the values were cleared, not hidden.
+    await u.click(screen.getByRole('switch', { name: /gst applies/i }));
+    expect(screen.getByLabelText(/gst rate/i)).toHaveValue('0');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('');
+  });
+
+  it('no longer offers a notes field', () => {
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+    expect(screen.queryByLabelText(/notes/i)).not.toBeInTheDocument();
   });
 
   it('creates a draft with rupees converted to paise on save', async () => {

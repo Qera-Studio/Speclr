@@ -31,15 +31,21 @@ import {
  * turns red on hover, names itself in a tooltip, and asks before destroying
  * anything.
  *
- * `label` does triple duty: the accessible name, the tooltip text, and the
- * dialog's default title. Pass the same phrasing the old text button used
- * (e.g. "Remove line item 1") so existing `getByRole('button', {name: …})`
- * queries keep matching.
+ * `label` is the accessible name and the dialog's default title. Pass the same
+ * phrasing the old text button used (e.g. "Remove line item 1") so existing
+ * `getByRole('button', {name: …})` queries keep matching.
+ *
+ * `tooltip` is deliberately separate and short. The accessible name has to
+ * identify *which* row ("Delete Ria Pareek") — five buttons all announcing
+ * "Delete" is useless to a screen reader — but on screen the row is already
+ * visible, so repeating the name in the tooltip is noise.
  */
 interface RemoveButtonProps {
   label: string
   onConfirm: () => void
   disabled?: boolean
+  /** Short on-screen hint. Defaults to "Remove". */
+  tooltip?: string
   /** Overrides the dialog heading; defaults to `label`. */
   confirmTitle?: string
   confirmDescription?: string
@@ -50,6 +56,7 @@ function RemoveButton({
   label,
   onConfirm,
   disabled,
+  tooltip = "Remove",
   confirmTitle,
   confirmDescription = "This can't be undone.",
   className,
@@ -80,7 +87,7 @@ function RemoveButton({
             />
           }
         />
-        <TooltipContent>{label}</TooltipContent>
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
 
       <AlertDialogContent size="sm">

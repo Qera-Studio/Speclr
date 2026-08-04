@@ -5,8 +5,6 @@ import DocumentWorkspaceBar from '../DocumentWorkspaceBar';
 function setup(overrides: Partial<React.ComponentProps<typeof DocumentWorkspaceBar>> = {}) {
   const props = {
     title: 'New invoice',
-    zoom: 'fit' as const,
-    onZoomChange: jest.fn(),
     currentPage: 0,
     pageCount: 5,
     onPrev: jest.fn(),
@@ -24,14 +22,15 @@ describe('DocumentWorkspaceBar', () => {
     expect(screen.getByText('Page 1 / 5')).toBeInTheDocument();
   });
 
-  it('marks the active zoom mode as pressed', async () => {
-    const user = userEvent.setup();
-    const { onZoomChange } = setup();
-    expect(screen.getByRole('button', { name: /^fit$/i })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /100%/ })).toHaveAttribute('aria-pressed', 'false');
-
-    await user.click(screen.getByRole('button', { name: /100%/ }));
-    expect(onZoomChange).toHaveBeenCalledWith('full');
+  /**
+   * The zoom toggle is gone: `fit` was `min(1, viewportWidth / 794)`, which on
+   * any pane at least a page wide already equals 100%. It only ever differed on
+   * a narrow pane, so the control read as dead. Fitting is what remains.
+   */
+  it('offers no zoom controls', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: /^fit$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /100%/ })).not.toBeInTheDocument();
   });
 
   it('disables previous on the first page', () => {

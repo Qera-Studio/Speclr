@@ -365,11 +365,6 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
                 </p>
               ))}
             </div>
-            {doc.notes ? (
-              <p className="text-black/70 text-[10px] font-normal whitespace-pre-line mt-[6px]">
-                {doc.notes}
-              </p>
-            ) : null}
           </section>
         </div>
 

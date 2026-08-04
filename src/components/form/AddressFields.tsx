@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useController, type Control, type FieldValues, type Path } from 'react-hook-form';
-import { Info } from 'lucide-react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import FieldInfo from './FieldInfo';
 import { isIndianPincode } from '@/lib/domain/address';
 import { COUNTRIES } from '@/lib/domain/phone';
 
@@ -151,37 +150,14 @@ export default function AddressFields<T extends FieldValues>({
 
       <FieldRow>
         <Field>
-          {/* The icon sits beside the label, never inside it — anything within
-              a `<label>` becomes part of the input's accessible name. */}
-          <div className="flex items-center gap-1.5">
-            <FieldLabel htmlFor={`${idPrefix}-pincode`}>Pincode</FieldLabel>
-            {/*
-              A standing warning line under the field pushed the layout around
-              and shouted at someone who had done nothing wrong. The icon says
-              "there is something to know here" without taking a row.
-
-              It is a real button, not a hover-only affordance, so the
-              explanation is reachable by keyboard; the same sentence also
-              stays in the live region below, which is what actually announces
-              the lock to a screen reader.
-            */}
-            {locked ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label="Why are city and state locked?"
-                      className="text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground"
-                    />
-                  }
-                >
-                  <Info className="size-3.5" aria-hidden="true" />
-                </TooltipTrigger>
-                <TooltipContent>{LOCK_HINT}</TooltipContent>
-              </Tooltip>
-            ) : null}
-          </div>
+          {/* The lock is also announced through the live region below — a
+              tooltip is not read out, and this is news when it happens. */}
+          <FieldInfo
+            htmlFor={`${idPrefix}-pincode`}
+            label="Pincode"
+            info={locked ? LOCK_HINT : undefined}
+            infoLabel="Why are city and state locked?"
+          />
           <Input
             id={`${idPrefix}-pincode`}
             size={size}

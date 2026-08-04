@@ -197,7 +197,13 @@ export default function ContractEditor({
               emptyMessage="No matching services."
             />
           </Field>
-          <Button type="button" variant="outline" onClick={addSchedule} disabled={!selectedServiceId}>
+          <Button
+            type="button"
+            variant="outline"
+            size="form"
+            onClick={addSchedule}
+            disabled={!selectedServiceId}
+          >
             Add schedule
           </Button>
         </div>

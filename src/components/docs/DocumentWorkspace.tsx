@@ -2,10 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { EditorPanelContent } from '@/components/admin/EditorPanel';
-import DocumentPreview, {
-  type DocumentPreviewHandle,
-  type PreviewZoom,
-} from './DocumentPreview';
+import DocumentPreview, { type DocumentPreviewHandle } from './DocumentPreview';
 import DocumentWorkspaceBar from './DocumentWorkspaceBar';
 
 /**
@@ -19,7 +16,7 @@ import DocumentWorkspaceBar from './DocumentWorkspaceBar';
  * form state in every editor, so they must stay in one React tree. Only the
  * DOM lands elsewhere.
  *
- * Owns the view state (zoom, page count, current page) that the bar renders and
+ * Owns the view state (page count, current page) that the bar renders and
  * the preview reports into.
  */
 export default function DocumentWorkspace({
@@ -43,7 +40,6 @@ export default function DocumentWorkspace({
   selfPaddedSheet?: boolean;
   children: React.ReactNode;
 }) {
-  const [zoom, setZoom] = useState<PreviewZoom>('fit');
   const [pageCount, setPageCount] = useState(1);
   const [currentPage, setCurrentPage] = useState(0);
   const previewRef = useRef<DocumentPreviewHandle>(null);
@@ -76,8 +72,6 @@ export default function DocumentWorkspace({
     >
       <DocumentWorkspaceBar
         title={title}
-        zoom={zoom}
-        onZoomChange={setZoom}
         currentPage={safePage}
         pageCount={pageCount}
         onPrev={() => goToPage(safePage - 1)}
@@ -85,7 +79,6 @@ export default function DocumentWorkspace({
       />
       <DocumentPreview
         ref={previewRef}
-        zoom={zoom}
         coverFirst={coverFirst}
         firstPageClassName={firstPageClassName}
         selfPaddedSheet={selfPaddedSheet}

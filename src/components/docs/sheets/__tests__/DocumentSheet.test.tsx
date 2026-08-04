@@ -19,6 +19,17 @@ describe('DocumentSheet', () => {
     expect(screen.getAllByText('#QS-INV-2627-001').length).toBeGreaterThan(0);
   });
 
+  /**
+   * Notes were retired: the editor no longer offers the field, and the sheet no
+   * longer prints it. Checked against a document that still carries one, since
+   * the value stays in stored JSONB — nothing was migrated away.
+   */
+  it('does not print notes', () => {
+    const doc = { ...baseInvoice, notes: 'Internal reminder, not for the client' };
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.queryByText(/internal reminder/i)).not.toBeInTheDocument();
+  });
+
   it('shows CGST+SGST for an intra-state (state 09) GST invoice', () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.getByText(/CGST \(9%\)/)).toBeInTheDocument();

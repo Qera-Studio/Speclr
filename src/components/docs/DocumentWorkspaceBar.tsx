@@ -2,8 +2,6 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import type { PreviewZoom } from './DocumentPreview';
 
 /**
  * The top edge of the document card: title on the left, view controls on the
@@ -11,20 +9,16 @@ import type { PreviewZoom } from './DocumentPreview';
  * background and sits above the scrolling preview as one surface (the same
  * relationship `AdminHeader` has to the admin inset).
  *
- * Purely presentational: page/zoom state lives in `DocumentWorkspace`.
+ * Purely presentational: page state lives in `DocumentWorkspace`.
  */
 export default function DocumentWorkspaceBar({
   title,
-  zoom,
-  onZoomChange,
   currentPage,
   pageCount,
   onPrev,
   onNext,
 }: {
   title: string;
-  zoom: PreviewZoom;
-  onZoomChange: (zoom: PreviewZoom) => void;
   currentPage: number;
   pageCount: number;
   onPrev: () => void;
@@ -38,15 +32,6 @@ export default function DocumentWorkspaceBar({
       <h1 className="truncate text-sm font-medium">{title}</h1>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1" role="group" aria-label="Preview zoom">
-          <ZoomButton pressed={zoom === 'fit'} onClick={() => onZoomChange('fit')}>
-            Fit
-          </ZoomButton>
-          <ZoomButton pressed={zoom === 'full'} onClick={() => onZoomChange('full')}>
-            100%
-          </ZoomButton>
-        </div>
-
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -80,25 +65,3 @@ export default function DocumentWorkspaceBar({
   );
 }
 
-function ZoomButton({
-  pressed,
-  onClick,
-  children,
-}: {
-  pressed: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={cn(pressed && 'bg-muted text-foreground')}
-    >
-      {children}
-    </Button>
-  );
-}
