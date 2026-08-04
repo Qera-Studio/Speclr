@@ -323,19 +323,9 @@ export default function EmployeeForm({
         <FieldSet>
           <FieldLegend variant="label">Bank details</FieldLegend>
 
-          <Field>
-            <FieldLabel htmlFor="employee-bank-name">Bank name</FieldLabel>
-            <Input id="employee-bank-name" size="form" {...register('bankName')} />
-            <FieldError errors={[errors.bankName]} />
-          </Field>
-
+          {/* IFSC first: it fills in the bank name and branch below, so the
+              field that drives the others comes before them. */}
           <FieldRow>
-            <Field>
-              <FieldLabel htmlFor="employee-account">Account number</FieldLabel>
-              <Input id="employee-account" size="form" {...register('accountNo')} />
-              <FieldError errors={[errors.accountNo]} />
-            </Field>
-
             <IfscField
               control={control}
               name="ifsc"
@@ -344,11 +334,35 @@ export default function EmployeeForm({
               setValue={setValue}
               id="employee-ifsc"
             />
+
+            <Field>
+              <FieldLabel htmlFor="employee-account">Account number</FieldLabel>
+              <Input id="employee-account" size="form" {...register('accountNo')} />
+              <FieldError errors={[errors.accountNo]} />
+            </Field>
           </FieldRow>
+
+          {/* Filled by the lookup but never disabled: the lookup is an
+              enhancement, and a bank it can't find must still be typeable. */}
+          <Field>
+            <FieldLabel htmlFor="employee-bank-name">Bank name</FieldLabel>
+            <Input
+              id="employee-bank-name"
+              size="form"
+              placeholder="Enter an IFSC to fill this in"
+              {...register('bankName')}
+            />
+            <FieldError errors={[errors.bankName]} />
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="employee-branch">Branch (optional)</FieldLabel>
-            <Input id="employee-branch" size="form" {...register('branch')} />
+            <Input
+              id="employee-branch"
+              size="form"
+              placeholder="Enter an IFSC to fill this in"
+              {...register('branch')}
+            />
             <FieldError errors={[errors.branch]} />
           </Field>
 

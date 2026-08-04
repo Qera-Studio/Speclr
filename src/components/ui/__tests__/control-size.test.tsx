@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { TOOLTIP_DELAY_MS } from '@/components/ui/tooltip';
@@ -107,5 +108,19 @@ describe('tooltip timing', () => {
    */
   it('defaults to a 200ms delay', () => {
     expect(TOOLTIP_DELAY_MS).toBe(200);
+  });
+});
+
+describe('Switch theming', () => {
+  /**
+   * Tripwire. jsdom resolves no Tailwind, so nothing behavioural can catch a
+   * switch that looks off while it is on — which is what happened in dark mode
+   * when only the light checked colour was declared.
+   */
+  it('declares its checked colour for dark mode too', () => {
+    render(<Switch aria-label="on" defaultChecked />);
+    const classes = screen.getByRole('switch').className.split(/\s+/);
+    expect(classes).toContain('data-checked:bg-primary');
+    expect(classes).toContain('dark:data-checked:bg-primary');
   });
 });

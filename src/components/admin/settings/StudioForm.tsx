@@ -172,18 +172,8 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
 
         <FieldSet>
           <FieldLegend variant="label">Bank</FieldLegend>
-          <FieldRow>
-            <Field>
-              <FieldLabel htmlFor="studio-bank-name">Bank name</FieldLabel>
-              <Input id="studio-bank-name" size="form" {...register('bank.bankName')} />
-              <FieldError errors={[errors.bank?.bankName]} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="studio-bank-account">Account number</FieldLabel>
-              <Input id="studio-bank-account" size="form" {...register('bank.accountNo')} />
-              <FieldError errors={[errors.bank?.accountNo]} />
-            </Field>
-          </FieldRow>
+          {/* IFSC first: it fills in the bank name and branch below, so the
+              field that drives the others comes before them. */}
           <FieldRow>
             <IfscField
               control={control}
@@ -194,8 +184,32 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               id="studio-bank-ifsc"
             />
             <Field>
+              <FieldLabel htmlFor="studio-bank-account">Account number</FieldLabel>
+              <Input id="studio-bank-account" size="form" {...register('bank.accountNo')} />
+              <FieldError errors={[errors.bank?.accountNo]} />
+            </Field>
+          </FieldRow>
+          {/* Filled by the lookup but never disabled: the lookup is an
+              enhancement, and a bank it can't find must still be typeable. */}
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="studio-bank-name">Bank name</FieldLabel>
+              <Input
+                id="studio-bank-name"
+                size="form"
+                placeholder="Enter an IFSC to fill this in"
+                {...register('bank.bankName')}
+              />
+              <FieldError errors={[errors.bank?.bankName]} />
+            </Field>
+            <Field>
               <FieldLabel htmlFor="studio-bank-branch">Branch (optional)</FieldLabel>
-              <Input id="studio-bank-branch" size="form" {...register('bank.branch')} />
+              <Input
+                id="studio-bank-branch"
+                size="form"
+                placeholder="Enter an IFSC to fill this in"
+                {...register('bank.branch')}
+              />
               <FieldError errors={[errors.bank?.branch]} />
             </Field>
           </FieldRow>
