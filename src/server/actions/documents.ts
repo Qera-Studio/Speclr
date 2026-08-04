@@ -157,7 +157,8 @@ export async function createDraft(
   clientId: unknown,
   data: unknown,
 ): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  const actor = await authorized();
+  if (!actor) return { success: false, error: 'Unauthorized.' };
 
   if (typeof typeCode !== 'string' || !(typeCode in DOC_TYPES)) {
     return { success: false, error: 'Invalid input.' };
@@ -177,7 +178,14 @@ export async function createDraft(
   // the validated discriminant, but TS can't correlate it with the subject-field
   // pairing at compile time (the correlation is runtime, via spec.kind), so the
   // base is asserted to its distributive union — see the note on DocBase.
-  const identity = { id: randomUUID(), type: spec.code, status: 'draft' as const, createdAt: now, updatedAt: now };
+  const identity = {
+    id: randomUUID(),
+    type: spec.code,
+    status: 'draft' as const,
+    createdAt: now,
+    updatedAt: now,
+    createdBy: actor,
+  };
   let base: DocBase;
   if (isHrKind(spec.kind)) {
     const employee = await getEmployee(clientId);
@@ -268,7 +276,8 @@ export async function updateDraft(
 }
 
 export async function finalizeDocument(id: unknown): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  const actor = await authorized();
+  if (!actor) return { success: false, error: 'Unauthorized.' };
 
   if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
 
@@ -340,6 +349,10 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     studioSnapshot,
     updatedAt: Date.now(),
     finalizedAt: Date.now(),
+    // Who issued it. `createdBy` rides along untouched from `existing` — the
+    // drafter and the issuer are two separate facts and one must not overwrite
+    // the other.
+    finalizedBy: actor,
   } as AdminDocument;
 
   // The serial is already reserved — retry the save once before giving up,
@@ -354,19 +367,28 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
         action: 'finalizeDocument',
         event: 'serial_claimed_but_save_failed',
         number,
+        // A burned GST serial is an accounting event someone has to reconcile.
+        // The Clerk id, never the email — the logger deliberately carries no PII.
+        actor: actor.userId,
         error: err,
       });
       return { success: false, error: 'Failed to save. The claimed number was not used.' };
     }
   }
 
-  logger.info({ action: 'finalizeDocument', event: 'document_finalized', number });
+  logger.info({
+    action: 'finalizeDocument',
+    event: 'document_finalized',
+    number,
+    actor: actor.userId,
+  });
   revalidatePath('/');
   return { success: true, id };
 }
 
 export async function duplicateDocument(id: unknown): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  const actor = await authorized();
+  if (!actor) return { success: false, error: 'Unauthorized.' };
 
   if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
 
@@ -388,6 +410,12 @@ export async function duplicateDocument(id: unknown): Promise<ActionResult> {
     issueDate: todayISO(),
     createdAt: now,
     updatedAt: now,
+    // Spreading `existing` would otherwise inherit the original's audit trail,
+    // crediting this new draft to whoever wrote the document it was copied from
+    // and marking an unissued draft as already-issued. The duplicator drafted
+    // this one; nobody has issued it.
+    createdBy: actor,
+    finalizedBy: undefined,
   };
 
   try {

@@ -22,6 +22,13 @@
       "when": 1785412840648,
       "tag": "0002_common_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785869553725,
+      "tag": "0003_goofy_ben_grimm",
+      "breakpoints": true
     }
   ]
 }

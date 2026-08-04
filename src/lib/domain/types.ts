@@ -95,6 +95,21 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
   };
 }
 
+/**
+ * Who performed an action, recorded at the moment they performed it.
+ *
+ * Both halves are load-bearing and neither replaces the other: `userId` is the
+ * stable Clerk identifier that survives an email change, and `email` is the
+ * human-readable label **frozen at action time** — the same reasoning as the
+ * client and studio snapshots. Years later, an auditor asking "who issued this
+ * invoice?" gets an answer that doesn't depend on the Clerk account still
+ * existing or still carrying the same address.
+ */
+export interface Actor {
+  userId: string;
+  email: string;
+}
+
 export interface BaseDocument {
   id: string;
   type: DocTypeCode;
@@ -139,6 +154,19 @@ export interface BaseDocument {
   createdAt: number;
   updatedAt: number;
   finalizedAt?: number;
+  /**
+   * Who drafted this document. Optional: every document issued before actor
+   * recording existed has none, and that gap is honest — it must never be
+   * backfilled with a guess, because a fabricated audit trail is worse than an
+   * absent one.
+   */
+  createdBy?: Actor;
+  /**
+   * Who finalized — i.e. *issued* — this document. The legally significant one:
+   * finalizing claims a GST serial and makes the record immutable. Set only on
+   * the draft → finalized transition, and never on a draft.
+   */
+  finalizedBy?: Actor;
 }
 
 /** Documents about a billed client always carry the client fields. */

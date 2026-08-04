@@ -191,9 +191,20 @@ export const documents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+
+    // Audit trail — who drafted and who issued. Flat columns rather than JSONB
+    // because "everything Bob issued" is a query, and real columns are what the
+    // queried/reported facts get (AGENTS.md). Nullable: documents written
+    // before this existed have no actor, and that blank is deliberate — see
+    // `Actor` in domain/types.ts. Clerk id + the email frozen at action time.
+    createdBy: text('created_by'),
+    createdByEmail: text('created_by_email'),
+    finalizedBy: text('finalized_by'),
+    finalizedByEmail: text('finalized_by_email'),
   },
   (t) => [
     index('documents_created_at_idx').on(t.createdAt.desc()),
+    index('documents_finalized_by_idx').on(t.finalizedBy),
     index('documents_status_idx').on(t.status),
     index('documents_type_idx').on(t.type),
     index('documents_client_id_idx').on(t.clientId),
