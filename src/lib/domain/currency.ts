@@ -1,24 +1,36 @@
 /**
- * Currency codes for employee pay.
+ * Currency codes for employee pay and stipend slips.
  *
- * Scope note: this is a **record-keeping field only**. Stipend slips and every
- * other document still print rupees, because the money core (integer paise,
- * amountInWords, the CGST/SGST/IGST split) is rupee-shaped, and a GST document
- * from an Indian entity must show its tax amount in INR regardless of the
- * billing currency. Making documents currency-aware needs an exchange rate, an
- * INR tax line, and per-currency amount-in-words — its own piece of work, not a
- * label swap. See ROADMAP.md.
+ * Scope note — read before widening this:
+ *
+ * **Stipend slips are currency-aware.** A stipend is not consideration for a
+ * supply, so the slip carries no GST line at all; paying an overseas intern in
+ * their own currency needs no exchange rate and no INR tax line. It prints the
+ * amount, and the words, in the currency it was paid in.
+ *
+ * **Invoices and receipts stay INR, deliberately.** A GST document from an
+ * Indian entity must show its tax amount in INR regardless of the billing
+ * currency, and the CGST/SGST/IGST split is rupee-shaped. Making *those*
+ * currency-aware needs an exchange rate and a parallel INR tax line — its own
+ * piece of work, not a label swap. See ROADMAP.md.
+ *
+ * Every currency here is a 2-decimal (minor-unit) currency, which is why
+ * `money.ts` can assume a ×100 minor unit throughout. Adding a 0- or
+ * 3-decimal currency (JPY, KWD) breaks that assumption — it needs a per-entry
+ * exponent and a pass over `rupeesToPaise` / `paiseToRupees` first.
  */
 
 export const CURRENCIES = [
-  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'Pound Sterling', symbol: '£' },
-  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  // `major` / `minor` are the unit words used by `amountInWords`; `indian`
+  // selects lakh/crore grouping over thousand/million/billion.
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹', major: 'Rupee', minor: 'Paisa', minorPlural: 'Paise', indian: true },
+  { code: 'USD', name: 'US Dollar', symbol: '$', major: 'Dollar', minor: 'Cent', minorPlural: 'Cents', indian: false },
+  { code: 'EUR', name: 'Euro', symbol: '€', major: 'Euro', minor: 'Cent', minorPlural: 'Cents', indian: false },
+  { code: 'GBP', name: 'Pound Sterling', symbol: '£', major: 'Pound', minor: 'Penny', minorPlural: 'Pence', indian: false },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', major: 'Dirham', minor: 'Fils', minorPlural: 'Fils', indian: false },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', major: 'Dollar', minor: 'Cent', minorPlural: 'Cents', indian: false },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', major: 'Dollar', minor: 'Cent', minorPlural: 'Cents', indian: false },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', major: 'Dollar', minor: 'Cent', minorPlural: 'Cents', indian: false },
 ] as const;
 
 export type CurrencyCode = (typeof CURRENCIES)[number]['code'];

@@ -2,9 +2,13 @@ import {
   financialYearCode,
   financialYearCodeOfISODate,
   financialYearStart,
+  firstDayOfMonth,
   formatDisplayDate,
+  formatDisplayMonth,
   isISODate,
+  isISOMonth,
   isoToLocalDate,
+  lastDayOfMonth,
   localDateToISO,
   todayISO,
   yearOfISODate,
@@ -131,5 +135,47 @@ describe('financialYearCodeOfISODate', () => {
     expect(financialYearCodeOfISODate('2026-02-01')).toBe('2526');
     expect(financialYearCodeOfISODate('2026-03-31')).toBe('2526');
     expect(financialYearCodeOfISODate('2026-04-01')).toBe('2627');
+  });
+});
+
+/**
+ * Month helpers, added for the stipend slip's month picker and its derived
+ * period defaults.
+ */
+describe('month helpers', () => {
+  it('recognises a YYYY-MM month', () => {
+    expect(isISOMonth('2026-06')).toBe(true);
+    expect(isISOMonth('2026-13')).toBe(false);
+    expect(isISOMonth('2026-00')).toBe(false);
+    expect(isISOMonth('June 2026')).toBe(false);
+    expect(isISOMonth('2026-06-01')).toBe(false);
+  });
+
+  it('formats a month in full', () => {
+    expect(formatDisplayMonth('2026-06')).toBe('June 2026');
+    expect(formatDisplayMonth('2026-01')).toBe('January 2026');
+  });
+
+  /** Slips issued before the picker existed hold free text — print it as-is. */
+  it('passes non-month text through untouched', () => {
+    expect(formatDisplayMonth('May 2026')).toBe('May 2026');
+    expect(formatDisplayMonth('')).toBe('');
+  });
+
+  it('derives the first and last day of a month', () => {
+    expect(firstDayOfMonth('2026-06')).toBe('2026-06-01');
+    expect(lastDayOfMonth('2026-06')).toBe('2026-06-30');
+    expect(lastDayOfMonth('2026-07')).toBe('2026-07-31');
+    expect(lastDayOfMonth('2026-02')).toBe('2026-02-28');
+  });
+
+  it('handles a leap February', () => {
+    expect(lastDayOfMonth('2028-02')).toBe('2028-02-29');
+    expect(lastDayOfMonth('2100-02')).toBe('2100-02-28');
+  });
+
+  it('returns null for a month it cannot parse', () => {
+    expect(firstDayOfMonth('nope')).toBeNull();
+    expect(lastDayOfMonth('2026-13')).toBeNull();
   });
 });

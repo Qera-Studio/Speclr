@@ -5,6 +5,7 @@
 
 import type { AddressParts } from './address';
 import type { StudioInfo } from './studio';
+import type { CurrencyCode } from './currency';
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'OFR' | 'EXP' | 'EXIT';
@@ -267,12 +268,24 @@ export interface EmployeeSnapshot {
   };
 }
 
-/** Stipend slip — financial-shaped (line items, totals) but for an employee. */
+/**
+ * Stipend slip — financial-shaped (line items, totals) but for an employee.
+ *
+ * Carries no GST: a stipend is not consideration for a supply, so `gstRatePercent`
+ * (inherited from BaseDocument) is pinned to 0 and the sheet prints no tax line.
+ * That is also what makes the slip safe to pay in a currency other than INR.
+ */
 export interface StipendDocument extends BaseDocument {
   type: 'STP';
   employeeId: string;
   employeeSnapshot: EmployeeSnapshot;
-  stipendPeriod: string;
+  /** Paid-in currency. Absent on slips issued before currencies existed → INR. */
+  currency?: CurrencyCode;
+  /** Legacy free-text period ('12th – 31st May'), kept so issued slips render. */
+  stipendPeriod?: string;
+  stipendPeriodStart?: string;
+  stipendPeriodEnd?: string;
+  /** 'YYYY-MM' on new slips; free text ('May 2026') on older ones. */
   stipendMonth: string;
   paymentMethod: string;
   paymentReference?: string;

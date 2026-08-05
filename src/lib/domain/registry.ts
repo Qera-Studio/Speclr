@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
 import { contractScheduleSchema } from './serviceTemplate';
+import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import type { ContractSchedule, DocTypeCode, LineItem, ReceiptDocument } from './types';
 
 // ── Field schemas ─────────────────────────────────────────────────────────────
@@ -67,9 +68,17 @@ export const clientInputSchema = z.object({
   gstin: z.string().trim().max(20).optional(),
 });
 
+/**
+ * The payment methods offered anywhere in the app. Shared by the receipt's
+ * `payment.method` and the stipend slip, so the two cannot drift apart — the
+ * stipend used to default to a differently-cased 'Bank transfer'.
+ */
+export const PAYMENT_METHODS = ['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other'] as const;
+export type PaymentMethodOption = (typeof PAYMENT_METHODS)[number];
+
 const paymentSchema = z.object({
   date: isoDate,
-  method: z.enum(['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other']),
+  method: z.enum(PAYMENT_METHODS),
   reference: z.string().trim().max(100).optional(),
   /** What prints on the receipt. Authoritative. */
   againstInvoiceNumber: z.string().trim().max(40).optional(),
@@ -157,12 +166,21 @@ export const contractFinalizeSchema = z.object({
 
 const stipendBaseShape = {
   issueDate: isoDate,
-  // GST fields are re-listed (not spread from baseFieldsShape) — a stipend keeps
-  // GST but not the invoice's place-of-supply/notes/terms.
-  gstRatePercent: z.number().min(0).max(28),
-  gstLabel: z.string().trim().max(120).optional(),
+  /**
+   * A stipend carries no GST, ever — it is not consideration for a supply by
+   * the studio, so nothing here becomes taxable once the studio is registered.
+   * The field is pinned to 0 rather than dropped so the existing NOT NULL
+   * column needs no migration, while a non-zero rate stays unrepresentable.
+   */
+  gstRatePercent: z.literal(0).default(0),
   employeeId: z.string().min(1),
-  stipendPeriod: z.string().trim().max(120),
+  /** Paid-in currency. Absent on slips written before currencies existed. */
+  currency: z.enum(CURRENCY_CODES).optional(),
+  /** Legacy free-text period ('12th – 31st May'); superseded by the ISO pair. */
+  stipendPeriod: z.string().trim().max(120).optional(),
+  stipendPeriodStart: isoDate.optional(),
+  stipendPeriodEnd: isoDate.optional(),
+  /** 'YYYY-MM'. Older slips hold free text ('May 2026'), so this stays a string. */
   stipendMonth: z.string().trim().max(60),
   paymentMethod: z.string().trim().max(60),
   paymentReference: z.string().trim().max(100).optional(),
@@ -211,7 +229,10 @@ export interface DocFields {
   schedules?: ContractSchedule[];
   // HR — stipend slip
   employeeId?: string;
+  currency?: CurrencyCode;
   stipendPeriod?: string;
+  stipendPeriodStart?: string;
+  stipendPeriodEnd?: string;
   stipendMonth?: string;
   paymentMethod?: string;
   paymentReference?: string;
@@ -353,7 +374,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     draftSchema: stipendDraftSchema, finalizeSchema: stipendFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
-      employeeId: '', stipendPeriod: '', stipendMonth: '', paymentMethod: 'Bank transfer',
+      employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
       deductionsNote: 'No statutory deductions applicable for this internship engagement.',
     }),
     fixedTerms: [],

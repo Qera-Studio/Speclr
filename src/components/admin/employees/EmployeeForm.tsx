@@ -280,13 +280,9 @@ export default function EmployeeForm({
           </Field>
         </FieldRow>
 
+        {/* Currency first, then the figure it denominates — you choose the unit
+            before you type the amount, and the stipend editor reads the same way. */}
         <FieldRow>
-          <Field>
-            <FieldLabel htmlFor="employee-pay">Pay</FieldLabel>
-            <Input id="employee-pay" size="form" inputMode="decimal" {...register('payRupees')} />
-            <FieldError errors={[errors.payRupees]} />
-          </Field>
-
           <Field>
             <FieldLabel htmlFor="employee-currency">Currency</FieldLabel>
             <Controller
@@ -308,6 +304,12 @@ export default function EmployeeForm({
               )}
             />
             <FieldError errors={[errors.payCurrency]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="employee-pay">Pay</FieldLabel>
+            <Input id="employee-pay" size="form" inputMode="decimal" {...register('payRupees')} />
+            <FieldError errors={[errors.payRupees]} />
           </Field>
         </FieldRow>
 

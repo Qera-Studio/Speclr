@@ -4,6 +4,7 @@
  * are rounded half-up back to integer paise immediately.
  */
 
+import { currencyByCode, type CurrencyCode } from './currency';
 import type { DocTotals, LineItem } from './types';
 
 function roundHalfUp(x: number): number {
@@ -42,6 +43,30 @@ export function formatINR(paise: number): string {
   const rupees = Math.floor(paise / 100);
   const fraction = String(paise % 100).padStart(2, '0');
   return `₹ ${inrIntegerFormat.format(rupees)}.${fraction}`;
+}
+
+/**
+ * Format a minor-unit integer in `currency`, e.g. 250000 + 'USD' → '$ 2,500.00'.
+ *
+ * INR delegates to `formatINR` so its output stays byte-identical (Indian digit
+ * grouping, the '₹ ' prefix); everything else uses the locale's own grouping
+ * with the currency's symbol. Only the stipend slip is currency-aware —
+ * invoices and receipts call `formatINR` directly. See `currency.ts`.
+ */
+export function formatMoney(minor: number, currency: CurrencyCode = 'INR'): string {
+  if (currency === 'INR') return formatINR(minor);
+  if (!Number.isInteger(minor) || minor < 0) {
+    throw new Error(`formatMoney expects a non-negative integer minor amount, got: ${minor}`);
+  }
+  const spec = currencyByCode(currency);
+  if (!spec) return formatINR(minor);
+
+  const whole = Math.floor(minor / 100);
+  const fraction = String(minor % 100).padStart(2, '0');
+  // Group the integer part only, then append the fraction from string math —
+  // never divide by 100 into a float.
+  const grouped = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(whole);
+  return `${spec.symbol} ${grouped}.${fraction}`;
 }
 
 /**

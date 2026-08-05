@@ -88,6 +88,63 @@ export function formatDisplayDate(isoDate: string): string {
   return `${day} ${month} ${match[1]}`;
 }
 
+const FULL_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const ISO_MONTH_RE = /^(\d{4})-(\d{2})$/;
+
+/** True for a 'YYYY-MM' month string with a real month number. */
+export function isISOMonth(value: string): boolean {
+  const match = ISO_MONTH_RE.exec(value);
+  if (!match) return false;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12;
+}
+
+/**
+ * '2026-06' → 'June 2026'.
+ *
+ * Returns the input unchanged when it isn't a 'YYYY-MM' string, rather than
+ * throwing: stipend slips issued before the month picker existed hold free text
+ * ('May 2026'), and those must keep printing exactly as they were issued.
+ */
+export function formatDisplayMonth(value: string): string {
+  const match = ISO_MONTH_RE.exec(value);
+  if (!match || !isISOMonth(value)) return value;
+  return `${FULL_MONTHS[Number(match[2]) - 1]} ${match[1]}`;
+}
+
+/** '2026-06' → '2026-06-01'. Null when `value` isn't a valid month. */
+export function firstDayOfMonth(value: string): string | null {
+  return isISOMonth(value) ? `${value}-01` : null;
+}
+
+/**
+ * '2026-06' → '2026-06-30'. Null when `value` isn't a valid month.
+ *
+ * Day 0 of the *next* month is the last day of this one, which gets February
+ * and leap years right without a table. Built in UTC so the result cannot slip
+ * a day in a timezone behind UTC.
+ */
+export function lastDayOfMonth(value: string): string | null {
+  const match = ISO_MONTH_RE.exec(value);
+  if (!match || !isISOMonth(value)) return null;
+  const day = new Date(Date.UTC(Number(match[1]), Number(match[2]), 0)).getUTCDate();
+  return `${value}-${String(day).padStart(2, '0')}`;
+}
+
 /** '2026-07-21' → 2026. The numbering year comes from the document's issueDate. */
 export function yearOfISODate(isoDate: string): number {
   if (!isISODate(isoDate)) {
