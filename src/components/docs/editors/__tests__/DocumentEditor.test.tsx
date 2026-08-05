@@ -42,12 +42,23 @@ beforeEach(() => {
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:x') });
 });
 
+/**
+ * Line items render collapsed to a summary; the fields only exist once a row is
+ * expanded. `Untitled item` is what an empty row summarises to.
+ */
+async function expandLineItem(
+  u: ReturnType<typeof userEvent.setup>,
+  name: RegExp = /Untitled item/,
+) {
+  await u.click(screen.getByRole('button', { name }));
+}
+
 describe('DocumentEditor (new invoice)', () => {
   it('renders the client picker, a line item, and GST fields', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^description$/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Untitled item/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/gst rate/i)).toBeInTheDocument();
   });
 
@@ -104,6 +115,7 @@ describe('DocumentEditor (new invoice)', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await expandLineItem(u);
     await u.type(screen.getByLabelText(/^description$/i), 'Design');
     await u.type(screen.getByLabelText(/rate \(₹\)/i), '1500');
     await u.click(screen.getByRole('button', { name: /save draft/i }));
@@ -138,6 +150,7 @@ describe('DocumentEditor (new invoice)', () => {
     const u = userEvent.setup();
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
+    await expandLineItem(u);
     await u.type(screen.getByLabelText(/^description$/i), 'Hosting for August');
 
     // The whole point of the preview: what you type is on the paper at once,
@@ -200,6 +213,7 @@ describe('DocumentEditor (new receipt)', () => {
     await selectComboboxOption(u, 'Against invoice', /QS-INV-2627-001/);
 
     // Line items, GST and place of supply come across, and stay editable.
+    await expandLineItem(u, /Brand system/);
     expect(screen.getByLabelText(/^description$/i)).toHaveValue('Brand system');
     expect(screen.getByLabelText(/rate \(₹\)/i)).toHaveValue('1500.00');
     expect(screen.getByLabelText(/gst rate/i)).toHaveValue('18');

@@ -9,6 +9,7 @@ import {
   formatMoney,
   lineAmountPaise,
 } from "@/lib/domain/money";
+import { stipendTerms } from "@/lib/domain/hrContent";
 import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf } from "@/lib/domain/studio";
 import type { StipendDocument } from "@/lib/domain/types";
@@ -49,9 +50,15 @@ function stipendPeriodLabel(doc: StipendDocument): string {
 }
 
 /** One fixed term in the slip's TERMS block: a bold lead-in, then the body. */
-function Term({ title, children }: { title: string; children: React.ReactNode }) {
+function Term({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <p className="text-black/70 text-[10px] font-normal leading-[1.4] mb-[6px] [break-inside:avoid]">
+    <p className="text-black/70 text-[8px] font-normal leading-[1.4] mb-[2px] [break-inside:avoid]">
       <strong className="text-black font-semibold">{title}</strong> {children}
     </p>
   );
@@ -83,6 +90,8 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
   const currency = doc.currency ?? "INR";
   const money = (paise: number) => formatMoney(paise, currency);
 
+  const terms = stipendTerms(emp.engagementType, doc.deductionsNote);
+
   const monthLabel = formatDisplayMonth(doc.stipendMonth);
   const periodLabel = stipendPeriodLabel(doc);
 
@@ -91,7 +100,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
       className={`print-sheet relative bg-white text-black font-sans text-[12px] leading-[1.5] ${A4_PADDING} box-border w-[794px] h-[1123px] flex flex-col overflow-hidden`}
       aria-label={`${spec.label} ${doc.number ?? "draft"}`}
     >
-      <header className="flex justify-between items-start gap-[24px] mb-[8px]">
+      <header className="flex justify-between items-start gap-[24px] mb-[8px] border-b border-[#d9d9d9] pb-[16px]">
         <h2 className="text-[96px] font-bold tracking-[-0.03em] leading-[0.9] uppercase text-black">
           {spec.masthead}
         </h2>
@@ -112,7 +121,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
       </header>
 
       <section
-        className="grid grid-cols-2 pt-[16px] pb-[24px] border-t border-[#d9d9d9] max-w-[600px]"
+        className="grid grid-cols-2 pt-[16px] pb-[24px] max-w-[600px]"
         aria-label="Paid to and from"
       >
         <div>
@@ -136,7 +145,9 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
           <h3 className="text-black/80 text-[12px] font-normal mb-[4px]">
             from:
           </h3>
-          <p className="text-black font-semibold text-[16px]">Qera Studio</p>
+          <p className="text-black font-semibold text-[16px]">
+            {studio.legalName}
+          </p>
           <p className="text-black/80 text-[12px] font-normal whitespace-pre-line mb-[6px]">
             {studio.address}
           </p>
@@ -197,7 +208,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
                     {item.description || "—"}
                   </span>
                   {item.detail ? (
-                    <span className="block text-black/70 text-[10px] font-normal mt-[2px] [overflow-wrap:anywhere] max-w-[300px]">
+                    <span className="block text-black/70 text-[10px] font-normal mt-[2px] [overflow-wrap:anywhere] max-w-[325px]">
                       {item.detail}
                     </span>
                   ) : null}
@@ -424,47 +435,37 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
             {/*
               Two explicit columns rather than `column-count: 2`. Balanced
               columns would re-flow whenever a term's length changes — and the
-              editable stipend note makes that length variable. The split is
+              editable deductions note makes that length variable. The split is
               fixed so the slip stays a pixel-faithful artifact.
+
+              The wording branches on engagement type and lives in `hrContent`
+              beside the letters' engagement-dependent text — the intern variant
+              denies an employer–employee relationship, which is correct for an
+              intern and wrong for an employee. `deductionsNote` is a legal
+              assertion whose truth depends on the engagement, so it stays
+              editable rather than becoming fixed boilerplate (CONTEXT.md); it
+              is folded into the pay term, which is where it prints.
             */}
             <div className="grid grid-cols-2 gap-x-[16px] items-start">
               <div>
-                <Term title="Nature of engagement.">
-                  This is a stipend paid for an internship. It does not
-                  constitute salary, wages, or an offer or contract of
-                  employment, and creates no employer–employee relationship.
-                </Term>
-                <Term title="Confidentiality & IP.">
-                  All work produced during the internship is the property of
-                  Qera Studio. Confidentiality obligations survive the
-                  engagement.
-                </Term>
+                {terms.left.map((term) => (
+                  <Term key={term.title} title={term.title}>
+                    {term.body}
+                  </Term>
+                ))}
               </div>
               <div>
-                {/*
-                  The one term with an editable tail. `deductionsNote` is a
-                  legal assertion whose truth depends on the engagement, so it
-                  must never become fixed boilerplate — see CONTEXT.md. It is
-                  saved on every slip, and this is where it prints.
-                */}
-                <Term title="Stipend.">
-                  A fixed monthly stipend paid at Qera Studio&rsquo;s discretion
-                  for the period stated. {doc.deductionsNote}
-                </Term>
-                <Term title="Record.">
-                  This slip is a record of stipend disbursed and is
-                  computer-generated.
-                </Term>
-                <Term title="Jurisdiction.">
-                  Subject to the exclusive jurisdiction of the courts of
-                  Ghaziabad, Uttar Pradesh.
-                </Term>
+                {terms.right.map((term) => (
+                  <Term key={term.title} title={term.title}>
+                    {term.body}
+                  </Term>
+                ))}
               </div>
             </div>
           </section>
         </div>
 
-        <footer className="flex justify-between gap-[16px] flex-wrap border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
+        <footer className="flex justify-between gap-[12px] flex-wrap border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
           <span>{studio.thanksLine}</span>
           <span>Queries: {studio.queryEmailHr}</span>
           <span>CIN: {studio.cin}</span>

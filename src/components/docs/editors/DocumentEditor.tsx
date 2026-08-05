@@ -338,7 +338,7 @@ export default function DocumentEditor({
             ) : null}
           </FieldRow>
 
-          <LineItemsEditor register={register} fieldArray={lineItems} />
+          <LineItemsEditor control={control} register={register} fieldArray={lineItems} />
 
           {/*
             GST either applies or it doesn't — a rate, a place of supply and a

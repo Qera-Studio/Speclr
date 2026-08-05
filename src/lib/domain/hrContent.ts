@@ -184,3 +184,114 @@ export function defaultLetterContent(
       return exitContent(engagement, args);
   }
 }
+
+// ── Stipend slip ──────────────────────────────────────────────────────────────
+
+/**
+ * The five fixed terms printed on a stipend slip, split into the two columns
+ * the issued design uses.
+ *
+ * Branches on engagement type for the same reason the exit letter does: an
+ * intern is not an employee, and saying so is legally load-bearing. The intern
+ * wording denies an employer–employee relationship, which is correct for an
+ * intern and flatly wrong for an employee — issued to the latter it would be a
+ * document contradicting itself about employment status.
+ *
+ * `deductionsNote` is appended to the pay term because whether statutory
+ * deductions apply depends on the individual engagement. It stays editable
+ * rather than becoming fixed boilerplate here.
+ */
+export function stipendTerms(
+  engagement: EngagementType,
+  deductionsNote: string,
+): { left: { title: string; body: string }[]; right: { title: string; body: string }[] } {
+  const note = deductionsNote.trim();
+  const withNote = (body: string) => (note ? `${body} ${note}` : body);
+
+  if (engagement === 'intern') {
+    return {
+      left: [
+        {
+          title: 'Nature of engagement.',
+          body: 'This is a stipend paid for an internship. It does not constitute salary, wages, or an offer or contract of employment, and creates no employer–employee relationship.',
+        },
+        {
+          title: 'Confidentiality & IP.',
+          body: 'All work produced during the internship is the property of Qera Studio. Confidentiality obligations survive the engagement.',
+        },
+      ],
+      right: [
+        {
+          title: 'Stipend.',
+          body: withNote(
+            'A fixed monthly stipend paid at Qera Studio’s discretion for the period stated.',
+          ),
+        },
+        {
+          title: 'Record.',
+          body: 'This slip is a record of stipend disbursed and is computer-generated.',
+        },
+        {
+          title: 'Jurisdiction.',
+          body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+        },
+      ],
+    };
+  }
+
+  // Employee: no "internship", and nothing denying the employment relationship
+  // that demonstrably exists.
+  return {
+    left: [
+      {
+        title: 'Nature of engagement.',
+        body: 'This payment is made under the terms of your engagement with Qera Studio for the period stated.',
+      },
+      {
+        title: 'Confidentiality & IP.',
+        body: 'All work produced during the engagement is the property of Qera Studio. Confidentiality obligations survive the engagement.',
+      },
+    ],
+    right: [
+      {
+        title: 'Payment.',
+        body: withNote('A fixed monthly amount paid for the period stated.'),
+      },
+      {
+        title: 'Record.',
+        body: 'This slip is a record of the amount disbursed and is computer-generated.',
+      },
+      {
+        title: 'Jurisdiction.',
+        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+      },
+    ],
+  };
+}
+
+/**
+ * The line item a stipend slip is seeded with — the payment itself, which is
+ * what the slip is almost always for. Reimbursed expenses are added alongside
+ * it as further items.
+ *
+ * `periodText` is the formatted date range; the caller owns date formatting.
+ * The period and the deductions assertion also appear in DETAILS and TERMS —
+ * that repetition is in the issued design, not an oversight.
+ */
+export function stipendLineItemSeed(
+  engagement: EngagementType,
+  periodText: string,
+  deductionsNote: string,
+): { description: string; detail: string } {
+  const isIntern = engagement === 'intern';
+  const parts = [
+    isIntern ? 'Monthly stipend for internship engagement' : 'Monthly payment for engagement',
+    periodText ? `Period ${periodText}` : '',
+    deductionsNote.trim().replace(/\.$/, ''),
+  ].filter(Boolean);
+
+  return {
+    description: isIntern ? 'Internship Stipend' : 'Monthly Stipend',
+    detail: parts.join(' · '),
+  };
+}

@@ -27,11 +27,98 @@ beforeEach(() => {
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:x') });
 });
 
+/**
+ * Line items render collapsed to a summary; the fields only exist once a row is
+ * expanded.
+ */
+async function expandLineItem(
+  u: ReturnType<typeof userEvent.setup>,
+  name: RegExp,
+) {
+  await u.click(screen.getByRole('button', { name }));
+}
+
 describe('StipendEditor (new)', () => {
-  it('renders the employee picker and the line-item rate field', () => {
+  it('renders the employee picker and a collapsed line item', () => {
     render(<StipendEditor employees={employees} title="New stipend slip" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^rate/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Untitled item/ })).toBeInTheDocument();
+  });
+
+  /**
+   * The slip is almost always "this month's stipend, as agreed", so it arrives
+   * filled in. The detail line names the period and the deductions position —
+   * matching the issued slip, where both also appear in DETAILS and TERMS.
+   */
+  it('prefills the stipend line item from the employee record', async () => {
+    const u = userEvent.setup();
+    render(<StipendEditor employees={employees} title="New stipend slip" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    await expandLineItem(u, /Internship Stipend/);
+
+    expect(screen.getByLabelText(/^description$/i)).toHaveValue('Internship Stipend');
+    expect(screen.getByLabelText(/^rate/i)).toHaveValue('20000.00');
+    const detail = screen.getByLabelText(/detail \(optional\)/i) as HTMLInputElement;
+    expect(detail.value).toContain('Monthly stipend for internship engagement');
+    expect(detail.value).toContain('No statutory deductions');
+  });
+
+  /**
+   * Regression: the seeded line named the month, but was written once when the
+   * employee was picked and never again — so changing the month afterwards left
+   * a slip whose line item and DETAILS block disagreed about the period.
+   */
+  it('re-seeds the line item when the month changes', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
+    const u = userEvent.setup();
+    render(<StipendEditor employees={employees} title="New stipend slip" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    const month = screen.getByLabelText(/stipend month/i);
+    await u.clear(month);
+    await u.type(month, '2026-06');
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'STP',
+      'e1',
+      expect.objectContaining({
+        lineItems: expect.arrayContaining([
+          expect.objectContaining({
+            detail: expect.stringContaining('Period 01 – 30 June 2026'),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  /** A hand-edited line must survive a month change untouched. */
+  it('leaves an edited line item alone when the month changes', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
+    const u = userEvent.setup();
+    render(<StipendEditor employees={employees} title="New stipend slip" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    await expandLineItem(u, /Internship Stipend/);
+    const description = screen.getByLabelText(/^description$/i);
+    await u.clear(description);
+    await u.type(description, 'Bonus payment');
+
+    const month = screen.getByLabelText(/stipend month/i);
+    await u.clear(month);
+    await u.type(month, '2026-06');
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'STP',
+      'e1',
+      expect.objectContaining({
+        lineItems: expect.arrayContaining([
+          expect.objectContaining({ description: 'Bonus payment' }),
+        ]),
+      }),
+    );
   });
 
   /**
@@ -140,9 +227,10 @@ describe('StipendEditor (new)', () => {
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /add line item/i }));
 
+    // The new row opens on append; the seeded one stays collapsed.
     const rates = screen.getAllByLabelText(/^rate/i);
-    expect(rates).toHaveLength(2);
-    await u.type(rates[1], '2500');
+    expect(rates).toHaveLength(1);
+    await u.type(rates[0], '2500');
     await u.click(screen.getByRole('button', { name: /save draft/i }));
 
     expect(createDraft).toHaveBeenCalledWith(

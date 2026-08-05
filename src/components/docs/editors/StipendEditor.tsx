@@ -11,11 +11,14 @@ import {
 } from "@/server/actions/documents";
 import {
   firstDayOfMonth,
+  formatDisplayDate,
   formatDisplayMonth,
+  isISODate,
   isISOMonth,
   lastDayOfMonth,
   todayISO,
 } from "@/lib/domain/dates";
+import { stipendLineItemSeed } from "@/lib/domain/hrContent";
 import type { StudioInfo } from "@/lib/domain/studio";
 import { DOC_TYPES, PAYMENT_METHODS } from "@/lib/domain/registry";
 import {
@@ -102,6 +105,24 @@ interface StipendFormValues {
   paymentMethod: string;
   paymentReference: string;
   deductionsNote: string;
+}
+
+/**
+ * '01 – 30 June 2026' for the seeded line item's detail.
+ *
+ * Deliberately more compact than the DETAILS block's full range: it sits inside
+ * a longer sentence, where repeating the month and year twice reads badly. Days
+ * are zero-padded so a 1st–9th range lines up with a 10th–31st one.
+ *
+ * Falls back to the full range when the period spans two months, and to '' when
+ * it is incomplete.
+ */
+function periodText(start: string, end: string): string {
+  if (!start || !end || !isISODate(start) || !isISODate(end)) return "";
+  if (start.slice(0, 7) !== end.slice(0, 7)) {
+    return `${formatDisplayDate(start)} – ${formatDisplayDate(end)}`;
+  }
+  return `${start.slice(8, 10)} – ${end.slice(8, 10)} ${formatDisplayMonth(start.slice(0, 7))}`;
 }
 
 const DEFAULT_DEDUCTIONS_NOTE =
@@ -200,6 +221,43 @@ export default function StipendEditor({
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   /**
+   * Write the seeded stipend into line item 1 — description, detail and rate —
+   * for the given employee and period.
+   *
+   * One helper for both call sites (picking an employee, changing the month) so
+   * the two cannot drift into seeding differently worded lines.
+   */
+  const writeSeed = (e: EmployeeRecord, start: string, end: string) => {
+    const seed = stipendLineItemSeed(
+      e.engagementType,
+      periodText(start, end),
+      getValues("deductionsNote"),
+    );
+    setValue("lineItems.0.description", seed.description);
+    setValue("lineItems.0.detail", seed.detail);
+    setValue("lineItems.0.rate", paiseToRupees(e.payAmountPaise));
+    setValue("lineItems.0.qty", "1");
+  };
+
+  /**
+   * True while line item 1 still holds exactly what we seeded (or nothing at
+   * all). Re-seeding is only ever safe on an untouched line — silently
+   * rewriting a hand-edited one would throw away the edit.
+   */
+  const seedIsUntouched = (e: EmployeeRecord | undefined) => {
+    const first = getValues("lineItems")[0];
+    if (!first) return false;
+    if (!first.description && !first.rate) return true;
+    if (!e) return false;
+    const seed = stipendLineItemSeed(
+      e.engagementType,
+      periodText(getValues("stipendPeriodStart"), getValues("stipendPeriodEnd")),
+      getValues("deductionsNote"),
+    );
+    return first.description === seed.description && first.detail === seed.detail;
+  };
+
+  /**
    * Selecting an employee seeds the first line item with their pay and their
    * recorded currency — the common case is "this month's stipend, as agreed".
    * Only an untouched first item is overwritten; anything already typed stays.
@@ -211,13 +269,7 @@ export default function StipendEditor({
     setValue("currency", e.payCurrency ?? DEFAULT_CURRENCY);
     const first = getValues("lineItems")[0];
     if (first && !first.description && !first.rate) {
-      const month = getValues("stipendMonth");
-      setValue(
-        "lineItems.0.description",
-        `Stipend — ${formatDisplayMonth(month)}`,
-      );
-      setValue("lineItems.0.rate", paiseToRupees(e.payAmountPaise));
-      setValue("lineItems.0.qty", "1");
+      writeSeed(e, getValues("stipendPeriodStart"), getValues("stipendPeriodEnd"));
     }
   };
 
@@ -225,6 +277,10 @@ export default function StipendEditor({
    * The period defaults to the whole selected month. Changing the month moves
    * the dates with it, but only while they still match the previous month's
    * bounds — a hand-picked mid-month range must survive.
+   *
+   * The seeded line item names the period too, so it has to move with them.
+   * It used to be written once when the employee was picked and never again,
+   * which left a slip whose line read one month and whose DETAILS read another.
    */
   const onChangeMonth = (month: string) => {
     const previous = getValues("stipendMonth");
@@ -235,10 +291,17 @@ export default function StipendEditor({
       !isISOMonth(previous) ||
       (getValues("stipendPeriodStart") === firstDayOfMonth(previous) &&
         getValues("stipendPeriodEnd") === lastDayOfMonth(previous));
-    if (wasDefault) {
-      setValue("stipendPeriodStart", firstDayOfMonth(month) ?? "");
-      setValue("stipendPeriodEnd", lastDayOfMonth(month) ?? "");
-    }
+    if (!wasDefault) return;
+
+    const employeeForSeed = employees.find((emp) => emp.id === getValues("employeeId"));
+    const reseed = seedIsUntouched(employeeForSeed);
+
+    const start = firstDayOfMonth(month) ?? "";
+    const end = lastDayOfMonth(month) ?? "";
+    setValue("stipendPeriodStart", start);
+    setValue("stipendPeriodEnd", end);
+
+    if (reseed && employeeForSeed) writeSeed(employeeForSeed, start, end);
   };
 
   const lineItems: LineItem[] = (lineItemValues ?? []).map((item) => ({
@@ -437,9 +500,10 @@ export default function StipendEditor({
             alongside the stipend itself. The stipend is simply item 1.
           */}
           <LineItemsEditor
+            control={control}
             register={register}
             fieldArray={fieldArray}
-            currencySymbol={currencySymbol}
+            currency={currency}
           />
 
           <Field>
