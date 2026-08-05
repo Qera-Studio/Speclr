@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentWorkspace from '../DocumentWorkspace';
+import { A4_PADDING } from '@/components/docs/sheets/frame';
 
 describe('DocumentWorkspace', () => {
   it('renders the title, the preview and the rail contents together', () => {
@@ -40,7 +41,7 @@ describe('DocumentWorkspace', () => {
         <div />
       </DocumentWorkspace>,
     );
-    expect(document.querySelector('.paginatorPage')?.className).not.toContain('px-[48px]');
+    expect(document.querySelector('.paginatorPage')?.className).not.toContain(A4_PADDING);
     unmount();
 
     render(
@@ -50,7 +51,7 @@ describe('DocumentWorkspace', () => {
     );
     const pages = [...document.querySelectorAll('.paginatorPage')];
     // Page 0 is the full-bleed cover; the flow page carries the A4 margins.
-    expect(pages[pages.length - 1]?.className).toContain('px-[48px]');
+    expect(pages[pages.length - 1]?.className).toContain(A4_PADDING);
   });
 
   /**

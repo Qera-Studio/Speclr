@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import DocumentPreview from '../DocumentPreview';
+import { A4_PADDING } from '@/components/docs/sheets/frame';
 
 /**
  * jsdom reports every offsetHeight as 0, so the measurement branch never
@@ -76,7 +77,7 @@ describe('DocumentPreview (un-measured jsdom fallback)', () => {
       </DocumentPreview>,
     );
     const page = document.querySelector('.paginatorPage');
-    expect(page?.className).not.toContain('px-[48px]');
+    expect(page?.className).not.toContain(A4_PADDING);
     expect(page?.className).toContain('w-[794px]');
   });
 
@@ -87,7 +88,7 @@ describe('DocumentPreview (un-measured jsdom fallback)', () => {
       </DocumentPreview>,
     );
     const page = document.querySelector('.paginatorPage');
-    expect(page?.className).toContain('px-[48px]');
+    expect(page?.className).toContain(A4_PADDING);
   });
 
   it('exposes a scrollToPage handle without throwing when unmeasured', () => {

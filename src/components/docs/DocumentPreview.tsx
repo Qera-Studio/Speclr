@@ -12,15 +12,25 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
+import { A4_PADDING, A4_PADDING_Y } from './sheets/frame';
 
 // A4 at 96dpi.
 const SHEET_WIDTH = 794;
 const SHEET_HEIGHT = 1123;
-// A4 content box height minus the page padding the sheets use (space-8 top +
-// bottom ≈ 96px). Blocks are packed until the next one would overflow this.
-const PAGE_CONTENT_HEIGHT = SHEET_HEIGHT - 96;
+// A4 content box height minus the page padding the sheets use. Blocks are
+// packed until the next one would overflow this.
+const PAGE_CONTENT_HEIGHT = SHEET_HEIGHT - A4_PADDING_Y;
 // Vertical gap between stacked pages in the scrolling column.
 const PAGE_GAP = 24;
+
+/**
+ * The page drop shadow. Neutral and light — the sheet is the artifact, the
+ * shadow only lifts it off the muted viewport. Dark mode gets a faint light
+ * rim instead of a dark blur, which would be invisible on a dark background.
+ */
+const PAGE_SHADOW =
+  'shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ' +
+  'dark:shadow-[0_2px_10px_rgba(255,255,255,0.07),0_1px_3px_rgba(255,255,255,0.04)]';
 
 export type DocumentPreviewHandle = {
   /** Scroll the page at `index` (0-based) to the top of the viewport. */
@@ -259,15 +269,14 @@ export default function DocumentPreview({
     return () => observer.disconnect();
   }, [measuring, pageCount, reportCurrent]);
 
-  const pageFrame =
-    'w-[794px] h-[1123px] box-border overflow-hidden shadow-[0_8px_32px_rgba(20,42,87,0.32),0_4px_8px_rgba(20,42,87,0.16)]';
+  const pageFrame = `w-[794px] h-[1123px] box-border overflow-hidden ${PAGE_SHADOW}`;
   // Bare content blocks (the contract's clause list) need the page's own A4
   // margins. A self-contained sheet already paints its full 794px artwork
   // including its margins, so adding padding here would shrink it inside the
   // frame and clip its right edge.
   const flowFrame = selfPaddedSheet
     ? `${pageFrame} bg-white text-black`
-    : `${pageFrame} py-[64px] px-[48px] bg-white text-black`;
+    : `${pageFrame} ${A4_PADDING} bg-white text-black`;
 
   // Unscaled height of the whole stacked column, used to reserve the correct
   // on-screen footprint for the transform-scaled holder. While measuring, the
@@ -327,8 +336,8 @@ export default function DocumentPreview({
                 capturePage(coverCount)(el);
               }}
               className={`paginatorPage w-[794px] ${
-                selfPaddedSheet ? '' : 'py-[64px] px-[48px]'
-              } box-border bg-white text-black h-auto min-h-[1123px] shadow-[0_8px_32px_rgba(20,42,87,0.32),0_4px_8px_rgba(20,42,87,0.16)]`}
+                selfPaddedSheet ? '' : A4_PADDING
+              } box-border bg-white text-black h-auto min-h-[1123px] ${PAGE_SHADOW}`}
             >
               {flowBlocks}
             </div>

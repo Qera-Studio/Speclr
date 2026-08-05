@@ -6,6 +6,7 @@ import { computeTotals, formatINR, lineAmountPaise, splitGST } from '@/lib/domai
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { studioOf } from '@/lib/domain/studio';
 import type { InvoiceDocument, ReceiptDocument } from '@/lib/domain/types';
+import { A4_PADDING } from './frame';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined in full black. */
 function QeraMark() {
@@ -45,7 +46,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
 
   return (
     <article
-      className="print-sheet relative bg-white text-black font-sans text-[12px] leading-[1.5] p-[12px] box-border w-[794px] h-[1123px] flex flex-col overflow-hidden"
+      className={`print-sheet relative bg-white text-black font-sans text-[12px] leading-[1.5] ${A4_PADDING} box-border w-[794px] h-[1123px] flex flex-col overflow-hidden`}
       aria-label={`${spec.label} ${doc.number ?? 'draft'}`}
     >
       <header className="flex justify-between items-start gap-[24px] mb-[8px]">

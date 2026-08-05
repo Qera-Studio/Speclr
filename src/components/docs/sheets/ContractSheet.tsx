@@ -3,6 +3,7 @@ import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS } from '@/lib/domain/m
 import { scheduleLetter } from '@/lib/domain/scheduleLetter';
 import { studioOf } from '@/lib/domain/studio';
 import type { ContractDocument } from '@/lib/domain/types';
+import { A4_PADDING } from './frame';
 
 /** Cover page styling shared by the print flow and the preview's dedicated
  * cover-page frame — the black, full-bleed contract cover. */
@@ -59,7 +60,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
     'By signing below, both Parties acknowledge that they have read, understood, and agreed to the terms contained within this Agreement.';
 
   const cover = (
-    <div key="cover" className="flex flex-col flex-1 min-h-[900px] p-[64px_48px] box-border" aria-label="Cover">
+    <div key="cover" className={`flex flex-col flex-1 min-h-[900px] ${A4_PADDING} box-border`} aria-label="Cover">
       <div className="flex justify-between items-start gap-[24px]">
         <p className="flex items-center gap-[6px] text-white">
           <QeraMark />
@@ -325,13 +326,13 @@ export default function ContractSheet({ doc }: { doc: ContractDocument }) {
         {cover}
       </section>
       <section
-        className="[break-before:page] bg-white text-black p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+        className={`[break-before:page] bg-white text-black ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         aria-label="Parties"
       >
         {parties}
       </section>
       <section
-        className="[break-before:page] bg-white text-black p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+        className={`[break-before:page] bg-white text-black ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         aria-label="Terms and conditions"
       >
         {clauses}
@@ -339,13 +340,13 @@ export default function ContractSheet({ doc }: { doc: ContractDocument }) {
       {schedules.map((sch, i) => (
         <section
           key={i}
-          className="[break-before:page] bg-white text-black p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+          className={`[break-before:page] bg-white text-black ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         >
           {sch}
         </section>
       ))}
       <section
-        className="[break-before:page] bg-white text-black p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+        className={`[break-before:page] bg-white text-black ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         aria-label="Signatures"
       >
         {signatures}
