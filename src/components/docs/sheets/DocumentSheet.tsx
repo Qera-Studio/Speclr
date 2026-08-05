@@ -5,6 +5,7 @@ import { gstStateName } from '@/lib/domain/gstStates';
 import { computeTotals, formatINR, lineAmountPaise, splitGST } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { studioOf } from '@/lib/domain/studio';
+import { contentOf } from '@/lib/domain/docContent';
 import type { InvoiceDocument, ReceiptDocument } from '@/lib/domain/types';
 import { A4_PADDING } from './frame';
 
@@ -36,6 +37,10 @@ function QeraMark() {
 export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptDocument }) {
   const spec = DOC_TYPES[doc.type];
   const studio = studioOf(doc);
+  // Every printed word that is editable: masthead, TERMS, the PAID note, the
+  // thanks line. Defaults when the document has never been edited; its own
+  // frozen copy once finalized.
+  const text = contentOf(doc, spec);
   const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
 
@@ -51,7 +56,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
     >
       <header className="flex justify-between items-start gap-[24px] mb-[8px] border-b border-[#d9d9d9] pb-[16px]">
         <h2 className="text-[96px] font-bold tracking-[-0.03em] leading-[0.9] uppercase text-black">
-          {spec.masthead}
+          {text.masthead}
         </h2>
         <div className="text-right shrink-0 pt-[4px]">
           <p className="flex items-center justify-end gap-[6px] text-black">
@@ -264,8 +269,8 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
       <div className="mt-auto">
         {spec.badge ? (
           <div className="bg-[#eef7e6] border border-[#a9d489] rounded-[6px] px-[14px] py-[10px] mb-[8px] [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
-            <p className="text-[#4ca014] font-bold text-[14px]">• {spec.badge.text}</p>
-            <p className="text-black/70 text-[10px] font-normal mt-[2px]">{spec.badge.note}</p>
+            <p className="text-[#4ca014] font-bold text-[14px]">• {text.badgeText}</p>
+            <p className="text-black/70 text-[10px] font-normal mt-[2px]">{text.badgeNote}</p>
           </div>
         ) : null}
         <div
@@ -321,7 +326,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
                   className="w-[75px] h-[75px]"
                 />
                 <p className="text-black/70 text-[10px] font-normal uppercase tracking-[0.04em]">
-                  Scan to pay
+                  {text.qrCaption}
                 </p>
               </div>
             </>
@@ -363,9 +368,11 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
           <section aria-label="Terms">
             <h3 className="text-black text-[24px] font-bold tracking-[-0.02em] mb-[8px]">TERMS</h3>
             <div className="[column-count:2] [column-gap:24px]">
-              {spec.fixedTerms.map((term) => (
+              {/* Keyed by position, not title: titles are editable now, so two
+                  can be identical or blank while being typed. */}
+              {text.terms.map((term, i) => (
                 <p
-                  key={term.title}
+                  key={i}
                   className="text-black/70 text-[8px] font-normal [break-inside:avoid] leading-[1.4]"
                 >
                   <strong className="text-black font-semibold">{term.title}</strong> {term.body}
@@ -376,7 +383,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         </div>
 
         <footer className="flex justify-between gap-[16px] flex-wrap border-t border-[#d9d9d9] pt-[8px] text-black/70 text-[10px] font-normal">
-          <span>{studio.thanksLine}</span>
+          <span>{text.thanksLine}</span>
           <span>Queries: {studio.email}</span>
           <span>{displayDate}</span>
           <span>{doc.number ? `#${doc.number}` : 'DRAFT'}</span>

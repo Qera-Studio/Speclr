@@ -9,7 +9,7 @@ import {
   formatMoney,
   lineAmountPaise,
 } from "@/lib/domain/money";
-import { stipendTerms } from "@/lib/domain/hrContent";
+import { contentOf, splitTerms } from "@/lib/domain/docContent";
 import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf } from "@/lib/domain/studio";
 import type { StipendDocument } from "@/lib/domain/types";
@@ -90,7 +90,12 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
   const currency = doc.currency ?? "INR";
   const money = (paise: number) => formatMoney(paise, currency);
 
-  const terms = stipendTerms(emp.engagementType, doc.deductionsNote);
+  // Masthead, PAID note, TERMS and the thanks line all come through the
+  // content layer: defaults while the slip is untouched, its own frozen copy
+  // once finalized. The terms still branch on engagement type — that default
+  // lives in `hrContent` and is resolved by `contentOf`.
+  const text = contentOf(doc, spec);
+  const terms = splitTerms(text.terms);
 
   const monthLabel = formatDisplayMonth(doc.stipendMonth);
   const periodLabel = stipendPeriodLabel(doc);
@@ -102,7 +107,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
     >
       <header className="flex justify-between items-start gap-[24px] mb-[8px] border-b border-[#d9d9d9] pb-[16px]">
         <h2 className="text-[96px] font-bold tracking-[-0.03em] leading-[0.9] uppercase text-black">
-          {spec.masthead}
+          {text.masthead}
         </h2>
         <div className="text-right shrink-0 pt-[4px]">
           <p className="flex items-center justify-end gap-[6px] text-black">
@@ -260,10 +265,10 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
         {spec.badge ? (
           <div className="bg-[#eef7e6] border border-[#a9d489] rounded-[6px] px-[14px] py-[10px] mb-[8px] [print-color-adjust:exact] [-webkit-print-color-adjust:exact]">
             <p className="text-[#4ca014] font-bold text-[14px]">
-              • {spec.badge.text}
+              • {text.badgeText}
             </p>
             <p className="text-black/70 text-[10px] font-normal mt-[2px]">
-              {spec.badge.note}
+              {text.badgeNote}
             </p>
           </div>
         ) : null}
@@ -421,7 +426,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
                 className="w-[75px] h-[75px] object-contain bg-white"
               />
               <p className="text-black/70 text-[12px] font-normal uppercase tracking-[0.04em]">
-                Scan to pay
+                {text.qrCaption}
               </p>
             </div>
           ) : (
@@ -448,15 +453,15 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
             */}
             <div className="grid grid-cols-2 gap-x-[16px] items-start">
               <div>
-                {terms.left.map((term) => (
-                  <Term key={term.title} title={term.title}>
+                {terms.left.map((term, i) => (
+                  <Term key={i} title={term.title}>
                     {term.body}
                   </Term>
                 ))}
               </div>
               <div>
-                {terms.right.map((term) => (
-                  <Term key={term.title} title={term.title}>
+                {terms.right.map((term, i) => (
+                  <Term key={i} title={term.title}>
                     {term.body}
                   </Term>
                 ))}
@@ -466,7 +471,7 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
         </div>
 
         <footer className="flex justify-between gap-[12px] flex-wrap border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
-          <span>{studio.thanksLine}</span>
+          <span>{text.thanksLine}</span>
           <span>Queries: {studio.queryEmailHr}</span>
           <span>CIN: {studio.cin}</span>
           <span>{displayDate}</span>

@@ -87,3 +87,35 @@ describe('DocumentSheet', () => {
     expect(screen.getByText(/IGST \(18%\)/)).toBeInTheDocument();
   });
 });
+
+/**
+ * The document's own words win over the shipped defaults, and a finalized
+ * document carries them — so revising `fixedTerms` in code cannot rewrite an
+ * invoice already filed.
+ */
+describe('DocumentSheet editable content', () => {
+  it('prints the defaults when nothing has been edited', () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.getByText('INVOICE')).toBeInTheDocument();
+    expect(screen.getByText(/Payment\./)).toBeInTheDocument();
+  });
+
+  it('prints the document’s own masthead and terms when it has them', () => {
+    const doc = {
+      ...baseInvoice,
+      content: {
+        masthead: 'TAX INVOICE',
+        terms: [{ title: 'Settlement.', body: 'Payable on presentation.' }],
+        thanksLine: 'Thanks for the work',
+      },
+    } as InvoiceDocument;
+
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText('TAX INVOICE')).toBeInTheDocument();
+    expect(screen.getByText(/Payable on presentation\./)).toBeInTheDocument();
+    expect(screen.getByText('Thanks for the work')).toBeInTheDocument();
+    // The shipped clause it replaced is gone, not merged alongside.
+    expect(screen.queryByText(/Overdue balances accrue interest/)).not.toBeInTheDocument();
+  });
+});

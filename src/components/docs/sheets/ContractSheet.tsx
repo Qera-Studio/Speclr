@@ -1,5 +1,6 @@
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
-import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS } from '@/lib/domain/msaBoilerplate';
+import { contentOf } from '@/lib/domain/docContent';
+import { DOC_TYPES } from '@/lib/domain/registry';
 import { scheduleLetter } from '@/lib/domain/scheduleLetter';
 import { studioOf } from '@/lib/domain/studio';
 import type { ContractDocument } from '@/lib/domain/types';
@@ -54,9 +55,14 @@ function NoteBlock({ heading, note }: { heading: string; note?: string }) {
  */
 export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
   const studio = studioOf(doc);
+  // Cover intro, preamble and the 24 MSA clauses come through the content
+  // layer now: the shipped boilerplate while untouched, the contract's own
+  // frozen copy once finalized. Revising the MSA must not rewrite a contract
+  // already signed.
+  const text = contentOf(doc, DOC_TYPES.CON);
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const signatureStatement =
-    MSA_SECTIONS.find((s) => s.number === 24)?.body[0] ??
+    text.clauses.find((s) => s.number === 24)?.body[0] ??
     'By signing below, both Parties acknowledge that they have read, understood, and agreed to the terms contained within this Agreement.';
 
   const cover = (
@@ -72,14 +78,14 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
         Contract Agreement
       </h2>
       <p className="mt-[40px] max-w-[60ch] text-white/80 text-[12px] font-normal leading-[1.6]">
-        {CONTRACT_INTRO}
+        {text.intro}
       </p>
     </div>
   );
 
   const parties = (
     <div key="parties" aria-label="Parties">
-      <p className="text-black text-[13px] font-medium mb-[40px]">{AGREEMENT_PREAMBLE}</p>
+      <p className="text-black text-[13px] font-medium mb-[40px]">{text.preamble}</p>
       <div className="grid grid-cols-2 gap-[48px]">
         <div className="border-t-2 border-black pt-[24px]">
           <h3 className="text-black text-[14px] font-bold mb-[2px]">First Party</h3>
@@ -140,8 +146,8 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
   // Each MSA clause is its own atomic block so pagination can only break
   // *between* clauses — a heading never separates from its body.
-  const clauses = MSA_SECTIONS.map((s) => (
-    <section key={`msa-${s.number}`} className="[break-inside:avoid] mb-[32px]">
+  const clauses = text.clauses.map((s, ci) => (
+    <section key={`msa-${ci}`} className="[break-inside:avoid] mb-[32px]">
       <h3 className="text-black text-[14px] font-bold tracking-[-0.01em] mb-[8px]">
         {s.number}. {s.heading}
       </h3>

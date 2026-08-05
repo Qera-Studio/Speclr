@@ -1,8 +1,8 @@
 import { formatDisplayDate, isISODate } from "@/lib/domain/dates";
-import { exitMasthead } from "@/lib/domain/hrContent";
+import { contentOf } from "@/lib/domain/docContent";
+import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf, type StudioInfo } from "@/lib/domain/studio";
 import type { LetterDocument } from "@/lib/domain/types";
-import { flattenAddress } from "@/lib/domain/address";
 import { A4_PADDING, OFFER_COVER_PADDING, OFFER_PADDING } from "./frame";
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
@@ -31,17 +31,6 @@ const SUBJECT_RE = /^\s*subject\s*:/i;
 /** Substitute {name} placeholders in stored body text with the employee's name. */
 function fill(text: string, name: string): string {
   return text.replaceAll("{name}", name);
-}
-
-function mastheadFor(doc: LetterDocument): string {
-  switch (doc.type) {
-    case "OFR":
-      return "COMPANY OFFER LETTER";
-    case "EXP":
-      return "EXPERIENCE LETTER";
-    case "EXIT":
-      return exitMasthead(doc.employeeSnapshot.engagementType);
-  }
 }
 
 /**
@@ -124,10 +113,20 @@ function SignatureBlock({
  * gets a real line to sign on because the letter above asks them to confirm
  * agreement; an acknowledgement with nowhere to sign is not one.
  *
- * The signatory's name and title are constants: `StudioInfo` has no signatory
- * field, and there is one signatory. Move them there if that changes.
+ * The signatory's name, title and qualifier are editable per document, seeded
+ * from the defaults in `docContent`.
  */
-function OfferSignatureBlock({ employeeName }: { employeeName: string }) {
+function OfferSignatureBlock({
+  employeeName,
+  signatoryName,
+  signatoryTitle,
+  signatoryQualifier,
+}: {
+  employeeName: string;
+  signatoryName: string;
+  signatoryTitle: string;
+  signatoryQualifier: string;
+}) {
   return (
     <div className="grid grid-cols-2 gap-[96px] mt-[48px] mb-[24px]">
       <div className="max-w-[250px] [break-inside:avoid]">
@@ -135,13 +134,13 @@ function OfferSignatureBlock({ employeeName }: { employeeName: string }) {
           Signature:
         </p>
         <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
-        <p className="text-black text-[12px] font-semibold">Shivanshu Pareek</p>
-        <p className="text-black/70 text-[11px] font-normal">
-          Co-founder — Qera Studio
-        </p>
-        <p className="text-black/70 text-[11px] font-normal">
-          (Authorised Signatory)
-        </p>
+        <p className="text-black text-[12px] font-semibold">{signatoryName}</p>
+        <p className="text-black/70 text-[11px] font-normal">{signatoryTitle}</p>
+        {signatoryQualifier ? (
+          <p className="text-black/70 text-[11px] font-normal">
+            {signatoryQualifier}
+          </p>
+        ) : null}
       </div>
       <div className="max-w-[250px] [break-inside:avoid]">
         <p className="text-black/70 text-[12px] font-normal mb-[2px]">
@@ -204,7 +203,12 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
     : "—";
   const emp = doc.employeeSnapshot;
   const studio = studioOf(doc);
-  const masthead = mastheadFor(doc);
+  // Masthead, subject, acknowledgement, the signatory block and the footer
+  // identity lines are all editable per document; `contentOf` resolves the
+  // defaults for one nobody has touched. The exit letter's masthead still
+  // switches on engagement type inside that resolver.
+  const text = contentOf(doc, DOC_TYPES[doc.type]);
+  const masthead = text.masthead;
 
   // The offer letter reads at 14px; the certifying letters stay at 12px.
   const isOffer = doc.type === "OFR";
@@ -212,21 +216,30 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
     ? "text-black text-[14px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line"
     : "text-black text-[12px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line";
 
+  const subjectClass =
+    "text-black text-[16px] font-semibold leading-[1.6] mb-[24px] whitespace-pre-line";
+
   const paragraphs = doc.bodyParagraphs.map((p, i) => (
     <p
       key={`para-${i}`}
       className={
-        // The subject line leads the letter, so it is set heavier and 2px up
-        // from the body. Matched on the text rather than on position: the body
-        // is free text in the editor and can be reordered.
-        isOffer && SUBJECT_RE.test(p)
-          ? "text-black text-[16px] font-semibold leading-[1.6] mb-[24px] whitespace-pre-line"
-          : bodyClass
+        // Letters written before the subject had a field of its own keep it as
+        // the first body paragraph. Matched on the text, not the position: the
+        // body is free text and can be reordered. New letters carry
+        // `content.subject` and never reach this branch.
+        isOffer && SUBJECT_RE.test(p) ? subjectClass : bodyClass
       }
     >
       {fill(p, emp.name)}
     </p>
   ));
+
+  // The subject as its own field, printed above the body.
+  const subject = text.subject.trim() ? (
+    <p key="subject" className={subjectClass}>
+      {fill(text.subject, emp.name)}
+    </p>
+  ) : null;
 
   const bullets = doc.bulletSections.map((section, si) => (
     <BulletSection key={`bullet-${si}`} section={section} name={emp.name} />
@@ -294,6 +307,7 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
         </span>
       </div>,
 
+      ...(subject ? [subject] : []),
       ...paragraphs,
       // Offer letters carry no bullet sections today (`offerContent` returns an
       // empty list), but anything added in the editor must still print rather
@@ -306,17 +320,19 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
       // signature lines stranded from the letter's footer.
       <div key="closing" className="mt-auto">
         <div className="pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]">
-          <p className={bodyClass}>
-            I, {emp.name}, confirm that I have read and agreed to the terms
-            mentioned in this letter.
-          </p>
-          <OfferSignatureBlock employeeName={emp.name} />
+          <p className={bodyClass}>{fill(text.acknowledgement, emp.name)}</p>
+          <OfferSignatureBlock
+            employeeName={emp.name}
+            signatoryName={text.signatoryName}
+            signatoryTitle={text.signatoryTitle}
+            signatoryQualifier={text.signatoryQualifier}
+          />
         </div>
         <SharedFooter
           displayDate={displayDate}
           studio={studio}
-          website="www.qera.studio"
-          registeredOffice={`${studio.legalName.toUpperCase()}. Registered office: ${flattenAddress(studio.address)}`}
+          website={text.website}
+          registeredOffice={text.registeredOffice}
         />
       </div>,
     ];
@@ -352,10 +368,11 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
         {masthead}
       </h2>
       <p className="text-black text-[13px] font-normal text-center mb-[32px]">
-        TO WHOMSOEVER IT MAY CONCERN
+        {text.subheading}
       </p>
     </div>,
 
+    ...(subject ? [subject] : []),
     ...paragraphs,
     ...bullets,
 
@@ -383,7 +400,7 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
  */
 export default function LetterSheet({ doc }: { doc: LetterDocument }) {
   const blocks = letterBlocks(doc);
-  const masthead = mastheadFor(doc);
+  const masthead = contentOf(doc, DOC_TYPES[doc.type]).masthead;
 
   if (doc.type === "OFR") {
     const [cover, ...body] = blocks;
