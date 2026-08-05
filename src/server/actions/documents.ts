@@ -10,6 +10,7 @@ import {
 } from '@/lib/domain/dates';
 import { DOC_TYPES, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
+import { materialiseContent } from '@/lib/domain/docContent';
 import {
   clientSnapshotOf,
   type ActionResult,
@@ -102,6 +103,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       lineItems: [],
       gstRatePercent: 0,
       schedules: fields.schedules ?? [],
+      content: fields.content,
     };
   }
   if (base.type === 'STP') {
@@ -122,6 +124,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       paymentMethod: fields.paymentMethod ?? '',
       paymentReference: fields.paymentReference,
       deductionsNote: fields.deductionsNote ?? '',
+      content: fields.content,
     };
   }
   // INV/REC share every money field.
@@ -133,6 +136,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     notes: fields.notes,
     terms: fields.terms,
+    content: fields.content,
   };
   if (base.type === 'INV') {
     return { ...base, ...sharedMoney, dueDate: fields.dueDate };
@@ -153,6 +157,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     bodyParagraphs: fields.bodyParagraphs ?? [],
     bulletSections: fields.bulletSections ?? [],
     payAmountPaise: fields.payAmountPaise,
+    content: fields.content,
   };
 }
 
@@ -357,6 +362,21 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   // retention) and Rule 46 (supplier address as at issue) do not allow.
   const studioSnapshot = await getStudioSettings();
 
+  // Freeze the words too. The sheets resolve mastheads, TERMS, the MSA clauses
+  // and the signatory block from defaults in code; without materialising them
+  // here, revising that wording later would rewrite documents already issued.
+  // Resolved against the snapshots just built, so it matches what prints.
+  const content = materialiseContent(
+    {
+      type: existing.type,
+      content: existing.content,
+      studioSnapshot,
+      deductionsNote: (existing as StipendDocument).deductionsNote,
+      employeeSnapshot,
+    },
+    spec,
+  );
+
   // `existing` is already a well-formed union member; we only refresh the one
   // subject snapshot that applies to its kind.
   const finalized = {
@@ -365,6 +385,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     ...(number ? { number, serial, year } : {}),
     ...(hr ? { employeeSnapshot } : { clientSnapshot }),
     studioSnapshot,
+    content,
     updatedAt: Date.now(),
     finalizedAt: Date.now(),
     // Who issued it. `createdBy` rides along untouched from `existing` — the

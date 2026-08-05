@@ -6,6 +6,7 @@
 import type { AddressParts } from './address';
 import type { StudioInfo } from './studio';
 import type { CurrencyCode } from './currency';
+import type { DocContent } from './docContent';
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'OFR' | 'EXP' | 'EXIT';
@@ -137,6 +138,15 @@ export interface BaseDocument {
    * issue (CGST s.36 / Rule 46), so changing the settings must never rewrite it.
    */
   studioSnapshot?: StudioInfo;
+  /**
+   * Edited text overrides, resolved against the type's defaults by `contentOf`.
+   *
+   * Absent on a document nobody has edited, and complete on every finalized
+   * one — finalize materialises the resolved content for the same reason
+   * `studioSnapshot` exists: revising the default wording must never rewrite a
+   * document already issued.
+   */
+  content?: DocContent;
   /** ISO date 'YYYY-MM-DD'. The numbering year derives from this, not the server clock. */
   issueDate: string;
   lineItems: LineItem[];

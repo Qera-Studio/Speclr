@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
 import { contractScheduleSchema } from './serviceTemplate';
+import { docContentSchema, type DocContent, type TermItem } from './docContent';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import type { ContractSchedule, DocTypeCode, LineItem, ReceiptDocument } from './types';
 
@@ -100,6 +101,7 @@ const baseFieldsShape = {
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
   terms: z.string().trim().max(4000).optional(),
+  content: docContentSchema.optional(),
 };
 
 /** Finalize rule shared by all money docs: GST needs a place of supply. */
@@ -155,6 +157,7 @@ const contractBaseShape = {
   issueDate: isoDate,
   // Max 26 — one per schedule letter A..Z (see scheduleLetter helper).
   schedules: z.array(contractScheduleSchema).max(26),
+  content: docContentSchema.optional(),
 };
 export const contractDraftSchema = z.object(contractBaseShape);
 export const contractFinalizeSchema = z.object({
@@ -185,6 +188,7 @@ const stipendBaseShape = {
   paymentMethod: z.string().trim().max(60),
   paymentReference: z.string().trim().max(100).optional(),
   deductionsNote: z.string().trim().max(500),
+  content: docContentSchema.optional(),
 };
 export const stipendDraftSchema = z.object({
   ...stipendBaseShape,
@@ -205,6 +209,7 @@ const letterBaseShape = {
   bodyParagraphs: z.array(z.string().trim().max(4000)).max(40),
   bulletSections: z.array(bulletSectionSchema).max(10),
   payAmountPaise: z.number().int().min(0).max(1e13).optional(),
+  content: docContentSchema.optional(),
 };
 export const letterDraftSchema = z.object(letterBaseShape);
 export const letterFinalizeSchema = z.object({
@@ -241,13 +246,19 @@ export interface DocFields {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
+  /**
+   * Editable text overrides. Absent keys resolve to the defaults below via
+   * `contentOf`; finalize materialises the lot onto the document so an issued
+   * one reprints unchanged whatever these defaults later become.
+   */
+  content?: DocContent;
 }
 
-/** A fixed terms clause printed on every document of a type. */
-export interface FixedTerm {
-  title: string;
-  body: string;
-}
+/**
+ * A terms clause. `fixedTerms` below is the *default* set for a type — the
+ * document's own `content.terms` wins when it has been edited.
+ */
+export type FixedTerm = TermItem;
 
 export interface DocTypeSpec {
   code: DocTypeCode;
