@@ -2,6 +2,7 @@ import {
   addressPartsSchema,
   composeAddress,
   emptyAddressParts,
+  flattenAddress,
   isEmptyAddressParts,
   isIndianPincode,
   type AddressParts,
@@ -16,6 +17,26 @@ const full: AddressParts = {
   country: 'IN',
 };
 
+describe('flattenAddress', () => {
+  it('collapses a composed address onto one line', () => {
+    expect(flattenAddress(composeAddress(full))).toBe(
+      'C-204, MGI Gharaunda, Raj Nagar Extension, Ghaziabad - 201017, Uttar Pradesh, India',
+    );
+  });
+
+  it('does not double up the separators composeAddress already wrote', () => {
+    // `composeAddress` ends its street lines with a comma; joining with ', '
+    // would otherwise print 'C-204,, MGI Gharaunda'.
+    expect(flattenAddress('C-204,\nGhaziabad - 201017')).toBe('C-204, Ghaziabad - 201017');
+  });
+
+  it('survives blank lines and stray whitespace', () => {
+    // The studio address is free text in the settings form.
+    expect(flattenAddress('  C-204,  \n\n Ghaziabad \n')).toBe('C-204, Ghaziabad');
+    expect(flattenAddress('')).toBe('');
+  });
+});
+
 describe('composeAddress', () => {
   it('matches the format the studio address already uses', () => {
     // STUDIO_INFO.address is the reference the document sheets were designed
@@ -26,10 +47,30 @@ describe('composeAddress', () => {
     );
   });
 
-  it('includes the state and the country name when given', () => {
+  it('puts the state and the country on one line', () => {
+    // They used to take a line each, spending two of an address block's few
+    // lines on its least specific part.
     expect(composeAddress(full)).toBe(
-      'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nUttar Pradesh\nIndia',
+      'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nUttar Pradesh, India',
     );
+  });
+
+  it('drops the separator when only one of state/country is present', () => {
+    // A stray leading or trailing comma on a printed address is exactly the
+    // kind of thing nobody notices until it is on a client's invoice.
+    expect(composeAddress({ ...full, country: '' })).toContain('Uttar Pradesh');
+    expect(composeAddress({ ...full, country: '' })).not.toContain('Uttar Pradesh,');
+    expect(composeAddress({ ...full, state: '' })).toContain('\nIndia');
+    expect(composeAddress({ ...full, state: '' })).not.toContain(', India');
+  });
+
+  /**
+   * A state with no street or city still has to bring its country with it —
+   * the country used to be pushed by a `lines.length > 0` check that the state
+   * itself satisfied.
+   */
+  it('keeps the country when the state is the only other part', () => {
+    expect(composeAddress({ ...emptyAddressParts, state: 'Goa' })).toBe('Goa, India');
   });
 
   it('drops the optional street line without leaving a stray comma', () => {

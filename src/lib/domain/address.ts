@@ -70,6 +70,7 @@ export function isIndianPincode(value: string): boolean {
  *     C-204,
  *     MGI Gharaunda, Raj Nagar Extension,
  *     Ghaziabad - 201017
+ *     Uttar Pradesh, India
  *
  * Newline-separated because the sheets render with `whitespace-pre-line`.
  * Empty parts are dropped rather than leaving stray commas or dangling
@@ -92,22 +93,41 @@ export function composeAddress(parts: AddressParts): string {
   const cityLine = city && pincode ? `${city} - ${pincode}` : city || pincode;
   if (cityLine) lines.push(cityLine);
 
-  const state = clean(parts.state);
-  if (state) lines.push(state);
-
-  // Full name, not the ISO code — an invoice reading 'AU' is not an address.
-  // Printed for India too: these documents go to overseas clients, and an
-  // export invoice should say plainly which country it was issued from.
+  // State and country share a line — 'Uttar Pradesh, India'. They used to take
+  // one each, which spent two of an address block's few lines on the least
+  // specific part of it.
   //
-  // Only once there's an address to attach it to. `country` defaults to 'IN' on
-  // an untouched form, so without this guard a blank address would compose to
-  // the single word "India".
-  if (lines.length > 0) {
+  // Country is the full name, not the ISO code — an invoice reading 'AU' is not
+  // an address. Printed for India too: these documents go to overseas clients,
+  // and an export invoice should say plainly which country it was issued from.
+  //
+  // Only once there is an address to attach it to. `country` defaults to 'IN'
+  // on an untouched form, so without this guard a blank address would compose
+  // to the single word "India".
+  const state = clean(parts.state);
+  if (lines.length > 0 || state) {
     const country = countryName(clean(parts.country));
-    if (country) lines.push(country);
+    const regionLine = [state, country].filter(Boolean).join(', ');
+    if (regionLine) lines.push(regionLine);
   }
 
   return lines.join('\n');
+}
+
+/**
+ * A composed multi-line address collapsed onto one line — 'C-204, MGI
+ * Gharaunda, …, Ghaziabad - 201017, Uttar Pradesh, India'.
+ *
+ * For the places a document needs the address inline rather than as a block:
+ * the offer letter's registered-office line. Trailing commas are stripped
+ * before joining so `composeAddress`'s line endings don't double up.
+ */
+export function flattenAddress(address: string): string {
+  return address
+    .split('\n')
+    .map((line) => line.trim().replace(/,$/, '').trim())
+    .filter(Boolean)
+    .join(', ');
 }
 
 /** True when there's nothing worth composing — used to skip the parts path. */

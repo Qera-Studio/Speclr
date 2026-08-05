@@ -44,9 +44,16 @@ export interface StudioInfo {
 export const STUDIO_INFO: StudioInfo = {
   brandMark: 'qera studio',
   legalName: 'Qera Private Limited',
-  // Ends with the country so the "from:" block matches composed client
-  // addresses, which now print a country name — these go to overseas clients.
-  address: 'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nIndia',
+  /**
+   * Ends with 'State, Country' so the "from:" block matches composed client and
+   * employee addresses (see `composeAddress`).
+   *
+   * The state is stated, not left implied by the GSTIN prefix: Rule 46 wants the
+   * supplier's address on a tax invoice, and the state is the part that
+   * establishes place of supply. Kept in step with `stateName` below.
+   */
+  address:
+    'C-204,\nMGI Gharaunda, Raj Nagar Extension,\nGhaziabad - 201017\nUttar Pradesh, India',
   phone: '+91 72001 24605',
   email: 'sales@qera.studio',
   thanksLine: 'Thank you for partnering with Qera Studio',
