@@ -9,7 +9,8 @@ const textareaVariants = cva(
   {
     variants: {
       size: {
-        default: "min-h-16 px-2 py-2 text-sm md:text-xs/relaxed",
+        default:
+          "min-h-16 px-2 py-2 text-sm md:text-xs/relaxed group-data-[size=form]/field-group:min-h-20 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm group-data-[size=form]/field-group:md:text-sm",
         form: "min-h-20 px-3 py-2 text-sm",
       },
     },

@@ -102,7 +102,7 @@ export default function ServiceForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-      <FieldGroup>
+      <FieldGroup size="form">
         <Field>
           <FieldLabel htmlFor="service-name">Name</FieldLabel>
           <Input id="service-name" {...register('name')} />

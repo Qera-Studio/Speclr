@@ -19,7 +19,7 @@ import {
   type ContractDocument,
   type ContractSchedule,
 } from '@/lib/domain/types';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
@@ -161,6 +161,7 @@ export default function ContractEditor({
       preview={contractBlocks(previewDoc)}
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
+        <FieldGroup size="form">
         <Field>
           <FieldLabel htmlFor="con-client">Client</FieldLabel>
           <Combobox
@@ -255,7 +256,8 @@ export default function ContractEditor({
               />
             </>
           ) : null}
-        </div>
+          </div>
+        </FieldGroup>
       </form>
     </DocumentWorkspace>
   );

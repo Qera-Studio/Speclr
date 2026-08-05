@@ -73,7 +73,7 @@ function Combobox({
         data-slot="combobox"
         data-size={size}
         className={cn(
-          "group/combobox relative flex w-full items-center rounded-md border border-input bg-input/20 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=form]:h-9 dark:bg-input/30",
+          "group/combobox relative flex w-full items-center rounded-md border border-input bg-input/20 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=form]:h-9 group-data-[size=form]/field-group:h-9 dark:bg-input/30",
           className
         )}
       >
@@ -82,7 +82,9 @@ function Combobox({
           placeholder={placeholder}
           className={cn(
             "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground",
-            size === "form" ? "px-3 text-sm" : "px-2 text-xs/relaxed"
+            size === "form"
+              ? "px-3 text-sm"
+              : "px-2 text-xs/relaxed group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm"
           )}
           {...aria}
         />
@@ -90,7 +92,7 @@ function Combobox({
           aria-label="Open list"
           className={cn(
             "flex shrink-0 items-center justify-center text-muted-foreground outline-none",
-            size === "form" ? "pr-3" : "pr-2"
+            size === "form" ? "pr-3" : "pr-2 group-data-[size=form]/field-group:pr-3"
           )}
         >
           <ComboboxPrimitive.Icon

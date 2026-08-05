@@ -62,6 +62,32 @@ describe('control sizing defaults', () => {
     );
   });
 
+  /**
+   * The inheritance rule. Shared field components (AddressFields, PhoneField,
+   * IfscField, LineItemsEditor) render plain `<Input/>` and know nothing about
+   * the form containing them — which is why one admin form used to show 28px
+   * and 36px controls side by side. Inside a `size="form"` group the compact
+   * variant resolves to the roomy scale, so those files need no changes and
+   * cannot drift again.
+   *
+   * jsdom resolves no Tailwind, so this asserts the class is *declared*.
+   */
+  it('scales a compact control up inside a form-sized FieldGroup', () => {
+    render(
+      <FieldGroup size="form">
+        <Field>
+          <FieldLabel htmlFor="z">Label</FieldLabel>
+          <Input id="z" />
+        </Field>
+      </FieldGroup>,
+    );
+
+    const classes = screen.getByLabelText('Label').className.split(/\s+/);
+    expect(classes).toContain('group-data-[size=form]/field-group:h-9');
+    // The standalone default is untouched — only the inherited value differs.
+    expect(classes).toContain('h-7');
+  });
+
   it('marks the group as form-sized so descendants can scale their text', () => {
     const { container } = render(
       <FieldGroup size="form">

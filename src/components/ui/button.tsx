@@ -21,14 +21,14 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-7 gap-1 px-2 text-xs/relaxed has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+          "h-7 gap-1 px-2 text-xs/relaxed has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:gap-1.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm group-data-[size=form]/field-group:[&_svg:not([class*='size-'])]:size-4",
         sm: "h-6 gap-1 px-2 text-xs/relaxed has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         lg: "h-8 gap-1 px-2.5 text-xs/relaxed has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
         // Matches the `form` size on Input/Combobox/DatePicker, for a button
         // sitting inline with one of them. Button was the only kit primitive
         // without it, which is why such pairs came out mismatched.
         form: "h-9 gap-1.5 px-3 text-sm [&_svg:not([class*='size-'])]:size-4",
-        icon: "size-7 [&_svg:not([class*='size-'])]:size-3.5",
+        icon: "size-7 [&_svg:not([class*='size-'])]:size-3.5 group-data-[size=form]/field-group:size-9 group-data-[size=form]/field-group:[&_svg:not([class*='size-'])]:size-4",
         "icon-xs": "size-5 rounded-sm [&_svg:not([class*='size-'])]:size-2.5",
         "icon-sm": "size-6 [&_svg:not([class*='size-'])]:size-3",
       },
