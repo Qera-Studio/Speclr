@@ -12,6 +12,7 @@ import { formatDisplayDate, todayISO } from '@/lib/domain/dates';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import type { StudioInfo } from '@/lib/domain/studio';
 import { defaultLetterContent } from '@/lib/domain/hrContent';
+import { contentOf, type DocContent } from '@/lib/domain/docContent';
 import { pronounSet, type EmployeeRecord } from '@/lib/domain/employee';
 import { formatINR } from '@/lib/domain/money';
 import type { EmployeeSnapshot, LetterDocument } from '@/lib/domain/types';
@@ -24,6 +25,10 @@ import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Spinner } from '@/components/ui/spinner';
+import { usePulse } from '@/lib/useMinimumDuration';
+import EditorSection from './EditorSection';
+import { ContentText, shown, type ContentPatch } from './ContentFields';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
 import { OFFER_PADDING, OFFER_PADDING_Y } from '@/components/docs/sheets/frame';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -66,7 +71,15 @@ function splitParagraphs(text: string): string[] {
     .filter(Boolean);
 }
 
-/** Seed editable body from the default content for this letter type + employee. */
+/**
+ * Seed the editable body from the default content for this letter type +
+ * employee.
+ *
+ * The subject is lifted out of the body into its own field. It was always the
+ * first paragraph, which meant editing it meant editing prose around it — and
+ * the sheet had to sniff for `Subject:` to set it apart. Letters written before
+ * this keep theirs in the body, and the sheet still styles those.
+ */
 function seedContent(type: LetterType, e: EmployeeRecord) {
   const content = defaultLetterContent(type, e.engagementType, {
     role: e.role,
@@ -75,8 +88,16 @@ function seedContent(type: LetterType, e: EmployeeRecord) {
     endDate: e.endDate ? formatDisplayDate(e.endDate) : undefined,
     pronoun: pronounSet(e.pronoun),
   });
-  return { bodyParagraphs: content.bodyParagraphs, bulletSections: content.bulletSections };
+  const [first, ...rest] = content.bodyParagraphs;
+  const hasSubject = Boolean(first) && SUBJECT_RE.test(first);
+  return {
+    subject: hasSubject ? first : '',
+    bodyParagraphs: hasSubject ? rest : content.bodyParagraphs,
+    bulletSections: content.bulletSections,
+  };
 }
+
+const SUBJECT_RE = /^\s*subject\s*:/i;
 
 
 interface LetterEditorProps {
@@ -115,6 +136,17 @@ export default function LetterEditor({
     doc?.bulletSections ?? [],
   );
   const [payAmountPaise, setPayAmountPaise] = useState<number | undefined>(doc?.payAmountPaise);
+  /**
+   * Stored text overrides. Only what has actually been edited lives here —
+   * every input renders `content[key] ?? resolved[key]`, so an untouched field
+   * keeps resolving its default (and keeps following the employee's engagement
+   * type). Finalize freezes the resolved lot onto the document.
+   */
+  // Picking an employee rewrites the subject, the body and the pay figure in
+  // one go. The pulse says which action did that.
+  const [seeding, pulseSeeding] = usePulse();
+  const [content, setContent] = useState<DocContent>(doc?.content ?? {});
+  const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,9 +163,11 @@ export default function LetterEditor({
     setEmployeeId(id);
     const e = employees.find((emp) => emp.id === id);
     if (e) {
+      pulseSeeding();
       const seeded = seedContent(type, e);
       setBodyText(seeded.bodyParagraphs.join('\n\n'));
       setBulletSections(seeded.bulletSections);
+      patchContent({ subject: seeded.subject });
       if (type === 'OFR') setPayAmountPaise(e.payAmountPaise);
     }
   };
@@ -149,11 +183,17 @@ export default function LetterEditor({
     bodyParagraphs,
     bulletSections,
     payAmountPaise,
+    content,
     lineItems: [],
     gstRatePercent: 0,
     createdAt: doc?.createdAt ?? 0,
     updatedAt: 0,
   };
+
+  // What the sheet will print, so an input shows the real words rather than a
+  // blank box. Resolved from the preview document, which already carries the
+  // live employee and studio.
+  const resolved = contentOf(previewDoc, DOC_TYPES[type]);
 
   // `employeeId` belongs in the payload as well as the positional argument:
   // `letterDraftSchema` requires it, and omitting it failed `safeParse` on
@@ -164,6 +204,7 @@ export default function LetterEditor({
     bodyParagraphs,
     bulletSections,
     payAmountPaise,
+    content,
   });
 
   const onSaveDraft = async (e: React.FormEvent) => {
@@ -257,46 +298,61 @@ export default function LetterEditor({
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
-        <Field>
-          <FieldLabel htmlFor="letter-employee">Employee</FieldLabel>
-          <Combobox
-            id="letter-employee"
-            size="form"
-            options={employees.map((e) => ({ value: e.id, label: `${e.name} — ${e.role}` }))}
-            value={employeeId}
-            onValueChange={onSelectEmployee}
-            placeholder="Select an employee…"
-            emptyMessage="No matching employees."
-          />
-        </Field>
+        <EditorSection title="Recipient & date" description="Who it is for, and when" defaultOpen>
+          <Field>
+            <FieldLabel htmlFor="letter-employee">
+              Employee {seeding ? <Spinner className="size-3.5" /> : null}
+            </FieldLabel>
+            <Combobox
+              id="letter-employee"
+              size="form"
+              options={employees.map((e) => ({ value: e.id, label: `${e.name} — ${e.role}` }))}
+              value={employeeId}
+              onValueChange={onSelectEmployee}
+              placeholder="Select an employee…"
+              emptyMessage="No matching employees."
+            />
+          </Field>
 
-        <Field>
-          <FieldLabel htmlFor="letter-issue-date">Issue date</FieldLabel>
-          <DatePicker
-            id="letter-issue-date"
-            size="form"
-            value={issueDate}
-            onValueChange={setIssueDate}
-          />
-        </Field>
+          <Field>
+            <FieldLabel htmlFor="letter-issue-date">Issue date</FieldLabel>
+            <DatePicker
+              id="letter-issue-date"
+              size="form"
+              value={issueDate}
+              onValueChange={setIssueDate}
+            />
+          </Field>
+        </EditorSection>
 
-        <Field>
-          <FieldLabel htmlFor="letter-body">Letter body</FieldLabel>
-          <Textarea
-            id="letter-body"
-            rows={18}
-            className="font-normal leading-relaxed"
-            value={bodyText}
-            onChange={(e) => setBodyText(e.target.value)}
-            aria-describedby="letter-body-help"
+        <EditorSection title="Letter" description="Subject and body" defaultOpen>
+          <ContentText
+            id="letter-subject"
+            label="Subject"
+            value={shown(content, resolved, 'subject')}
+            onChange={(subject) => patchContent({ subject })}
           />
-          <FieldDescription id="letter-body-help">
-            One blank line starts a new paragraph. {'{name}'} is replaced with the
-            employee&rsquo;s name.
-          </FieldDescription>
-        </Field>
 
-        {bulletSections.map((section, si) => (
+          <Field>
+            <FieldLabel htmlFor="letter-body">Letter body</FieldLabel>
+            <Textarea
+              id="letter-body"
+              rows={18}
+              className="font-normal leading-relaxed"
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              aria-describedby="letter-body-help"
+            />
+            <FieldDescription id="letter-body-help">
+              One blank line starts a new paragraph. {'{name}'} is replaced with the
+              employee&rsquo;s name.
+            </FieldDescription>
+          </Field>
+        </EditorSection>
+
+        {bulletSections.length > 0 ? (
+          <EditorSection title="Bullet sections" description="Listed points under the body">
+            {bulletSections.map((section, si) => (
           <fieldset key={si} className="flex flex-col gap-3 rounded-lg border border-border p-4">
             <legend className="px-1 text-sm font-medium">Bullet section {si + 1}</legend>
             <Field>
@@ -330,7 +386,75 @@ export default function LetterEditor({
               </Button>
             </div>
           </fieldset>
-        ))}
+            ))}
+          </EditorSection>
+        ) : null}
+
+        <EditorSection title="Heading" description="Masthead and sub-heading">
+          <ContentText
+            id="letter-masthead"
+            label="Masthead"
+            value={shown(content, resolved, 'masthead')}
+            onChange={(masthead) => patchContent({ masthead })}
+          />
+          {type === 'OFR' ? null : (
+            <ContentText
+              id="letter-subheading"
+              label="Sub-heading"
+              value={shown(content, resolved, 'subheading')}
+              onChange={(subheading) => patchContent({ subheading })}
+            />
+          )}
+        </EditorSection>
+
+        <EditorSection title="Signature" description="Acknowledgement and signatory">
+          {type === 'OFR' ? (
+            <ContentText
+              id="letter-acknowledgement"
+              label="Acknowledgement"
+              description="{name} is replaced with the employee’s name."
+              rows={3}
+              value={shown(content, resolved, 'acknowledgement')}
+              onChange={(acknowledgement) => patchContent({ acknowledgement })}
+            />
+          ) : null}
+          <ContentText
+            id="letter-signatory-name"
+            label="Signatory"
+            value={shown(content, resolved, 'signatoryName')}
+            onChange={(signatoryName) => patchContent({ signatoryName })}
+          />
+          <ContentText
+            id="letter-signatory-title"
+            label="Designation"
+            value={shown(content, resolved, 'signatoryTitle')}
+            onChange={(signatoryTitle) => patchContent({ signatoryTitle })}
+          />
+          <ContentText
+            id="letter-signatory-qualifier"
+            label="Qualifier"
+            value={shown(content, resolved, 'signatoryQualifier')}
+            onChange={(signatoryQualifier) => patchContent({ signatoryQualifier })}
+          />
+        </EditorSection>
+
+        {type === 'OFR' ? (
+          <EditorSection title="Footer" description="Registered office and website">
+            <ContentText
+              id="letter-registered-office"
+              label="Registered office line"
+              rows={3}
+              value={shown(content, resolved, 'registeredOffice')}
+              onChange={(registeredOffice) => patchContent({ registeredOffice })}
+            />
+            <ContentText
+              id="letter-website"
+              label="Website"
+              value={shown(content, resolved, 'website')}
+              onChange={(website) => patchContent({ website })}
+            />
+          </EditorSection>
+        ) : null}
 
         {serverError ? (
           <Alert variant="destructive" role="alert">

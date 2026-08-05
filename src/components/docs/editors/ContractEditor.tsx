@@ -29,6 +29,9 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import ScheduleCard from './ScheduleCard';
+import EditorSection from './EditorSection';
+import { ClauseFields, ContentText, shown, type ContentPatch } from './ContentFields';
+import { contentOf, type DocContent } from '@/lib/domain/docContent';
 import { workspaceTitle } from '../workspaceTitle';
 
 const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
@@ -55,6 +58,9 @@ export default function ContractEditor({
   const [clientId, setClientId] = useState(doc?.clientId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
   const [schedules, setSchedules] = useState<ContractSchedule[]>(doc?.schedules ?? []);
+  /** Text overrides — see the note in `DocumentEditor`. */
+  const [content, setContent] = useState<DocContent>(doc?.content ?? {});
+  const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -77,6 +83,7 @@ export default function ContractEditor({
     lineItems: [],
     gstRatePercent: 0,
     schedules,
+    content,
     createdAt: doc?.createdAt ?? 0,
     updatedAt: 0,
   };
@@ -88,7 +95,10 @@ export default function ContractEditor({
     setSelectedServiceId('');
   };
 
-  const buildPayload = () => ({ issueDate, schedules });
+  const buildPayload = () => ({ issueDate, schedules, content });
+
+  // What the contract will print — the source for every content input's value.
+  const resolved = contentOf(previewDoc, DOC_TYPES.CON);
 
   const onSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,6 +172,7 @@ export default function ContractEditor({
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
+        <EditorSection title="Client & date" description="Who it is with, and when" defaultOpen>
         <Field>
           <FieldLabel htmlFor="con-client">Client</FieldLabel>
           <Combobox
@@ -184,7 +195,9 @@ export default function ContractEditor({
             onValueChange={setIssueDate}
           />
         </Field>
+        </EditorSection>
 
+        <EditorSection title="Schedules" description="The services this agreement covers" defaultOpen>
         <div className="flex flex-wrap items-end gap-2">
           <Field className="flex-1">
             <FieldLabel htmlFor="con-add-service">Add schedule from service</FieldLabel>
@@ -218,6 +231,40 @@ export default function ContractEditor({
             onRemove={() => setSchedules((prev) => prev.filter((_, j) => j !== i))}
           />
         ))}
+        </EditorSection>
+
+        <EditorSection title="Cover" description="Masthead, intro and the parties preamble">
+          <ContentText
+            id="con-masthead"
+            label="Masthead"
+            value={shown(content, resolved, 'masthead')}
+            onChange={(masthead) => patchContent({ masthead })}
+          />
+          <ContentText
+            id="con-intro"
+            label="Cover intro"
+            rows={5}
+            value={shown(content, resolved, 'intro')}
+            onChange={(intro) => patchContent({ intro })}
+          />
+          <ContentText
+            id="con-preamble"
+            label="Parties preamble"
+            rows={3}
+            value={shown(content, resolved, 'preamble')}
+            onChange={(preamble) => patchContent({ preamble })}
+          />
+        </EditorSection>
+
+        <EditorSection
+          title="Clauses"
+          description="The Master Service Agreement — 24 sections"
+        >
+          <ClauseFields
+            clauses={shown(content, resolved, 'clauses')}
+            onChange={(clauses) => patchContent({ clauses })}
+          />
+        </EditorSection>
 
         {serverError ? (
           <Alert variant="destructive" role="alert">

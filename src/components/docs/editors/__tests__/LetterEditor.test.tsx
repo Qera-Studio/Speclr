@@ -92,3 +92,89 @@ describe('LetterEditor (offer letter)', () => {
     );
   });
 });
+
+/**
+ * The subject was the first body paragraph, which meant editing it meant
+ * editing prose around it and the sheet had to sniff for `Subject:` to set it
+ * apart. It is its own stored field now.
+ */
+describe('LetterEditor subject', () => {
+  it('lifts the subject out of the seeded body into its own field', async () => {
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+
+    expect(screen.getByLabelText(/^subject$/i)).toHaveValue(
+      'Subject: Offer of Internship — Designer',
+    );
+    const body = screen.getByLabelText(/letter body/i) as HTMLTextAreaElement;
+    expect(body.value).not.toContain('Subject:');
+  });
+
+  it('saves an edited subject as a content override', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    const subject = screen.getByLabelText(/^subject$/i);
+    await u.clear(subject);
+    await u.type(subject, 'Subject: Internship');
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'OFR',
+      'e1',
+      expect.objectContaining({
+        content: expect.objectContaining({ subject: 'Subject: Internship' }),
+      }),
+    );
+  });
+});
+
+describe('LetterEditor rail sections', () => {
+  /**
+   * The rail is 384px wide and now has an input for every printed word. The
+   * sections you touch on every letter are open; the rest stay shut.
+   */
+  it('opens the letter itself and leaves the boilerplate collapsed', () => {
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    expect(screen.getByLabelText(/letter body/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^masthead$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^signatory$/i)).not.toBeInTheDocument();
+  });
+
+  it('reveals the signatory fields when the section is opened', async () => {
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await u.click(screen.getByRole('button', { name: /signature/i }));
+
+    // Seeded with what the sheet prints, not left blank.
+    expect(screen.getByLabelText(/^signatory$/i)).toHaveValue('Shivanshu Pareek');
+    expect(screen.getByLabelText(/^qualifier$/i)).toHaveValue('(Authorised Signatory)');
+  });
+
+  it('stores an edited signatory as a content override', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    await u.click(screen.getByRole('button', { name: /signature/i }));
+    const designation = screen.getByLabelText(/^designation$/i);
+    await u.clear(designation);
+    await u.type(designation, 'Director');
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'OFR',
+      'e1',
+      expect.objectContaining({
+        content: expect.objectContaining({ signatoryTitle: 'Director' }),
+      }),
+    );
+  });
+});

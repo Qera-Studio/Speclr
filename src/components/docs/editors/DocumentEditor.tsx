@@ -10,6 +10,7 @@ import {
   updateDraft,
 } from '@/server/actions/documents';
 import { computeTotals } from '@/lib/domain/money';
+import { contentOf, type DocContent } from '@/lib/domain/docContent';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import {
@@ -39,6 +40,10 @@ import {
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import LineItemsEditor from './LineItemsEditor';
+import { Spinner } from '@/components/ui/spinner';
+import { usePulse } from '@/lib/useMinimumDuration';
+import EditorSection from './EditorSection';
+import { ContentText, TermsFields, shown, type ContentPatch } from './ContentFields';
 import InvoicePicker from './InvoicePicker';
 import TotalsPanel from './TotalsPanel';
 import { paiseToRupees } from '@/lib/domain/money';
@@ -59,9 +64,10 @@ function buildPreviewDoc(
   clients: ClientRecord[],
   doc?: FinancialDocument | null,
   studio?: StudioInfo,
+  content?: DocContent,
 ): FinancialDocument {
   const client = clients.find((c) => c.id === values.clientId);
-  const fields = toPayload(typeCode, values);
+  const fields = toPayload(typeCode, values, content);
   const snapshot: ClientSnapshot = client
     ? clientSnapshotOf(client)
     : (doc?.clientSnapshot ?? EMPTY_SNAPSHOT);
@@ -83,6 +89,7 @@ function buildPreviewDoc(
     gstLabel: fields.gstLabel,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     notes: fields.notes,
+    content: fields.content,
     createdAt: doc?.createdAt ?? 0,
     updatedAt: 0,
   };
@@ -132,6 +139,19 @@ export default function DocumentEditor({
     control,
     formState: { isSubmitting },
   } = form;
+  /**
+   * Text overrides. Deliberately outside react-hook-form: this is prose with
+   * no validation to run, and keeping it out means the form's dirty/valid
+   * state still tracks the fields that decide whether a document can be
+   * finalized. Only what has been edited is stored — every input shows
+   * `content[key] ?? resolved[key]`.
+   */
+  // Picking an invoice replaces the line items and the whole GST block. The
+  // pulse says which action did that.
+  const [seeding, pulseSeeding] = usePulse();
+  const [content, setContent] = useState<DocContent>(doc?.content ?? {});
+  const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
+
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -179,7 +199,9 @@ export default function DocumentEditor({
    * so nothing here is ever actually absent.
    */
   const values = useWatch({ control }) as EditorFormValues;
-  const previewDoc = buildPreviewDoc(typeCode, values, clients, doc, studio);
+  const previewDoc = buildPreviewDoc(typeCode, values, clients, doc, studio, content);
+  // What the sheet will print — the source for every content input's value.
+  const resolved = contentOf(previewDoc, spec);
   const totals = computeTotals(previewDoc.lineItems, previewDoc.gstRatePercent);
   const heading = workspaceTitle(
     title,
@@ -190,7 +212,7 @@ export default function DocumentEditor({
   const onSaveDraft = handleSubmit(async (formValues) => {
     setServerError(null);
     setSaved(false);
-    const payload = toPayload(typeCode, formValues);
+    const payload = toPayload(typeCode, formValues, content);
     const result = doc
       ? await updateDraft(doc.id, formValues.clientId, payload)
       : await createDraft(typeCode, formValues.clientId, payload);
@@ -211,7 +233,7 @@ export default function DocumentEditor({
     if (!doc) return;
     setServerError(null);
     // Persist any unsaved edits first, then finalize the stored draft.
-    const saveResult = await updateDraft(doc.id, formValues.clientId, toPayload(typeCode, formValues));
+    const saveResult = await updateDraft(doc.id, formValues.clientId, toPayload(typeCode, formValues, content));
     if (!saveResult.success) {
       setServerError(saveResult.error ?? 'Something went wrong.');
       return;
@@ -239,6 +261,7 @@ export default function DocumentEditor({
       return;
     }
 
+    pulseSeeding();
     setValue('againstInvoiceId', invoice.id, { shouldDirty: true });
     setValue('againstInvoiceNumber', invoice.number, { shouldDirty: true });
     setValue('gstRatePercent', String(invoice.gstRatePercent), { shouldDirty: true });
@@ -283,6 +306,7 @@ export default function DocumentEditor({
     <DocumentWorkspace title={heading} preview={<DocumentSheet doc={previewDoc} />}>
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
+          <EditorSection title="Client & dates" description="Who it is for, and when" defaultOpen>
           <Field>
             <FieldLabel htmlFor="doc-client">Client</FieldLabel>
             <Controller
@@ -337,9 +361,11 @@ export default function DocumentEditor({
               </Field>
             ) : null}
           </FieldRow>
+          </EditorSection>
 
           <LineItemsEditor control={control} register={register} fieldArray={lineItems} />
 
+          <EditorSection title="Tax" description="GST rate and place of supply" defaultOpen>
           {/*
             GST either applies or it doesn't — a rate, a place of supply and a
             "GST not applicable" note are never all true of the same document.
@@ -395,13 +421,15 @@ export default function DocumentEditor({
               <Input id="doc-gst-label" size="form" {...register('gstLabel')} />
             </Field>
           )}
+          </EditorSection>
 
           {spec.hasPayment ? (
-            <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
-              <legend className="px-1 text-sm font-medium">Payment</legend>
+            <EditorSection title="Payment" description="What was received, and against what" defaultOpen>
 
               <Field>
-                <FieldLabel htmlFor="doc-against-invoice-picker">Against invoice</FieldLabel>
+                <FieldLabel htmlFor="doc-against-invoice-picker">
+                  Against invoice {seeding ? <Spinner className="size-3.5" /> : null}
+                </FieldLabel>
                 <InvoicePicker
                   id="doc-against-invoice-picker"
                   clientId={values.clientId}
@@ -468,8 +496,55 @@ export default function DocumentEditor({
                 <FieldLabel htmlFor="doc-payment-ref">Reference (optional)</FieldLabel>
                 <Input id="doc-payment-ref" size="form" {...register('paymentReference')} />
               </Field>
-            </fieldset>
+            </EditorSection>
           ) : null}
+
+          <EditorSection title="Terms" description="The clauses printed at the foot">
+            <TermsFields terms={shown(content, resolved, 'terms')} onChange={(terms) => patchContent({ terms })} />
+          </EditorSection>
+
+          <EditorSection title="Heading" description={spec.badge ? 'Masthead and the paid banner' : 'Masthead'}>
+            <ContentText
+              id="doc-masthead"
+              label="Masthead"
+              value={shown(content, resolved, 'masthead')}
+              onChange={(masthead) => patchContent({ masthead })}
+            />
+            {spec.badge ? (
+              <>
+                <ContentText
+                  id="doc-badge-text"
+                  label="Banner"
+                  value={shown(content, resolved, 'badgeText')}
+                  onChange={(badgeText) => patchContent({ badgeText })}
+                />
+                <ContentText
+                  id="doc-badge-note"
+                  label="Banner note"
+                  rows={3}
+                  value={shown(content, resolved, 'badgeNote')}
+                  onChange={(badgeNote) => patchContent({ badgeNote })}
+                />
+              </>
+            ) : null}
+          </EditorSection>
+
+          {/* No notes field: notes were retired from the sheet, and an input for
+              something the document never prints is a trap. */}
+          <EditorSection title="Footer" description="QR caption and the closing line">
+            <ContentText
+              id="doc-qr-caption"
+              label="QR caption"
+              value={shown(content, resolved, 'qrCaption')}
+              onChange={(qrCaption) => patchContent({ qrCaption })}
+            />
+            <ContentText
+              id="doc-thanks"
+              label="Closing line"
+              value={shown(content, resolved, 'thanksLine')}
+              onChange={(thanksLine) => patchContent({ thanksLine })}
+            />
+          </EditorSection>
 
         </FieldGroup>
 

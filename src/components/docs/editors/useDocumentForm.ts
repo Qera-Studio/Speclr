@@ -89,7 +89,12 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
 }
 
 /** Converts form strings into the typed payload the Server Actions validate. */
-export function toPayload(typeCode: DocTypeCode, values: EditorFormValues): DocFields {
+export function toPayload(
+  typeCode: DocTypeCode,
+  values: EditorFormValues,
+  /** Edited text overrides. Kept out of the form: it is prose, not validated input. */
+  content?: DocFields['content'],
+): DocFields {
   const fields: DocFields = {
     issueDate: values.issueDate,
     lineItems: values.lineItems.map((item) => ({
@@ -102,6 +107,7 @@ export function toPayload(typeCode: DocTypeCode, values: EditorFormValues): DocF
     gstLabel: values.gstLabel || undefined,
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
     notes: values.notes || undefined,
+    content,
   };
 
   if (DOC_TYPES[typeCode].hasDueDate && values.dueDate) {

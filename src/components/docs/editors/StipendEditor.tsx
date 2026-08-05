@@ -53,6 +53,11 @@ import {
 import DocumentWorkspace from "@/components/docs/DocumentWorkspace";
 import StipendSheet from "@/components/docs/sheets/StipendSheet";
 import LineItemsEditor from "./LineItemsEditor";
+import { Spinner } from "@/components/ui/spinner";
+import { usePulse } from "@/lib/useMinimumDuration";
+import EditorSection from "./EditorSection";
+import { ContentText, TermsFields, shown, type ContentPatch } from "./ContentFields";
+import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { workspaceTitle } from "../workspaceTitle";
 
@@ -187,6 +192,15 @@ export default function StipendEditor({
   title,
 }: StipendEditorProps) {
   const router = useRouter();
+  // Picking an employee seeds the line item, the rate and the period. The
+  // pulse says which action did that.
+  const [seeding, pulseSeeding] = usePulse();
+
+  /** Text overrides — see the note in `DocumentEditor`. */
+  const [content, setContent] = useState<DocContent>(doc?.content ?? {});
+  const patchContent: ContentPatch = (patch) =>
+    setContent((prev) => ({ ...prev, ...patch }));
+
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -266,6 +280,7 @@ export default function StipendEditor({
     setValue("employeeId", id);
     const e = employees.find((emp) => emp.id === id);
     if (!e) return;
+    pulseSeeding();
     setValue("currency", e.payCurrency ?? DEFAULT_CURRENCY);
     const first = getValues("lineItems")[0];
     if (first && !first.description && !first.rate) {
@@ -330,9 +345,14 @@ export default function StipendEditor({
     paymentMethod,
     paymentReference: paymentReference || undefined,
     deductionsNote,
+    content,
     createdAt: doc?.createdAt ?? 0,
     updatedAt: 0,
   };
+
+  // What the slip will print — the source for every content input's value. Its
+  // terms follow the employee's engagement type until they are edited.
+  const resolved = contentOf(previewDoc, DOC_TYPES.STP);
 
   /**
    * `employeeId` goes in the payload as well as the positional argument:
@@ -356,6 +376,7 @@ export default function StipendEditor({
     paymentMethod: values.paymentMethod,
     paymentReference: values.paymentReference || undefined,
     deductionsNote: values.deductionsNote,
+    content,
   });
 
   const onSaveDraft = handleSubmit(async (values) => {
@@ -431,8 +452,11 @@ export default function StipendEditor({
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
+          <EditorSection title="Recipient & date" description="Who it is for, and when" defaultOpen>
           <Field>
-            <FieldLabel htmlFor="stp-employee">Employee</FieldLabel>
+            <FieldLabel htmlFor="stp-employee">
+              Employee {seeding ? <Spinner className="size-3.5" /> : null}
+            </FieldLabel>
             <Combobox
               id="stp-employee"
               size="form"
@@ -493,6 +517,7 @@ export default function StipendEditor({
               )}
             />
           </Field> */}
+          </EditorSection>
 
           {/*
             Line items rather than a single amount: a stipend run often carries
@@ -506,6 +531,7 @@ export default function StipendEditor({
             currency={currency}
           />
 
+          <EditorSection title="Period & payment" description="Month, dates and how it was paid" defaultOpen>
           <Field>
             <FieldLabel htmlFor="stp-month">Stipend month</FieldLabel>
             {/* Native month input — the browser's own month/year dropdown, no
@@ -603,6 +629,51 @@ export default function StipendEditor({
             <FieldLabel htmlFor="stp-deductions">Deductions / terms note</FieldLabel>
             <Textarea id="stp-deductions" size="form" rows={2} {...register('deductionsNote')} />
           </Field> */}
+          </EditorSection>
+
+          <EditorSection title="Terms" description="The clauses printed at the foot">
+            <TermsFields
+              terms={shown(content, resolved, "terms")}
+              onChange={(terms) => patchContent({ terms })}
+            />
+          </EditorSection>
+
+          <EditorSection title="Heading" description="Masthead and the paid banner">
+            <ContentText
+              id="stp-masthead"
+              label="Masthead"
+              value={shown(content, resolved, "masthead")}
+              onChange={(masthead) => patchContent({ masthead })}
+            />
+            <ContentText
+              id="stp-badge-text"
+              label="Banner"
+              value={shown(content, resolved, "badgeText")}
+              onChange={(badgeText) => patchContent({ badgeText })}
+            />
+            <ContentText
+              id="stp-badge-note"
+              label="Banner note"
+              rows={3}
+              value={shown(content, resolved, "badgeNote")}
+              onChange={(badgeNote) => patchContent({ badgeNote })}
+            />
+          </EditorSection>
+
+          <EditorSection title="Footer" description="QR caption and the closing line">
+            <ContentText
+              id="stp-qr-caption"
+              label="QR caption"
+              value={shown(content, resolved, "qrCaption")}
+              onChange={(qrCaption) => patchContent({ qrCaption })}
+            />
+            <ContentText
+              id="stp-thanks"
+              label="Closing line"
+              value={shown(content, resolved, "thanksLine")}
+              onChange={(thanksLine) => patchContent({ thanksLine })}
+            />
+          </EditorSection>
 
           {serverError ? (
             <Alert variant="destructive" role="alert">
