@@ -2,6 +2,7 @@ import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { exitMasthead } from '@/lib/domain/hrContent';
 import { studioOf, type StudioInfo } from '@/lib/domain/studio';
 import type { LetterDocument } from '@/lib/domain/types';
+import { A4_PADDING } from './frame';
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
 function QeraMark() {
@@ -81,141 +82,203 @@ function SignatureBlock({
 }
 
 /**
- * The printable HR letter (offer / experience / exit). Pure props → markup;
- * server-renderable. Offer letters get a black cover page; experience/exit are
- * single certifying pages. The exit masthead auto-switches (Internship
- * Completion vs. Relieving) from the employee's engagement type. Every text
- * class sets an explicit colour — the site theme must never bleed in.
+ * Applied by `DocumentPreview` to the offer letter's pinned first page, so the
+ * cover is full-bleed black. Mirrors the contract's `COVER_CLASSNAME`.
  */
-export default function LetterSheet({ doc }: { doc: LetterDocument }) {
+export const LETTER_COVER_CLASSNAME =
+  'flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
+
+/** One bullet section, shared by every letter type. */
+function BulletSection({
+  section,
+  name,
+}: {
+  section: LetterDocument['bulletSections'][number];
+  name: string;
+}) {
+  return (
+    <div className="mb-[24px] [break-inside:avoid]">
+      <p className="text-black text-[12px] font-bold mb-[8px]">{fill(section.heading, name)}</p>
+      <ul className="m-0 pl-[24px] list-disc">
+        {section.items.map((item, ii) => (
+          <li key={ii} className="text-black text-[12px] font-normal leading-[1.5] mb-[4px]">
+            {fill(item, name)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * The letter as a **flat list of atomic blocks** — the same shape
+ * `contractBlocks` returns, and for the same reason: `DocumentPreview` measures
+ * each block and packs them into A4 pages, breaking only *between* blocks. A
+ * monolithic sheet would arrive as a single over-tall block, get one page, and
+ * have everything past 1123px clipped by the frame's `overflow-hidden`.
+ *
+ * For an offer letter, block 0 is the cover and is pinned as its own full-bleed
+ * page via `coverFirst` + `LETTER_COVER_CLASSNAME`.
+ */
+export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
   const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
   const emp = doc.employeeSnapshot;
   const studio = studioOf(doc);
   const masthead = mastheadFor(doc);
 
-  // ── Offer letter — black cover page + body page ──────────────────────────
+  const paragraphs = doc.bodyParagraphs.map((p, i) => (
+    <p
+      key={`para-${i}`}
+      className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line"
+    >
+      {fill(p, emp.name)}
+    </p>
+  ));
+
+  const bullets = doc.bulletSections.map((section, si) => (
+    <BulletSection key={`bullet-${si}`} section={section} name={emp.name} />
+  ));
+
+  const footer = <SharedFooter key="footer" displayDate={displayDate} studio={studio} />;
+
+  // ── Offer letter — black cover block, then the body flow ─────────────────
   if (doc.type === 'OFR') {
+    return [
+      <div key="cover" className={`flex flex-col flex-1 min-h-[900px] ${A4_PADDING} box-border`} aria-label="Cover">
+        <div className="flex justify-between items-start gap-[24px]">
+          <p className="flex items-center gap-[6px] text-white">
+            <QeraMark />
+            <span className="font-semibold text-[18px] text-white">{studio.brandMark}</span>
+          </p>
+          <p className="font-semibold text-[12px] text-white text-right">{displayDate}</p>
+        </div>
+        <h2 className="mt-auto text-[72px] font-bold tracking-[-0.03em] leading-[0.95] uppercase text-white">
+          {masthead}
+        </h2>
+        <div className="flex justify-between gap-[32px] mt-[64px]">
+          <div>
+            <p className="text-white/60 text-[12px] font-normal">Position:</p>
+            <p className="text-white text-[16px] font-medium mt-[2px]">{emp.role}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-white/60 text-[12px] font-normal">Issued to:</p>
+            <p className="text-white text-[16px] font-medium mt-[2px]">{emp.name}</p>
+          </div>
+        </div>
+      </div>,
+
+      <div key="brand" className="flex items-center gap-[6px] text-black mb-[40px]">
+        <QeraMark />
+        <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
+      </div>,
+
+      ...paragraphs,
+      // Offer letters carry no bullet sections today (`offerContent` returns an
+      // empty list), but anything added in the editor must still print rather
+      // than vanish silently.
+      ...bullets,
+
+      <div
+        key="acknowledgement"
+        className="mt-[40px] pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]"
+      >
+        <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
+          I, {emp.name}, confirm that I have read and agreed to the terms mentioned in this letter.
+        </p>
+        <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
+      </div>,
+
+      footer,
+    ];
+  }
+
+  // ── Experience / exit — a certifying letter, no cover ────────────────────
+  return [
+    <div key="head" className="flex justify-between items-start gap-[24px] mb-[32px]">
+      <div className="flex items-center gap-[6px] text-black">
+        <QeraMark />
+        <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
+      </div>
+      <p className="text-black text-[12px] font-semibold text-right">{displayDate}</p>
+    </div>,
+
+    <div key="to" className="mb-[40px]">
+      <p className="text-black/70 text-[12px] font-normal mb-[16px]">To:</p>
+      <p className="text-black text-[14px] font-bold">{emp.name}</p>
+      <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">{emp.address}</p>
+    </div>,
+
+    <div key="masthead" className="[break-inside:avoid]">
+      <h2 className="text-black text-[20px] font-bold uppercase text-center tracking-[0.02em]">
+        {masthead}
+      </h2>
+      <p className="text-black text-[13px] font-normal text-center mb-[32px]">
+        TO WHOMSOEVER IT MAY CONCERN
+      </p>
+    </div>,
+
+    ...paragraphs,
+    ...bullets,
+
+    <div key="signature" className="mt-[40px] [break-inside:avoid]">
+      <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
+        Yours Sincerely,
+      </p>
+      <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
+    </div>,
+
+    footer,
+  ];
+}
+
+/**
+ * The printable HR letter (offer / experience / exit). Pure props → markup;
+ * server-renderable. Offer letters get a black cover page; experience/exit are
+ * single certifying pages. The exit masthead auto-switches (Internship
+ * Completion vs. Relieving) from the employee's engagement type. Every text
+ * class sets an explicit colour — the site theme must never bleed in.
+ *
+ * This renders the section-grouped print flow used by `window.print()` / PDF
+ * export. The on-screen preview does **not** go through this component — it
+ * feeds the flat `letterBlocks(doc)` list straight into `DocumentPreview`.
+ */
+export default function LetterSheet({ doc }: { doc: LetterDocument }) {
+  const blocks = letterBlocks(doc);
+  const masthead = mastheadFor(doc);
+
+  if (doc.type === 'OFR') {
+    const [cover, ...body] = blocks;
     return (
       <article
         className="print-sheet bg-white text-black font-sans text-[12px] leading-[1.5]"
         aria-label="Offer letter"
       >
         <section
-          className="[break-before:avoid] flex flex-col min-h-[1123px] bg-black text-white font-sans p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+          className={`[break-before:avoid] min-h-[1123px] ${LETTER_COVER_CLASSNAME}`}
           aria-label="Cover"
         >
-          <div className="flex justify-between items-start gap-[24px]">
-            <p className="flex items-center gap-[6px] text-white">
-              <QeraMark />
-              <span className="font-semibold text-[18px] text-white">
-                {studio.brandMark}
-              </span>
-            </p>
-            <p className="font-semibold text-[12px] text-white text-right">{displayDate}</p>
-          </div>
-          <h2 className="mt-auto text-[72px] font-bold tracking-[-0.03em] leading-[0.95] uppercase text-white">
-            {masthead}
-          </h2>
-          <div className="flex justify-between gap-[32px] mt-[64px]">
-            <div>
-              <p className="text-white/60 text-[12px] font-normal">Position:</p>
-              <p className="text-white text-[16px] font-medium mt-[2px]">{emp.role}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-white/60 text-[12px] font-normal">Issued to:</p>
-              <p className="text-white text-[16px] font-medium mt-[2px]">{emp.name}</p>
-            </div>
-          </div>
+          {cover}
         </section>
-
         <section
-          className="[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+          className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
           aria-label="Offer terms"
         >
-          <div className="flex items-center gap-[6px] text-black mb-[40px]">
-            <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
-          </div>
-          {doc.bodyParagraphs.map((p, i) => (
-            <p key={i} className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-              {fill(p, emp.name)}
-            </p>
-          ))}
-          <div className="mt-[40px] pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]">
-            <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-              I, {emp.name}, confirm that I have read and agreed to the terms mentioned in this
-              letter.
-            </p>
-            <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
-          </div>
-          <SharedFooter displayDate={displayDate} studio={studio} />
+          {body}
         </section>
       </article>
     );
   }
 
-  // ── Experience / exit — single certifying page ───────────────────────────
   return (
     <article
       className="print-sheet bg-white text-black font-sans text-[12px] leading-[1.5]"
       aria-label={`${masthead} letter`}
     >
       <section
-        className="[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans p-[64px_48px] box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]"
+        className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         aria-label={masthead}
       >
-        <div className="flex justify-between items-start gap-[24px] mb-[32px]">
-          <div className="flex items-center gap-[6px] text-black">
-            <QeraMark />
-            <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
-          </div>
-          <p className="text-black text-[12px] font-semibold text-right">{displayDate}</p>
-        </div>
-
-        <div className="mb-[40px]">
-          <p className="text-black/70 text-[12px] font-normal mb-[16px]">To:</p>
-          <p className="text-black text-[14px] font-bold">{emp.name}</p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
-            {emp.address}
-          </p>
-        </div>
-
-        <h2 className="text-black text-[20px] font-bold uppercase text-center tracking-[0.02em]">
-          {masthead}
-        </h2>
-        <p className="text-black text-[13px] font-normal text-center mb-[32px]">
-          TO WHOMSOEVER IT MAY CONCERN
-        </p>
-
-        {doc.bodyParagraphs.map((p, i) => (
-          <p key={i} className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-            {fill(p, emp.name)}
-          </p>
-        ))}
-
-        {doc.bulletSections.map((section, si) => (
-          <div key={si} className="mb-[24px] [break-inside:avoid]">
-            <p className="text-black text-[12px] font-bold mb-[8px]">
-              {fill(section.heading, emp.name)}
-            </p>
-            <ul className="m-0 pl-[24px] list-disc">
-              {section.items.map((item, ii) => (
-                <li key={ii} className="text-black text-[12px] font-normal leading-[1.5] mb-[4px]">
-                  {fill(item, emp.name)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-
-        <div className="mt-[40px] [break-inside:avoid]">
-          <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-            Yours Sincerely,
-          </p>
-          <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
-        </div>
-
-        <SharedFooter displayDate={displayDate} studio={studio} />
+        {blocks}
       </section>
     </article>
   );

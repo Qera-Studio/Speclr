@@ -39,8 +39,9 @@ describe('LetterEditor (offer letter)', () => {
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    // seeding fills in editable paragraphs (add-paragraph control is present)
-    expect(screen.getByRole('button', { name: /add paragraph/i })).toBeInTheDocument();
+    // Seeding fills the single body pane, paragraphs separated by blank lines.
+    const body = screen.getByLabelText(/letter body/i) as HTMLTextAreaElement;
+    expect(body.value).toContain('\n\n');
 
     await u.click(screen.getByRole('button', { name: /save draft/i }));
     expect(createDraft).toHaveBeenCalledWith(
@@ -49,5 +50,45 @@ describe('LetterEditor (offer letter)', () => {
       expect.objectContaining({ bodyParagraphs: expect.any(Array) }),
     );
     expect(push).toHaveBeenCalledWith('/docs/new-ofr');
+  });
+
+  /**
+   * Regression: `letterDraftSchema` requires `employeeId`, but the editor used
+   * to pass it only as the positional argument. Every save therefore failed
+   * `safeParse` and surfaced a bare "Invalid input." — with no clue which field
+   * was at fault.
+   */
+  it('includes employeeId in the payload, not just the positional argument', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'OFR',
+      'e1',
+      expect.objectContaining({ employeeId: 'e1' }),
+    );
+  });
+
+  /** A blank line is the paragraph separator; runs of blank lines collapse. */
+  it('splits the body pane into paragraphs on blank lines', async () => {
+    createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
+    const u = userEvent.setup();
+    render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    const body = screen.getByLabelText(/letter body/i);
+    await u.clear(body);
+    await u.type(body, 'First para.{Enter}{Enter}Second para.');
+    await u.click(screen.getByRole('button', { name: /save draft/i }));
+
+    expect(createDraft).toHaveBeenCalledWith(
+      'OFR',
+      'e1',
+      expect.objectContaining({ bodyParagraphs: ['First para.', 'Second para.'] }),
+    );
   });
 });

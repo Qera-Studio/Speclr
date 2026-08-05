@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import LetterSheet from '../LetterSheet';
+import LetterSheet, { letterBlocks } from '../LetterSheet';
 import type { LetterDocument, EmployeeSnapshot } from '@/lib/domain/types';
 
 const baseEmployee: EmployeeSnapshot = {
@@ -70,5 +70,51 @@ describe('LetterSheet', () => {
   it('renders the experience letter masthead', () => {
     render(<LetterSheet doc={experienceDoc} />);
     expect(screen.getByText('EXPERIENCE LETTER')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The block list feeding `DocumentPreview`.
+ *
+ * Regression: `LetterSheet` used to return one monolithic `<article>`. The
+ * preview treats each child as an atomic block, so a single over-tall block got
+ * one page and the frame's `overflow-hidden` clipped everything past 1123px —
+ * an offer letter previewed as its cover and nothing else.
+ */
+describe('letterBlocks', () => {
+  it('returns many blocks for an offer letter, not one', () => {
+    const blocks = letterBlocks(offerDoc);
+    expect(blocks.length).toBeGreaterThan(1);
+  });
+
+  it('puts the cover first so it can be pinned as page 1', () => {
+    const [cover] = letterBlocks(offerDoc);
+    render(<>{cover}</>);
+    expect(screen.getByLabelText('Cover')).toBeInTheDocument();
+    expect(screen.getByText('COMPANY OFFER LETTER')).toBeInTheDocument();
+  });
+
+  it('gives every body paragraph its own block, so pages can break between them', () => {
+    const blocks = letterBlocks(offerDoc);
+    // cover + brand + 2 paragraphs + acknowledgement + footer
+    expect(blocks).toHaveLength(6);
+  });
+
+  it('has no cover block for experience/exit letters', () => {
+    const [first] = letterBlocks(experienceDoc);
+    render(<>{first}</>);
+    expect(screen.queryByLabelText('Cover')).not.toBeInTheDocument();
+  });
+
+  /** Bullets added to an offer letter must print, not vanish. */
+  it('renders bullet sections on an offer letter too', () => {
+    const withBullets = {
+      ...offerDoc,
+      bulletSections: [{ heading: 'Your responsibilities', items: ['Draft campaign copy'] }],
+    } as unknown as LetterDocument;
+
+    render(<>{letterBlocks(withBullets)}</>);
+    expect(screen.getByText('Your responsibilities')).toBeInTheDocument();
+    expect(screen.getByText('Draft campaign copy')).toBeInTheDocument();
   });
 });

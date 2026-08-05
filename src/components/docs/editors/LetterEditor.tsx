@@ -15,7 +15,7 @@ import { defaultLetterContent } from '@/lib/domain/hrContent';
 import { pronounSet, type EmployeeRecord } from '@/lib/domain/employee';
 import { formatINR } from '@/lib/domain/money';
 import type { EmployeeSnapshot, LetterDocument } from '@/lib/domain/types';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
-import LetterSheet from '@/components/docs/sheets/LetterSheet';
+import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import { workspaceTitle } from '../workspaceTitle';
 
@@ -55,6 +55,14 @@ function snapshotOf(e: EmployeeRecord): EmployeeSnapshot {
     endDate: e.endDate,
     bank: e.bank,
   };
+}
+
+/** A blank line separates paragraphs; runs of blank lines collapse to one. */
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 }
 
 /** Seed editable body from the default content for this letter type + employee. */
@@ -90,7 +98,18 @@ export default function LetterEditor({
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
-  const [bodyParagraphs, setBodyParagraphs] = useState<string[]>(doc?.bodyParagraphs ?? []);
+  /**
+   * The body is edited as one document, not a stack of boxes: it is *stored* as
+   * a paragraph array but *edited* as a single pane, with a blank line as the
+   * separator.
+   *
+   * The raw text is the state, and the array is derived from it — never the
+   * other way around. Round-tripping (split → trim → join) on every keystroke
+   * ate any character the trim touched, so a trailing space vanished as soon as
+   * it was typed and words ran together.
+   */
+  const [bodyText, setBodyText] = useState(() => (doc?.bodyParagraphs ?? []).join('\n\n'));
+  const bodyParagraphs = splitParagraphs(bodyText);
   const [bulletSections, setBulletSections] = useState<LetterDocument['bulletSections']>(
     doc?.bulletSections ?? [],
   );
@@ -112,7 +131,7 @@ export default function LetterEditor({
     const e = employees.find((emp) => emp.id === id);
     if (e) {
       const seeded = seedContent(type, e);
-      setBodyParagraphs(seeded.bodyParagraphs);
+      setBodyText(seeded.bodyParagraphs.join('\n\n'));
       setBulletSections(seeded.bulletSections);
       if (type === 'OFR') setPayAmountPaise(e.payAmountPaise);
     }
@@ -135,7 +154,16 @@ export default function LetterEditor({
     updatedAt: 0,
   };
 
-  const buildPayload = () => ({ issueDate, bodyParagraphs, bulletSections, payAmountPaise });
+  // `employeeId` belongs in the payload as well as the positional argument:
+  // `letterDraftSchema` requires it, and omitting it failed `safeParse` on
+  // every save with a bare "Invalid input."
+  const buildPayload = () => ({
+    employeeId,
+    issueDate,
+    bodyParagraphs,
+    bulletSections,
+    payAmountPaise,
+  });
 
   const onSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,11 +227,6 @@ export default function LetterEditor({
     }
   };
 
-  const updateParagraph = (i: number, value: string) =>
-    setBodyParagraphs((prev) => prev.map((p, j) => (j === i ? value : p)));
-  const addParagraph = () => setBodyParagraphs((prev) => [...prev, '']);
-  const removeParagraph = (i: number) => setBodyParagraphs((prev) => prev.filter((_, j) => j !== i));
-
   const updateBulletItem = (si: number, ii: number, value: string) =>
     setBulletSections((prev) =>
       prev.map((s, j) => (j === si ? { ...s, items: s.items.map((it, k) => (k === ii ? value : it)) } : s)),
@@ -218,8 +241,18 @@ export default function LetterEditor({
     );
 
   return (
-    <DocumentWorkspace title={heading} preview={<LetterSheet doc={previewDoc} />}>
+    <DocumentWorkspace
+      title={heading}
+      // Feed the flat block list, not the monolithic sheet: the preview packs
+      // blocks into A4 pages, and a single over-tall block would be clipped to
+      // its first page. Offer letters pin their black cover as page 1.
+      coverFirst={type === 'OFR'}
+      firstPageClassName={type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined}
+      selfPaddedSheet={false}
+      preview={letterBlocks(previewDoc)}
+    >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
+        <FieldGroup size="form">
         <Field>
           <FieldLabel htmlFor="letter-employee">Employee</FieldLabel>
           <Combobox
@@ -243,32 +276,21 @@ export default function LetterEditor({
           />
         </Field>
 
-        <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-4">
-          <legend className="px-1 text-sm font-medium">Letter body</legend>
-          {bodyParagraphs.map((p, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <label htmlFor={`para-${i}`} className="sr-only">
-                Paragraph {i + 1}
-              </label>
-              <Textarea
-                id={`para-${i}`}
-                rows={3}
-                className="flex-1"
-                value={p}
-                onChange={(e) => updateParagraph(i, e.target.value)}
-              />
-              <RemoveButton
-                label={`Remove paragraph ${i + 1}`}
-                onConfirm={() => removeParagraph(i)}
-              />
-            </div>
-          ))}
-          <div>
-            <Button type="button" variant="outline" onClick={addParagraph}>
-              Add paragraph
-            </Button>
-          </div>
-        </fieldset>
+        <Field>
+          <FieldLabel htmlFor="letter-body">Letter body</FieldLabel>
+          <Textarea
+            id="letter-body"
+            rows={18}
+            className="font-normal leading-relaxed"
+            value={bodyText}
+            onChange={(e) => setBodyText(e.target.value)}
+            aria-describedby="letter-body-help"
+          />
+          <FieldDescription id="letter-body-help">
+            One blank line starts a new paragraph. {'{name}'} is replaced with the
+            employee&rsquo;s name.
+          </FieldDescription>
+        </Field>
 
         {bulletSections.map((section, si) => (
           <fieldset key={si} className="flex flex-col gap-3 rounded-lg border border-border p-4">
@@ -343,7 +365,8 @@ export default function LetterEditor({
               />
             </>
           ) : null}
-        </div>
+          </div>
+        </FieldGroup>
       </form>
     </DocumentWorkspace>
   );

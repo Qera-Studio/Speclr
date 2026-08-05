@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import type { z } from 'zod';
 import {
   financialYearCodeOfISODate,
   financialYearStart,
@@ -104,16 +105,19 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     };
   }
   if (base.type === 'STP') {
-    // Stipend slip — financial-shaped (line items + GST) but employee-based.
-    // `base` carries employeeId/employeeSnapshot (built by the caller) and omits
+    // Stipend slip — financial-shaped (line items) but employee-based, and
+    // never taxed: `gstRatePercent` is pinned to 0 by the schema. `base` carries
+    // employeeId/employeeSnapshot (built by the caller) and omits
     // clientId/clientSnapshot, which are optional on BaseDocument now.
     return {
       ...base,
       issueDate: fields.issueDate,
       lineItems: fields.lineItems,
-      gstRatePercent: fields.gstRatePercent,
-      gstLabel: fields.gstLabel,
-      stipendPeriod: fields.stipendPeriod ?? '',
+      gstRatePercent: 0,
+      currency: fields.currency,
+      stipendPeriod: fields.stipendPeriod,
+      stipendPeriodStart: fields.stipendPeriodStart,
+      stipendPeriodEnd: fields.stipendPeriodEnd,
       stipendMonth: fields.stipendMonth ?? '',
       paymentMethod: fields.paymentMethod ?? '',
       paymentReference: fields.paymentReference,
@@ -152,6 +156,20 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
   };
 }
 
+/**
+ * Name the offending field instead of returning a bare "Invalid input."
+ *
+ * A payload that silently fails `safeParse` used to be undiagnosable from the
+ * UI — a missing `employeeId` looked identical to a malformed date. The message
+ * stays terse and leaks no values, only the field path.
+ */
+function invalidInput(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return 'Invalid input.';
+  const path = issue.path.join('.');
+  return path ? `Invalid input: ${path} — ${issue.message}` : `Invalid input: ${issue.message}`;
+}
+
 export async function createDraft(
   typeCode: unknown,
   clientId: unknown,
@@ -170,7 +188,7 @@ export async function createDraft(
   }
 
   const parsed = spec.draftSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: 'Invalid input.' };
+  if (!parsed.success) return { success: false, error: invalidInput(parsed.error) };
 
   const now = Date.now();
   // HR docs snapshot an employee (2nd param is the employeeId); financial and
@@ -237,7 +255,7 @@ export async function updateDraft(
 
   const spec = DOC_TYPES[existing.type];
   const parsed = spec.draftSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: 'Invalid input.' };
+  if (!parsed.success) return { success: false, error: invalidInput(parsed.error) };
 
   // As in createDraft, the subject-field pairing is correlated to the type only
   // at runtime (via spec.kind), so the rebuilt base is asserted to DocBase.
