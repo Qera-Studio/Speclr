@@ -6,6 +6,8 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
+import { FieldSpinner } from '@/components/ui/spinner';
+import { useMinimumDuration } from '@/lib/useMinimumDuration';
 import FieldInfo from './FieldInfo';
 import { isIndianPincode } from '@/lib/domain/address';
 import { COUNTRIES } from '@/lib/domain/phone';
@@ -51,6 +53,9 @@ export default function AddressFields<T extends FieldValues>({
   const country = useController({ control, name: `${name}.country` as Path<T> });
 
   const [lookingUp, setLookingUp] = useState(false);
+  // Held for half a second: a cached pincode returns fast enough that a bare
+  // spinner would flicker and the fields would appear to fill themselves.
+  const busy = useMinimumDuration(lookingUp);
   /**
    * Which fields the postal lookup filled in. Those go read-only, so a typo
    * can't leave a client's city and pincode disagreeing.
@@ -158,15 +163,19 @@ export default function AddressFields<T extends FieldValues>({
             info={locked ? LOCK_HINT : undefined}
             infoLabel="Why are city and state locked?"
           />
-          <Input
-            id={`${idPrefix}-pincode`}
-            size={size}
-            inputMode="numeric"
-            autoComplete="postal-code"
-            aria-describedby={`${idPrefix}-pincode-hint`}
-            {...pincode.field}
-            value={pincodeValue}
-          />
+          <div className="relative">
+            <Input
+              id={`${idPrefix}-pincode`}
+              size={size}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              aria-describedby={`${idPrefix}-pincode-hint`}
+              className={busy ? 'pr-8' : undefined}
+              {...pincode.field}
+              value={pincodeValue}
+            />
+            <FieldSpinner show={busy} />
+          </div>
           <span id={`${idPrefix}-pincode-hint`} className="sr-only" role="status">
             {locked ? LOCK_HINT : lookingUp ? 'Looking up city and state…' : ''}
           </span>

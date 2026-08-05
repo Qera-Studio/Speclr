@@ -165,3 +165,36 @@ describe('AddressFields', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('AddressFields lookup feedback', () => {
+  /**
+   * The lookup used to be announced only through a live region: sighted users
+   * saw the city and state fill themselves in with no visible cause.
+   */
+  it('shows a spinner while the pincode is being looked up', async () => {
+    mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByLabelText(/pincode/i), '201017');
+
+    // Decorative — the live region already announces it, so it must not be
+    // reachable by name. Its presence is what is asserted.
+    await waitFor(() =>
+      expect(document.querySelector('.animate-spin')).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText(/pincode/i)).toHaveAttribute('aria-describedby');
+  });
+
+  it('clears the spinner once the lookup has settled', async () => {
+    mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByLabelText(/pincode/i), '201017');
+    await settleDebounce();
+    await settleDebounce();
+
+    expect(document.querySelector('.animate-spin')).not.toBeInTheDocument();
+  });
+});

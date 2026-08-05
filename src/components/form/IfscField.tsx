@@ -11,6 +11,8 @@ import {
 } from 'react-hook-form';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { FieldSpinner } from '@/components/ui/spinner';
+import { useMinimumDuration } from '@/lib/useMinimumDuration';
 import { IFSC_LENGTH, isIfsc, normalizeIfscInput } from '@/lib/domain/bank';
 
 /**
@@ -64,6 +66,8 @@ export default function IfscField<T extends FieldValues>({
   const branch = useController({ control, name: branchField });
 
   const [lookingUp, setLookingUp] = useState(false);
+  // Held for half a second — see the note in `AddressFields`.
+  const busy = useMinimumDuration(lookingUp);
 
   const value = String(ifsc.field.value ?? '');
 
@@ -118,18 +122,22 @@ export default function IfscField<T extends FieldValues>({
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        size={size}
-        maxLength={IFSC_LENGTH}
-        autoCapitalize="characters"
-        autoCorrect="off"
-        spellCheck={false}
-        aria-describedby={hintId}
-        {...ifsc.field}
-        value={value}
-        onChange={(event) => ifsc.field.onChange(normalizeIfscInput(event.target.value))}
-      />
+      <div className="relative">
+        <Input
+          id={id}
+          size={size}
+          maxLength={IFSC_LENGTH}
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-describedby={hintId}
+          className={busy ? 'pr-8' : undefined}
+          {...ifsc.field}
+          value={value}
+          onChange={(event) => ifsc.field.onChange(normalizeIfscInput(event.target.value))}
+        />
+        <FieldSpinner show={busy} />
+      </div>
       <span id={hintId} className="sr-only" role="status">
         {lookingUp ? 'Looking up bank…' : ''}
       </span>
