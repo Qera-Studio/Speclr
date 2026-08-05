@@ -91,6 +91,28 @@ describe('DocumentPreview (un-measured jsdom fallback)', () => {
     expect(page?.className).toContain(A4_PADDING);
   });
 
+  /** The offer letter prints roomier pages than the shared A4 margin. */
+  it('honours a page padding override', () => {
+    render(
+      <DocumentPreview pagePadding="pt-[36px] px-[36px] pb-[12px]" pagePaddingY={48}>
+        {[<div key="a">Clause A</div>]}
+      </DocumentPreview>,
+    );
+    const page = document.querySelector('.paginatorPage');
+    expect(page?.className).toContain('pt-[36px] px-[36px] pb-[12px]');
+    expect(page?.className).not.toContain(A4_PADDING);
+  });
+
+  /** A trailing block pins itself to the foot with `mt-auto` — needs a column. */
+  it('lays pages out as a flex column', () => {
+    render(
+      <DocumentPreview>
+        {[<div key="a">Clause A</div>]}
+      </DocumentPreview>,
+    );
+    expect(document.querySelector('.paginatorPage')?.className).toContain('flex flex-col');
+  });
+
   it('exposes a scrollToPage handle without throwing when unmeasured', () => {
     const ref = { current: null } as React.RefObject<{ scrollToPage: (i: number) => void } | null>;
     render(

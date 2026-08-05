@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
+import { OFFER_PADDING, OFFER_PADDING_Y } from '@/components/docs/sheets/frame';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import { workspaceTitle } from '../workspaceTitle';
 
@@ -249,6 +250,9 @@ export default function LetterEditor({
       coverFirst={type === 'OFR'}
       firstPageClassName={type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined}
       selfPaddedSheet={false}
+      // The offer letter prints roomier pages than the shared A4 margin.
+      pagePadding={type === 'OFR' ? OFFER_PADDING : undefined}
+      pagePaddingY={type === 'OFR' ? OFFER_PADDING_Y : undefined}
       preview={letterBlocks(previewDoc)}
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>

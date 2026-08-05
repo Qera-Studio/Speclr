@@ -25,12 +25,17 @@ export default function DocumentWorkspace({
   coverFirst = false,
   firstPageClassName,
   selfPaddedSheet = !coverFirst,
+  pagePadding,
+  pagePaddingY,
   children,
 }: {
   title: string;
   preview: React.ReactNode;
   coverFirst?: boolean;
   firstPageClassName?: string;
+  /** Page margin override — see `DocumentPreview`. The offer letter uses it. */
+  pagePadding?: string;
+  pagePaddingY?: number;
   /**
    * Whether `preview` is a single self-contained sheet that paints its own A4
    * margins (invoice, receipt, letter, stipend) rather than bare content blocks
@@ -82,6 +87,8 @@ export default function DocumentWorkspace({
         coverFirst={coverFirst}
         firstPageClassName={firstPageClassName}
         selfPaddedSheet={selfPaddedSheet}
+        pagePadding={pagePadding}
+        pagePaddingY={pagePaddingY}
         onPageCountChange={setPageCount}
         onCurrentPageChange={setCurrentPage}
       >

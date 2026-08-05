@@ -1,15 +1,17 @@
-import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
-import { exitMasthead } from '@/lib/domain/hrContent';
-import { studioOf, type StudioInfo } from '@/lib/domain/studio';
-import type { LetterDocument } from '@/lib/domain/types';
-import { A4_PADDING } from './frame';
+import { formatDisplayDate, isISODate } from "@/lib/domain/dates";
+import { exitMasthead } from "@/lib/domain/hrContent";
+import { studioOf, type StudioInfo } from "@/lib/domain/studio";
+import type { LetterDocument } from "@/lib/domain/types";
+import { flattenAddress } from "@/lib/domain/address";
+import { A4_PADDING, OFFER_COVER_PADDING, OFFER_PADDING } from "./frame";
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
-function QeraMark() {
+function QeraMark({ size = 20 }: { size?: number }) {
   return (
     <svg
       viewBox="0 0 171 173"
-      className="w-[20px] h-[20px] shrink-0"
+      className="shrink-0"
+      style={{ width: size, height: size }}
       aria-hidden="true"
       focusable="false"
     >
@@ -23,18 +25,21 @@ function QeraMark() {
   );
 }
 
+/** The letter's subject line, wherever the editor has left it in the body. */
+const SUBJECT_RE = /^\s*subject\s*:/i;
+
 /** Substitute {name} placeholders in stored body text with the employee's name. */
 function fill(text: string, name: string): string {
-  return text.replaceAll('{name}', name);
+  return text.replaceAll("{name}", name);
 }
 
 function mastheadFor(doc: LetterDocument): string {
   switch (doc.type) {
-    case 'OFR':
-      return 'COMPANY OFFER LETTER';
-    case 'EXP':
-      return 'EXPERIENCE LETTER';
-    case 'EXIT':
+    case "OFR":
+      return "COMPANY OFFER LETTER";
+    case "EXP":
+      return "EXPERIENCE LETTER";
+    case "EXIT":
       return exitMasthead(doc.employeeSnapshot.engagementType);
   }
 }
@@ -45,12 +50,35 @@ function mastheadFor(doc: LetterDocument): string {
  * frozen at finalize. `HR_FOOTER` remains the source of the letter *body*
  * boilerplate.
  */
-function SharedFooter({ displayDate, studio }: { displayDate: string; studio: StudioInfo }) {
+function SharedFooter({
+  displayDate,
+  studio,
+  website,
+  registeredOffice,
+}: {
+  displayDate: string;
+  studio: StudioInfo;
+  /** Printed between the CIN and the date. Offer letters only, for now. */
+  website?: string;
+  /** Legal identity line, above the meta row. Offer letters only, for now. */
+  registeredOffice?: string;
+}) {
   return (
-    <footer className="flex justify-between gap-[16px] flex-wrap mt-auto border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
-      <span>Queries: {studio.queryEmailHr}</span>
-      <span>CIN: {studio.cin}</span>
-      <span>{displayDate}</span>
+    // One element, not a fragment: the paginator maps its block list onto the
+    // page's DOM children one for one, so a block that renders two elements
+    // would throw the measured heights out of step with the blocks.
+    <footer className="mt-auto border-t border-[#d9d9d9] pt-[10px] text-black/70 text-[10px] font-normal">
+      {registeredOffice ? (
+        <p className="mb-[6px] text-center text-black/60 text-[9px] font-normal leading-[1.5]">
+          {registeredOffice}
+        </p>
+      ) : null}
+      <div className="flex justify-between gap-[16px] flex-wrap">
+        <span>Queries: {studio.queryEmailHr}</span>
+        <span>CIN: {studio.cin}</span>
+        {website ? <span>{website}</span> : null}
+        <span>{displayDate}</span>
+      </div>
     </footer>
   );
 }
@@ -65,11 +93,17 @@ function SignatureBlock({
   return (
     <div className="grid grid-cols-2 gap-[48px] mt-[48px]">
       <div className="[break-inside:avoid]">
-        <p className="text-black/70 text-[12px] font-normal mb-[2px]">Signature:</p>
+        <p className="text-black/70 text-[12px] font-normal mb-[2px]">
+          Signature:
+        </p>
         <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
         <p className="text-black text-[12px] font-semibold">Shivanshu Pareek</p>
-        <p className="text-black/70 text-[11px] font-normal">Co-founder — Qera Studio</p>
-        <p className="text-black/70 text-[11px] font-normal">shivanshu@qera.studio</p>
+        <p className="text-black/70 text-[11px] font-normal">
+          Co-founder — Qera Studio
+        </p>
+        <p className="text-black/70 text-[11px] font-normal">
+          shivanshu@qera.studio
+        </p>
       </div>
       <div className="[break-inside:avoid]">
         <p className="text-black/70 text-[12px] font-normal mb-[2px]">Date:</p>
@@ -82,26 +116,70 @@ function SignatureBlock({
 }
 
 /**
+ * The offer letter's signature pair: the studio's authorised signatory on the
+ * left, the recipient on the right.
+ *
+ * No date column — the issue date is in the page header, and repeating it under
+ * a signature line invites someone to read it as the date signed. The recipient
+ * gets a real line to sign on because the letter above asks them to confirm
+ * agreement; an acknowledgement with nowhere to sign is not one.
+ *
+ * The signatory's name and title are constants: `StudioInfo` has no signatory
+ * field, and there is one signatory. Move them there if that changes.
+ */
+function OfferSignatureBlock({ employeeName }: { employeeName: string }) {
+  return (
+    <div className="grid grid-cols-2 gap-[96px] mt-[48px] mb-[24px]">
+      <div className="max-w-[250px] [break-inside:avoid]">
+        <p className="text-black/70 text-[12px] font-normal mb-[2px]">
+          Signature:
+        </p>
+        <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
+        <p className="text-black text-[12px] font-semibold">Shivanshu Pareek</p>
+        <p className="text-black/70 text-[11px] font-normal">
+          Co-founder — Qera Studio
+        </p>
+        <p className="text-black/70 text-[11px] font-normal">
+          (Authorised Signatory)
+        </p>
+      </div>
+      <div className="max-w-[250px] [break-inside:avoid]">
+        <p className="text-black/70 text-[12px] font-normal mb-[2px]">
+          Signature:
+        </p>
+        <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
+        <p className="text-black text-[12px] font-semibold">{employeeName}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Applied by `DocumentPreview` to the offer letter's pinned first page, so the
  * cover is full-bleed black. Mirrors the contract's `COVER_CLASSNAME`.
  */
 export const LETTER_COVER_CLASSNAME =
-  'flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]';
+  "flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]";
 
 /** One bullet section, shared by every letter type. */
 function BulletSection({
   section,
   name,
 }: {
-  section: LetterDocument['bulletSections'][number];
+  section: LetterDocument["bulletSections"][number];
   name: string;
 }) {
   return (
     <div className="mb-[24px] [break-inside:avoid]">
-      <p className="text-black text-[12px] font-bold mb-[8px]">{fill(section.heading, name)}</p>
+      <p className="text-black text-[12px] font-bold mb-[8px]">
+        {fill(section.heading, name)}
+      </p>
       <ul className="m-0 pl-[24px] list-disc">
         {section.items.map((item, ii) => (
-          <li key={ii} className="text-black text-[12px] font-normal leading-[1.5] mb-[4px]">
+          <li
+            key={ii}
+            className="text-black text-[12px] font-normal leading-[1.5] mb-[4px]"
+          >
             {fill(item, name)}
           </li>
         ))}
@@ -121,15 +199,30 @@ function BulletSection({
  * page via `coverFirst` + `LETTER_COVER_CLASSNAME`.
  */
 export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
-  const displayDate = isISODate(doc.issueDate) ? formatDisplayDate(doc.issueDate) : '—';
+  const displayDate = isISODate(doc.issueDate)
+    ? formatDisplayDate(doc.issueDate)
+    : "—";
   const emp = doc.employeeSnapshot;
   const studio = studioOf(doc);
   const masthead = mastheadFor(doc);
 
+  // The offer letter reads at 14px; the certifying letters stay at 12px.
+  const isOffer = doc.type === "OFR";
+  const bodyClass = isOffer
+    ? "text-black text-[14px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line"
+    : "text-black text-[12px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line";
+
   const paragraphs = doc.bodyParagraphs.map((p, i) => (
     <p
       key={`para-${i}`}
-      className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line"
+      className={
+        // The subject line leads the letter, so it is set heavier and 2px up
+        // from the body. Matched on the text rather than on position: the body
+        // is free text in the editor and can be reordered.
+        isOffer && SUBJECT_RE.test(p)
+          ? "text-black text-[16px] font-semibold leading-[1.6] mb-[24px] whitespace-pre-line"
+          : bodyClass
+      }
     >
       {fill(p, emp.name)}
     </p>
@@ -139,37 +232,66 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
     <BulletSection key={`bullet-${si}`} section={section} name={emp.name} />
   ));
 
-  const footer = <SharedFooter key="footer" displayDate={displayDate} studio={studio} />;
+  const footer = (
+    <SharedFooter key="footer" displayDate={displayDate} studio={studio} />
+  );
 
   // ── Offer letter — black cover block, then the body flow ─────────────────
-  if (doc.type === 'OFR') {
+  if (doc.type === "OFR") {
     return [
-      <div key="cover" className={`flex flex-col flex-1 min-h-[900px] ${A4_PADDING} box-border`} aria-label="Cover">
+      // Header, masthead and details spaced evenly over the full page height —
+      // `justify-between`, not a capped height with `mt-auto` pushing the
+      // masthead down, which bunched all three into the top 700px.
+      <div
+        key="cover"
+        className={`flex flex-col flex-1 justify-between min-h-[100px] ${OFFER_COVER_PADDING} box-border`}
+        aria-label="Cover"
+      >
         <div className="flex justify-between items-start gap-[24px]">
           <p className="flex items-center gap-[6px] text-white">
-            <QeraMark />
-            <span className="font-semibold text-[18px] text-white">{studio.brandMark}</span>
+            <QeraMark size={14} />
+            <span className="font-semibold text-[18px] text-white">
+              {studio.brandMark}
+            </span>
           </p>
-          <p className="font-semibold text-[12px] text-white text-right">{displayDate}</p>
+          <p className="font-semibold text-[12px] text-white text-right">
+            {displayDate}
+          </p>
         </div>
-        <h2 className="mt-auto text-[72px] font-bold tracking-[-0.03em] leading-[0.95] uppercase text-white">
+        <h2 className="text-[72px] font-bold tracking-[-0.03em] leading-[0.95] uppercase text-white">
           {masthead}
         </h2>
-        <div className="flex justify-between gap-[32px] mt-[64px]">
+        <div className="flex justify-between gap-[32px]">
           <div>
             <p className="text-white/60 text-[12px] font-normal">Position:</p>
-            <p className="text-white text-[16px] font-medium mt-[2px]">{emp.role}</p>
+            <p className="text-white text-[16px] font-medium mt-[2px]">
+              {emp.role}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-white/60 text-[12px] font-normal">Issued to:</p>
-            <p className="text-white text-[16px] font-medium mt-[2px]">{emp.name}</p>
+            <p className="text-white text-[16px] font-medium mt-[2px]">
+              {emp.name}
+            </p>
           </div>
         </div>
       </div>,
 
-      <div key="brand" className="flex items-center gap-[6px] text-black mb-[40px]">
-        <QeraMark />
-        <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
+      // The body page carries the date too, so a page separated from the cover
+      // still says when it was issued.
+      <div
+        key="brand"
+        className="flex justify-between items-center gap-[24px] text-black mb-[40px]"
+      >
+        <span className="flex items-center gap-[6px]">
+          <QeraMark size={14} />
+          <span className="font-semibold text-[16px] text-black">
+            {studio.brandMark}
+          </span>
+        </span>
+        <span className="text-black text-[12px] font-semibold text-right">
+          {displayDate}
+        </span>
       </div>,
 
       ...paragraphs,
@@ -178,34 +300,51 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
       // than vanish silently.
       ...bullets,
 
-      <div
-        key="acknowledgement"
-        className="mt-[40px] pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]"
-      >
-        <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-          I, {emp.name}, confirm that I have read and agreed to the terms mentioned in this letter.
-        </p>
-        <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
+      // Acknowledgement, signatures, registered office and footer are one block
+      // pinned to the foot of the last page (`mt-auto` — the page frame is a
+      // flex column). One block, not four, so a page break can never leave the
+      // signature lines stranded from the letter's footer.
+      <div key="closing" className="mt-auto">
+        <div className="pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]">
+          <p className={bodyClass}>
+            I, {emp.name}, confirm that I have read and agreed to the terms
+            mentioned in this letter.
+          </p>
+          <OfferSignatureBlock employeeName={emp.name} />
+        </div>
+        <SharedFooter
+          displayDate={displayDate}
+          studio={studio}
+          website="www.qera.studio"
+          registeredOffice={`${studio.legalName.toUpperCase()}. Registered office: ${flattenAddress(studio.address)}`}
+        />
       </div>,
-
-      footer,
     ];
   }
 
   // ── Experience / exit — a certifying letter, no cover ────────────────────
   return [
-    <div key="head" className="flex justify-between items-start gap-[24px] mb-[32px]">
+    <div
+      key="head"
+      className="flex justify-between items-start gap-[24px] mb-[32px]"
+    >
       <div className="flex items-center gap-[6px] text-black">
         <QeraMark />
-        <span className="font-semibold text-[16px] text-black">{studio.brandMark}</span>
+        <span className="font-semibold text-[16px] text-black">
+          {studio.brandMark}
+        </span>
       </div>
-      <p className="text-black text-[12px] font-semibold text-right">{displayDate}</p>
+      <p className="text-black text-[12px] font-semibold text-right">
+        {displayDate}
+      </p>
     </div>,
 
     <div key="to" className="mb-[40px]">
-      <p className="text-black/70 text-[12px] font-normal mb-[16px]">To:</p>
-      <p className="text-black text-[14px] font-bold">{emp.name}</p>
-      <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">{emp.address}</p>
+      <p className="text-black/80 text-[12px] font-normal mb-[4px]">To:</p>
+      <p className="text-black text-[16px] font-semibold">{emp.name}</p>
+      <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
+        {emp.address}
+      </p>
     </div>,
 
     <div key="masthead" className="[break-inside:avoid]">
@@ -246,7 +385,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
   const blocks = letterBlocks(doc);
   const masthead = mastheadFor(doc);
 
-  if (doc.type === 'OFR') {
+  if (doc.type === "OFR") {
     const [cover, ...body] = blocks;
     return (
       <article
@@ -260,7 +399,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
           {cover}
         </section>
         <section
-          className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
+          className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${OFFER_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
           aria-label="Offer terms"
         >
           {body}

@@ -11,7 +11,19 @@
  * margin to fall back on. If physical output clips at the edges, raise this
  * one constant — every sheet follows it.
  */
-export const A4_PADDING = 'p-[12px]';
+export const A4_PADDING = "p-[12px]";
 
 /** Total vertical padding `A4_PADDING` costs a page, in px (top + bottom). */
 export const A4_PADDING_Y = 24;
+
+/** The offer letter's cover page — roomier margins than the slip sheets. */
+export const OFFER_COVER_PADDING = "p-[36px]";
+
+/**
+ * The offer letter's body pages: 36px on three sides, 12px at the foot, so the
+ * bottom-pinned signature and footer sit close to the page edge.
+ */
+export const OFFER_PADDING = "pt-[36px] px-[36px] pb-[12px]";
+
+/** Total vertical padding `OFFER_PADDING` costs a page, in px (36 + 12). */
+export const OFFER_PADDING_Y = 48;

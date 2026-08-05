@@ -17,9 +17,6 @@ import { A4_PADDING, A4_PADDING_Y } from './sheets/frame';
 // A4 at 96dpi.
 const SHEET_WIDTH = 794;
 const SHEET_HEIGHT = 1123;
-// A4 content box height minus the page padding the sheets use. Blocks are
-// packed until the next one would overflow this.
-const PAGE_CONTENT_HEIGHT = SHEET_HEIGHT - A4_PADDING_Y;
 // Vertical gap between stacked pages in the scrolling column.
 const PAGE_GAP = 24;
 
@@ -110,6 +107,8 @@ export default function DocumentPreview({
   firstPageClassName,
   coverFirst = false,
   selfPaddedSheet = false,
+  pagePadding = A4_PADDING,
+  pagePaddingY = A4_PADDING_Y,
   onPageCountChange,
   onCurrentPageChange,
   ref,
@@ -117,6 +116,15 @@ export default function DocumentPreview({
   children: ReactNode;
   firstPageClassName?: string;
   coverFirst?: boolean;
+  /**
+   * The page margin for this document type, and what it costs vertically.
+   * Defaults to the shared A4 margin; the offer letter prints roomier pages.
+   * The two must agree — `pagePaddingY` is the height pagination reserves, so
+   * a wrong value packs too much (clipped) or too little (short pages) onto a
+   * page.
+   */
+  pagePadding?: string;
+  pagePaddingY?: number;
   /**
    * Set when `children` is a single self-contained sheet that already paints
    * the full 794×1123 page including its own margins (invoice, receipt,
@@ -145,6 +153,10 @@ export default function DocumentPreview({
 
   const [scale, setScale] = useState(0.5);
 
+  // A4 content box height minus this document's page padding. Blocks are packed
+  // until the next one would overflow it.
+  const pageContentHeight = SHEET_HEIGHT - pagePaddingY;
+
   // Measure the un-paginated flow and pack blocks into pages. Runs inside a
   // ResizeObserver callback so it also re-fires if the flow settles late.
   useLayoutEffect(() => {
@@ -161,7 +173,7 @@ export default function DocumentPreview({
       let current: number[] = [];
       let used = 0;
       heights.forEach((h, i) => {
-        if (current.length > 0 && used + h > PAGE_CONTENT_HEIGHT) {
+        if (current.length > 0 && used + h > pageContentHeight) {
           next.push(current);
           current = [];
           used = 0;
@@ -176,7 +188,7 @@ export default function DocumentPreview({
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [flowPages, signature]);
+  }, [flowPages, signature, pageContentHeight]);
 
   // Fit the A4 page *width* into the viewport — with a continuously scrolling
   // column the pane is no longer A4-shaped, so height must not bind (it would
@@ -270,13 +282,18 @@ export default function DocumentPreview({
   }, [measuring, pageCount, reportCurrent]);
 
   const pageFrame = `w-[794px] h-[1123px] box-border overflow-hidden ${PAGE_SHADOW}`;
+  // A flex column so a trailing block can pin itself to the foot of the page
+  // with `mt-auto` — how the letters' signature and footer sit at the bottom.
+  // `shrink-0` keeps the old behaviour for a block taller than one page: it
+  // overflows (and is clipped) rather than being squashed out of shape.
+  const flowColumn = 'flex flex-col [&>*]:shrink-0';
   // Bare content blocks (the contract's clause list) need the page's own A4
   // margins. A self-contained sheet already paints its full 794px artwork
   // including its margins, so adding padding here would shrink it inside the
   // frame and clip its right edge.
   const flowFrame = selfPaddedSheet
-    ? `${pageFrame} bg-white text-black`
-    : `${pageFrame} ${A4_PADDING} bg-white text-black`;
+    ? `${pageFrame} ${flowColumn} bg-white text-black`
+    : `${pageFrame} ${flowColumn} ${pagePadding} bg-white text-black`;
 
   // Unscaled height of the whole stacked column, used to reserve the correct
   // on-screen footprint for the transform-scaled holder. While measuring, the
@@ -336,8 +353,8 @@ export default function DocumentPreview({
                 capturePage(coverCount)(el);
               }}
               className={`paginatorPage w-[794px] ${
-                selfPaddedSheet ? '' : A4_PADDING
-              } box-border bg-white text-black h-auto min-h-[1123px] ${PAGE_SHADOW}`}
+                selfPaddedSheet ? '' : pagePadding
+              } ${flowColumn} box-border bg-white text-black h-auto min-h-[1123px] ${PAGE_SHADOW}`}
             >
               {flowBlocks}
             </div>

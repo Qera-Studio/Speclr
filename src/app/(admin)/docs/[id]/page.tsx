@@ -18,7 +18,8 @@ import LetterEditor from '@/components/docs/editors/LetterEditor';
 import StipendEditor from '@/components/docs/editors/StipendEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
-import LetterSheet from '@/components/docs/sheets/LetterSheet';
+import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
+import { OFFER_PADDING, OFFER_PADDING_Y } from '@/components/docs/sheets/frame';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
 import DocumentTypeList from '@/components/admin/DocumentTypeList';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -120,7 +121,13 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   // form: a finalized document has nothing editable by design.
   const shell = (
     preview: React.ReactNode,
-    opts?: { coverFirst?: boolean; firstPageClassName?: string },
+    opts?: {
+      coverFirst?: boolean;
+      firstPageClassName?: string;
+      selfPaddedSheet?: boolean;
+      pagePadding?: string;
+      pagePaddingY?: number;
+    },
   ) => (
     <DocumentWorkspace title={heading} preview={preview} {...opts}>
       <FinalizedActions docId={doc.id} />
@@ -129,7 +136,19 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
 
   // Sequential returns so each branch narrows `doc`.
   if (doc.type === 'STP') return shell(<StipendSheet doc={doc} />);
-  if (isLetter(doc)) return shell(<LetterSheet doc={doc} />);
+  // Letters feed their block list too, for the same reason as the contract: the
+  // monolithic sheet arrives as one over-tall block, gets a single page, and
+  // everything past 1123px is clipped — a finalized offer letter previewed as
+  // its cover and nothing else. The draft editor was fixed for this; the
+  // finalized path was not.
+  if (isLetter(doc))
+    return shell(letterBlocks(doc), {
+      coverFirst: doc.type === 'OFR',
+      firstPageClassName: doc.type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined,
+      selfPaddedSheet: false,
+      pagePadding: doc.type === 'OFR' ? OFFER_PADDING : undefined,
+      pagePaddingY: doc.type === 'OFR' ? OFFER_PADDING_Y : undefined,
+    });
   // Contracts feed their flat block list in so the preview can paginate them,
   // with the black cover pinned as its own full-bleed first page.
   if (doc.type === 'CON')
