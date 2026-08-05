@@ -74,3 +74,37 @@ describe('StipendSheet', () => {
     expect(screen.getByText('HDFC Bank')).toBeInTheDocument();
   });
 });
+
+/**
+ * The five fixed terms, matching the issued slip design. Two of them (Stipend,
+ * Record) were missing entirely.
+ */
+describe('StipendSheet terms', () => {
+  it('prints all five terms', () => {
+    render(<StipendSheet doc={baseStipend} />);
+    for (const title of [
+      'Nature of engagement.',
+      'Confidentiality & IP.',
+      'Stipend.',
+      'Record.',
+      'Jurisdiction.',
+    ]) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+  });
+
+  /**
+   * `deductionsNote` is a legal assertion whose truth depends on the
+   * engagement, so it must stay editable rather than become fixed boilerplate
+   * (CONTEXT.md). It is saved on every slip — if it stops printing, the slip
+   * silently drops an assertion the issuer believed they were making.
+   */
+  it('prints the editable deductions note inside the Stipend term', () => {
+    render(
+      <StipendSheet
+        doc={{ ...baseStipend, deductionsNote: 'TDS deducted at 10%.' } as StipendDocument}
+      />,
+    );
+    expect(screen.getByText(/TDS deducted at 10%\./)).toBeInTheDocument();
+  });
+});

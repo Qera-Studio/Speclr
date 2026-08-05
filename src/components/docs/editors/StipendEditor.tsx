@@ -105,7 +105,7 @@ interface StipendFormValues {
 }
 
 const DEFAULT_DEDUCTIONS_NOTE =
-  "No statutory deductions applicable for this internship engagement.";
+  "No statutory deductions (PF, ESI, TDS) are applicable.";
 
 /** The month a slip covers, as 'YYYY-MM'. Falls back to the issue month. */
 function monthOfISODate(iso: string): string {

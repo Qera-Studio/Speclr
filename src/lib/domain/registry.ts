@@ -375,7 +375,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     defaultFields: (todayIso) => ({
       issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
       employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
-      deductionsNote: 'No statutory deductions applicable for this internship engagement.',
+      deductionsNote: 'No statutory deductions (PF, ESI, TDS) are applicable.',
     }),
     fixedTerms: [],
   },

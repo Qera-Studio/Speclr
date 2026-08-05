@@ -71,7 +71,7 @@ describe('StipendEditor (new)', () => {
       'STP',
       'e1',
       expect.objectContaining({
-        deductionsNote: 'No statutory deductions applicable for this internship engagement.',
+        deductionsNote: 'No statutory deductions (PF, ESI, TDS) are applicable.',
       }),
     );
   });

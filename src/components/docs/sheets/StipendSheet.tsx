@@ -48,6 +48,15 @@ function stipendPeriodLabel(doc: StipendDocument): string {
   return doc.stipendPeriod ?? "";
 }
 
+/** One fixed term in the slip's TERMS block: a bold lead-in, then the body. */
+function Term({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <p className="text-black/70 text-[10px] font-normal leading-[1.4] mb-[6px] [break-inside:avoid]">
+      <strong className="text-black font-semibold">{title}</strong> {children}
+    </p>
+  );
+}
+
 /**
  * The stipend slip print artifact — financial-shaped but paid to an employee.
  * Pure props → markup; server-renderable. Mirrors DocumentSheet's paper
@@ -292,28 +301,35 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
             <h3 className="text-black text-[14px] font-bold tracking-[-0.01em] mb-[4px]">
               DETAILS
             </h3>
+            {/*
+              `justify-between` per row, not `justify-start` with a min-width on
+              the value: each row then spans the whole list, so labels hug the
+              left and values hug the right and every value ends on the same
+              edge. Sizing each row to its own content left the three values
+              ragged, because both the labels and the values differ in width.
+            */}
             <dl className="m-0">
-              <div className="flex justify-start gap-[16px]">
+              <div className="flex justify-between gap-[16px]">
                 <dt className="text-black/70 text-[12px] font-normal">
                   Stipend month
                 </dt>
-                <dd className="m-0 text-black text-[12px] font-medium min-w-[120px] text-right">
+                <dd className="m-0 text-black text-[12px] font-medium text-right">
                   {monthLabel}
                 </dd>
               </div>
-              <div className="flex justify-start gap-[16px]">
+              <div className="flex justify-between gap-[16px]">
                 <dt className="text-black/70 text-[12px] font-normal">
                   Period
                 </dt>
-                <dd className="m-0 text-black text-[12px] font-medium min-w-[120px] text-right">
+                <dd className="m-0 text-black text-[12px] font-medium text-right">
                   {periodLabel}
                 </dd>
               </div>
-              <div className="flex justify-start gap-[16px]">
+              <div className="flex justify-between gap-[16px]">
                 <dt className="text-black/70 text-[12px] font-normal">
                   Issued
                 </dt>
-                <dd className="m-0 text-black text-[12px] font-medium min-w-[120px] text-right">
+                <dd className="m-0 text-black text-[12px] font-medium text-right">
                   {displayDate}
                 </dd>
               </div>
@@ -405,31 +421,45 @@ export default function StipendSheet({ doc }: { doc: StipendDocument }) {
             <h3 className="text-black text-[24px] font-bold tracking-[-0.02em] mb-[2px]">
               TERMS
             </h3>
-            <p className="text-black/70 text-[10px] font-normal whitespace-pre-line mt-[6px]">
-              {doc.deductionsNote}
-            </p>
-            <div className="text-black/70">
-              <p className="text-black/70 text-[10px] font-normal leading-[1.4] mb-[2px] whitespace-pre-line">
-                <strong className="text-black font-semibold">
-                  Nature of engagement.
-                </strong>{" "}
-                This stipend is paid for the engagement stated above and does
-                not constitute salaried employment.
-              </p>
-              <p className="text-black/70 text-[10px] font-normal leading-[1.4] mb-[2px] whitespace-pre-line">
-                <strong className="text-black font-semibold">
-                  Confidentiality & IP.
-                </strong>{" "}
-                All work produced during the engagement remains the property of
-                Qera Studio.
-              </p>
-              <p className="text-black/70 text-[10px] font-normal leading-[1.4] mb-[2px] whitespace-pre-line">
-                <strong className="text-black font-semibold">
-                  Jurisdiction.
-                </strong>{" "}
-                Subject to the exclusive jurisdiction of the courts of
-                Ghaziabad, Uttar Pradesh.
-              </p>
+            {/*
+              Two explicit columns rather than `column-count: 2`. Balanced
+              columns would re-flow whenever a term's length changes — and the
+              editable stipend note makes that length variable. The split is
+              fixed so the slip stays a pixel-faithful artifact.
+            */}
+            <div className="grid grid-cols-2 gap-x-[16px] items-start">
+              <div>
+                <Term title="Nature of engagement.">
+                  This is a stipend paid for an internship. It does not
+                  constitute salary, wages, or an offer or contract of
+                  employment, and creates no employer–employee relationship.
+                </Term>
+                <Term title="Confidentiality & IP.">
+                  All work produced during the internship is the property of
+                  Qera Studio. Confidentiality obligations survive the
+                  engagement.
+                </Term>
+              </div>
+              <div>
+                {/*
+                  The one term with an editable tail. `deductionsNote` is a
+                  legal assertion whose truth depends on the engagement, so it
+                  must never become fixed boilerplate — see CONTEXT.md. It is
+                  saved on every slip, and this is where it prints.
+                */}
+                <Term title="Stipend.">
+                  A fixed monthly stipend paid at Qera Studio&rsquo;s discretion
+                  for the period stated. {doc.deductionsNote}
+                </Term>
+                <Term title="Record.">
+                  This slip is a record of stipend disbursed and is
+                  computer-generated.
+                </Term>
+                <Term title="Jurisdiction.">
+                  Subject to the exclusive jurisdiction of the courts of
+                  Ghaziabad, Uttar Pradesh.
+                </Term>
+              </div>
             </div>
           </section>
         </div>
