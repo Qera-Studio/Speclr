@@ -49,7 +49,7 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
       className={`print-sheet relative bg-white text-black font-sans text-[12px] leading-[1.5] ${A4_PADDING} box-border w-[794px] h-[1123px] flex flex-col overflow-hidden`}
       aria-label={`${spec.label} ${doc.number ?? 'draft'}`}
     >
-      <header className="flex justify-between items-start gap-[24px] mb-[8px]">
+      <header className="flex justify-between items-start gap-[24px] mb-[8px] border-b border-[#d9d9d9] pb-[16px]">
         <h2 className="text-[96px] font-bold tracking-[-0.03em] leading-[0.9] uppercase text-black">
           {spec.masthead}
         </h2>
@@ -76,45 +76,51 @@ export default function DocumentSheet({ doc }: { doc: InvoiceDocument | ReceiptD
         </div>
       </header>
 
+      {/*
+        Same treatment as the stipend slip's parties block: the divider sits on
+        the header, the two columns are held to a readable measure instead of a
+        fixed gap, and the address is separated from the contact lines rather
+        than run together with them.
+      */}
       <section
-        className="grid grid-cols-2 gap-[32px] pt-[16px] pb-[24px] border-t border-[#d9d9d9]"
+        className="grid grid-cols-2 pt-[16px] pb-[24px] max-w-[600px]"
         aria-label="Billed to and from"
       >
         <div>
-          <h3 className="text-black/70 text-[10px] font-normal mb-[4px]">billed to:</h3>
+          <h3 className="text-black/80 text-[12px] font-normal mb-[4px]">billed to:</h3>
           {/* The legal name, not the short reference name. Snapshots frozen
               before companyName existed fall back to `name`. */}
           <p className="text-black font-semibold text-[16px]">
             {doc.clientSnapshot.companyName || doc.clientSnapshot.name || '—'}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line mb-[6px]">
             {doc.clientSnapshot.address}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
             {doc.clientSnapshot.phone}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
             {doc.clientSnapshot.email}
           </p>
           {doc.clientSnapshot.gstin ? (
-            <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+            <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
               GSTIN: {doc.clientSnapshot.gstin}
             </p>
           ) : null}
         </div>
         <div>
-          <h3 className="text-black/70 text-[10px] font-normal mb-[4px]">from:</h3>
+          <h3 className="text-black/80 text-[12px] font-normal mb-[4px]">from:</h3>
           <p className="text-black font-semibold text-[16px]">{studio.legalName}</p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line mb-[6px]">
             {studio.address}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
             {studio.phone}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
             {studio.email}
           </p>
-          <p className="text-black/70 text-[12px] font-normal whitespace-pre-line">
+          <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
             GSTIN: {studio.gstin}
           </p>
         </div>

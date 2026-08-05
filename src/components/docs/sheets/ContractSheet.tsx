@@ -83,53 +83,53 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
       <div className="grid grid-cols-2 gap-[48px]">
         <div className="border-t-2 border-black pt-[24px]">
           <h3 className="text-black text-[14px] font-bold mb-[2px]">First Party</h3>
-          <p className="text-black/70 text-[11px] font-normal mb-[24px]">
+          <p className="text-black/80 text-[12px] font-normal mb-[24px]">
             The Studio / Service Provider
           </p>
           <dl className="m-0">
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Name</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Name</dt>
               <dd className="m-0 text-black text-[12px] font-medium">{studio.legalName}</dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Address</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Address</dt>
               <dd className="m-0 text-black text-[12px] font-medium whitespace-pre-line">
                 {studio.address}
               </dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Email</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Email</dt>
               <dd className="m-0 text-black text-[12px] font-medium">{studio.email}</dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Number</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Number</dt>
               <dd className="m-0 text-black text-[12px] font-medium">{studio.phone}</dd>
             </div>
           </dl>
         </div>
         <div className="border-t-2 border-black pt-[24px]">
           <h3 className="text-black text-[14px] font-bold mb-[2px]">Second Party</h3>
-          <p className="text-black/70 text-[11px] font-normal mb-[24px]">The Client</p>
+          <p className="text-black/80 text-[12px] font-normal mb-[24px]">The Client</p>
           <dl className="m-0">
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Name</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Name</dt>
               {/* Legal name; older snapshots fall back to the short name. */}
               <dd className="m-0 text-black text-[12px] font-medium">
                 {doc.clientSnapshot.companyName || doc.clientSnapshot.name || '—'}
               </dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Address</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Address</dt>
               <dd className="m-0 text-black text-[12px] font-medium whitespace-pre-line">
                 {doc.clientSnapshot.address}
               </dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Email</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Email</dt>
               <dd className="m-0 text-black text-[12px] font-medium">{doc.clientSnapshot.email}</dd>
             </div>
             <div className="flex gap-[16px] py-[3px]">
-              <dt className="text-black/70 text-[11px] font-normal min-w-[70px] shrink-0">Number</dt>
+              <dt className="text-black/80 text-[12px] font-normal min-w-[70px] shrink-0">Number</dt>
               <dd className="m-0 text-black text-[12px] font-medium">{doc.clientSnapshot.phone}</dd>
             </div>
           </dl>
