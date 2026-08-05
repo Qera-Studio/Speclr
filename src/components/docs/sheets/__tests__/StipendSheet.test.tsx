@@ -61,7 +61,7 @@ describe('StipendSheet', () => {
     // Read from the frozen snapshot, never live — an issued slip must keep
     // showing the QR that was current when it was issued.
     expect(screen.getByAltText(/upi qr code for ravi kumar/i)).toHaveAttribute('src', qr);
-    expect(screen.getByText('scan to pay')).toBeInTheDocument();
+    expect(screen.getByText('Scan to pay')).toBeInTheDocument();
   });
 
   it('renders normally for a slip issued before QR codes existed', () => {
@@ -70,7 +70,7 @@ describe('StipendSheet', () => {
     // Snapshots written before this field simply have no QR; the block must
     // collapse away rather than leaving a gap or a broken image.
     expect(screen.queryByAltText(/upi qr code/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('scan to pay')).not.toBeInTheDocument();
+    expect(screen.queryByText('Scan to pay')).not.toBeInTheDocument();
     expect(screen.getByText('HDFC Bank')).toBeInTheDocument();
   });
 });
