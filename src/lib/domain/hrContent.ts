@@ -189,81 +189,104 @@ export function defaultLetterContent(
   }
 }
 
+// ── Slips ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The five fixed terms printed on a **pay slip** — a statutory wage record,
+ * which the stipend slip is not.
+ *
+ * Kept apart from `stipendTerms` rather than folded in as a third engagement
+ * branch, because the difference is not the reader's status but the document's:
+ * a stipend slip records a discretionary payment and spends its first clause
+ * denying an employment relationship, while a pay slip is issued *under* one and
+ * must point at the instrument that creates it. The word "internship" must
+ * never appear here.
+ *
+ * The deductions clause states that only lawful deductions have been made —
+ * Payment of Wages Act s.7 permits none others — and folds in `deductionsNote`
+ * for the specifics (TDS u/s 192 and the like), which vary per employee.
+ */
+export function payslipTerms(deductionsNote: string): {
+  left: { title: string; body: string }[];
+  right: { title: string; body: string }[];
+} {
+  const note = deductionsNote.trim();
+
+  return {
+    left: [
+      {
+        title: 'Nature of engagement.',
+        body: 'This slip records wages paid for the wage period stated, under the terms of your appointment with Qera Studio.',
+      },
+      {
+        title: 'Confidentiality & IP.',
+        body: 'All work produced during your employment is the property of Qera Studio. Confidentiality obligations survive the employment.',
+      },
+    ],
+    right: [
+      {
+        title: 'Deductions.',
+        body: note
+          ? `Only deductions authorised by law have been made from the wages shown. ${note}`
+          : 'Only deductions authorised by law have been made from the wages shown.',
+      },
+      {
+        title: 'Record.',
+        body: 'This slip is a record of wages disbursed, forms part of the wage register, and is computer-generated.',
+      },
+      {
+        title: 'Jurisdiction.',
+        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+      },
+    ],
+  };
+}
+
 // ── Stipend slip ──────────────────────────────────────────────────────────────
 
 /**
  * The five fixed terms printed on a stipend slip, split into the two columns
  * the issued design uses.
  *
- * Branches on engagement type for the same reason the exit letter does: an
- * intern is not an employee, and saying so is legally load-bearing. The intern
+ * There is one set, not a per-engagement pair: a stipend slip is only ever
+ * issued to an intern (the recipient picker offers no one else, and finalize
+ * refuses the rest), and a pay slip has its own terms in `payslipTerms`. The
  * wording denies an employer–employee relationship, which is correct for an
- * intern and flatly wrong for an employee — issued to the latter it would be a
- * document contradicting itself about employment status.
+ * intern and flatly wrong for anyone else — which is exactly why the two
+ * documents are separate rather than one that branches.
  *
- * `deductionsNote` is appended to the pay term because whether statutory
+ * `deductionsNote` is appended to the stipend term because whether statutory
  * deductions apply depends on the individual engagement. It stays editable
  * rather than becoming fixed boilerplate here.
  */
-export function stipendTerms(
-  engagement: EngagementType,
-  deductionsNote: string,
-): { left: { title: string; body: string }[]; right: { title: string; body: string }[] } {
+export function stipendTerms(deductionsNote: string): {
+  left: { title: string; body: string }[];
+  right: { title: string; body: string }[];
+} {
   const note = deductionsNote.trim();
   const withNote = (body: string) => (note ? `${body} ${note}` : body);
 
-  if (engagement === 'intern') {
-    return {
-      left: [
-        {
-          title: 'Nature of engagement.',
-          body: 'This is a stipend paid for an internship. It does not constitute salary, wages, or an offer or contract of employment, and creates no employer–employee relationship.',
-        },
-        {
-          title: 'Confidentiality & IP.',
-          body: 'All work produced during the internship is the property of Qera Studio. Confidentiality obligations survive the engagement.',
-        },
-      ],
-      right: [
-        {
-          title: 'Stipend.',
-          body: withNote(
-            'A fixed monthly stipend paid at Qera Studio’s discretion for the period stated.',
-          ),
-        },
-        {
-          title: 'Record.',
-          body: 'This slip is a record of stipend disbursed and is computer-generated.',
-        },
-        {
-          title: 'Jurisdiction.',
-          body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
-        },
-      ],
-    };
-  }
-
-  // Employee: no "internship", and nothing denying the employment relationship
-  // that demonstrably exists.
   return {
     left: [
       {
         title: 'Nature of engagement.',
-        body: 'This payment is made under the terms of your engagement with Qera Studio for the period stated.',
+        body: 'This is a stipend paid for an internship. It does not constitute salary, wages, or an offer or contract of employment, and creates no employer\u2013employee relationship.',
       },
       {
         title: 'Confidentiality & IP.',
-        body: 'All work produced during the engagement is the property of Qera Studio. Confidentiality obligations survive the engagement.',
+        body: 'All work produced during the internship is the property of Qera Studio. Confidentiality obligations survive the engagement.',
       },
     ],
     right: [
       {
-        title: 'Payment.',
-        body: withNote('A fixed monthly amount paid for the period stated.'),
+        title: 'Stipend.',
+        body: withNote(
+          'A fixed monthly stipend paid at Qera Studio\u2019s discretion for the period stated.',
+        ),
       },
       {
         title: 'Record.',
-        body: 'This slip is a record of the amount disbursed and is computer-generated.',
+        body: 'This slip is a record of stipend disbursed and is computer-generated.',
       },
       {
         title: 'Jurisdiction.',
@@ -274,28 +297,23 @@ export function stipendTerms(
 }
 
 /**
- * The line item a stipend slip is seeded with — the payment itself, which is
- * what the slip is almost always for. Reimbursed expenses are added alongside
- * it as further items.
+ * What a slip's first line item is called — the payment itself, which is what
+ * the slip is almost always for. Reimbursed expenses (and further earnings, on
+ * a pay slip) are added alongside it as more items.
  *
- * `periodText` is the formatted date range; the caller owns date formatting.
- * The period and the deductions assertion also appear in DETAILS and TERMS —
- * that repetition is in the issued design, not an oversight.
+ * Keyed on the slip type, not the recipient's engagement type: the two are the
+ * same fact now that each slip only offers its own kind of recipient, and the
+ * document is the one that decides what its first line is called.
+ *
+ * A description and nothing else. This used to seed a detail line restating the
+ * period and the deductions note; neither slip prints one any more, because the
+ * DETAILS block and TERMS already carry both facts where a reader looks for
+ * them.
  */
-export function stipendLineItemSeed(
-  engagement: EngagementType,
-  periodText: string,
-  deductionsNote: string,
-): { description: string; detail: string } {
-  const isIntern = engagement === 'intern';
-  const parts = [
-    isIntern ? 'Monthly stipend for internship engagement' : 'Monthly payment for engagement',
-    periodText ? `Period ${periodText}` : '',
-    deductionsNote.trim().replace(/\.$/, ''),
-  ].filter(Boolean);
-
-  return {
-    description: isIntern ? 'Internship Stipend' : 'Monthly Stipend',
-    detail: parts.join(' · '),
-  };
+export function slipLineItemSeed(type: 'STP' | 'PAY'): string {
+  // A pay slip's first earning is Basic, which is what the rest of a wage
+  // slip's arithmetic (and HRA, if it is ever added) is reckoned against.
+  // Seeding it "Monthly Stipend" was left over from the stipend slip and is
+  // simply the wrong word on a wage record.
+  return type === 'PAY' ? 'Basic salary' : 'Internship Stipend';
 }

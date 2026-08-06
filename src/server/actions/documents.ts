@@ -8,7 +8,7 @@ import {
   financialYearStart,
   todayISO,
 } from '@/lib/domain/dates';
-import { DOC_TYPES, type DocFields } from '@/lib/domain/registry';
+import { DOC_TYPES, isHrDocType, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
 import { materialiseContent } from '@/lib/domain/docContent';
 import {
@@ -23,7 +23,7 @@ import {
   type InvoiceOption,
   type LetterDocument,
   type ReceiptDocument,
-  type StipendDocument,
+  type SlipDocument,
 } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import { claimSerial } from '@/db/counter';
@@ -38,11 +38,6 @@ import {
 } from '@/db/store';
 import { logger } from '@/lib/logger';
 import { authorized } from './authGate';
-
-/** True for HR documents (stipend slip + letters) — employee-based, not client. */
-function isHrKind(kind: string): boolean {
-  return kind === 'hr-slip' || kind === 'hr-letter';
-}
 
 function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
   return {
@@ -63,6 +58,12 @@ function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
      * so the inclusion is intentional, not incidental.
      */
     bank: employee.bank,
+    /**
+     * Frozen for the same reason: a pay slip is a statutory wage record, and
+     * the PAN/UAN it was issued under must not change when the employee record
+     * is corrected later.
+     */
+    payroll: employee.payroll,
   };
 }
 
@@ -106,26 +107,35 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       content: fields.content,
     };
   }
-  if (base.type === 'STP') {
-    // Stipend slip — financial-shaped (line items) but employee-based, and
-    // never taxed: `gstRatePercent` is pinned to 0 by the schema. `base` carries
-    // employeeId/employeeSnapshot (built by the caller) and omits
-    // clientId/clientSnapshot, which are optional on BaseDocument now.
-    return {
-      ...base,
-      issueDate: fields.issueDate,
-      lineItems: fields.lineItems,
-      gstRatePercent: 0,
-      currency: fields.currency,
-      stipendPeriod: fields.stipendPeriod,
-      stipendPeriodStart: fields.stipendPeriodStart,
-      stipendPeriodEnd: fields.stipendPeriodEnd,
-      stipendMonth: fields.stipendMonth ?? '',
-      paymentMethod: fields.paymentMethod ?? '',
-      paymentReference: fields.paymentReference,
-      deductionsNote: fields.deductionsNote ?? '',
-      content: fields.content,
-    };
+  // The slips — financial-shaped (line items) but employee-based, and never
+  // taxed: `gstRatePercent` is pinned to 0 by the schema. `base` carries
+  // employeeId/employeeSnapshot (built by the caller) and omits
+  // clientId/clientSnapshot, which are optional on BaseDocument now.
+  //
+  // The deductions and day counts are PAY-only in practice but written
+  // unconditionally: the schema is what keeps them off a stipend slip, and
+  // undefined round-trips as absent either way.
+  //
+  const slipFields = {
+    issueDate: fields.issueDate,
+    lineItems: fields.lineItems,
+    gstRatePercent: 0 as const,
+    currency: fields.currency,
+    stipendPeriod: fields.stipendPeriod,
+    stipendPeriodStart: fields.stipendPeriodStart,
+    stipendPeriodEnd: fields.stipendPeriodEnd,
+    stipendMonth: fields.stipendMonth ?? '',
+    paymentMethod: fields.paymentMethod ?? '',
+    paymentReference: fields.paymentReference,
+    deductionsNote: fields.deductionsNote ?? '',
+    deductions: fields.deductions,
+    daysInPeriod: fields.daysInPeriod,
+    daysPaid: fields.daysPaid,
+    lopDays: fields.lopDays,
+    content: fields.content,
+  };
+  if (base.type === 'STP' || base.type === 'PAY') {
+    return { ...base, ...slipFields } satisfies SlipDocument;
   }
   // INV/REC share every money field.
   const sharedMoney = {
@@ -148,9 +158,14 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       payment: fields.payment ?? { date: '', method: 'Bank Transfer' },
     };
   }
-  // Letters (OFR/EXP/EXIT) — no line items or GST; zero-values satisfy BaseDocument.
+  // Letters (OFR/EXP/EXIT) — no line items or GST; zero-values satisfy
+  // BaseDocument. `base` is asserted rather than narrowed because there are now
+  // *two* members with a union-valued discriminant (the slips and the letters),
+  // and only one of them can be the un-narrowed remainder. Every other member
+  // has returned above, so this is the letters by exhaustion.
+  const letterBase = base as DocBaseOf<LetterDocument>;
   return {
-    ...base,
+    ...letterBase,
     issueDate: fields.issueDate,
     lineItems: [],
     gstRatePercent: 0,
@@ -210,7 +225,7 @@ export async function createDraft(
     createdBy: actor,
   };
   let base: DocBase;
-  if (isHrKind(spec.kind)) {
+  if (isHrDocType(spec.code)) {
     const employee = await getEmployee(clientId);
     if (!employee) return { success: false, error: 'Employee not found.' };
     base = {
@@ -265,7 +280,7 @@ export async function updateDraft(
   // As in createDraft, the subject-field pairing is correlated to the type only
   // at runtime (via spec.kind), so the rebuilt base is asserted to DocBase.
   let base: DocBase;
-  if (isHrKind(spec.kind)) {
+  if (isHrDocType(spec.code)) {
     const employee = await getEmployee(clientId);
     if (!employee) return { success: false, error: 'Employee not found.' };
     base = {
@@ -319,13 +334,29 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
 
   // Refresh the frozen subject snapshot from the live record: HR docs snapshot
   // the employee; financial/contract docs snapshot the client.
-  const hr = isHrKind(spec.kind);
+  const hr = isHrDocType(spec.code);
   let clientSnapshot: ClientSnapshot | undefined;
   let employeeSnapshot: EmployeeSnapshot | undefined;
   if (hr) {
-    const employeeId = (existing as StipendDocument | LetterDocument).employeeId;
+    const employeeId = (existing as SlipDocument | LetterDocument).employeeId;
     const employee = await getEmployee(employeeId);
     if (!employee) return { success: false, error: 'Employee not found.' };
+
+    /**
+     * A pay slip asserts wages paid under a contract of employment, and it is a
+     * wage-register entry. Issued to an intern it would contradict every other
+     * document in their file — the stipend slip, the offer letter and the
+     * internship completion letter all state there is no employment. An intern
+     * gets a stipend slip. This lives here rather than in the Zod schema
+     * because engagement type comes from the employee record, not the payload.
+     */
+    if (existing.type === 'PAY' && employee.engagementType === 'intern') {
+      return {
+        success: false,
+        error: `${employee.name} is engaged as an intern — issue a stipend slip, not a pay slip.`,
+      };
+    }
+
     employeeSnapshot = employeeSnapshotOf(employee);
   } else {
     const clientId = (existing as InvoiceDocument | ReceiptDocument | ContractDocument).clientId;
@@ -371,7 +402,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       type: existing.type,
       content: existing.content,
       studioSnapshot,
-      deductionsNote: (existing as StipendDocument).deductionsNote,
+      deductionsNote: (existing as SlipDocument).deductionsNote,
       employeeSnapshot,
     },
     spec,

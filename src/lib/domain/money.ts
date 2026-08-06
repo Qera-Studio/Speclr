@@ -22,6 +22,27 @@ export function computeTotals(lineItems: LineItem[], gstRatePercent: number): Do
 }
 
 /**
+ * A slip's gross, total deductions and net.
+ *
+ * A pay slip is `gross − deductions = net`, which is the shape a statutory wage
+ * slip has to print (Payment of Wages Rules Form IV). A stipend slip passes no
+ * deductions and its net equals its gross, so the same helper serves both.
+ *
+ * Net can legitimately reach zero — a full loss-of-pay month with a recovery —
+ * but never goes below it: no lawful set of deductions leaves an employee owing
+ * wages back, so a negative net is a data-entry error, and clamping would hide
+ * it. It is surfaced instead, and the editor is what stops it being saved.
+ */
+export function slipTotals(
+  lineItems: LineItem[],
+  deductions: LineItem[] = [],
+): { grossPaise: number; deductionsPaise: number; netPaise: number } {
+  const grossPaise = lineItems.reduce((sum, item) => sum + lineAmountPaise(item), 0);
+  const deductionsPaise = deductions.reduce((sum, item) => sum + lineAmountPaise(item), 0);
+  return { grossPaise, deductionsPaise, netPaise: grossPaise - deductionsPaise };
+}
+
+/**
  * Splits a GST amount into CGST + SGST halves for intra-state supplies.
  * CGST takes the floor so the two always sum exactly to the original.
  */

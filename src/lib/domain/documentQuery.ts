@@ -1,4 +1,4 @@
-import { computeTotals, rupeesToPaise } from './money';
+import { computeTotals, rupeesToPaise, slipTotals } from './money';
 import { partyName } from './party';
 import { DOC_TYPES } from './registry';
 import type { AdminDocument } from './types';
@@ -92,6 +92,9 @@ export function hasTotal(doc: AdminDocument): boolean {
 
 export function totalPaiseOf(doc: AdminDocument): number | null {
   if (!hasTotal(doc)) return null;
+  // A pay slip's total is the net paid, after deductions — matching what the
+  // slip itself prints and what `toRow` stores in `total_paise`.
+  if (doc.type === 'PAY') return slipTotals(doc.lineItems, doc.deductions).netPaise;
   return computeTotals(doc.lineItems, doc.gstRatePercent).totalPaise;
 }
 

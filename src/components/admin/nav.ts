@@ -11,6 +11,7 @@ import {
   Receipt,
   FileText,
   Wallet,
+  Banknote,
   FileBadge,
   FileOutput,
   Settings,
@@ -62,6 +63,7 @@ export const DOCUMENT_SECTIONS: NavSection[] = [
     children: [
       { href: '/docs/offer-letter', label: 'Offer letter', icon: FileText, shortcut: 'O' },
       { href: '/docs/stipend', label: 'Stipend', icon: Wallet, shortcut: 'S' },
+      { href: '/docs/pay-slip', label: 'Pay slip', icon: Banknote, shortcut: 'P' },
       { href: '/docs/experience-letter', label: 'Experience letter', icon: FileBadge, shortcut: 'E' },
       { href: '/docs/exit-letter', label: 'Exit letter', icon: FileOutput, shortcut: 'X' },
     ],

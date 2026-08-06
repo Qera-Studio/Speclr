@@ -29,6 +29,27 @@
       "when": 1785869553725,
       "tag": "0003_goofy_ben_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786015121392,
+      "tag": "0004_sparkling_wolfsbane",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786030451940,
+      "tag": "0005_superb_orphan",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786032614503,
+      "tag": "0006_true_lifeguard",
+      "breakpoints": true
     }
   ]
 }

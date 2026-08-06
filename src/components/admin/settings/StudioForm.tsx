@@ -25,6 +25,7 @@ import IfscField from '@/components/form/IfscField';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import { studioInputSchema, type StudioInfo } from '@/lib/domain/studio';
 import { updateStudioSettings } from '@/server/actions/studio';
+import { numericField } from '@/components/form/inputFilters';
 
 type FormValues = z.infer<typeof studioInputSchema>;
 
@@ -128,18 +129,19 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
 
         <FieldSet>
           <FieldLegend variant="label">Tax &amp; registration</FieldLegend>
-          <FieldRow>
-            <Field>
-              <FieldLabel htmlFor="studio-gstin">GSTIN</FieldLabel>
-              <Input id="studio-gstin" size="form" {...register('gstin')} />
-              <FieldError errors={[errors.gstin]} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="studio-cin">CIN</FieldLabel>
-              <Input id="studio-cin" size="form" {...register('cin')} />
-              <FieldError errors={[errors.cin]} />
-            </Field>
-          </FieldRow>
+          {/* A row each: GSTIN is 15 characters and CIN is 21, and neither is
+              readable in half a 384px rail. Anything longer than about sixteen
+              gets its own row. */}
+          <Field>
+            <FieldLabel htmlFor="studio-gstin">GSTIN</FieldLabel>
+            <Input id="studio-gstin" size="form" {...register('gstin')} />
+            <FieldError errors={[errors.gstin]} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="studio-cin">CIN</FieldLabel>
+            <Input id="studio-cin" size="form" {...register('cin')} />
+            <FieldError errors={[errors.cin]} />
+          </Field>
           <Field>
             <FieldLabel htmlFor="studio-state-code">Registered state</FieldLabel>
             <Controller
@@ -185,7 +187,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             />
             <Field>
               <FieldLabel htmlFor="studio-bank-account">Account number</FieldLabel>
-              <Input id="studio-bank-account" size="form" {...register('bank.accountNo')} />
+              <Input id="studio-bank-account" size="form" {...numericField(register('bank.accountNo'))} />
               <FieldError errors={[errors.bank?.accountNo]} />
             </Field>
           </FieldRow>
@@ -203,7 +205,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               <FieldError errors={[errors.bank?.bankName]} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="studio-bank-branch">Branch (optional)</FieldLabel>
+              <FieldLabel htmlFor="studio-bank-branch">Branch</FieldLabel>
               <Input
                 id="studio-bank-branch"
                 size="form"

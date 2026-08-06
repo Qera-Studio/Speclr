@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { getDocument, getStudioSettings } from '@/db/store';
-import { DOC_TYPES } from '@/lib/domain/registry';
+import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import ContractSheet from '@/components/docs/sheets/ContractSheet';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
-import StipendSheet from '@/components/docs/sheets/StipendSheet';
+import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import PrintToolbar from '@/components/docs/PrintToolbar';
 import '@/styles/print.css';
 
@@ -61,10 +61,10 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
 
   // Sequential returns so each branch narrows `doc`; HR/contract before the
   // financial fallthrough (which needs `doc` narrowed to Invoice|Receipt).
-  if (doc.type === 'STP') {
+  if (isSlip(doc)) {
     return shell(
-      <StipendSheet doc={doc} />,
-      doc.number ?? `Stipend-${slug(doc.employeeSnapshot.name)}-${doc.issueDate}`,
+      <SlipSheet doc={doc} />,
+      doc.number ?? `${slug(spec.label)}-${slug(doc.employeeSnapshot.name)}-${doc.issueDate}`,
     );
   }
   if (isLetter(doc)) {

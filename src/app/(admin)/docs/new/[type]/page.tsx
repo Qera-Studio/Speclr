@@ -6,7 +6,7 @@ import { DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
-import StipendEditor from '@/components/docs/editors/StipendEditor';
+import SlipEditor from '@/components/docs/editors/SlipEditor';
 
 export const metadata: Metadata = {
   title: 'New document — speclr',
@@ -39,9 +39,11 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
   const studio = await getStudioSettings();
 
   // ── HR documents (employee-based) ──────────────────────────────
-  if (spec.code === 'STP') {
+  if (spec.code === 'STP' || spec.code === 'PAY') {
     const employees = await listEmployees();
-    return <StipendEditor employees={employees} studio={studio} title={title} />;
+    return (
+      <SlipEditor type={spec.code} employees={employees} studio={studio} title={title} />
+    );
   }
   if (spec.code === 'OFR' || spec.code === 'EXP' || spec.code === 'EXIT') {
     const employees = await listEmployees();

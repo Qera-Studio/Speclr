@@ -66,4 +66,35 @@ describe('PhoneField', () => {
 
     expect(screen.getByTestId('stored')).toHaveTextContent('+12015550123');
   });
+
+  /**
+   * An 11th digit on an Indian number is not a number being typed, it is a
+   * mistake. Reporting it only on submit lets someone tab away from a field
+   * that already looks filled in — which is how an eleven-digit phone number
+   * got as far as a saved record.
+   */
+  describe('the live length cap', () => {
+    it('refuses a digit past the country maximum', async () => {
+      const user = userEvent.setup();
+      render(<Harness />);
+
+      await user.type(screen.getByLabelText(/^phone$/i), '98765432100');
+
+      expect(screen.getByLabelText(/^phone$/i)).toHaveValue('9876543210');
+      expect(screen.getByTestId('stored')).toHaveTextContent('+919876543210');
+    });
+
+    /** The cap is per country, so it has to move when the country does. */
+    it('trims what is already typed when a shorter country is chosen', async () => {
+      const user = userEvent.setup();
+      // A real German mobile: 11 national digits, one more than India allows.
+      render(<Harness initial="+4915123456789" />);
+      expect(screen.getByLabelText(/^phone$/i)).toHaveValue('15123456789');
+
+      await user.click(screen.getByLabelText(/phone country/i));
+      await user.click(await screen.findByRole('option', { name: /India/ }));
+
+      expect(screen.getByLabelText(/^phone$/i)).toHaveValue('1512345678');
+    });
+  });
 });

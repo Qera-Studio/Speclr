@@ -37,22 +37,35 @@ export default function FieldInfo({
   return (
     <div className="flex items-center gap-1.5">
       <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
-      {info ? (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button
-                type="button"
-                aria-label={infoLabel ?? `About ${label}`}
-                className="text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground"
-              />
-            }
-          >
-            <Info className="size-3.5" aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipContent>{info}</TooltipContent>
-        </Tooltip>
-      ) : null}
+      <InfoTip info={info} label={infoLabel ?? `About ${label}`} />
     </div>
+  );
+}
+
+/**
+ * The icon on its own, for headings a `FieldLabel` cannot serve — a `FieldSet`
+ * legend, a section title.
+ *
+ * Same contract as above: a real `<button>` so the explanation is reachable by
+ * keyboard, and `info` omitted renders nothing at all rather than an icon that
+ * says nothing.
+ */
+export function InfoTip({ info, label }: { info?: string; label: string }) {
+  if (!info) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            aria-label={label}
+            className="text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground"
+          />
+        }
+      >
+        <Info className="size-3.5" aria-hidden="true" />
+      </TooltipTrigger>
+      <TooltipContent>{info}</TooltipContent>
+    </Tooltip>
   );
 }

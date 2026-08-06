@@ -24,7 +24,7 @@ const validInvoiceFields = {
 describe('DOC_TYPES registry', () => {
   it('contains the Phase 1 + Phase 2 + Phase 3 types', () => {
     expect(Object.keys(DOC_TYPES).sort()).toEqual([
-      'CON', 'EXIT', 'EXP', 'INV', 'OFR', 'REC', 'STP',
+      'CON', 'EXIT', 'EXP', 'INV', 'OFR', 'PAY', 'REC', 'STP',
     ]);
   });
 
@@ -57,11 +57,11 @@ describe('DOC_TYPES registry', () => {
     expect(DOC_TYPES.REC.fixedTerms).toHaveLength(3);
   });
 
-  it('only the receipt carries a PAID badge and payment block', () => {
-    expect(DOC_TYPES.REC.badge).toMatchObject({ text: 'PAID', tone: 'paid' });
+  it('only the receipt carries a payment block, only the invoice a due date', () => {
     expect(DOC_TYPES.REC.hasPayment).toBe(true);
-    expect(DOC_TYPES.INV.badge).toBeUndefined();
+    expect(DOC_TYPES.INV.hasPayment).toBe(false);
     expect(DOC_TYPES.INV.hasDueDate).toBe(true);
+    expect(DOC_TYPES.REC.hasDueDate).toBe(false);
   });
 });
 

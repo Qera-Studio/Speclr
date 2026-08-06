@@ -9,7 +9,7 @@ import { shortcutForSlug } from "./nav";
 import DocumentsBrowser from "./DocumentsBrowser";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
 import ServiceManager from "./services/ServiceManager";
-import type { DocTypeSpec } from "@/lib/domain/registry";
+import { isHrDocType, type DocTypeSpec } from "@/lib/domain/registry";
 import type { ServiceTemplate } from "@/lib/domain/serviceTemplate";
 import type { AdminDocument } from "@/lib/domain/types";
 
@@ -77,11 +77,7 @@ export default function DocumentTypeList({
         emptyDescription={`Nothing here yet — create the first ${label}.`}
         // Every row here is already this type, so that filter would do nothing.
         hideTypeFilter
-        partyLabel={
-          spec.kind === "hr-letter" || spec.code === "STP"
-            ? "Employee"
-            : "Client"
-        }
+        partyLabel={isHrDocType(spec.code) ? "Employee" : "Client"}
       />
 
       {/*

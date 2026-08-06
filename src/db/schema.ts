@@ -13,6 +13,7 @@
  * only for the queryable projections. Row lifecycle timestamps use `timestamptz`.
  */
 
+import { sql } from 'drizzle-orm';
 import {
   date,
   index,
@@ -25,6 +26,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import type { AddressParts } from '@/lib/domain/address';
+import type { CurrencyCode } from '@/lib/domain/currency';
+import type { DocContent } from '@/lib/domain/docContent';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { StudioInfo } from '@/lib/domain/studio';
 import type {
@@ -35,6 +38,7 @@ import type {
   ContractMilestone,
   ContractSchedule,
   LineItem,
+  PayrollIds,
 } from '@/lib/domain/types';
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
@@ -65,29 +69,51 @@ export const clients = pgTable('clients', {
 
 // ─── Employees ────────────────────────────────────────────────────────────────
 
-export const employees = pgTable('employees', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  /** Flat printable address — what HR documents render. */
-  address: text('address').notNull(),
-  /** Structured parts for editing; null on rows that predate them. */
-  addressParts: jsonb('address_parts').$type<AddressParts>(),
-  email: text('email').notNull(),
-  /** E.164 for new writes; legacy rows may hold arbitrary text. */
-  phone: text('phone').notNull(),
-  role: text('role').notNull(),
-  engagementType: text('engagement_type').notNull(), // 'intern' | 'employee'
-  pronoun: text('pronoun').notNull(), // 'he' | 'she' | 'they'
-  joiningDate: date('joining_date').notNull(),
-  endDate: date('end_date'),
-  payAmountPaise: integer('pay_amount_paise').notNull(),
-  /** Record-keeping only — documents still print INR. Null means INR. */
-  payCurrency: text('pay_currency'),
-  /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
-  bank: jsonb('bank').notNull().$type<EmployeeRecord['bank']>(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const employees = pgTable(
+  'employees',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    /** Flat printable address — what HR documents render. */
+    address: text('address').notNull(),
+    /** Structured parts for editing; null on rows that predate them. */
+    addressParts: jsonb('address_parts').$type<AddressParts>(),
+    email: text('email').notNull(),
+    /** E.164 for new writes; legacy rows may hold arbitrary text. */
+    phone: text('phone').notNull(),
+    role: text('role').notNull(),
+    engagementType: text('engagement_type').notNull(), // 'intern' | 'employee'
+    pronoun: text('pronoun').notNull(), // 'he' | 'she' | 'they'
+    joiningDate: date('joining_date').notNull(),
+    endDate: date('end_date'),
+    payAmountPaise: integer('pay_amount_paise').notNull(),
+    /** Record-keeping only — documents still print INR. Null means INR. */
+    payCurrency: text('pay_currency'),
+    /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
+    bank: jsonb('bank').notNull().$type<EmployeeRecord['bank']>(),
+    /**
+     * Statutory identifiers printed on a pay slip — { employeeCode?, pan?, uan?,
+     * pfNumber?, esicNumber? }. Nullable: nothing queries these, interns have
+     * none, and rows written before pay slips existed have no group at all.
+     */
+    payroll: jsonb('payroll').$type<PayrollIds>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /**
+     * An employee code identifies one person and is frozen onto every pay slip
+     * issued to them, so two people holding the same one makes an issued wage
+     * record ambiguous about who it belongs to. Codes are claimed from a
+     * counter (`claimEmployeeCode`), which is what makes a collision impossible
+     * — this index is what makes it *unrepresentable*, including against a hand
+     * -written UPDATE. Partial, because a record without a code yet is normal.
+     */
+    uniqueIndex('employees_employee_code_uniq')
+      .on(sql`(${t.payroll} ->> 'employeeCode')`)
+      .where(sql`${t.payroll} ->> 'employeeCode' is not null`),
+  ],
+);
 
 // ─── Service templates ────────────────────────────────────────────────────────
 
@@ -145,6 +171,14 @@ export interface DocumentData {
    * it. Absent on drafts and on documents issued before it existed.
    */
   studioSnapshot?: StudioInfo;
+  /**
+   * The document's edited wording — sparse on a draft, and the whole resolved
+   * set once finalize materialises it. Stored for the same reason as
+   * `studioSnapshot`: without it, revising a default in code would silently
+   * rewrite documents already issued. Absent on documents written before the
+   * content layer existed, which correctly fall back to today's defaults.
+   */
+  content?: DocContent;
   gstLabel?: string;
   notes?: string;
   terms?: string;
@@ -152,11 +186,19 @@ export interface DocumentData {
   payment?: unknown; // REC — ReceiptDocument['payment']
   schedules?: ContractSchedule[]; // CON
   // STP
+  currency?: CurrencyCode;
   stipendPeriod?: string;
+  stipendPeriodStart?: string;
+  stipendPeriodEnd?: string;
   stipendMonth?: string;
   paymentMethod?: string;
   paymentReference?: string;
   deductionsNote?: string;
+  // PAY
+  deductions?: LineItem[];
+  daysInPeriod?: number;
+  daysPaid?: number;
+  lopDays?: number;
   // Letters
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];

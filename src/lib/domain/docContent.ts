@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { flattenAddress } from './address';
-import { exitMasthead, stipendTerms } from './hrContent';
+import { exitMasthead, payslipTerms, stipendTerms } from './hrContent';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS, type MsaSection } from './msaBoilerplate';
 import { studioOf, type StudioInfo } from './studio';
 import type { DocTypeCode, EngagementType } from './types';
@@ -47,7 +47,14 @@ const clauseSchema = z.object({
  */
 export const docContentSchema = z.object({
   masthead: z.string().trim().max(120).optional(),
+  /**
+   * @deprecated The green "PAID" banner these fed was removed from the receipt
+   * and both slips. Kept in the schema, and only here, so documents written
+   * while it existed still parse rather than failing validation on a key
+   * nothing reads any more.
+   */
   badgeText: z.string().trim().max(60).optional(),
+  /** @deprecated See `badgeText`. */
   badgeNote: z.string().trim().max(1000).optional(),
   terms: z.array(termSchema).max(20).optional(),
   qrCaption: z.string().trim().max(60).optional(),
@@ -76,7 +83,6 @@ export type DocContent = z.infer<typeof docContentSchema>;
 export interface ContentSpec {
   masthead: string;
   fixedTerms: TermItem[];
-  badge?: { text: string; note: string };
 }
 
 /** The parts of a document this resolver reads. */
@@ -90,8 +96,6 @@ export interface ContentSource {
 
 export interface ResolvedContent {
   masthead: string;
-  badgeText: string;
-  badgeNote: string;
   terms: TermItem[];
   qrCaption: string;
   thanksLine: string;
@@ -148,16 +152,21 @@ function defaultMasthead(doc: ContentSource, spec: ContentSpec): string {
 }
 
 /**
- * The stipend's terms as one flat list. `stipendTerms` returns two columns
- * because that is how the slip prints them; the sheet re-splits the list at the
+ * A slip's terms as one flat list. Both term builders return two columns
+ * because that is how a slip prints them; the sheet re-splits the list at the
  * same point, so an unedited slip is unchanged and an edited one still balances.
+ *
+ * The pay slip gets its own set rather than a third engagement branch — see the
+ * note on `payslipTerms`.
  */
 function defaultTerms(doc: ContentSource, spec: ContentSpec): TermItem[] {
+  const note = doc.deductionsNote ?? '';
+  if (doc.type === 'PAY') {
+    const { left, right } = payslipTerms(note);
+    return [...left, ...right];
+  }
   if (doc.type !== 'STP') return spec.fixedTerms;
-  const { left, right } = stipendTerms(
-    doc.employeeSnapshot?.engagementType ?? 'intern',
-    doc.deductionsNote ?? '',
-  );
+  const { left, right } = stipendTerms(note);
   return [...left, ...right];
 }
 
@@ -179,8 +188,6 @@ export function contentOf(doc: ContentSource, spec: ContentSpec): ResolvedConten
 
   return {
     masthead: c.masthead ?? defaultMasthead(doc, spec),
-    badgeText: c.badgeText ?? spec.badge?.text ?? '',
-    badgeNote: c.badgeNote ?? spec.badge?.note ?? '',
     terms: c.terms ?? defaultTerms(doc, spec),
     qrCaption: c.qrCaption ?? 'Scan to pay',
     thanksLine: c.thanksLine ?? studio.thanksLine,
@@ -211,8 +218,6 @@ export function materialiseContent(doc: ContentSource, spec: ContentSpec): DocCo
   const r = contentOf(doc, spec);
   return {
     masthead: r.masthead,
-    badgeText: r.badgeText,
-    badgeNote: r.badgeNote,
     terms: r.terms,
     qrCaption: r.qrCaption,
     thanksLine: r.thanksLine,

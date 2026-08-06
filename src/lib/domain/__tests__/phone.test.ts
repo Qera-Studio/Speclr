@@ -4,6 +4,7 @@ import {
   countryByIso2,
   formatPhoneForDisplay,
   isValidPhone,
+  maxNationalDigits,
   parsePhone,
   phoneHintFor,
   toE164,
@@ -107,6 +108,30 @@ describe('formatPhoneForDisplay', () => {
   it('passes anything it cannot parse straight through', () => {
     expect(formatPhoneForDisplay('9')).toBe('9');
     expect(formatPhoneForDisplay('')).toBe('');
+  });
+});
+
+/**
+ * The cap that stops an 11th digit being typed into an Indian number. It is an
+ * upper bound, not a validity test — `isValidPhone` still decides that — so
+ * what matters is that it never cuts a number that could have been valid.
+ */
+describe('maxNationalDigits', () => {
+  it('is exactly the Indian mobile length', () => {
+    expect(maxNationalDigits('IN')).toBe(10);
+  });
+
+  it("never cuts short a country's own valid number", () => {
+    // E.164 allows 15 digits including the country code, so the national part
+    // can be at most 15 minus that code — one digit fewer for +91 than for +1.
+    expect(maxNationalDigits('US')).toBe(14);
+    expect(maxNationalDigits('GB')).toBe(13);
+  });
+
+  it('leaves room for every real number in the list', () => {
+    for (const country of COUNTRIES) {
+      expect(maxNationalDigits(country.iso2)).toBeGreaterThanOrEqual(4);
+    }
   });
 });
 

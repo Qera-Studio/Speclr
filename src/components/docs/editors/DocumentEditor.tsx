@@ -51,6 +51,7 @@ import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
 import type { StudioInfo } from '@/lib/domain/studio';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
 import { workspaceTitle } from '../workspaceTitle';
+import { numericField } from '@/components/form/inputFilters';
 
 /** DocumentEditor only handles financial docs; contracts use ContractEditor. */
 type FinancialDocument = InvoiceDocument | ReceiptDocument;
@@ -344,7 +345,7 @@ export default function DocumentEditor({
             </Field>
             {spec.hasDueDate ? (
               <Field>
-                <FieldLabel htmlFor="doc-due-date">Due date (optional)</FieldLabel>
+                <FieldLabel htmlFor="doc-due-date">Due date</FieldLabel>
                 <Controller
                   control={control}
                   name="dueDate"
@@ -384,8 +385,7 @@ export default function DocumentEditor({
                 <Input
                   id="doc-gst-rate"
                   size="form"
-                  inputMode="numeric"
-                  {...register('gstRatePercent')}
+                                    {...numericField(register('gstRatePercent'))}
                 />
               </Field>
               <Field>
@@ -493,7 +493,7 @@ export default function DocumentEditor({
               </FieldRow>
 
               <Field>
-                <FieldLabel htmlFor="doc-payment-ref">Reference (optional)</FieldLabel>
+                <FieldLabel htmlFor="doc-payment-ref">Reference</FieldLabel>
                 <Input id="doc-payment-ref" size="form" {...register('paymentReference')} />
               </Field>
             </EditorSection>
@@ -503,30 +503,13 @@ export default function DocumentEditor({
             <TermsFields terms={shown(content, resolved, 'terms')} onChange={(terms) => patchContent({ terms })} />
           </EditorSection>
 
-          <EditorSection title="Heading" description={spec.badge ? 'Masthead and the paid banner' : 'Masthead'}>
+          <EditorSection title="Heading" description="The printed title">
             <ContentText
               id="doc-masthead"
               label="Masthead"
               value={shown(content, resolved, 'masthead')}
               onChange={(masthead) => patchContent({ masthead })}
             />
-            {spec.badge ? (
-              <>
-                <ContentText
-                  id="doc-badge-text"
-                  label="Banner"
-                  value={shown(content, resolved, 'badgeText')}
-                  onChange={(badgeText) => patchContent({ badgeText })}
-                />
-                <ContentText
-                  id="doc-badge-note"
-                  label="Banner note"
-                  rows={3}
-                  value={shown(content, resolved, 'badgeNote')}
-                  onChange={(badgeNote) => patchContent({ badgeNote })}
-                />
-              </>
-            ) : null}
           </EditorSection>
 
           {/* No notes field: notes were retired from the sheet, and an input for

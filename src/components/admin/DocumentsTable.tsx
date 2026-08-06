@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { SortColumn, SortState } from '@/lib/domain/documentQuery';
+import { hasTotal, type SortColumn, type SortState } from '@/lib/domain/documentQuery';
 import {
   Empty,
   EmptyDescription,
@@ -153,7 +153,7 @@ export default function DocumentsTable({
       <TableBody>
         {documents.map((doc) => {
           // Letters carry no line items — a ₹0 total would mislead, so show —.
-          const hasMoney = DOC_TYPES[doc.type].kind !== 'hr-letter' && doc.type !== 'CON';
+          const hasMoney = hasTotal(doc);
           const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
           return (
             <TableRow key={doc.id} className="group/row">

@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AddressFields from '@/components/form/AddressFields';
+import FieldInfo, { InfoTip } from '@/components/form/FieldInfo';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';
@@ -29,7 +30,13 @@ import { rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
 import { composeAddress, emptyAddressParts, addressPartsSchema } from '@/lib/domain/address';
 import { isIfsc } from '@/lib/domain/bank';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
-import type { EmployeeRecord } from '@/lib/domain/employee';
+import {
+  PAN_RE,
+  panHolderTypeError,
+  panSurnameMismatch,
+  type EmployeeRecord,
+} from '@/lib/domain/employee';
+import { numericField, uppercaseField } from '@/components/form/inputFilters';
 
 const formSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.'),
@@ -52,6 +59,21 @@ const formSchema = z.object({
   branch: z.string(),
   upiId: z.string(),
   upiQrDataUrl: z.string(),
+  employeeCode: z.string(),
+  // Optional like the IFSC — filled in later — but wrong is not allowed, since
+  // this prints on a statutory wage slip.
+  pan: z
+    .string()
+    .refine((v) => v === '' || PAN_RE.test(v.toUpperCase()), 'Enter a valid PAN, e.g. ABCDE1234F.')
+    // The 4th character says what kind of holder the PAN belongs to. A company
+    // or firm PAN on a person is the wrong document, not a typo.
+    .refine(
+      (v) => v === '' || !PAN_RE.test(v.toUpperCase()) || !panHolderTypeError(v),
+      'This PAN does not belong to an individual.',
+    ),
+  uan: z.string(),
+  pfNumber: z.string(),
+  esicNumber: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -88,6 +110,7 @@ export default function EmployeeForm({
     register,
     control,
     setValue,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -113,6 +136,11 @@ export default function EmployeeForm({
           branch: employee.bank.branch ?? '',
           upiId: employee.bank.upiId ?? '',
           upiQrDataUrl: employee.bank.upiQrDataUrl ?? '',
+          employeeCode: employee.payroll?.employeeCode ?? '',
+          pan: employee.payroll?.pan ?? '',
+          uan: employee.payroll?.uan ?? '',
+          pfNumber: employee.payroll?.pfNumber ?? '',
+          esicNumber: employee.payroll?.esicNumber ?? '',
         }
       : {
           name: '',
@@ -132,8 +160,27 @@ export default function EmployeeForm({
           branch: '',
           upiId: '',
           upiQrDataUrl: '',
+          employeeCode: '',
+          pan: '',
+          uan: '',
+          pfNumber: '',
+          esicNumber: '',
         },
   });
+
+  /**
+   * The PAN's 5th character is the surname's initial. Surfaced as a hint rather
+   * than a validation error: a name recorded surname-first, a married name or a
+   * transliteration all make it differ honestly, and refusing those would be
+   * wrong. Worth pointing at; never worth blocking.
+   */
+  const panValue = watch('pan');
+  const nameValue = watch('name');
+  const engagementType = watch('engagementType');
+  const panSurnameHint =
+    panValue && PAN_RE.test(panValue.toUpperCase()) && nameValue
+      ? panSurnameMismatch(panValue, nameValue)
+      : false;
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
@@ -162,6 +209,15 @@ export default function EmployeeForm({
         branch: values.branch || undefined,
         upiId: values.upiId || undefined,
         upiQrDataUrl: values.upiQrDataUrl || undefined,
+      },
+      payroll: {
+        employeeCode: values.employeeCode || undefined,
+        // Stored upper-case: PAN is case-insensitive to type but has one
+        // canonical printed form, and this prints on a wage slip.
+        pan: values.pan ? values.pan.toUpperCase() : undefined,
+        uan: values.uan || undefined,
+        pfNumber: values.pfNumber || undefined,
+        esicNumber: values.esicNumber || undefined,
       },
     };
 
@@ -262,7 +318,7 @@ export default function EmployeeForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="employee-end">End date (optional)</FieldLabel>
+            <FieldLabel htmlFor="employee-end">End date</FieldLabel>
             <Controller
               control={control}
               name="endDate"
@@ -308,7 +364,7 @@ export default function EmployeeForm({
 
           <Field>
             <FieldLabel htmlFor="employee-pay">Pay</FieldLabel>
-            <Input id="employee-pay" size="form" inputMode="decimal" {...register('payRupees')} />
+            <Input id="employee-pay" size="form" {...numericField(register('payRupees'), 'money')} />
             <FieldError errors={[errors.payRupees]} />
           </Field>
         </FieldRow>
@@ -339,7 +395,7 @@ export default function EmployeeForm({
 
             <Field>
               <FieldLabel htmlFor="employee-account">Account number</FieldLabel>
-              <Input id="employee-account" size="form" {...register('accountNo')} />
+              <Input id="employee-account" size="form" {...numericField(register('accountNo'))} />
               <FieldError errors={[errors.accountNo]} />
             </Field>
           </FieldRow>
@@ -358,7 +414,7 @@ export default function EmployeeForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="employee-branch">Branch (optional)</FieldLabel>
+            <FieldLabel htmlFor="employee-branch">Branch</FieldLabel>
             <Input
               id="employee-branch"
               size="form"
@@ -369,13 +425,13 @@ export default function EmployeeForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="employee-upi">UPI ID (optional)</FieldLabel>
+            <FieldLabel htmlFor="employee-upi">UPI ID</FieldLabel>
             <Input id="employee-upi" size="form" {...register('upiId')} />
             <FieldError errors={[errors.upiId]} />
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="employee-upi-qr">UPI QR code (optional)</FieldLabel>
+            <FieldLabel htmlFor="employee-upi-qr">UPI QR code</FieldLabel>
             <Controller
               control={control}
               name="upiQrDataUrl"
@@ -388,6 +444,104 @@ export default function EmployeeForm({
               )}
             />
             <FieldError errors={[errors.upiQrDataUrl]} />
+          </Field>
+        </FieldSet>
+
+        <FieldSeparator />
+
+        {/*
+          All optional, and shown for interns too: an intern has none of these,
+          but hiding the section behind the engagement type would lose whatever
+          was already typed the moment someone flipped that select.
+        */}
+        <FieldSet>
+          <div className="flex items-center gap-1.5">
+            <FieldLegend variant="label">Payroll identifiers</FieldLegend>
+            <InfoTip
+              label="About payroll identifiers"
+              info="Printed on a pay slip. Interns have none of these — leave them blank."
+            />
+          </div>
+
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="employee-code">Employee code</FieldLabel>
+              {/* Read-only: the code is claimed from an atomic counter on save,
+                  so two people can never be issued the same one. Editing it by
+                  hand is what produced the duplicate this replaced.
+
+                  The placeholder follows the engagement type, because "assigned
+                  on save" would be a promise the server does not keep for an
+                  intern — they are not on the payroll and get no code. */}
+              <Input
+                id="employee-code"
+                size="form"
+                readOnly
+                placeholder={
+                  engagementType === 'employee' ? 'Assigned on save' : 'Employees only'
+                }
+                className="text-muted-foreground"
+                {...register('employeeCode')}
+              />
+              <FieldError errors={[errors.employeeCode]} />
+            </Field>
+
+            <Field>
+              <FieldInfo
+                htmlFor="employee-pan"
+                label="PAN"
+                infoLabel="About the PAN check"
+                info={
+                  panSurnameHint
+                    ? `The 5th letter of a PAN is the surname's initial — this one reads “${panValue.toUpperCase()[4]}”. Worth a check; it is not always wrong.`
+                    : 'Ten characters, e.g. ABCPR1234F. The 4th says what kind of holder it belongs to and must be P, an individual; the 5th is the surname’s initial.'
+                }
+              />
+              <Input
+                id="employee-pan"
+                size="form"
+                placeholder="ABCDE1234F"
+                {...uppercaseField(register('pan'))}
+              />
+              <FieldError errors={[errors.pan]} />
+              {/*
+                A tooltip is never announced, and the surname hint is *news* —
+                it appears as a consequence of what was just typed. The visible
+                icon is where it is read; this is where it is heard.
+              */}
+              <span role="status" aria-label="PAN check" className="sr-only">
+                {panSurnameHint && !errors.pan
+                  ? "This PAN's 5th letter does not match the surname."
+                  : ''}
+              </span>
+            </Field>
+          </FieldRow>
+
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="employee-uan">UAN</FieldLabel>
+              <Input id="employee-uan" size="form" {...numericField(register('uan'))} />
+              <FieldError errors={[errors.uan]} />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="employee-esic">ESIC number</FieldLabel>
+              <Input
+                id="employee-esic"
+                size="form"
+                {...numericField(register('esicNumber'))}
+              />
+              <FieldError errors={[errors.esicNumber]} />
+            </Field>
+          </FieldRow>
+
+          {/* Its own row: a PF account number runs to ~22 characters, which is
+              unreadable in half the rail. Same rule anywhere a value is longer
+              than about sixteen. */}
+          <Field>
+            <FieldLabel htmlFor="employee-pf">PF number</FieldLabel>
+            <Input id="employee-pf" size="form" {...uppercaseField(register('pfNumber'))} />
+            <FieldError errors={[errors.pfNumber]} />
           </Field>
         </FieldSet>
       </FieldGroup>

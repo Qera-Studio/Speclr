@@ -10,17 +10,17 @@ import {
   listEmployees,
   listServices,
 } from '@/db/store';
-import { DOC_TYPES, DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
+import { DOC_TYPES, DOC_TYPE_BY_SLUG, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
-import StipendEditor from '@/components/docs/editors/StipendEditor';
+import SlipEditor from '@/components/docs/editors/SlipEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
 import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
-import StipendSheet from '@/components/docs/sheets/StipendSheet';
+import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import DocumentTypeList from '@/components/admin/DocumentTypeList';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import FinalizedActions from '@/components/docs/FinalizedActions';
@@ -83,9 +83,17 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
     // Drafts have no frozen studio snapshot yet, so the preview reads the live
     // settings — same values the document would print if finalized now.
     const studio = await getStudioSettings();
-    if (doc.type === 'STP') {
+    if (isSlip(doc)) {
       const employees = await listEmployees();
-      return <StipendEditor employees={employees} doc={doc} studio={studio} title={heading} />;
+      return (
+        <SlipEditor
+          type={doc.type}
+          employees={employees}
+          doc={doc}
+          studio={studio}
+          title={heading}
+        />
+      );
     }
     if (isLetter(doc)) {
       const employees = await listEmployees();
@@ -142,7 +150,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   );
 
   // Sequential returns so each branch narrows `doc`.
-  if (doc.type === 'STP') return shell(<StipendSheet doc={doc} />);
+  if (isSlip(doc)) return shell(<SlipSheet doc={doc} />);
   // Letters feed their block list too, for the same reason as the contract: the
   // monolithic sheet arrives as one over-tall block, gets a single page, and
   // everything past 1123px is clipped — a finalized offer letter previewed as

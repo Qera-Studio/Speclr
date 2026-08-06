@@ -119,6 +119,7 @@ export async function saveEmployee(emp: EmployeeRecord): Promise<void> {
     payAmountPaise: emp.payAmountPaise,
     payCurrency: emp.payCurrency ?? null,
     bank: emp.bank,
+    payroll: emp.payroll ?? null,
     createdAt: new Date(emp.createdAt),
     updatedAt: new Date(emp.updatedAt),
   };
@@ -144,6 +145,7 @@ function employeeFromRow(r: typeof employees.$inferSelect): EmployeeRecord {
     payAmountPaise: r.payAmountPaise,
     payCurrency: (r.payCurrency ?? undefined) as EmployeeRecord['payCurrency'],
     bank: r.bank,
+    payroll: r.payroll ?? undefined,
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
   };

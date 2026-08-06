@@ -9,7 +9,7 @@ import type { CurrencyCode } from './currency';
 import type { DocContent } from './docContent';
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
-export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'OFR' | 'EXP' | 'EXIT';
+export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'PAY' | 'OFR' | 'EXP' | 'EXIT';
 
 export interface ClientRecord {
   id: string;
@@ -242,6 +242,23 @@ export type EngagementType = 'intern' | 'employee';
 export type PronounKey = 'he' | 'she' | 'they';
 
 /**
+ * Statutory payroll identifiers, printed on a pay slip and snapshotted onto it.
+ *
+ * All optional: an employee record is usually created before PF/ESI
+ * registration exists, and an intern has none of these at all. Validated by
+ * `payrollIdsSchema` in employee.ts.
+ */
+export interface PayrollIds {
+  /** The employer's own staff number, not a statutory one. */
+  employeeCode?: string;
+  pan?: string;
+  /** Universal Account Number — the EPFO member id. */
+  uan?: string;
+  pfNumber?: string;
+  esicNumber?: string;
+}
+
+/**
  * Frozen-at-finalize copy of the employee, mirroring ClientSnapshot.
  *
  * Unlike ClientSnapshot this is written out by hand, so there is no `Pick` to
@@ -276,17 +293,33 @@ export interface EmployeeSnapshot {
      */
     upiQrDataUrl?: string;
   };
+  /**
+   * Statutory identifiers as at issue. Snapshotted for the same reason as the
+   * bank details: a pay slip is a statutory wage record, and the PAN/UAN it was
+   * issued under must not change when the employee record is later corrected.
+   * Optional — slips issued before this existed, and every intern, have none.
+   */
+  payroll?: PayrollIds;
 }
 
 /**
- * Stipend slip — financial-shaped (line items, totals) but for an employee.
+ * The two pay slips — financial-shaped (line items, totals) but for an employee.
  *
- * Carries no GST: a stipend is not consideration for a supply, so `gstRatePercent`
+ * `STP` is a **stipend slip**: a voluntary record of a discretionary payment to
+ * an intern, whose terms deny an employer–employee relationship.
+ * `PAY` is a **pay slip**: a statutory wage record under the Code on Wages 2019
+ * and Payment of Wages Act s.13A, which is why it alone carries `deductions`
+ * and the day counts. They are separate types rather than one type branching on
+ * `engagementType` because that lives in the *frozen snapshot* — converting an
+ * intern to an employee would otherwise change the legal identity of an open
+ * draft — and because a wage register wants its own consecutive series.
+ *
+ * Neither carries GST: neither is consideration for a supply, so `gstRatePercent`
  * (inherited from BaseDocument) is pinned to 0 and the sheet prints no tax line.
- * That is also what makes the slip safe to pay in a currency other than INR.
+ * That is also what makes a slip safe to pay in a currency other than INR.
  */
-export interface StipendDocument extends BaseDocument {
-  type: 'STP';
+export interface SlipDocument extends BaseDocument {
+  type: 'STP' | 'PAY';
   employeeId: string;
   employeeSnapshot: EmployeeSnapshot;
   /** Paid-in currency. Absent on slips issued before currencies existed → INR. */
@@ -300,7 +333,24 @@ export interface StipendDocument extends BaseDocument {
   paymentMethod: string;
   paymentReference?: string;
   deductionsNote: string;
+  /**
+   * Statutory deductions — TDS u/s 192 and anything else withheld. PAY only; a
+   * stipend slip carries none, and net equals gross.
+   *
+   * ponytail: reuses `LineItem`, so rate × qty is expressible but meaningless
+   * here — qty is pinned to 1 and its column hidden. Give deductions their own
+   * { label, amountPaise } shape if that ever confuses anyone.
+   */
+  deductions?: LineItem[];
+  /** Days in the wage period, and how many were paid. PAY only. */
+  daysInPeriod?: number;
+  daysPaid?: number;
+  /** Loss-of-pay days. PAY only. */
+  lopDays?: number;
 }
+
+/** @deprecated Use `SlipDocument`. Kept so existing imports keep compiling. */
+export type StipendDocument = SlipDocument;
 
 /** Letters (offer/experience/exit) — boilerplate + editable body. */
 export interface LetterDocument extends BaseDocument {
@@ -316,7 +366,7 @@ export type AdminDocument =
   | InvoiceDocument
   | ReceiptDocument
   | ContractDocument
-  | StipendDocument
+  | SlipDocument
   | LetterDocument;
 
 /**

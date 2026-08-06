@@ -6,6 +6,7 @@ import {
   normalizeRupeeInput,
   paiseToRupees,
   rupeesToPaise,
+  slipTotals,
   splitGST,
 } from '../money';
 import type { LineItem } from '../types';
@@ -170,5 +171,52 @@ describe('groupRupeeInput', () => {
   it('groups only the whole part, and keeps a trailing point', () => {
     expect(groupRupeeInput('123456.78')).toBe('1,23,456.78');
     expect(groupRupeeInput('12.')).toBe('12.');
+  });
+});
+
+/**
+ * A pay slip is `gross − deductions = net`, and that arithmetic is the part of
+ * a wage record a silent bug gets quietly wrong. Integer paise throughout.
+ */
+describe('slipTotals', () => {
+  it('sums a stipend slip to itself when there are no deductions', () => {
+    expect(slipTotals([item(1500000, 1)])).toEqual({
+      grossPaise: 1500000,
+      deductionsPaise: 0,
+      netPaise: 1500000,
+    });
+  });
+
+  it('subtracts deductions from gross', () => {
+    const earnings = [item(4000000, 1), item(1600000, 1), item(400000, 1)];
+    expect(slipTotals(earnings, [item(250000, 1)])).toEqual({
+      grossPaise: 6000000,
+      deductionsPaise: 250000,
+      netPaise: 5750000,
+    });
+  });
+
+  it('sums several deductions', () => {
+    expect(slipTotals([item(6000000, 1)], [item(250000, 1), item(72000, 1)])).toMatchObject({
+      deductionsPaise: 322000,
+      netPaise: 5678000,
+    });
+  });
+
+  it('reaches exactly zero for a fully-recovered month', () => {
+    expect(slipTotals([item(100000, 1)], [item(100000, 1)]).netPaise).toBe(0);
+  });
+
+  /**
+   * No lawful set of deductions leaves an employee owing wages back, so a
+   * negative net is a data-entry error. It is surfaced rather than clamped —
+   * clamping would print a plausible ₹0 and hide the mistake.
+   */
+  it('reports a negative net rather than clamping it away', () => {
+    expect(slipTotals([item(100000, 1)], [item(150000, 1)]).netPaise).toBe(-50000);
+  });
+
+  it('treats absent deductions as none', () => {
+    expect(slipTotals([item(100000, 1)], undefined).netPaise).toBe(100000);
   });
 });

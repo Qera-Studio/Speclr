@@ -142,7 +142,7 @@ export default function ClientForm({
         <PhoneField control={control} name="phone" id="client-phone" />
 
         <Field>
-          <FieldLabel htmlFor="client-gstin">GSTIN (optional)</FieldLabel>
+          <FieldLabel htmlFor="client-gstin">GSTIN</FieldLabel>
           <Input id="client-gstin" size="form" {...register('gstin')} />
           <FieldError errors={[errors.gstin]} />
         </Field>

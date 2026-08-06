@@ -13,7 +13,14 @@ import { addressPartsSchema } from './address';
 import { contractScheduleSchema } from './serviceTemplate';
 import { docContentSchema, type DocContent, type TermItem } from './docContent';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
-import type { ContractSchedule, DocTypeCode, LineItem, ReceiptDocument } from './types';
+import { slipTotals } from './money';
+import type {
+  AdminDocument,
+  ContractSchedule,
+  DocTypeCode,
+  LineItem,
+  ReceiptDocument,
+} from './types';
 
 // ── Field schemas ─────────────────────────────────────────────────────────────
 
@@ -167,10 +174,10 @@ export const contractFinalizeSchema = z.object({
 
 // ── HR schemas ────────────────────────────────────────────────────────────────
 
-const stipendBaseShape = {
+const slipBaseShape = {
   issueDate: isoDate,
   /**
-   * A stipend carries no GST, ever — it is not consideration for a supply by
+   * Neither slip carries GST, ever — neither is consideration for a supply by
    * the studio, so nothing here becomes taxable once the studio is registered.
    * The field is pinned to 0 rather than dropped so the existing NOT NULL
    * column needs no migration, while a non-zero rate stays unrepresentable.
@@ -191,13 +198,54 @@ const stipendBaseShape = {
   content: docContentSchema.optional(),
 };
 export const stipendDraftSchema = z.object({
-  ...stipendBaseShape,
+  ...slipBaseShape,
   lineItems: z.array(draftLineItemSchema).max(10),
 });
 export const stipendFinalizeSchema = z.object({
-  ...stipendBaseShape,
+  ...slipBaseShape,
   lineItems: z.array(lineItemSchema).min(1).max(10),
 });
+
+/**
+ * A pay slip is a stipend slip plus the parts a statutory wage record needs:
+ * itemised deductions (TDS u/s 192 &c.) and the days the wage period covers.
+ * Both stay optional — a slip with nothing withheld is normal, and days are not
+ * prescribed by every state's rules.
+ */
+const payslipExtraShape = {
+  deductions: z.array(lineItemSchema).max(20).optional(),
+  daysInPeriod: z.number().int().min(0).max(31).optional(),
+  daysPaid: z.number().int().min(0).max(31).optional(),
+  lopDays: z.number().int().min(0).max(31).optional(),
+};
+export const payslipDraftSchema = z.object({
+  ...slipBaseShape,
+  ...payslipExtraShape,
+  lineItems: z.array(draftLineItemSchema).max(20),
+});
+export const payslipFinalizeSchema = z
+  .object({
+    ...slipBaseShape,
+    ...payslipExtraShape,
+    lineItems: z.array(lineItemSchema).min(1).max(20),
+  })
+  /**
+   * No lawful set of deductions leaves an employee owing wages back — the
+   * Payment of Wages Act permits deductions *from* wages, not beyond them — so
+   * a negative net is always a mistyped figure. The draft may hold one while it
+   * is being corrected; issuing it is refused, because a finalized slip is
+   * immutable and would have to be re-issued as a duplicate.
+   */
+  .superRefine((data, ctx) => {
+    const { netPaise } = slipTotals(data.lineItems, data.deductions);
+    if (netPaise < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Deductions exceed gross earnings — net pay cannot be negative.',
+        path: ['deductions'],
+      });
+    }
+  });
 
 const bulletSectionSchema = z.object({
   heading: z.string().trim().max(200),
@@ -217,6 +265,18 @@ export const letterFinalizeSchema = z.object({
   bodyParagraphs: z.array(z.string().trim().min(1).max(4000)).min(1).max(40),
 });
 
+/**
+ * The stipend slip's opening position on deductions. True for an intern paid a
+ * genuine stipend, and editable because whether it stays true depends on the
+ * individual engagement. The pay slip deliberately has no equivalent default —
+ * see the note on the PAY entry below.
+ *
+ * Exported so the editor's default and this one cannot drift; they used to be
+ * two separately-typed copies of the same sentence.
+ */
+export const DEFAULT_STIPEND_DEDUCTIONS_NOTE =
+  'No statutory deductions (PF, ESI, TDS) are applicable.';
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 /** Editable field-set of a document (everything except identity/status). */
@@ -232,7 +292,7 @@ export interface DocFields {
   dueDate?: string;
   payment?: ReceiptDocument['payment'];
   schedules?: ContractSchedule[];
-  // HR — stipend slip
+  // HR — the slips (stipend + pay)
   employeeId?: string;
   currency?: CurrencyCode;
   stipendPeriod?: string;
@@ -242,6 +302,11 @@ export interface DocFields {
   paymentMethod?: string;
   paymentReference?: string;
   deductionsNote?: string;
+  // HR — pay slip only
+  deductions?: LineItem[];
+  daysInPeriod?: number;
+  daysPaid?: number;
+  lopDays?: number;
   // HR — letters
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
@@ -269,12 +334,11 @@ export interface DocTypeSpec {
   masthead: string;
   /**
    * 'financial' = invoice/receipt (line items, GST, numbering); 'contract' = MSA
-   * + schedules; 'hr-slip' = stipend slip (financial-shaped, employee-based);
-   * 'hr-letter' = offer/experience/exit letters (boilerplate + editable body).
+   * + schedules; 'hr-slip' = the stipend and pay slips (financial-shaped,
+   * employee-based, numbered); 'hr-letter' = offer/experience/exit letters
+   * (boilerplate + editable body).
    */
   kind: 'financial' | 'contract' | 'hr-slip' | 'hr-letter';
-  /** Solid status banner rendered on the sheet (receipt: green PAID). */
-  badge?: { text: string; tone: 'paid'; note: string };
   hasPayment: boolean;
   hasDueDate: boolean;
   draftSchema: z.ZodTypeAny;
@@ -334,11 +398,6 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     label: 'Receipt',
     masthead: 'RECEIPT',
     kind: 'financial',
-    badge: {
-      text: 'PAID',
-      tone: 'paid',
-      note: 'This receipt confirms payment has been received in full. No further amount is due against the referenced invoice.',
-    },
     hasPayment: true,
     hasDueDate: false,
     draftSchema: receiptDraftSchema,
@@ -380,13 +439,31 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
   STP: {
     code: 'STP', slug: 'stipend', label: 'Stipend slip', masthead: 'STIPEND',
     kind: 'hr-slip',
-    badge: { text: 'PAID', tone: 'paid', note: 'This document confirms stipend disbursed in full for the period stated.' },
     hasPayment: false, hasDueDate: false,
     draftSchema: stipendDraftSchema, finalizeSchema: stipendFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
       employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
-      deductionsNote: 'No statutory deductions (PF, ESI, TDS) are applicable.',
+      deductionsNote: DEFAULT_STIPEND_DEDUCTIONS_NOTE,
+    }),
+    fixedTerms: [],
+  },
+  PAY: {
+    code: 'PAY', slug: 'pay-slip', label: 'Pay slip', masthead: 'PAY SLIP',
+    kind: 'hr-slip',
+    hasPayment: false, hasDueDate: false,
+    draftSchema: payslipDraftSchema, finalizeSchema: payslipFinalizeSchema,
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
+      employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
+      /**
+       * Empty, unlike the stipend slip. Asserting "no statutory deductions
+       * apply" on a wage record is a statement about the employee's tax
+       * position, and it stops being true the moment TDS u/s 192 does — an
+       * untrue assertion in a statutory record is worse than a blank one.
+       */
+      deductionsNote: '',
+      deductions: [],
     }),
     fixedTerms: [],
   },
@@ -415,6 +492,47 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
 };
 
 export const DOC_TYPE_LIST: DocTypeSpec[] = Object.values(DOC_TYPES);
+
+/**
+ * True for documents about an employee rather than a client — the slips and the
+ * letters. They snapshot the employee, resolve their party from it, and are
+ * listed under "Employee" rather than "Client".
+ *
+ * Derived from `kind` rather than a list of codes on purpose. This answer used
+ * to be written out by hand in four places (the finalize action, the row
+ * mapper, `partyName`, and the type list's party label) with nothing keeping
+ * them in step, so a new document type could be HR in three of them and a
+ * client document in the fourth — with nothing failing to say so.
+ */
+export function isHrDocType(code: DocTypeCode): boolean {
+  const kind = DOC_TYPES[code].kind;
+  return kind === 'hr-slip' || kind === 'hr-letter';
+}
+
+/** An HR document — one that names an employee rather than a client. */
+export type HrDocument = Extract<AdminDocument, { employeeId: string }>;
+
+/**
+ * The same answer as `isHrDocType`, narrowing the document itself so callers
+ * reach `employeeSnapshot` without a cast.
+ */
+export function isHrDocument(doc: AdminDocument): doc is HrDocument {
+  return isHrDocType(doc.type);
+}
+
+/** A slip — the stipend slip or the pay slip. */
+export type SlipDoc = Extract<AdminDocument, { type: 'STP' | 'PAY' }>;
+
+/**
+ * A type predicate rather than an inline `doc.type === 'STP' || …`, because a
+ * member whose discriminant is itself a union (`'STP' | 'PAY'`, like the
+ * letters' `'OFR' | 'EXP' | 'EXIT'`) is not narrowed *out* by sequential
+ * equality checks — the dispatch trees that fall through to the financial
+ * sheets need it excluded, not just matched. Mirrors the routes' `isLetter`.
+ */
+export function isSlip(doc: AdminDocument): doc is SlipDoc {
+  return doc.type === 'STP' || doc.type === 'PAY';
+}
 
 export const DOC_TYPE_BY_SLUG: Record<string, DocTypeSpec> = Object.fromEntries(
   DOC_TYPE_LIST.map((spec) => [spec.slug, spec]),

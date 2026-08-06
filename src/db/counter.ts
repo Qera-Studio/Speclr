@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { db } from './index';
 import { counters } from './schema';
 import { formatDocNumber } from '@/lib/domain/docNumber';
+import { formatEmployeeCode } from '@/lib/domain/employeeCode';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import type { DocTypeCode } from '@/lib/domain/types';
 
@@ -48,4 +49,36 @@ export async function claimSerial(code: DocTypeCode, fyCode: string): Promise<Cl
 
   const serial = rows[0]!.serial;
   return { serial, number: formatDocNumber(code, fyCode, serial) };
+}
+
+/**
+ * The counter key employee codes are claimed against. Not a `DocTypeCode` —
+ * the column is plain text and a person is not a document type — but it shares
+ * the table because the atomicity it needs is exactly the same, and a second
+ * table would be a second thing to keep consistent for one row.
+ */
+const EMPLOYEE_CODE_COUNTER = 'EMPLOYEE';
+/** The counter's PK is (doc_type, fy_code); an employee code has no FY. */
+const NO_FY = '-';
+
+/**
+ * Claim the next employee code, atomically.
+ *
+ * No `DEV_UNLIMITED` branch, unlike `claimSerial` above: a document number is
+ * something a sample finalize burns and a fake one keeps the live series clean,
+ * whereas an employee record created outside production is still a real person
+ * getting a real code. Gaps are fine here anyway — nothing requires this series
+ * to be consecutive, only unique.
+ */
+export async function claimEmployeeCode(): Promise<string> {
+  const rows = await db
+    .insert(counters)
+    .values({ docType: EMPLOYEE_CODE_COUNTER, fyCode: NO_FY, lastSerial: 1 })
+    .onConflictDoUpdate({
+      target: [counters.docType, counters.fyCode],
+      set: { lastSerial: sql`${counters.lastSerial} + 1`, updatedAt: new Date() },
+    })
+    .returning({ serial: counters.lastSerial });
+
+  return formatEmployeeCode(rows[0]!.serial);
 }

@@ -142,7 +142,7 @@ export default function AddressFields<T extends FieldValues>({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`${idPrefix}-line2`}>Street / area (optional)</FieldLabel>
+        <FieldLabel htmlFor={`${idPrefix}-line2`}>Street / area</FieldLabel>
         <Input
           id={`${idPrefix}-line2`}
           size={size}
@@ -173,6 +173,11 @@ export default function AddressFields<T extends FieldValues>({
               className={busy ? 'pr-8' : undefined}
               {...pincode.field}
               value={pincodeValue}
+              // Digits only. A Controller field, so it cannot use
+              // `numericField` — same sanitise-on-change rule, applied by hand.
+              onChange={(event) =>
+                pincode.field.onChange(event.target.value.replace(/\D/g, ''))
+              }
             />
             <FieldSpinner show={busy} />
           </div>

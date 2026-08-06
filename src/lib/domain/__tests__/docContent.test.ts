@@ -53,7 +53,7 @@ describe('contentOf defaults', () => {
       stipendSpec,
     );
 
-    const { left, right } = stipendTerms('intern', 'No TDS applicable.');
+    const { left, right } = stipendTerms('No TDS applicable.');
     expect(resolved.terms).toEqual([...left, ...right]);
     expect(resolved.terms.some((t) => t.body.includes('No TDS applicable.'))).toBe(true);
   });
@@ -111,7 +111,7 @@ describe('materialiseContent', () => {
 describe('splitTerms', () => {
   /** The stipend prints 2 terms then 3; the split must not reshuffle them. */
   it('keeps the smaller half on the left, as the slip prints today', () => {
-    const { left, right } = stipendTerms('intern', '');
+    const { left, right } = stipendTerms('');
     const split = splitTerms([...left, ...right]);
 
     expect(split.left).toEqual(left);

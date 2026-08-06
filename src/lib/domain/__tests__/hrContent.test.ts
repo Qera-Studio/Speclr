@@ -1,4 +1,4 @@
-import { defaultLetterContent, exitMasthead, HR_FOOTER } from '../hrContent';
+import { defaultLetterContent, exitMasthead, HR_FOOTER, payslipTerms, stipendTerms } from '../hrContent';
 
 function baseArgs() {
   return {
@@ -89,5 +89,58 @@ describe('HR_FOOTER', () => {
   it('carries the CIN and admin query email', () => {
     expect(HR_FOOTER.cin).toMatch(/^U\d/);
     expect(HR_FOOTER.queryEmail).toBe('admin@qera.studio');
+  });
+});
+
+/**
+ * The pay slip's clauses. A pay slip is issued *under* a contract of
+ * employment, so it must never carry the stipend slip's denial of one, and the
+ * word "internship" must never appear on a document issued to an employee.
+ *
+ * This mirrors the intern-exit assertion above: the same class of wording bug,
+ * caught the same way.
+ */
+describe('payslipTerms', () => {
+  const flat = (terms: ReturnType<typeof payslipTerms>) =>
+    [...terms.left, ...terms.right]
+      .flatMap((t) => [t.title, t.body])
+      .join(' ')
+      .toLowerCase();
+
+  it('never uses internship or stipend wording', () => {
+    const all = flat(payslipTerms(''));
+    expect(all).not.toMatch(/internship/);
+    expect(all).not.toMatch(/stipend/);
+  });
+
+  it('never denies the employment relationship the slip is issued under', () => {
+    const all = flat(payslipTerms(''));
+    expect(all).not.toMatch(/creates no employer/);
+    expect(all).not.toMatch(/does not constitute salary/);
+  });
+
+  it('asserts only lawful deductions were made, and names the wage register', () => {
+    const all = flat(payslipTerms(''));
+    expect(all).toMatch(/deductions authorised by law/);
+    expect(all).toMatch(/wage register/);
+  });
+
+  /** The specifics vary per employee, so the note is folded in, not fixed. */
+  it('folds the deductions note into the deductions clause', () => {
+    const all = flat(payslipTerms('TDS deducted under section 192.'));
+    expect(all).toMatch(/tds deducted under section 192\./);
+  });
+
+  it('splits into the two columns the slip prints', () => {
+    const terms = payslipTerms('');
+    expect(terms.left).toHaveLength(2);
+    expect(terms.right).toHaveLength(3);
+  });
+
+  /** The stipend slip's own wording is untouched by any of this. */
+  it('leaves the stipend slip terms alone', () => {
+    const intern = flat(stipendTerms(''));
+    expect(intern).toMatch(/creates no employer/);
+    expect(intern).toMatch(/internship/);
   });
 });

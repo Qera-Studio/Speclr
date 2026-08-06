@@ -21,9 +21,9 @@ describe('nav model', () => {
     ]);
   });
 
-  it('puts the four HR letters under Admin', () => {
+  it('puts the HR letters and both slips under Admin', () => {
     const admin = DOCUMENT_SECTIONS.find((s) => s.label === 'Admin')!;
-    expect(admin.children).toHaveLength(4);
+    expect(admin.children).toHaveLength(5);
     expect(admin.children.every((c) => c.href.startsWith('/docs/'))).toBe(true);
     expect(admin.children.every((c) => !c.href.startsWith('/docs/new/'))).toBe(true);
   });
@@ -53,7 +53,7 @@ describe('nav model', () => {
    */
   it('gives every document type a unique ⌥ shortcut letter', () => {
     const shortcuts = DOCUMENT_SECTIONS.flatMap((s) => s.children).map((c) => c.shortcut);
-    expect(shortcuts).toHaveLength(7);
+    expect(shortcuts).toHaveLength(8);
     expect(shortcuts.every((s) => typeof s === 'string' && /^[A-Z]$/.test(s))).toBe(true);
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });

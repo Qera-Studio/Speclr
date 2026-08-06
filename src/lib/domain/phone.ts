@@ -84,6 +84,25 @@ export function parsePhone(value: string): { iso2: CountryCode; national: string
   return { iso2: DEFAULT_COUNTRY, national: raw.replace(/\D/g, '') };
 }
 
+/**
+ * The longest national number that could still be valid, for capping input.
+ *
+ * India is exact — 10, because every number typed into this tool is a mobile,
+ * which is the same tighter line `INDIAN_MOBILE_RE` holds. Everywhere else this
+ * is E.164's own ceiling: a whole international number is at most 15 digits
+ * including the country code, so the national part can never exceed the
+ * remainder. A bound rather than the country's true maximum, which the `/min`
+ * metadata build does not expose — but it is a real one, and it stops a field
+ * silently accepting a number no telephone network could route.
+ *
+ * `isValidPhone` is still what decides validity; this only stops the keystroke
+ * that could not possibly help.
+ */
+export function maxNationalDigits(iso2: CountryCode): number {
+  if (iso2 === 'IN') return 10;
+  return 15 - getCountryCallingCode(iso2).length;
+}
+
 /** Is this national number valid for that country? Drives the form error. */
 export function isValidPhone(national: string, iso2: CountryCode): boolean {
   const digits = (national ?? '').replace(/\D/g, '');

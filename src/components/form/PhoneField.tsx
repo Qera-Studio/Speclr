@@ -12,6 +12,7 @@ import {
   DEFAULT_COUNTRY,
   countryByIso2,
   isValidPhone,
+  maxNationalDigits,
   parsePhone,
   phoneHintFor,
   toE164,
@@ -118,8 +119,13 @@ export default function PhoneField<T extends FieldValues>({
           value={iso2}
           onValueChange={(next) => {
             const nextIso2 = (next || DEFAULT_COUNTRY) as CountryCode;
+            // The cap is per country, so switching to a shorter one has to
+            // trim what is already there — otherwise the field keeps a number
+            // the new country could never hold.
+            const trimmed = national.slice(0, maxNationalDigits(nextIso2));
             setIso2(nextIso2);
-            push(national, nextIso2);
+            setNational(trimmed);
+            push(trimmed, nextIso2);
           }}
           placeholder="Country"
           aria-label="Phone country"
@@ -145,7 +151,13 @@ export default function PhoneField<T extends FieldValues>({
             value={national}
             onBlur={field.onBlur}
             onChange={(event) => {
-              const digits = event.target.value.replace(/\D/g, '');
+              // Digits only, and never more than the country could hold — an
+              // 11th digit on an Indian number is not a number being typed, it
+              // is a mistake, and letting it in only to report it afterwards
+              // lets someone tab away from a field that already looks filled.
+              const digits = event.target.value
+                .replace(/\D/g, '')
+                .slice(0, maxNationalDigits(iso2));
               setNational(digits);
               push(digits, iso2);
             }}

@@ -12,7 +12,7 @@ import { isISODate } from './dates';
 import { addressPartsSchema, type AddressParts } from './address';
 import { IFSC_RE } from './bank';
 import { CURRENCY_CODES, DEFAULT_CURRENCY, type CurrencyCode } from './currency';
-import type { EngagementType, PronounKey } from './types';
+import type { EngagementType, PayrollIds, PronounKey } from './types';
 
 export interface EmployeeRecord {
   id: string;
@@ -42,6 +42,15 @@ export interface EmployeeRecord {
     /** Compressed data URL of the employee's receiving UPI QR. */
     upiQrDataUrl?: string;
   };
+  /**
+   * Statutory payroll identifiers, printed on a pay slip.
+   *
+   * One optional group rather than five columns because nothing queries them
+   * and a group keeps the next identifier (LWF, say) migration-free — the same
+   * reasoning as `bank`. Every field is optional: an employee record is often
+   * created before PF/ESI registration exists, and an intern has none of them.
+   */
+  payroll?: PayrollIds;
   createdAt: number;
   updatedAt: number;
 }
@@ -54,6 +63,90 @@ export interface EmployeeRecord {
 export const MAX_UPI_QR_BYTES = 120_000;
 
 const isoDate = z.string().refine(isISODate, { message: "Expected 'YYYY-MM-DD'." });
+
+/** Five characters, four digits, one check letter — e.g. ABCDE1234F. */
+export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+/**
+ * A PAN is not an opaque string — its 4th character encodes what kind of holder
+ * it belongs to, and its 5th is the first letter of the holder's surname (or of
+ * a company's name). That is enough structure to catch a real mistyping without
+ * calling anything.
+ *
+ * We deliberately do not verify against the Income Tax Department. Official
+ * verification is restricted to eligible entity categories a design studio is
+ * not in, resellers need business KYC onboarding and per-call billing, and none
+ * of them return an address anyway. Sending an employee's identity to a third
+ * party to check a field used four times a year is not a trade worth making.
+ */
+const PAN_HOLDER_TYPES: Record<string, string> = {
+  P: 'an individual',
+  C: 'a company',
+  H: 'a Hindu Undivided Family',
+  F: 'a firm or LLP',
+  A: 'an association of persons',
+  T: 'a trust',
+  B: 'a body of individuals',
+  L: 'a local authority',
+  J: 'an artificial juridical person',
+  G: 'a government body',
+};
+
+/**
+ * Why this PAN cannot belong to this employee, or null if it might.
+ *
+ * Blocking, because both failures are unambiguous: a company's PAN on a person
+ * is the wrong document entirely, and an unknown holder-type character is not a
+ * PAN at all. Assumes `PAN_RE` has already passed.
+ */
+export function panHolderTypeError(pan: string): string | null {
+  const kind = pan.toUpperCase()[3];
+  if (kind === 'P') return null;
+  const held = PAN_HOLDER_TYPES[kind];
+  return held
+    ? `This PAN belongs to ${held}, not an individual.`
+    : 'This is not a recognisable PAN.';
+}
+
+/**
+ * True when the PAN's 5th character does not match the surname's initial.
+ *
+ * A *hint*, never a block. The 5th character is the first letter of the surname
+ * as recorded with the Income Tax Department, and there are too many honest
+ * reasons for it to differ from what is typed here — a name recorded
+ * surname-first, a married name, a single-word name, a transliteration. Worth
+ * pointing at; never worth refusing.
+ */
+export function panSurnameMismatch(pan: string, name: string): boolean {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const surname = words.at(-1);
+  if (!surname || words.length < 2) return false;
+  return pan.toUpperCase()[4] !== surname[0].toUpperCase();
+}
+
+/**
+ * Statutory identifiers. Every field optional and blank-tolerant: these are
+ * filled in over time, and a record must stay saveable before PF/ESI
+ * registration exists. PAN is shape-checked when given for the same reason the
+ * IFSC is — a malformed PAN is never a legacy quirk, it is simply wrong, and it
+ * prints on a statutory wage slip.
+ */
+export const payrollIdsSchema = z.object({
+  employeeCode: z.string().trim().max(40).optional(),
+  pan: z
+    .string()
+    .trim()
+    .refine((v) => v === '' || PAN_RE.test(v.toUpperCase()), {
+      message: 'Expected a PAN like ABCDE1234F.',
+    })
+    .refine((v) => v === '' || !PAN_RE.test(v.toUpperCase()) || !panHolderTypeError(v), {
+      message: 'This PAN does not belong to an individual.',
+    })
+    .optional(),
+  uan: z.string().trim().max(20).optional(),
+  pfNumber: z.string().trim().max(40).optional(),
+  esicNumber: z.string().trim().max(20).optional(),
+});
 
 export const employeeInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -99,6 +192,7 @@ export const employeeInputSchema = z.object({
       })
       .optional(),
   }),
+  payroll: payrollIdsSchema.optional(),
 });
 
 export type EmployeeInput = z.infer<typeof employeeInputSchema>;

@@ -27,6 +27,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
+import { numericField } from "@/components/form/inputFilters";
 
 /**
  * Line items for any form with a `lineItems` array of `LineItemFormValues` —
@@ -53,6 +54,33 @@ interface LineItemsEditorProps<T extends FieldValues> {
   fieldArray: UseFieldArrayReturn<T, ArrayPath<T>>;
   /** Rates are shown in the document's own currency; INR unless told otherwise. */
   currency?: CurrencyCode;
+  /**
+   * Which array on the form this drives, and the id prefix for its inputs.
+   * Defaults to the `lineItems` every document has; the pay slip's deductions
+   * pass `deductions` so two instances can coexist without colliding ids.
+   */
+  name?: string;
+  legend?: string;
+  addLabel?: string;
+  /** Singular noun for the remove button's accessible name. */
+  itemLabel?: string;
+  /**
+   * Hide the quantity input, pinning qty to 1. A deduction is a flat amount —
+   * "TDS × 3" is not a thing — so the column is noise there and a place to
+   * introduce a wrong figure.
+   */
+  hideQty?: boolean;
+  /**
+   * Hide the free-text detail input. The slips do not print it — see the note
+   * on `ItemsTable` in `SlipSheet` — so offering it would collect text that
+   * goes nowhere.
+   */
+  hideDetail?: boolean;
+  /**
+   * Allow removing the last row. A document must always have at least one line
+   * item, but a slip with nothing deducted is normal and must be expressible.
+   */
+  allowEmpty?: boolean;
 }
 
 /** 'Internship Stipend · ₹ 2,500.00 × 1' — enough to check a line at a glance. */
@@ -72,13 +100,20 @@ export default function LineItemsEditor<T extends FieldValues>({
   register,
   fieldArray,
   currency = DEFAULT_CURRENCY,
+  name = "lineItems",
+  legend = "Line items",
+  addLabel = "Add line item",
+  itemLabel = "line item",
+  hideQty = false,
+  hideDetail = false,
+  allowEmpty = false,
 }: LineItemsEditorProps<T>) {
   const { fields, append, remove } = fieldArray;
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   // The summaries have to track what is typed. `fields` holds the values the
   // array was seeded with, not the live ones, so it cannot drive them.
-  const values = useWatch({ control, name: "lineItems" as Path<T> }) as
+  const values = useWatch({ control, name: name as Path<T> }) as
     | LineItemFormValues[]
     | undefined;
 
@@ -109,7 +144,7 @@ export default function LineItemsEditor<T extends FieldValues>({
 
   return (
     <fieldset className="flex flex-col gap-2 rounded-lg border border-border p-4">
-      <legend className="px-1 text-sm font-medium">Line items</legend>
+      <legend className="px-1 text-sm font-medium">{legend}</legend>
       {fields.map((field, index) => {
         const open = openRows[index] ?? false;
         const { description, detail } = summarize(values?.[index], currency);
@@ -146,51 +181,61 @@ export default function LineItemsEditor<T extends FieldValues>({
             <CollapsibleContent>
               <div className="flex flex-col gap-3 border-t border-border p-3">
                 <Field>
-                  <FieldLabel htmlFor={`item-desc-${index}`}>
+                  <FieldLabel htmlFor={`${name}-desc-${index}`}>
                     Description
                   </FieldLabel>
                   <Input
-                    id={`item-desc-${index}`}
-                    {...register(`lineItems.${index}.description` as Path<T>)}
+                    id={`${name}-desc-${index}`}
+                    {...register(`${name}.${index}.description` as Path<T>)}
                   />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor={`item-detail-${index}`}>
-                    Detail (optional)
-                  </FieldLabel>
-                  <Input
-                    id={`item-detail-${index}`}
-                    {...register(`lineItems.${index}.detail` as Path<T>)}
-                  />
-                </Field>
-                <div className="flex flex-wrap items-end gap-3">
-                  <Field className="flex-1">
-                    <FieldLabel htmlFor={`item-rate-${index}`}>
-                      Rate ({currencySymbol})
+                {hideDetail ? null : (
+                  <Field>
+                    <FieldLabel htmlFor={`${name}-detail-${index}`}>
+                      Detail
                     </FieldLabel>
                     <Input
-                      id={`item-rate-${index}`}
-                      inputMode="decimal"
-                      {...register(`lineItems.${index}.rate` as Path<T>, {
-                        validate: (value) =>
-                          value === "" ||
-                          rupeesToPaise(value) !== null ||
-                          "Enter a valid amount.",
-                      })}
+                      id={`${name}-detail-${index}`}
+                      {...register(`${name}.${index}.detail` as Path<T>)}
                     />
                   </Field>
+                )}
+                <div className="flex flex-wrap items-end gap-3">
                   <Field className="flex-1">
-                    <FieldLabel htmlFor={`item-qty-${index}`}>Qty</FieldLabel>
+                    <FieldLabel htmlFor={`${name}-rate-${index}`}>
+                      {hideQty ? "Amount" : "Rate"} ({currencySymbol})
+                    </FieldLabel>
                     <Input
-                      id={`item-qty-${index}`}
-                      inputMode="decimal"
-                      {...register(`lineItems.${index}.qty` as Path<T>)}
+                      id={`${name}-rate-${index}`}
+                      {...numericField(
+                        register(`${name}.${index}.rate` as Path<T>, {
+                          validate: (value) =>
+                            value === "" ||
+                            rupeesToPaise(value) !== null ||
+                            "Enter a valid amount.",
+                        }),
+                        "money",
+                      )}
                     />
                   </Field>
+                  {hideQty ? null : (
+                    <Field className="flex-1">
+                      <FieldLabel htmlFor={`${name}-qty-${index}`}>
+                        Qty
+                      </FieldLabel>
+                      <Input
+                        id={`${name}-qty-${index}`}
+                        {...numericField(
+                          register(`${name}.${index}.qty` as Path<T>),
+                          "money",
+                        )}
+                      />
+                    </Field>
+                  )}
                   <RemoveButton
-                    label={`Remove line item ${index + 1}`}
+                    label={`Remove ${itemLabel} ${index + 1}`}
                     onConfirm={() => removeAt(index)}
-                    disabled={fields.length === 1}
+                    disabled={!allowEmpty && fields.length === 1}
                   />
                 </div>
               </div>
@@ -209,7 +254,7 @@ export default function LineItemsEditor<T extends FieldValues>({
             append(emptyLineItem() as Parameters<typeof append>[0]);
           }}
         >
-          Add line item
+          {addLabel}
         </Button>
       </div>
     </fieldset>

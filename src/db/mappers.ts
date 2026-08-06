@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { computeTotals } from '@/lib/domain/money';
+import { computeTotals, slipTotals } from '@/lib/domain/money';
+import { isHrDocType } from '@/lib/domain/registry';
 import type {
   Actor,
   AdminDocument,
@@ -10,7 +11,7 @@ import type {
   InvoiceDocument,
   LetterDocument,
   ReceiptDocument,
-  StipendDocument,
+  SlipDocument,
 } from '@/lib/domain/types';
 import type { DocumentData } from './schema';
 
@@ -70,11 +71,13 @@ export type DocumentInsert = Omit<DocumentRow, 'createdAt' | 'updatedAt'> & {
   updatedAt: Date;
 };
 
-const HR_TYPES = new Set(['STP', 'OFR', 'EXP', 'EXIT']);
-
 /** Split an AdminDocument into flat columns + JSONB for storage. */
 export function toRow(doc: AdminDocument): DocumentInsert {
   const totals = computeTotals(doc.lineItems ?? [], doc.gstRatePercent);
+  // `total_paise` is what the lists and amount filters read, so for a pay slip
+  // it has to be the net actually paid, not the gross before deductions.
+  const totalPaise =
+    doc.type === 'PAY' ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise : totals.totalPaise;
 
   // Everything type-specific + shared-optional goes into `data`.
   const data: DocumentData = {
@@ -83,6 +86,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     notes: doc.notes,
     terms: doc.terms,
     studioSnapshot: doc.studioSnapshot,
+    content: doc.content,
   };
   let snapshot: ClientSnapshot | EmployeeSnapshot | null = null;
   let clientId: string | null = null;
@@ -106,13 +110,21 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.schedules = doc.schedules;
       break;
     case 'STP':
+    case 'PAY':
       employeeId = doc.employeeId;
       snapshot = doc.employeeSnapshot ?? null;
+      data.currency = doc.currency;
       data.stipendPeriod = doc.stipendPeriod;
+      data.stipendPeriodStart = doc.stipendPeriodStart;
+      data.stipendPeriodEnd = doc.stipendPeriodEnd;
       data.stipendMonth = doc.stipendMonth;
       data.paymentMethod = doc.paymentMethod;
       data.paymentReference = doc.paymentReference;
       data.deductionsNote = doc.deductionsNote;
+      data.deductions = doc.deductions;
+      data.daysInPeriod = doc.daysInPeriod;
+      data.daysPaid = doc.daysPaid;
+      data.lopDays = doc.lopDays;
       break;
     case 'OFR':
     case 'EXP':
@@ -138,7 +150,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     employeeId,
     gstRatePercent: doc.gstRatePercent,
     placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? null,
-    totalPaise: totals.totalPaise,
+    totalPaise,
     data,
     snapshot,
     createdAt: new Date(doc.createdAt),
@@ -167,6 +179,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
     notes: row.data.notes,
     terms: row.data.terms,
     studioSnapshot: row.data.studioSnapshot,
+    content: row.data.content,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     finalizedAt: row.finalizedAt ? row.finalizedAt.getTime() : undefined,
@@ -174,21 +187,28 @@ export function fromRow(row: DocumentRow): AdminDocument {
     finalizedBy: actorFrom(row.finalizedBy, row.finalizedByEmail),
   };
 
-  if (HR_TYPES.has(row.type)) {
+  if (isHrDocType(row.type)) {
     const employeeId = row.employeeId ?? '';
     const employeeSnapshot = (row.snapshot ?? undefined) as EmployeeSnapshot | undefined;
-    if (row.type === 'STP') {
+    if (row.type === 'STP' || row.type === 'PAY') {
       return {
         ...base,
-        type: 'STP',
+        type: row.type,
         employeeId,
         employeeSnapshot: employeeSnapshot as EmployeeSnapshot,
+        currency: row.data.currency,
         stipendPeriod: row.data.stipendPeriod ?? '',
+        stipendPeriodStart: row.data.stipendPeriodStart,
+        stipendPeriodEnd: row.data.stipendPeriodEnd,
         stipendMonth: row.data.stipendMonth ?? '',
         paymentMethod: row.data.paymentMethod ?? '',
         paymentReference: row.data.paymentReference,
         deductionsNote: row.data.deductionsNote ?? '',
-      } satisfies StipendDocument;
+        deductions: row.data.deductions,
+        daysInPeriod: row.data.daysInPeriod,
+        daysPaid: row.data.daysPaid,
+        lopDays: row.data.lopDays,
+      } satisfies SlipDocument;
     }
     return {
       ...base,

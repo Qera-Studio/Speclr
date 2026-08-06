@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
-import StipendEditor from '../StipendEditor';
+import SlipEditor from '../SlipEditor';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 const push = jest.fn();
@@ -38,41 +38,57 @@ async function expandLineItem(
   await u.click(screen.getByRole('button', { name }));
 }
 
-describe('StipendEditor (new)', () => {
+describe('SlipEditor (new)', () => {
   it('renders the employee picker and a collapsed line item', () => {
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Untitled item/ })).toBeInTheDocument();
   });
 
   /**
    * The slip is almost always "this month's stipend, as agreed", so it arrives
-   * filled in. The detail line names the period and the deductions position —
-   * matching the issued slip, where both also appear in DETAILS and TERMS.
+   * filled in.
    */
   it('prefills the stipend line item from the employee record', async () => {
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await expandLineItem(u, /Internship Stipend/);
 
     expect(screen.getByLabelText(/^description$/i)).toHaveValue('Internship Stipend');
     expect(screen.getByLabelText(/^rate/i)).toHaveValue('20000.00');
-    const detail = screen.getByLabelText(/detail \(optional\)/i) as HTMLInputElement;
-    expect(detail.value).toContain('Monthly stipend for internship engagement');
-    expect(detail.value).toContain('No statutory deductions');
   });
 
   /**
-   * Regression: the seeded line named the month, but was written once when the
-   * employee was picked and never again — so changing the month afterwards left
-   * a slip whose line item and DETAILS block disagreed about the period.
+   * Neither slip prints a line's detail, so collecting one would gather text
+   * that goes nowhere. The period and the deductions note used to be seeded
+   * into it; both are stated by DETAILS and TERMS instead, which is where a
+   * reader looks for them.
    */
-  it('re-seeds the line item when the month changes', async () => {
+  it('offers no detail field on a slip line', async () => {
+    const u = userEvent.setup();
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
+
+    await selectComboboxOption(u, /employee/i, /Riya/);
+    await expandLineItem(u, /Internship Stipend/);
+
+    expect(screen.getByLabelText(/^description$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^detail$/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Changing the month moves the period with it.
+   *
+   * This used to also re-seed the line item, because the seeded line named the
+   * period and would otherwise disagree with the DETAILS block. It no longer
+   * names it — one statement of the period cannot contradict itself — so the
+   * line is now left alone on every month change, edited or not.
+   */
+  it('moves the period dates with the month, leaving the line item alone', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     const month = screen.getByLabelText(/stipend month/i);
@@ -84,11 +100,9 @@ describe('StipendEditor (new)', () => {
       'STP',
       'e1',
       expect.objectContaining({
-        lineItems: expect.arrayContaining([
-          expect.objectContaining({
-            detail: expect.stringContaining('Period 01 – 30 June 2026'),
-          }),
-        ]),
+        stipendPeriodStart: '2026-06-01',
+        stipendPeriodEnd: '2026-06-30',
+        lineItems: [expect.objectContaining({ description: 'Internship Stipend' })],
       }),
     );
   });
@@ -97,7 +111,7 @@ describe('StipendEditor (new)', () => {
   it('leaves an edited line item alone when the month changes', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await expandLineItem(u, /Internship Stipend/);
@@ -128,7 +142,7 @@ describe('StipendEditor (new)', () => {
   it('sends the currency even though the panel has no currency control', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     expect(screen.queryByLabelText(/currency/i)).not.toBeInTheDocument();
 
@@ -149,7 +163,7 @@ describe('StipendEditor (new)', () => {
   it('sends the default deductions note with no control for it', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /save draft/i }));
@@ -166,7 +180,7 @@ describe('StipendEditor (new)', () => {
   it('creates a draft with the amount in paise on save', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     // Selecting an employee seeds line item 1 from payAmountPaise (2000000 → "20000").
@@ -190,7 +204,7 @@ describe('StipendEditor (new)', () => {
   it('includes employeeId in the payload, not just the positional argument', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /save draft/i }));
@@ -206,7 +220,7 @@ describe('StipendEditor (new)', () => {
   it('always sends a zero GST rate', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /save draft/i }));
@@ -222,7 +236,7 @@ describe('StipendEditor (new)', () => {
   it('adds a second line item for a reimbursement', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /add line item/i }));
@@ -249,7 +263,7 @@ describe('StipendEditor (new)', () => {
   it('defaults the period to the bounds of the chosen month', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
     const u = userEvent.setup();
-    render(<StipendEditor employees={employees} title="New stipend slip" />);
+    render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     const month = screen.getByLabelText(/stipend month/i);
