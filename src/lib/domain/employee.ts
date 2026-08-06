@@ -29,7 +29,27 @@ export interface EmployeeRecord {
   pronoun: PronounKey;
   joiningDate: string;
   endDate?: string;
+  /**
+   * What this person is paid **each month**. Every document reads this: the
+   * slips seed their earnings from it, and the offer letter states it.
+   *
+   * Derived from `annualSalaryPaise` when there is one (see the employees
+   * action) so the two can never disagree; entered directly for an intern,
+   * whose stipend is a monthly figure and nothing else.
+   */
   payAmountPaise: number;
+  /**
+   * An employee's salary as quoted — the figure an offer letter names and the
+   * one a raise is discussed in. **Employees only**: an intern is offered a
+   * monthly stipend, not an annual package, and saying otherwise on their offer
+   * letter would frame the internship as employment.
+   *
+   * "Salary" here means what the employee is actually paid, not a cost-to-
+   * company inflated by employer contributions — Qera has none to add (PF needs
+   * 20+ employees, gratuity five years' service), so gross and CTC are the same
+   * number today. Revisit that if the studio ever crosses either threshold.
+   */
+  annualSalaryPaise?: number;
   /** Record-keeping only — documents still print INR. See currency.ts. */
   payCurrency?: CurrencyCode;
   bank: {
@@ -167,6 +187,10 @@ export const employeeInputSchema = z.object({
   joiningDate: isoDate,
   endDate: isoDate.optional(),
   payAmountPaise: z.number().int().min(0).max(1e13),
+  // Optional: interns have none, and so do records written before it existed.
+  // The action derives `payAmountPaise` from it when present, so a payload
+  // sending an inconsistent pair cannot produce an inconsistent record.
+  annualSalaryPaise: z.number().int().min(0).max(1e13).optional(),
   payCurrency: z.enum(CURRENCY_CODES).default(DEFAULT_CURRENCY),
   bank: z.object({
     bankName: z.string().trim().max(120),

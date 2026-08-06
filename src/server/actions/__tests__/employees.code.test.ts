@@ -185,3 +185,65 @@ describe('updateEmployee', () => {
     expect(saved().payroll?.employeeCode).toBe('QS-EMP-002');
   });
 });
+
+/**
+ * An employee's salary is quoted annually and paid monthly, and both are
+ * stored. Two stored numbers meaning the same thing will drift, so only one is
+ * ever entered — the monthly figure is computed here, on the server, and
+ * whatever the form sent for it is discarded.
+ */
+describe('the pay pair', () => {
+  const annual = { ...input, annualSalaryPaise: 6_00_000_00 };
+
+  it("derives an employee's monthly pay from the annual figure", async () => {
+    await createEmployee(annual);
+
+    expect(saved().annualSalaryPaise).toBe(6_00_000_00);
+    expect(saved().payAmountPaise).toBe(50_000_00); // ₹6,00,000 ÷ 12 = ₹50,000
+  });
+
+  /** The client is not the authority on a figure the server can compute. */
+  it('ignores a monthly figure that disagrees with the annual one', async () => {
+    await createEmployee({ ...annual, payAmountPaise: 9_99_999_00 });
+
+    expect(saved().payAmountPaise).toBe(50_000_00);
+  });
+
+  it('rounds to whole paise', async () => {
+    await createEmployee({ ...annual, annualSalaryPaise: 1_00_000 });
+    expect(saved().payAmountPaise).toBe(Math.round(1_00_000 / 12));
+  });
+
+  /**
+   * A stipend is a monthly amount and nothing else. Calling it an annual
+   * package would frame the internship as employment, which is the distinction
+   * every HR document here exists to keep straight.
+   */
+  it('takes an intern\'s stipend as the monthly figure it is', async () => {
+    await createEmployee({ ...input, engagementType: 'intern', payAmountPaise: 25_000_00 });
+
+    expect(saved().payAmountPaise).toBe(25_000_00);
+    expect(saved().annualSalaryPaise).toBeUndefined();
+  });
+
+  it('drops an annual figure sent for an intern', async () => {
+    await createEmployee({ ...annual, engagementType: 'intern', payAmountPaise: 25_000_00 });
+
+    expect(saved().annualSalaryPaise).toBeUndefined();
+    expect(saved().payAmountPaise).toBe(25_000_00);
+  });
+
+  it('derives on update too', async () => {
+    getEmployee.mockResolvedValue({
+      ...input,
+      id: 'emp-1',
+      payroll: { employeeCode: 'QS-EMP-002' },
+      createdAt: 0,
+      updatedAt: 0,
+    } as unknown as EmployeeRecord);
+
+    await updateEmployee('emp-1', { ...annual, annualSalaryPaise: 12_00_000_00 });
+
+    expect(saved().payAmountPaise).toBe(1_00_000_00); // ₹12,00,000 ÷ 12 = ₹1,00,000
+  });
+});

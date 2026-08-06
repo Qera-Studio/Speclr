@@ -21,7 +21,16 @@ import type { EngagementType } from './types';
 
 export interface LetterContentArgs {
   role: string;
-  /** Rendered pay phrase, e.g. "₹ 1,000.00 per month" (built by the caller). */
+  /**
+   * The pay figure, formatted and **without a unit** — e.g. "₹ 6,00,000.00".
+   *
+   * The unit belongs to whichever letter is printing it, because the two
+   * engagements are quoted differently: an intern is offered a monthly stipend
+   * and an employee an annual salary, and the caller passes the matching
+   * amount. Putting "per month" in here once meant an employee's offer letter
+   * quoted their salary as a monthly figure, which is not how a salary is
+   * offered and made the number read as an order of magnitude too small.
+   */
   payText: string;
   /** Ordinal start/joining date, e.g. "10th June 2026". */
   startDate: string;
@@ -55,7 +64,7 @@ function offerContent(engagement: EngagementType, a: LetterContentArgs): LetterC
         `Subject: Offer of Internship — ${a.role}`,
         `We are pleased to offer you the position of ${a.role} at Qera Studio. We are excited to have you join us and contribute to our branding, media, and digital growth initiatives.`,
         `Your internship will begin on ${a.startDate} and will initially continue for a period of three months. You will be expected to maintain professional communication, complete assigned tasks on time, and remain reasonably responsive during active work periods.`,
-        `During the first month of the internship, you will receive a stipend of ${a.payText}. Future increases in stipend, incentives, extensions, or long-term opportunities may be offered based on your overall performance, consistency, communication, reliability, and contribution to the company's growth and assigned KPIs. This internship does not guarantee permanent employment.`,
+        `During the first month of the internship, you will receive a stipend of ${a.payText} per month. Future increases in stipend, incentives, extensions, or long-term opportunities may be offered based on your overall performance, consistency, communication, reliability, and contribution to the company's growth and assigned KPIs. This internship does not guarantee permanent employment.`,
         `During the course of your internship, you may have access to confidential company or client information including internal workflows, content systems, strategies, documents, and digital assets. You agree not to disclose, copy, distribute, or misuse any confidential information during or after your internship period.`,
         `Any work, content, designs, videos, graphics, captions, or creative material produced by you during the internship for Qera Studio shall remain the intellectual property of Qera Studio and may not be reused commercially without written permission.`,
         `Either party may terminate this internship by providing seven days' prior notice. However, Qera Studio reserves the right to terminate the internship immediately in cases involving misconduct, confidentiality breaches, negligence, or unprofessional behavior.`,
@@ -72,7 +81,13 @@ function offerContent(engagement: EngagementType, a: LetterContentArgs): LetterC
       `Subject: Offer of Employment — ${a.role}`,
       `We are pleased to offer you the position of ${a.role} at Qera Studio. We are excited to have you join the team and contribute to our growth.`,
       `Your employment will begin on ${a.startDate}. You will be expected to maintain professional standards, deliver assigned responsibilities, and adhere to the company's policies.`,
-      `You will receive a remuneration of ${a.payText}. Revisions, incentives, and benefits may be offered based on your performance, consistency, and contribution to the company's growth and assigned objectives.`,
+      // A salary is offered as an annual figure, and the letter has to say both
+      // what it is and how it arrives — "a remuneration of ₹50,000.00" left the
+      // reader to guess the period, and guessed wrong by a factor of twelve.
+      // The deductions clause is not boilerplate either: TDS u/s 192 comes out
+      // of this figure, so an offer that named it without qualification would
+      // be promising a take-home it does not pay.
+      `You will receive a gross annual salary of ${a.payText}, payable in equal monthly instalments and subject to deductions required by law. Revisions, incentives, and benefits may be offered based on your performance, consistency, and contribution to the company's growth and assigned objectives.`,
       `During your employment, you may have access to confidential company or client information. You agree not to disclose, copy, distribute, or misuse any confidential information during or after your employment.`,
       `Any work produced by you during your employment for Qera Studio shall remain the intellectual property of Qera Studio and may not be reused commercially without written permission.`,
       `Either party may terminate this employment by providing the notice period stipulated in the company's policies. Qera Studio reserves the right to terminate immediately in cases involving misconduct, confidentiality breaches, negligence, or unprofessional behavior.`,

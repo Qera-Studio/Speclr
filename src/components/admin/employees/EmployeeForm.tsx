@@ -26,7 +26,8 @@ import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';
 import { createEmployee, updateEmployee } from '@/server/actions/employees';
-import { rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
+import { formatINR, rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
+import { splitGrossMonthly } from '@/lib/domain/salaryStructure';
 import { composeAddress, emptyAddressParts, addressPartsSchema } from '@/lib/domain/address';
 import { isIfsc } from '@/lib/domain/bank';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
@@ -50,7 +51,7 @@ const formSchema = z.object({
   pronoun: z.enum(['he', 'she', 'they']),
   joiningDate: z.string().trim().min(1, 'Joining date is required.'),
   endDate: z.string(),
-  payRupees: z.string().trim().min(1, 'Pay is required.'),
+  payRupees: z.string().trim().min(1, 'Pay is required.'),  // annual for an employee, monthly for an intern
   payCurrency: z.string().trim().min(1),
   bankName: z.string(),
   accountNo: z.string(),
@@ -128,7 +129,15 @@ export default function EmployeeForm({
           pronoun: employee.pronoun,
           joiningDate: employee.joiningDate,
           endDate: employee.endDate ?? '',
-          payRupees: paiseToRupees(employee.payAmountPaise),
+          // The field holds whichever figure this person is quoted in — annual
+          // for an employee, the monthly stipend for an intern. Records written
+          // before the annual column existed fall back to twelve months of
+          // their monthly pay, which is the same money either way.
+          payRupees: paiseToRupees(
+            employee.engagementType === 'employee'
+              ? employee.annualSalaryPaise ?? employee.payAmountPaise * 12
+              : employee.payAmountPaise,
+          ),
           payCurrency: employee.payCurrency ?? DEFAULT_CURRENCY,
           bankName: employee.bank.bankName,
           accountNo: employee.bank.accountNo,
@@ -177,6 +186,31 @@ export default function EmployeeForm({
   const panValue = watch('pan');
   const nameValue = watch('name');
   const engagementType = watch('engagementType');
+  const isEmployee = engagementType === 'employee';
+
+  /**
+   * The monthly figure an annual salary implies, and how the pay slip will
+   * itemise it. Derived on every keystroke from `splitGrossMonthly` — the same
+   * function the slip seeds itself with, so what is shown here is what will be
+   * on the slip, not an approximation of it.
+   */
+  const payRupees = watch('payRupees');
+  const annualPaise = rupeesToPaise(payRupees);
+  const payPreview =
+    annualPaise === null || annualPaise <= 0
+      ? null
+      : (() => {
+          const monthlyPaise = Math.round(annualPaise / 12);
+          const split = splitGrossMonthly(monthlyPaise);
+          return {
+            monthlyPaise,
+            rows: [
+              { label: 'Basic', paise: split.basicPaise },
+              { label: 'House rent allowance', paise: split.hraPaise },
+              { label: 'Special allowance', paise: split.specialAllowancePaise },
+            ],
+          };
+        })();
   const panSurnameHint =
     panValue && PAN_RE.test(panValue.toUpperCase()) && nameValue
       ? panSurnameMismatch(panValue, nameValue)
@@ -200,7 +234,17 @@ export default function EmployeeForm({
       pronoun: values.pronoun,
       joiningDate: values.joiningDate,
       endDate: values.endDate || undefined,
-      payAmountPaise: rupeesToPaise(values.payRupees) ?? 0,
+      // Both are sent, but only one is authoritative: for an employee the
+      // server recomputes `payAmountPaise` from the annual figure, so the pair
+      // can never disagree. See `withDerivedPay` in the employees action.
+      payAmountPaise:
+        values.engagementType === 'employee'
+          ? Math.round((rupeesToPaise(values.payRupees) ?? 0) / 12)
+          : rupeesToPaise(values.payRupees) ?? 0,
+      annualSalaryPaise:
+        values.engagementType === 'employee'
+          ? rupeesToPaise(values.payRupees) ?? 0
+          : undefined,
       payCurrency: values.payCurrency,
       bank: {
         bankName: values.bankName,
@@ -362,12 +406,56 @@ export default function EmployeeForm({
             <FieldError errors={[errors.payCurrency]} />
           </Field>
 
+          {/*
+            The unit follows the engagement, because the two are genuinely
+            different figures: an employee is offered an annual salary and paid
+            a twelfth of it, an intern is offered a monthly stipend and nothing
+            else. One field labelled "Pay" made you remember which.
+          */}
           <Field>
-            <FieldLabel htmlFor="employee-pay">Pay</FieldLabel>
+            <div className="flex items-center gap-1.5">
+              <FieldLabel htmlFor="employee-pay">
+                {isEmployee ? 'Annual salary' : 'Monthly stipend'}
+              </FieldLabel>
+              <InfoTip
+                label="About the pay figure"
+                info={
+                  isEmployee
+                    ? 'What the employee is actually paid in a year, before tax. Not a cost-to-company figure — Qera adds no employer contributions to it (PF needs 20+ employees, gratuity five years of service).'
+                    : 'A stipend is a monthly amount. An intern is not offered an annual package, and saying otherwise on their offer letter would frame the internship as employment.'
+                }
+              />
+            </div>
             <Input id="employee-pay" size="form" {...numericField(register('payRupees'), 'money')} />
             <FieldError errors={[errors.payRupees]} />
           </Field>
         </FieldRow>
+
+        {/*
+          What the pay slip will actually carry, shown before it is saved rather
+          than discovered on the slip. Read-only: the split is derived, and an
+          editable copy of a derived figure is just a second thing to keep in
+          step. Every line stays editable on the slip itself.
+        */}
+        {isEmployee && payPreview ? (
+          <div className="rounded-lg border border-border p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">
+              Per month, as the pay slip will show it
+            </p>
+            <dl className="m-0 flex flex-col gap-1">
+              {payPreview.rows.map(({ label, paise }) => (
+                <div key={label} className="flex items-baseline justify-between gap-4">
+                  <dt className="text-sm text-muted-foreground">{label}</dt>
+                  <dd className="m-0 text-sm tabular-nums">{formatINR(paise)}</dd>
+                </div>
+              ))}
+              <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-border pt-2 font-medium">
+                <dt className="text-sm">Gross per month</dt>
+                <dd className="m-0 text-sm tabular-nums">{formatINR(payPreview.monthlyPaise)}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
 
         <FieldSeparator />
 

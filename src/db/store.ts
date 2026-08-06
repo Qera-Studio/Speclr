@@ -117,6 +117,8 @@ export async function saveEmployee(emp: EmployeeRecord): Promise<void> {
     joiningDate: emp.joiningDate,
     endDate: emp.endDate ?? null,
     payAmountPaise: emp.payAmountPaise,
+    // Explicit null — see the note in saveClient.
+    annualSalaryPaise: emp.annualSalaryPaise ?? null,
     payCurrency: emp.payCurrency ?? null,
     bank: emp.bank,
     payroll: emp.payroll ?? null,
@@ -143,6 +145,7 @@ function employeeFromRow(r: typeof employees.$inferSelect): EmployeeRecord {
     joiningDate: r.joiningDate,
     endDate: r.endDate ?? undefined,
     payAmountPaise: r.payAmountPaise,
+    annualSalaryPaise: r.annualSalaryPaise ?? undefined,
     payCurrency: (r.payCurrency ?? undefined) as EmployeeRecord['payCurrency'],
     bank: r.bank,
     payroll: r.payroll ?? undefined,

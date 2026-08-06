@@ -41,6 +41,34 @@ async function withEmployeeCode(
   return { ...payroll, employeeCode: await claimEmployeeCode() };
 }
 
+/**
+ * The pay pair, made consistent.
+ *
+ * An employee's salary is quoted annually and paid monthly, and both figures
+ * are stored — the annual because that is what an offer letter names and what a
+ * raise is discussed in, the monthly because that is what every document reads.
+ * Two stored numbers that mean the same thing will drift, so only one is ever
+ * entered: **the monthly figure is derived here**, from the annual, on the
+ * server. Whatever the form sent as `payAmountPaise` is discarded.
+ *
+ * Interns are the other way round. A stipend is a monthly figure and nothing
+ * else, so theirs is entered directly and the annual column stays null —
+ * calling a stipend an annual package would frame the internship as employment,
+ * which is the distinction the HR documents exist to keep straight.
+ */
+function withDerivedPay<T extends { payAmountPaise: number; annualSalaryPaise?: number }>(
+  input: T,
+  engagementType: EmployeeRecord['engagementType'],
+): T {
+  if (engagementType !== 'employee' || input.annualSalaryPaise === undefined) {
+    return { ...input, annualSalaryPaise: undefined };
+  }
+  return {
+    ...input,
+    payAmountPaise: Math.round(input.annualSalaryPaise / 12),
+  };
+}
+
 export async function createEmployee(data: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
 
@@ -52,7 +80,7 @@ export async function createEmployee(data: unknown): Promise<ActionResult> {
   try {
     employee = {
       id: randomUUID(),
-      ...withComposedAddress(parsed.data),
+      ...withDerivedPay(withComposedAddress(parsed.data), parsed.data.engagementType),
       payroll: await withEmployeeCode(parsed.data.payroll, parsed.data.engagementType),
       createdAt: now,
       updatedAt: now,
@@ -89,7 +117,7 @@ export async function updateEmployee(id: unknown, data: unknown): Promise<Action
   try {
     await saveEmployee({
       ...existing,
-      ...withComposedAddress(parsed.data),
+      ...withDerivedPay(withComposedAddress(parsed.data), parsed.data.engagementType),
       // An intern hired properly gets their first code on this save. An
       // existing code is kept, whatever the form sent back.
       payroll: await withEmployeeCode(

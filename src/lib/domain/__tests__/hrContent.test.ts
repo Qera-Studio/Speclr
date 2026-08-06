@@ -200,3 +200,45 @@ describe('slipEarningsSeed', () => {
     expect(special.ratePaise).toBe(15_000_00);
   });
 });
+
+/**
+ * How the offer letter quotes pay.
+ *
+ * The two engagements are quoted differently and the letter has to say which:
+ * a stipend is a monthly amount, a salary is an annual one. Stating a salary
+ * without its period — "a remuneration of ₹50,000.00" — left the reader to
+ * guess, and the natural guess was wrong by a factor of twelve.
+ */
+describe('offer letter pay wording', () => {
+  function offer(engagement: 'intern' | 'employee', payText: string) {
+    return defaultLetterContent(engagement === 'intern' ? 'OFR' : 'OFR', engagement, {
+      ...baseArgs(),
+      payText,
+    }).bodyParagraphs.join(' ');
+  }
+
+  it('quotes an employee a gross annual salary, paid monthly', () => {
+    const body = offer('employee', '₹ 6,00,000.00');
+
+    expect(body).toMatch(/gross annual salary of ₹ 6,00,000\.00/);
+    expect(body).toMatch(/equal monthly instalments/);
+  });
+
+  /** TDS comes out of that figure, so the letter must not promise it whole. */
+  it('says the salary is subject to deductions required by law', () => {
+    expect(offer('employee', '₹ 6,00,000.00')).toMatch(/subject to deductions required by law/);
+  });
+
+  it('quotes an intern a monthly stipend', () => {
+    const body = offer('intern', '₹ 25,000.00');
+
+    expect(body).toMatch(/stipend of ₹ 25,000\.00 per month/);
+    expect(body).not.toMatch(/annual/i);
+    expect(body).not.toMatch(/salary/i);
+  });
+
+  /** An employee's letter must not describe the salary as a monthly figure. */
+  it('never calls an annual salary a monthly one', () => {
+    expect(offer('employee', '₹ 6,00,000.00')).not.toMatch(/₹ 6,00,000\.00 per month/);
+  });
+});

@@ -83,7 +83,18 @@ function splitParagraphs(text: string): string[] {
 function seedContent(type: LetterType, e: EmployeeRecord) {
   const content = defaultLetterContent(type, e.engagementType, {
     role: e.role,
-    payText: `${formatINR(e.payAmountPaise)} per month`,
+    /**
+     * The amount each engagement is quoted in — an annual salary for an
+     * employee, a monthly stipend for an intern. The unit is added by whichever
+     * letter prints it, so this is the bare figure. Employees recorded before
+     * the annual column existed fall back to twelve months of their monthly
+     * pay, which is the same money stated the way an offer letter states it.
+     */
+    payText: formatINR(
+      e.engagementType === 'employee'
+        ? e.annualSalaryPaise ?? e.payAmountPaise * 12
+        : e.payAmountPaise,
+    ),
     startDate: formatDisplayDate(e.joiningDate),
     endDate: e.endDate ? formatDisplayDate(e.endDate) : undefined,
     pronoun: pronounSet(e.pronoun),

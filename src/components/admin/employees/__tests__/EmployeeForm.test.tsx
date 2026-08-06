@@ -15,7 +15,7 @@ async function fillEmployee(user: ReturnType<typeof userEvent.setup>, { phone = 
   await user.type(screen.getByLabelText(/^email$/i), 'r@b.com');
   await user.type(screen.getByLabelText(/^phone$/i), phone);
   await user.type(screen.getByLabelText(/role/i), 'Designer');
-  await user.type(screen.getByLabelText(/^pay$/i), '20000');
+  await user.type(screen.getByLabelText(/monthly stipend/i), '20000');
   await user.type(screen.getByLabelText(/building \/ flat/i), 'C-204');
   await user.type(screen.getByLabelText(/pincode/i), '201017');
   await user.type(screen.getByLabelText(/^city$/i), 'Ghaziabad');
@@ -35,7 +35,7 @@ describe('EmployeeForm', () => {
 
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText(/role/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^pay$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/monthly stipend/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/bank name/i)).toBeInTheDocument();
   });
 
@@ -251,5 +251,103 @@ describe('EmployeeForm — payroll identifiers', () => {
     await user.type(screen.getByLabelText(/^pan$/i), 'abcpr1234f');
 
     expect(screen.getByRole('status', { name: 'PAN check' })).toHaveTextContent('');
+  });
+});
+
+/**
+ * The pay field's unit follows the engagement, because the two are genuinely
+ * different figures — an employee is offered an annual salary and paid a
+ * twelfth of it; an intern is offered a monthly stipend and nothing else.
+ */
+describe('EmployeeForm — the pay figure', () => {
+  const salaried = {
+    id: 'e1',
+    name: 'Ananya Rao',
+    address: 'Sector 12',
+    email: 'a@x.com',
+    phone: '+919876543210',
+    role: 'Senior Designer',
+    engagementType: 'employee' as const,
+    pronoun: 'she' as const,
+    joiningDate: '2025-04-01',
+    payAmountPaise: 50_000_00,
+    annualSalaryPaise: 6_00_000_00,
+    bank: { bankName: 'HDFC', accountNo: '1', ifsc: 'HDFC0001234' },
+    createdAt: 0,
+    updatedAt: 0,
+  };
+
+  it('asks an intern for a monthly stipend', () => {
+    render(<EmployeeForm onDone={() => {}} />);
+
+    expect(screen.getByLabelText(/monthly stipend/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/annual salary/i)).not.toBeInTheDocument();
+  });
+
+  it('asks an employee for an annual salary', async () => {
+    const user = userEvent.setup();
+    render(<EmployeeForm onDone={() => {}} />);
+
+    await user.click(screen.getByLabelText(/engagement type/i));
+    await user.click(await screen.findByRole('option', { name: /^employee$/i }));
+
+    expect(screen.getByLabelText(/annual salary/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/monthly stipend/i)).not.toBeInTheDocument();
+  });
+
+  it('loads the annual figure, not the monthly one', () => {
+    render(<EmployeeForm onDone={() => {}} employee={salaried} />);
+    expect(screen.getByLabelText(/annual salary/i)).toHaveValue('600000.00');
+  });
+
+  /** Records written before the annual column existed still have to load. */
+  it('falls back to twelve months of pay when no annual figure was stored', () => {
+    const { annualSalaryPaise, ...legacy } = salaried;
+    render(<EmployeeForm onDone={() => {}} employee={legacy} />);
+    expect(screen.getByLabelText(/annual salary/i)).toHaveValue('600000.00');
+  });
+
+  /**
+   * Shown before saving rather than discovered on the slip, and derived from
+   * the same function the slip seeds itself with — so this is what the slip
+   * will carry, not an approximation of it.
+   */
+  describe('the monthly breakdown', () => {
+    it('shows what the pay slip will carry', () => {
+      render(<EmployeeForm onDone={() => {}} employee={salaried} />);
+
+      expect(screen.getByText('Basic')).toBeInTheDocument();
+      expect(screen.getByText('₹ 25,000.00')).toBeInTheDocument();
+      expect(screen.getByText('House rent allowance')).toBeInTheDocument();
+      expect(screen.getByText('₹ 10,000.00')).toBeInTheDocument();
+      expect(screen.getByText('Special allowance')).toBeInTheDocument();
+      expect(screen.getByText('₹ 15,000.00')).toBeInTheDocument();
+      expect(screen.getByText('Gross per month')).toBeInTheDocument();
+      expect(screen.getByText('₹ 50,000.00')).toBeInTheDocument();
+    });
+
+    it('is not offered for an intern, who has no salary structure', () => {
+      render(<EmployeeForm onDone={() => {}} />);
+      expect(screen.queryByText(/gross per month/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('sends the annual figure and the monthly one it implies', async () => {
+    updateEmployee.mockResolvedValue({ success: true, id: 'e1' });
+    const user = userEvent.setup();
+    render(<EmployeeForm onDone={() => {}} employee={salaried} />);
+
+    const field = screen.getByLabelText(/annual salary/i);
+    await user.clear(field);
+    await user.type(field, '1200000');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(updateEmployee).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({
+        annualSalaryPaise: 12_00_000_00,
+        payAmountPaise: 1_00_000_00,
+      }),
+    );
   });
 });

@@ -86,7 +86,15 @@ export const employees = pgTable(
     pronoun: text('pronoun').notNull(), // 'he' | 'she' | 'they'
     joiningDate: date('joining_date').notNull(),
     endDate: date('end_date'),
+    /** Monthly. Derived from `annual_salary_paise` when there is one. */
     payAmountPaise: integer('pay_amount_paise').notNull(),
+    /**
+     * An employee's salary as quoted. A real column, not part of a JSONB group:
+     * "what do we pay out a year" is a question worth asking of the table.
+     * Null for interns, who are paid a monthly stipend, and for rows written
+     * before this existed.
+     */
+    annualSalaryPaise: integer('annual_salary_paise'),
     /** Record-keeping only — documents still print INR. Null means INR. */
     payCurrency: text('pay_currency'),
     /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
