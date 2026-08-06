@@ -145,7 +145,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
     },
   ) => (
     <DocumentWorkspace title={heading} preview={preview} {...opts}>
-      <FinalizedActions docId={doc.id} />
+      <FinalizedActions docId={doc.id} isSlip={isSlip(doc)} />
     </DocumentWorkspace>
   );
 

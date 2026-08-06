@@ -3,17 +3,49 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { deleteDraftAction, duplicateDocument } from '@/server/actions/documents';
+import {
+  copySlipForNextMonth,
+  deleteDraftAction,
+  duplicateDocument,
+} from '@/server/actions/documents';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 
-/** Action row for finalized (immutable) documents: print, or duplicate as a new draft. */
-export default function FinalizedActions({ docId }: { docId: string }) {
+/**
+ * Action row for finalized (immutable) documents: print, or copy as a new draft.
+ *
+ * A slip gets a second copy action. The two are not the same thing and must not
+ * be one button: **Duplicate** keeps the wage month, which is how a mistake in
+ * an issued slip gets corrected; **Next month** moves it forward, which is how
+ * the following month's slip gets made. A correction that landed silently in
+ * the wrong month would be very hard to spot afterwards.
+ */
+export default function FinalizedActions({
+  docId,
+  isSlip = false,
+}: {
+  docId: string;
+  /** Slips cover a month, so only they can be copied forward into the next one. */
+  isSlip?: boolean;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
+  const [copying, setCopying] = useState(false);
+
+  const onCopyNextMonth = async () => {
+    setError(null);
+    setCopying(true);
+    const result = await copySlipForNextMonth(docId);
+    setCopying(false);
+    if (!result.success || !result.id) {
+      setError(result.error ?? 'Something went wrong.');
+      return;
+    }
+    router.push(`/docs/${result.id}`);
+  };
 
   // Pre-launch only: sample finalizes need clearing out. `DEV_UNLIMITED` is
   // inlined at build time, so this button is not in the production bundle.
@@ -45,7 +77,19 @@ export default function FinalizedActions({ docId }: { docId: string }) {
         <Link href={`/docs/${docId}/print`} className={buttonVariants({ variant: 'outline' })}>
           Open print view
         </Link>
-        <Button type="button" onClick={onDuplicate} disabled={duplicating}>
+        {/* The primary action on a slip is next month's slip — correcting an
+            issued one is the rarer case. */}
+        {isSlip ? (
+          <Button type="button" onClick={onCopyNextMonth} disabled={copying}>
+            {copying ? 'Copying…' : 'Copy for next month'}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant={isSlip ? 'outline' : 'default'}
+          onClick={onDuplicate}
+          disabled={duplicating}
+        >
           {duplicating ? 'Duplicating…' : 'Duplicate as new draft'}
         </Button>
         {DEV_UNLIMITED ? (

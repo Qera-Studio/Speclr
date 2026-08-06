@@ -6,9 +6,12 @@ import type { z } from 'zod';
 import {
   financialYearCodeOfISODate,
   financialYearStart,
+  firstDayOfMonth,
+  isISOMonth,
+  lastDayOfMonth,
   todayISO,
 } from '@/lib/domain/dates';
-import { DOC_TYPES, isHrDocType, type DocFields } from '@/lib/domain/registry';
+import { DOC_TYPES, isHrDocType, isSlip, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
 import { materialiseContent } from '@/lib/domain/docContent';
 import {
@@ -24,6 +27,7 @@ import {
   type LetterDocument,
   type ReceiptDocument,
   type SlipDocument,
+  type Actor,
 } from '@/lib/domain/types';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import { claimSerial } from '@/db/counter';
@@ -456,6 +460,36 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   return { success: true, id };
 }
 
+/**
+ * An existing document as an unissued draft — everything a copy must shed.
+ *
+ * Shared by `duplicateDocument` and `copySlipForNextMonth` so the two cannot
+ * drift into shedding different things. Getting this wrong is not cosmetic: a
+ * copy that kept the number would collide with an issued document, and one that
+ * kept the audit trail would credit a fresh draft to whoever issued the
+ * original and mark it as already-issued.
+ */
+function asFreshDraft(existing: AdminDocument, actor: Actor): AdminDocument {
+  const now = Date.now();
+  return {
+    ...existing,
+    id: randomUUID(),
+    status: 'draft',
+    number: undefined,
+    serial: undefined,
+    year: undefined,
+    finalizedAt: undefined,
+    // A copy is a fresh draft: it should show the studio's current details and
+    // freeze them again when it is finalized in its own right.
+    studioSnapshot: undefined,
+    issueDate: todayISO(),
+    createdAt: now,
+    updatedAt: now,
+    createdBy: actor,
+    finalizedBy: undefined,
+  };
+}
+
 export async function duplicateDocument(id: unknown): Promise<ActionResult> {
   const actor = await authorized();
   if (!actor) return { success: false, error: 'Unauthorized.' };
@@ -465,34 +499,93 @@ export async function duplicateDocument(id: unknown): Promise<ActionResult> {
   const existing = await getDocument(id);
   if (!existing) return { success: false, error: 'Document not found.' };
 
-  const now = Date.now();
-  const copy: AdminDocument = {
-    ...existing,
-    id: randomUUID(),
-    status: 'draft',
-    number: undefined,
-    serial: undefined,
-    year: undefined,
-    finalizedAt: undefined,
-    // A duplicate is a fresh draft: it should show the studio's current details
-    // and freeze them again when it is finalized in its own right.
-    studioSnapshot: undefined,
-    issueDate: todayISO(),
-    createdAt: now,
-    updatedAt: now,
-    // Spreading `existing` would otherwise inherit the original's audit trail,
-    // crediting this new draft to whoever wrote the document it was copied from
-    // and marking an unissued draft as already-issued. The duplicator drafted
-    // this one; nobody has issued it.
-    createdBy: actor,
-    finalizedBy: undefined,
-  };
+  const copy = asFreshDraft(existing, actor);
 
   try {
     await saveDocument(copy);
   } catch (err) {
     logger.error({ action: 'duplicateDocument', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to duplicate.' };
+  }
+
+  revalidatePath('/');
+  return { success: true, id: copy.id };
+}
+
+/** '2026-06' → '2026-07', rolling the year over in December. */
+function monthAfter(month: string): string | null {
+  if (!isISOMonth(month)) return null;
+  const year = Number(month.slice(0, 4));
+  const index = Number(month.slice(5, 7));
+  return index === 12
+    ? `${year + 1}-01`
+    : `${year}-${String(index + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Next month's slip, from this month's.
+ *
+ * Distinct from `duplicateDocument`, which exists to *correct* an issued
+ * document and therefore keeps its wage month. This one moves forward, and the
+ * distinction is the whole point — a correction that silently landed in the
+ * following month, or a July slip that still said June, would both be wrong in
+ * a way nobody would notice until it was filed.
+ *
+ * What carries over is the salary itself: the earnings lines, the deductions,
+ * the payment method and any edited wording. That makes the run of issued slips
+ * the salary's own history — each one dated, each one stating what was actually
+ * paid that month — which is why a raise needs no effective-date field
+ * anywhere. Give someone a raise, edit the figures once on the next copy, and
+ * every copy after that carries the new ones.
+ *
+ * Three things deliberately do not carry:
+ *  - **The payment reference.** Last month's bank reference on this month's
+ *    slip is a false statement about a transfer that has not happened.
+ *  - **The day counts**, which reset to a full new month. Someone's absence in
+ *    June is not their absence in July, and carrying "22 of 30" forward is the
+ *    kind of error that reads as deliberate.
+ *  - **The issue date**, which becomes the last day of the new wage month
+ *    rather than today — so a slip prepared in advance is not dated before the
+ *    period it covers.
+ */
+export async function copySlipForNextMonth(id: unknown): Promise<ActionResult> {
+  const actor = await authorized();
+  if (!actor) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+
+  const existing = await getDocument(id);
+  if (!existing) return { success: false, error: 'Document not found.' };
+  if (!isSlip(existing)) {
+    return { success: false, error: 'Only a slip covers a month.' };
+  }
+
+  const month = monthAfter(existing.stipendMonth);
+  if (!month) return { success: false, error: 'This slip has no wage month to move.' };
+
+  const start = firstDayOfMonth(month);
+  const end = lastDayOfMonth(month);
+  const days = end ? Number(end.slice(8, 10)) : undefined;
+
+  const copy: SlipDocument = {
+    ...(asFreshDraft(existing, actor) as SlipDocument),
+    stipendMonth: month,
+    stipendPeriodStart: start ?? undefined,
+    stipendPeriodEnd: end ?? undefined,
+    issueDate: end ?? todayISO(),
+    paymentReference: undefined,
+    // Only the pay slip states day counts; leaving them undefined on a stipend
+    // slip is what it already does.
+    daysInPeriod: existing.daysInPeriod === undefined ? undefined : days,
+    daysPaid: existing.daysPaid === undefined ? undefined : days,
+    lopDays: existing.lopDays === undefined ? undefined : 0,
+  };
+
+  try {
+    await saveDocument(copy);
+  } catch (err) {
+    logger.error({ action: 'copySlipForNextMonth', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to copy.' };
   }
 
   revalidatePath('/');

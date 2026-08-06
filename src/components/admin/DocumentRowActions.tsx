@@ -3,12 +3,17 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Copy, Pencil, Printer } from 'lucide-react';
+import { CalendarPlus, Copy, Pencil, Printer } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { deleteDraftAction, duplicateDocument } from '@/server/actions/documents';
+import {
+  copySlipForNextMonth,
+  deleteDraftAction,
+  duplicateDocument,
+} from '@/server/actions/documents';
+import { isSlip } from '@/lib/domain/registry';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -31,6 +36,16 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
   const onDuplicate = async () => {
     setBusy(true);
     const result = await duplicateDocument(doc.id);
+    setBusy(false);
+    if (result.success && result.id) router.push(`/docs/${result.id}`);
+  };
+
+  // Slips only, and deliberately separate from Duplicate above: this one moves
+  // the wage month on, which is next month's slip; Duplicate keeps it, which is
+  // how a mistake in an issued one gets corrected.
+  const onCopyNextMonth = async () => {
+    setBusy(true);
+    const result = await copySlipForNextMonth(doc.id);
     setBusy(false);
     if (result.success && result.id) router.push(`/docs/${result.id}`);
   };
@@ -75,6 +90,26 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
           {/* `auto=1` prints on arrival — from a list row, Print means print.
               The document number in the first column is the way to preview. */}
           {iconLink(`/docs/${doc.id}/print?auto=1`, 'Print', 'Print', Printer)}
+          {isSlip(doc) ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={busy}
+                    onClick={onCopyNextMonth}
+                    aria-label="Copy for next month"
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <CalendarPlus aria-hidden="true" className="size-4" />
+                  </Button>
+                }
+              />
+              <TooltipContent>Copy for next month</TooltipContent>
+            </Tooltip>
+          ) : null}
           <Tooltip>
             <TooltipTrigger
               render={
