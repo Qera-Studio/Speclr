@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Calculator,
   LayoutDashboard,
   Users,
   IdCard,
@@ -94,6 +95,7 @@ export const RECORD_LINKS: NavLink[] = [
 
 /** Tools — plain links at the bottom of the nav. */
 export const TOOL_LINKS: NavLink[] = [
+  { href: '/tools/ctc', label: 'CTC calculator', icon: Calculator },
   { href: '/spec', label: 'Icon spec', icon: Image },
   { href: '/kit', label: 'UI Kit', icon: SwatchBook },
 ];

@@ -118,9 +118,18 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 - **Roles/permissions** — allowlist + full access now. **No longer really
   deferred:** §1 needs them, and the original bet was that adding roles "must not
   require a rewrite." §1 is where that bet gets tested.
-- **Payslip document type** — until a real salaried employee exists. A stipend
-  slip is *not* a payslip; they are kept separate deliberately, and the intern vs.
-  employee split is a legal distinction, not a cosmetic one.
+- ~~**Payslip document type**~~ — **built.** Shipped as `PAY`, a separate doc type
+  sharing `SlipSheet`/`SlipEditor` with the stipend slip. The original note held:
+  they are separate deliberately, because a pay slip is a *statutory* wage record
+  (Code on Wages 2019, Payment of Wages Act s.13A) and a stipend slip is a
+  voluntary one, so a pay slip carries itemised deductions, day counts and
+  statutory identifiers that a stipend slip must not. Still deferred within it:
+  no payroll *engine* — deductions are a free list, because EPF (20+ employees),
+  ESI (10+ and gross ≤ ₹21,000) and Professional Tax (none in UP) do not yet
+  apply to Qera. Build one when any of those thresholds is crossed. What *is*
+  built is the CTC calculator at `/tools/ctc` — the structure arithmetic (basic,
+  HRA, the balancing allowance, capped PF) that a slip's earnings need, which is
+  the useful half without being an engine. It deliberately does not compute TDS.
 - **Reporting/analytics dashboards** — the schema already enables them; not built
   during the migration.
 
