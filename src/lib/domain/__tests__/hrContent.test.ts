@@ -1,4 +1,11 @@
-import { defaultLetterContent, exitMasthead, HR_FOOTER, payslipTerms, stipendTerms } from '../hrContent';
+import {
+  defaultLetterContent,
+  exitMasthead,
+  HR_FOOTER,
+  payslipTerms,
+  slipEarningsSeed,
+  stipendTerms,
+} from '../hrContent';
 
 function baseArgs() {
   return {
@@ -142,5 +149,54 @@ describe('payslipTerms', () => {
     const intern = flat(stipendTerms(''));
     expect(intern).toMatch(/creates no employer/);
     expect(intern).toMatch(/internship/);
+  });
+});
+
+/**
+ * What a slip arrives filled in with. The stipend's single line and the pay
+ * slip's three are not a formatting choice — see the note on the function.
+ */
+describe('slipEarningsSeed', () => {
+  const MONTHLY = 50_000_00; // ₹50,000 a month, in paise
+
+  it('gives a stipend one undifferentiated line', () => {
+    expect(slipEarningsSeed('STP', MONTHLY)).toEqual([
+      { description: 'Internship Stipend', ratePaise: MONTHLY },
+    ]);
+  });
+
+  /**
+   * A "house rent allowance" inside a stipend would imply a salary, which is
+   * the exact thing the stipend slip's first term exists to deny.
+   */
+  it('never invents a salary structure inside a stipend', () => {
+    const words = slipEarningsSeed('STP', MONTHLY).map((e) => e.description).join(' ');
+    expect(words).not.toMatch(/basic|allowance|rent/i);
+  });
+
+  it('itemises wages as basic, HRA and the balance', () => {
+    expect(slipEarningsSeed('PAY', MONTHLY).map((e) => e.description)).toEqual([
+      'Basic salary',
+      'House rent allowance',
+      'Special allowance',
+    ]);
+  });
+
+  /**
+   * The property that makes replacing one line with three safe: the employee is
+   * paid exactly what they were paid before.
+   */
+  it('sums to exactly the pay it was given', () => {
+    for (const monthly of [50_000_00, 33_333_33, 1_00_000_01, 15_000_00, 1]) {
+      const total = slipEarningsSeed('PAY', monthly).reduce((sum, e) => sum + e.ratePaise, 0);
+      expect(total).toBe(monthly);
+    }
+  });
+
+  it('splits at the studio defaults — half basic, non-metro HRA', () => {
+    const [basic, hra, special] = slipEarningsSeed('PAY', MONTHLY);
+    expect(basic.ratePaise).toBe(25_000_00);
+    expect(hra.ratePaise).toBe(10_000_00); // 40% of basic, Ghaziabad being non-metro
+    expect(special.ratePaise).toBe(15_000_00);
   });
 });

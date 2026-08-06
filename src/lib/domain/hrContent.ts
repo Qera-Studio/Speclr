@@ -16,6 +16,7 @@
  * (editing here does not retroactively change saved letters).
  */
 
+import { splitGrossMonthly } from './salaryStructure';
 import type { EngagementType } from './types';
 
 export interface LetterContentArgs {
@@ -297,23 +298,41 @@ export function stipendTerms(deductionsNote: string): {
 }
 
 /**
- * What a slip's first line item is called — the payment itself, which is what
- * the slip is almost always for. Reimbursed expenses (and further earnings, on
- * a pay slip) are added alongside it as more items.
+ * The earnings a slip is seeded with for a monthly amount. Reimbursed expenses
+ * and anything else are added alongside them as further items.
  *
  * Keyed on the slip type, not the recipient's engagement type: the two are the
  * same fact now that each slip only offers its own kind of recipient, and the
- * document is the one that decides what its first line is called.
+ * document is the one that decides what its lines are called.
  *
- * A description and nothing else. This used to seed a detail line restating the
+ * **A stipend is one line; wages are three.** A stipend is a single
+ * discretionary amount and has no internal structure to state — inventing a
+ * "house rent allowance" inside one would imply a salary, which is the exact
+ * thing the stipend slip's first term exists to deny. Wages do have that
+ * structure, every Indian wage slip itemises it, and the split is load-bearing:
+ * HRA is what s.10(13A) exempts, Basic is what PF and gratuity are reckoned on,
+ * and neither can be claimed off a slip that shows one undifferentiated figure.
+ *
+ * Descriptions and nothing else. This used to seed a detail line restating the
  * period and the deductions note; neither slip prints one any more, because the
  * DETAILS block and TERMS already carry both facts where a reader looks for
  * them.
  */
-export function slipLineItemSeed(type: 'STP' | 'PAY'): string {
-  // A pay slip's first earning is Basic, which is what the rest of a wage
-  // slip's arithmetic (and HRA, if it is ever added) is reckoned against.
-  // Seeding it "Monthly Stipend" was left over from the stipend slip and is
-  // simply the wrong word on a wage record.
-  return type === 'PAY' ? 'Basic salary' : 'Internship Stipend';
+export function slipEarningsSeed(
+  type: 'STP' | 'PAY',
+  grossMonthlyPaise: number,
+): { description: string; ratePaise: number }[] {
+  if (type !== 'PAY') {
+    return [{ description: 'Internship Stipend', ratePaise: grossMonthlyPaise }];
+  }
+
+  // Studio defaults: 50% basic (the Code on Wages s.2(y) floor) and non-metro
+  // HRA, Ghaziabad not being a metro. Every figure stays editable on the slip —
+  // this is a starting point, not a payroll policy.
+  const split = splitGrossMonthly(grossMonthlyPaise);
+  return [
+    { description: 'Basic salary', ratePaise: split.basicPaise },
+    { description: 'House rent allowance', ratePaise: split.hraPaise },
+    { description: 'Special allowance', ratePaise: split.specialAllowancePaise },
+  ];
 }

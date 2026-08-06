@@ -15,7 +15,7 @@ import {
   lastDayOfMonth,
   todayISO,
 } from "@/lib/domain/dates";
-import { slipLineItemSeed } from "@/lib/domain/hrContent";
+import { slipEarningsSeed } from "@/lib/domain/hrContent";
 import type { StudioInfo } from "@/lib/domain/studio";
 import {
   DEFAULT_STIPEND_DEDUCTIONS_NOTE,
@@ -297,15 +297,26 @@ export default function SlipEditor({
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   /**
-   * Write the seeded payment into line item 1 for the given employee.
+   * Seed the earnings from the employee's monthly pay.
    *
-   * One helper for both call sites (picking an employee, changing the month) so
-   * the two cannot drift into seeding differently worded lines.
+   * A stipend is one line; wages are three — basic, HRA and the balancing
+   * allowance, which is the itemisation an Indian wage slip is expected to
+   * carry and what PF, gratuity and the s.10(13A) HRA exemption are each
+   * reckoned against. The three sum to exactly the employee's recorded pay, so
+   * replacing one line with three changes the total by nothing.
+   *
+   * `replace` rather than `setValue` per index, because the row count itself
+   * changes. Only ever called on an untouched list — see `onSelectEmployee`.
    */
   const writeSeed = (e: EmployeeRecord) => {
-    setValue("lineItems.0.description", slipLineItemSeed(type));
-    setValue("lineItems.0.rate", paiseToRupees(e.payAmountPaise));
-    setValue("lineItems.0.qty", "1");
+    fieldArray.replace(
+      slipEarningsSeed(type, e.payAmountPaise).map((earning) => ({
+        description: earning.description,
+        detail: "",
+        rate: paiseToRupees(earning.ratePaise),
+        qty: "1",
+      })),
+    );
   };
 
   /**

@@ -1,5 +1,6 @@
 import {
   computeSalaryStructure,
+  splitGrossMonthly,
   DEFAULT_STRUCTURE_INPUT,
   PF_WAGE_CEILING_PAISE,
   type SalaryStructureInput,
@@ -224,4 +225,54 @@ it('holds every figure at zero for a zero CTC', () => {
   expect(s.ctcMonthlyPaise).toBe(0);
   expect(s.grossPaise).toBe(0);
   expect(s.inHandPaise).toBe(0);
+});
+
+/**
+ * The simpler half, and the one a pay slip actually seeds itself from: no CTC
+ * to unpick, so no circularity. The only property that matters on a wage slip
+ * is that the earnings column adds up to what was paid.
+ */
+describe('splitGrossMonthly', () => {
+  it('always sums to exactly the gross it was given', () => {
+    for (const gross of [50_000_00, 33_333_33, 1, 0, 12_345_67, 2_50_000_00]) {
+      const s = splitGrossMonthly(gross);
+      expect(s.basicPaise + s.hraPaise + s.specialAllowancePaise).toBe(gross);
+    }
+  });
+
+  it('sums exactly at every basic percentage too', () => {
+    for (let p = 0; p <= 100; p += 5) {
+      const s = splitGrossMonthly(33_333_33, { basicPercent: p });
+      expect(s.basicPaise + s.hraPaise + s.specialAllowancePaise).toBe(33_333_33);
+    }
+  });
+
+  it('defaults to half basic and non-metro HRA', () => {
+    const s = splitGrossMonthly(50_000_00);
+    expect(s.basicPaise).toBe(25_000_00);
+    expect(s.hraPercent).toBe(40);
+    expect(s.hraPaise).toBe(10_000_00);
+    expect(s.specialAllowancePaise).toBe(15_000_00);
+  });
+
+  it('pays HRA at half of basic in a metro', () => {
+    const s = splitGrossMonthly(50_000_00, { metro: true });
+    expect(s.hraPercent).toBe(50);
+    expect(s.hraPaise).toBe(12_500_00);
+    expect(s.specialAllowancePaise).toBe(12_500_00);
+  });
+
+  /** A basic above ~71% leaves nothing to balance with. Shown, not clamped. */
+  it('reports a negative balance rather than hiding an impossible split', () => {
+    expect(splitGrossMonthly(50_000_00, { basicPercent: 90 }).specialAllowancePaise).toBeLessThan(0);
+  });
+
+  /** One implementation, so the calculator and the slip cannot disagree. */
+  it('agrees with the calculator on the same gross', () => {
+    const full = structure(12);
+    const split = splitGrossMonthly(full.grossPaise, { basicPercent: 50, metro: false });
+    expect(split.hraPercent).toBe(full.hraPercent);
+    // Basic differs by at most the rupee the CTC solver parks in the allowance.
+    expect(Math.abs(split.basicPaise - full.basicPaise)).toBeLessThan(100);
+  });
 });

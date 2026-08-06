@@ -99,6 +99,45 @@ function pfOn(basicMonthlyPaise: number, capped: boolean): number {
   return Math.round(wages * PF_RATE);
 }
 
+/** What is left of a gross once Basic is fixed: HRA off Basic, then the plug. */
+function allowancesFor(grossPaise: number, basicPaise: number, metro: boolean) {
+  const hraPercent = metro ? 50 : 40;
+  const hraPaise = Math.round(basicPaise * (hraPercent / 100));
+  return {
+    hraPaise,
+    // The plug. Negative only if Basic + HRA exceed gross, which needs a Basic
+    // above ~71% — possible, and shown honestly rather than clamped away.
+    specialAllowancePaise: grossPaise - basicPaise - hraPaise,
+    hraPercent,
+  };
+}
+
+/** The three earnings a monthly gross splits into, in paise. */
+export interface GrossSplit {
+  basicPaise: number;
+  hraPaise: number;
+  specialAllowancePaise: number;
+  hraPercent: number;
+}
+
+/**
+ * A monthly gross → the three earnings a pay slip itemises it as.
+ *
+ * The straightforward half of the arithmetic above, and the half a slip
+ * actually needs: no CTC to unpick, no employer costs to back out, so no
+ * circularity — Basic is a share of gross, HRA a share of Basic, and the
+ * allowance is whatever is left. The three always sum to exactly the gross that
+ * went in, which on a wage slip is the property that matters: the earnings
+ * column has to add up to what was paid.
+ */
+export function splitGrossMonthly(
+  grossMonthlyPaise: number,
+  { basicPercent = 50, metro = false }: { basicPercent?: number; metro?: boolean } = {},
+): GrossSplit {
+  const basicPaise = Math.round(grossMonthlyPaise * (basicPercent / 100));
+  return { basicPaise, ...allowancesFor(grossMonthlyPaise, basicPaise, metro) };
+}
+
 /**
  * Gross, backed out of CTC.
  *
@@ -151,17 +190,19 @@ export function computeSalaryStructure(input: SalaryStructureInput): SalaryStruc
   const solvedGross = Math.max(0, Math.round(grossFromCtc(input) / 12));
 
   const basic = Math.round(solvedGross * (input.basicPercent / 100));
-  const hraPercent = input.metro ? 50 : 40;
-  const hra = Math.round(basic * (hraPercent / 100));
 
   const employeePf = pfOn(basic, input.capPfAtCeiling);
   const employerPf = input.includesEmployerPf ? pfOn(basic, input.capPfAtCeiling) : 0;
   const gratuity = input.includesGratuity ? Math.round(basic * GRATUITY_RATE) : 0;
 
   const gross = ctcMonthly - employerPf - gratuity;
-  // Negative only if Basic + HRA exceed gross, which needs a Basic above ~71%
-  // — possible, and shown honestly rather than clamped away.
-  const special = gross - basic - hra;
+  // Same split the pay slip seeds itself with — one implementation, so the
+  // calculator and the slip can never disagree about what an allowance is.
+  const { hraPaise: hra, specialAllowancePaise: special, hraPercent } = allowancesFor(
+    gross,
+    basic,
+    input.metro,
+  );
 
   const tds = Math.max(0, Math.round(input.tdsMonthlyPaise ?? 0));
   const totalDeductions = employeePf + tds;
