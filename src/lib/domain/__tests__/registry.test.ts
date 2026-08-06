@@ -189,6 +189,7 @@ describe('receipt schemas', () => {
 describe('clientInputSchema', () => {
   const validClient = {
     name: 'ZaibQ Studioh',
+    companyName: 'ZaibQ Studioh Private Limited',
     address: 'F 581 basement, Lado Sarai, New Delhi, Delhi - 110030',
     email: 'client@example.com',
     phone: '+91 98730 10678',
@@ -198,8 +199,10 @@ describe('clientInputSchema', () => {
     expect(clientInputSchema.safeParse(validClient).success).toBe(true);
   });
 
-  it('requires name, address, email, and phone', () => {
-    for (const key of ['name', 'address', 'email', 'phone'] as const) {
+  it('requires name, company name, address, email, and phone', () => {
+    // The company name is what prints on the document, so it is as required as
+    // the address — an invoice addressed to a pet name is not a tax document.
+    for (const key of ['name', 'companyName', 'address', 'email', 'phone'] as const) {
       expect(clientInputSchema.safeParse({ ...validClient, [key]: '' }).success).toBe(false);
     }
   });

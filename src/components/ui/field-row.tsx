@@ -1,0 +1,47 @@
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+/**
+ * Two (or three) fields side by side, exactly equal in width.
+ *
+ * Grid, not flex, on purpose. The old `flex flex-wrap gap-4` + `flex-1` pattern
+ * sizes each child partly by its content, so a date field and a dropdown in the
+ * same row came out different widths. `grid-cols-2` gives each column an
+ * identical track regardless of what's inside it.
+ *
+ * `items-start` keeps a field with a validation message from stretching its
+ * neighbour's control, and `min-w-0` lets long option text truncate instead of
+ * forcing the column wider.
+ *
+ * The query is against the enclosing `field-group` container, not the row
+ * itself — an element cannot answer its own container query, and doing so
+ * silently leaves every row stacked at one column.
+ *
+ * The breakpoint is `@2xs` (18rem/288px). The editor rail is 384px wide
+ * (EDITOR_RAIL_WIDTH) and its padding leaves roughly 300px of content, so
+ * anything larger — `@xs` is already 320px — never fires there and every row
+ * silently stacks. Measured in a browser, not guessed. Below 288px, genuinely
+ * cramped, stacking is the right answer anyway.
+ */
+function FieldRow({
+  className,
+  columns = 2,
+  ...props
+}: React.ComponentProps<"div"> & { columns?: 2 | 3 }) {
+  return (
+    <div
+      data-slot="field-row"
+      className={cn(
+        "grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
+        columns === 2
+          ? "@2xs/field-group:grid-cols-2"
+          : "@2xs/field-group:grid-cols-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { FieldRow }

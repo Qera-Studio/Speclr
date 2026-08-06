@@ -4,8 +4,19 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Tooltips wait a beat before appearing, everywhere.
+ *
+ * With no delay, sweeping the cursor across a row of icon buttons fires a
+ * trail of popups nobody asked for. This is long enough that only a deliberate
+ * hover opens one, short enough that resting on an icon doesn't feel stalled —
+ * and every tooltip here labels a control that already carries its own
+ * accessible name, so nothing depends on it at all.
+ */
+const TOOLTIP_DELAY_MS = 200;
+
 function TooltipProvider({
-  delay = 0,
+  delay = TOOLTIP_DELAY_MS,
   ...props
 }: TooltipPrimitive.Provider.Props) {
   return (
@@ -17,8 +28,20 @@ function TooltipProvider({
   )
 }
 
+/**
+ * Carries its own Provider.
+ *
+ * Base UI's Root needs a Provider ancestor or the tooltip never opens, and
+ * there is no app-level one — so every caller had to remember. RemoveButton
+ * didn't, and its tooltips silently never appeared. Nesting Providers is
+ * harmless, so making Tooltip self-sufficient removes the whole footgun.
+ */
 function Tooltip({ ...props }: TooltipPrimitive.Root.Props) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipProvider>
+      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    </TooltipProvider>
+  )
 }
 
 function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
@@ -63,4 +86,4 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TOOLTIP_DELAY_MS }

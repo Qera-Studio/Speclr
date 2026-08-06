@@ -7,6 +7,7 @@ import type { ActionResult, ClientRecord } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { getClient, saveClient } from '@/db/store';
 import { logger } from '@/lib/logger';
+import { withComposedAddress } from './address';
 
 export async function createClient(data: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
@@ -17,7 +18,7 @@ export async function createClient(data: unknown): Promise<ActionResult> {
   const now = Date.now();
   const client: ClientRecord = {
     id: randomUUID(),
-    ...parsed.data,
+    ...withComposedAddress(parsed.data),
     createdAt: now,
     updatedAt: now,
   };
@@ -47,7 +48,11 @@ export async function updateClient(id: unknown, data: unknown): Promise<ActionRe
   if (!existing) return { success: false, error: 'Client not found.' };
 
   try {
-    await saveClient({ ...existing, ...parsed.data, updatedAt: Date.now() });
+    await saveClient({
+      ...existing,
+      ...withComposedAddress(parsed.data),
+      updatedAt: Date.now(),
+    });
   } catch (err) {
     logger.error({ action: 'updateClient', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to save client.' };

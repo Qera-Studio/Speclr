@@ -30,7 +30,7 @@ export async function createService(data: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to save service.' };
   }
 
-  revalidatePath('/services');
+  revalidatePath('/docs/contract');
   return { success: true, id: service.id };
 }
 
@@ -54,7 +54,7 @@ export async function updateService(id: unknown, data: unknown): Promise<ActionR
     return { success: false, error: 'Failed to save service.' };
   }
 
-  revalidatePath('/services');
+  revalidatePath('/docs/contract');
   return { success: true, id };
 }
 
@@ -70,6 +70,6 @@ export async function deleteServiceAction(id: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to delete service.' };
   }
 
-  revalidatePath('/services');
+  revalidatePath('/docs/contract');
   return { success: true };
 }

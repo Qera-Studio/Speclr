@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import ContractEditor from '../ContractEditor';
 import type { ClientRecord } from '@/lib/domain/types';
@@ -32,7 +33,7 @@ beforeEach(() => {
 
 describe('ContractEditor (new)', () => {
   it('renders the client picker and service-schedule control', () => {
-    render(<ContractEditor clients={clients} services={services} />);
+    render(<ContractEditor clients={clients} services={services} title="New contract" />);
     expect(screen.getByLabelText(/client/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/add schedule from service/i)).toBeInTheDocument();
   });
@@ -40,10 +41,10 @@ describe('ContractEditor (new)', () => {
   it('adds a schedule and creates a draft with it', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-con' });
     const u = userEvent.setup();
-    render(<ContractEditor clients={clients} services={services} />);
+    render(<ContractEditor clients={clients} services={services} title="New contract" />);
 
-    await u.selectOptions(screen.getByLabelText(/client/i), 'c1');
-    await u.selectOptions(screen.getByLabelText(/add schedule from service/i), 's1');
+    await selectComboboxOption(u, /client/i, 'Acme Co.');
+    await selectComboboxOption(u, /add schedule from service/i, 'Branding');
     await u.click(screen.getByRole('button', { name: /^add schedule$/i }));
     // schedule card now visible (its "Schedule title" field appears)
     expect(screen.getByLabelText(/schedule title/i)).toBeInTheDocument();

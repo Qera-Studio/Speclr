@@ -7,6 +7,7 @@ import { Field, FieldLabel, FieldError, FieldGroup, FieldSet, FieldLegend } from
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { RemoveButton } from '@/components/ui/remove-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createService, updateService } from '@/server/actions/services';
 import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
@@ -101,7 +102,7 @@ export default function ServiceForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-      <FieldGroup>
+      <FieldGroup size="form">
         <Field>
           <FieldLabel htmlFor="service-name">Name</FieldLabel>
           <Input id="service-name" {...register('name')} />
@@ -122,14 +123,10 @@ export default function ServiceForm({
                 <FieldLabel htmlFor={`scope-item-${index}`}>{`Scope item ${index + 1}`}</FieldLabel>
                 <Input id={`scope-item-${index}`} {...register(`scopeItems.${index}.value`)} />
               </Field>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => scope.remove(index)}
-                aria-label={`Remove scope ${index + 1}`}
-              >
-                Remove
-              </Button>
+              <RemoveButton
+                label={`Remove scope ${index + 1}`}
+                onConfirm={() => scope.remove(index)}
+              />
             </div>
           ))}
           <Button type="button" variant="outline" onClick={() => scope.append({ value: '' })}>
@@ -145,14 +142,10 @@ export default function ServiceForm({
                 <FieldLabel htmlFor={`exclusion-item-${index}`}>{`Exclusion item ${index + 1}`}</FieldLabel>
                 <Input id={`exclusion-item-${index}`} {...register(`exclusionItems.${index}.value`)} />
               </Field>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => exclusions.remove(index)}
-                aria-label={`Remove exclusion ${index + 1}`}
-              >
-                Remove
-              </Button>
+              <RemoveButton
+                label={`Remove exclusion ${index + 1}`}
+                onConfirm={() => exclusions.remove(index)}
+              />
             </div>
           ))}
           <Button type="button" variant="outline" onClick={() => exclusions.append({ value: '' })}>
@@ -177,14 +170,10 @@ export default function ServiceForm({
                 <FieldLabel htmlFor={`milestone-scope-${index}`}>{`Milestone ${index + 1} scope`}</FieldLabel>
                 <Input id={`milestone-scope-${index}`} {...register(`milestones.${index}.scope`)} />
               </Field>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => milestones.remove(index)}
-                aria-label={`Remove milestone ${index + 1}`}
-              >
-                Remove
-              </Button>
+              <RemoveButton
+                label={`Remove milestone ${index + 1}`}
+                onConfirm={() => milestones.remove(index)}
+              />
             </div>
           ))}
           <Button

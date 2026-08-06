@@ -2,6 +2,7 @@ import 'server-only';
 
 import { computeTotals } from '@/lib/domain/money';
 import type {
+  Actor,
   AdminDocument,
   ClientSnapshot,
   ContractDocument,
@@ -46,6 +47,21 @@ export interface DocumentRow {
   createdAt: Date;
   updatedAt: Date;
   finalizedAt: Date | null;
+  createdBy: string | null;
+  createdByEmail: string | null;
+  finalizedBy: string | null;
+  finalizedByEmail: string | null;
+}
+
+/**
+ * Rebuild an `Actor` from its two columns, or undefined when unrecorded.
+ *
+ * Requires *both* halves. A row with an id but no email (or vice versa) is a
+ * half-written actor, and a partial audit record is not evidence of anything —
+ * better to report "unknown" than to imply a name we can't stand behind.
+ */
+function actorFrom(userId: string | null, email: string | null): Actor | undefined {
+  return userId && email ? { userId, email } : undefined;
 }
 
 /** Value written for a document's insert/update (id + timestamps handled by the store). */
@@ -66,6 +82,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     gstLabel: doc.gstLabel,
     notes: doc.notes,
     terms: doc.terms,
+    studioSnapshot: doc.studioSnapshot,
   };
   let snapshot: ClientSnapshot | EmployeeSnapshot | null = null;
   let clientId: string | null = null;
@@ -127,6 +144,10 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     createdAt: new Date(doc.createdAt),
     updatedAt: new Date(doc.updatedAt),
     finalizedAt: doc.finalizedAt ? new Date(doc.finalizedAt) : null,
+    createdBy: doc.createdBy?.userId ?? null,
+    createdByEmail: doc.createdBy?.email ?? null,
+    finalizedBy: doc.finalizedBy?.userId ?? null,
+    finalizedByEmail: doc.finalizedBy?.email ?? null,
   };
 }
 
@@ -145,9 +166,12 @@ export function fromRow(row: DocumentRow): AdminDocument {
     gstLabel: row.data.gstLabel,
     notes: row.data.notes,
     terms: row.data.terms,
+    studioSnapshot: row.data.studioSnapshot,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     finalizedAt: row.finalizedAt ? row.finalizedAt.getTime() : undefined,
+    createdBy: actorFrom(row.createdBy, row.createdByEmail),
+    finalizedBy: actorFrom(row.finalizedBy, row.finalizedByEmail),
   };
 
   if (HR_TYPES.has(row.type)) {

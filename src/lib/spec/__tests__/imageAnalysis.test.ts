@@ -1,4 +1,4 @@
-import { detectTransparency, isIcoFile, isSvgFile, loadImageDimensions } from '../imageAnalysis';
+import { analyzePixels, checkSafeZone, detectTransparency, isIcoFile, isSvgFile, loadImageDimensions } from '../imageAnalysis';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -127,5 +127,87 @@ describe('detectTransparency', () => {
     jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
     const img = document.createElement('img');
     expect(detectTransparency(2, 1, img)).toBe('unknown');
+  });
+});
+
+describe('analyzePixels', () => {
+  function mockCanvasContext(bytes: number[]) {
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: jest.fn(),
+      getImageData: jest.fn(() => ({ data: new Uint8ClampedArray(bytes) })),
+    } as unknown as CanvasRenderingContext2D);
+  }
+  afterEach(() => jest.restoreAllMocks());
+
+  it('reports alpha + non-blank for a normal two-tone opaque image', () => {
+    mockCanvasContext([10, 20, 30, 255, 200, 200, 200, 255]);
+    const img = document.createElement('img');
+    expect(analyzePixels(2, 1, img)).toEqual({ hasAlpha: false, isBlank: false });
+  });
+
+  it('flags hasAlpha when any pixel is not fully opaque', () => {
+    mockCanvasContext([10, 20, 30, 128, 200, 200, 200, 255]);
+    const img = document.createElement('img');
+    expect(analyzePixels(2, 1, img)!.hasAlpha).toBe(true);
+  });
+
+  it('flags isBlank when every pixel is identical (single-colour placeholder)', () => {
+    mockCanvasContext([255, 255, 255, 255, 255, 255, 255, 255]);
+    const img = document.createElement('img');
+    expect(analyzePixels(2, 1, img)!.isBlank).toBe(true);
+  });
+
+  it('flags isBlank when the whole image is fully transparent', () => {
+    mockCanvasContext([0, 0, 0, 0, 0, 0, 0, 0]);
+    const img = document.createElement('img');
+    expect(analyzePixels(2, 1, img)!.isBlank).toBe(true);
+  });
+
+  it('returns null when a 2d context is unavailable', () => {
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const img = document.createElement('img');
+    expect(analyzePixels(2, 1, img)).toBeNull();
+  });
+});
+
+describe('checkSafeZone', () => {
+  // A 10×10 image; the safe-zone check samples the outer 20% ring (outer 1px on
+  // each edge here). We stub getImageData per-region by returning bytes based on
+  // the requested rectangle so we can place content in or out of the ring.
+  function mockRingContext(ringHasContent: boolean) {
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+      drawImage: jest.fn(),
+      getImageData: jest.fn((x: number, y: number, w: number, h: number) => {
+        // The check reads the full buffer and inspects ring coordinates itself.
+        // Build a 10×10 buffer: centre opaque, ring transparent unless content.
+        const width = 10;
+        const data = new Uint8ClampedArray(w * h * 4);
+        for (let py = 0; py < h; py++) {
+          for (let px = 0; px < w; px++) {
+            const gx = x + px;
+            const gy = y + py;
+            const inRing = gx === 0 || gy === 0 || gx === width - 1 || gy === width - 1;
+            const opaque = inRing ? ringHasContent : true;
+            const idx = (py * w + px) * 4 + 3;
+            data[idx] = opaque ? 255 : 0;
+          }
+        }
+        return { data };
+      }),
+    } as unknown as CanvasRenderingContext2D);
+  }
+  afterEach(() => jest.restoreAllMocks());
+
+  it('warns when opaque content bleeds into the outer safe-zone ring', () => {
+    mockRingContext(true);
+    const img = document.createElement('img');
+    const w = checkSafeZone(10, 10, img);
+    expect(w?.kind).toBe('safe-zone');
+  });
+
+  it('does not warn when the outer ring is clear (content kept in the inner 80%)', () => {
+    mockRingContext(false);
+    const img = document.createElement('img');
+    expect(checkSafeZone(10, 10, img)).toBeNull();
   });
 });

@@ -61,6 +61,21 @@ describe('defaultLetterContent — exit (auto-switching)', () => {
     const all = c.bodyParagraphs.join(' ').toLowerCase();
     expect(all).toMatch(/relieved from the services/);
   });
+
+  /**
+   * "Therein" points at the resignation letter named in the paragraph above it.
+   * An intern never resigns, so on an internship completion letter the word
+   * would refer to a document that does not exist.
+   */
+  it('confirms acceptance of the resignation terms on the employee exit only', () => {
+    const employee = defaultLetterContent('EXIT', 'employee', baseArgs());
+    const intern = defaultLetterContent('EXIT', 'intern', baseArgs());
+
+    expect(employee.bodyParagraphs).toContain(
+      'We confirm acceptance on the terms and conditions stipulated therein.',
+    );
+    expect(intern.bodyParagraphs.join(' ')).not.toMatch(/stipulated therein/);
+  });
 });
 
 describe('exitMasthead', () => {

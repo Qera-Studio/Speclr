@@ -18,7 +18,7 @@ export const ICON_SPECS: IconSpec[] = [
       'A single .ico container bundling 16×16, 32×32, and 48×48 layers — legacy browsers/Windows pick whichever embedded size fits the context.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'browserTab',
+    previewMockup: 'bookmarksBar',
   },
   {
     id: 'favicon-32',
@@ -61,7 +61,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: 'Square, non-transparent, exactly 512×512 for manifest compliance.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'none',
+    previewMockup: 'pwaInstall',
   },
   {
     id: 'apple-touch-icon',
@@ -92,7 +92,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: 'Full-bleed square PNG at 192×192 and 512×512, opaque background recommended.',
     priority: 'required',
     requireOpaque: true,
-    previewMockup: 'none',
+    previewMockup: 'androidLauncher',
   },
   {
     id: 'manifest-icon-maskable',
@@ -139,7 +139,7 @@ export const ICON_SPECS: IconSpec[] = [
     industryStandard: '1200×1200px, same content-safety principles as the landscape OG image.',
     priority: 'nice-to-have',
     requireOpaque: false,
-    previewMockup: 'socialCard',
+    previewMockup: 'socialCardSquare',
   },
   {
     id: 'svg-favicon',
@@ -164,11 +164,11 @@ export const ICON_SPECS: IconSpec[] = [
     format: 'svg',
     usedIn: '<link rel="mask-icon" href="..." color="#hex"> — legacy Safari "pin tab" feature',
     whyItMatters:
-      'Mostly a legacy/dead feature today, but still recognized by Safari — a single-color monochrome silhouette on a transparent background is the correct format here (unlike every other slot on this page, transparency is expected and correct for this one).',
+      'Deprecated by Apple in Safari 12 (2018) — modern Safari uses the regular favicon for pinned tabs, so mask-icon only still applies to older macOS Safari. Ship it only if you need that long tail; skipping it costs nothing on current browsers.',
     industryStandard:
-      'Must be a single-color (monochrome) SVG silhouette — Safari recolors it using the color attribute, so any color information in the file itself is ignored.',
+      'Two behaviours, depending on the Safari version. Where mask-icon still applies (pre-Safari 12) it is a mask, not a picture: only the alpha channel is read and the shape is repainted in the accent colour set by the link tag, so the file must be a single-colour SVG silhouette on transparency — the one slot here where transparency is required rather than disallowed. Modern Safari ignores mask-icon entirely and pins the regular favicon in full colour, which is what the preview shows.',
     priority: 'nice-to-have',
     requireOpaque: false,
-    previewMockup: 'none',
+    previewMockup: 'safariPinnedTab',
   },
 ];

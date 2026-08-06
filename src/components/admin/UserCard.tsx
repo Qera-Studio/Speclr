@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
 import { SignOutButton } from '@clerk/nextjs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { SETTINGS_LINK } from './nav';
 
 export interface UserCardUser {
   name: string;
@@ -34,9 +36,11 @@ export default function UserCard({ user }: { user: UserCardUser }) {
   const { isMobile } = useSidebar();
 
   const avatar = (
-    <Avatar className="h-8 w-8 rounded-lg">
-      {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" /> : null}
-      <AvatarFallback className="rounded-lg">{initials(user.name, user.email)}</AvatarFallback>
+    <Avatar className="h-8 w-8 rounded-md">
+      {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" className="rounded-md" /> : null}
+      <AvatarFallback className="rounded-md bg-accent font-medium text-foreground">
+        {initials(user.name, user.email)}
+      </AvatarFallback>
     </Avatar>
   );
 
@@ -48,7 +52,7 @@ export default function UserCard({ user }: { user: UserCardUser }) {
             render={
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-[state=open]:bg-sidebar-active data-[state=open]:text-sidebar-accent-foreground"
               >
                 {avatar}
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -72,6 +76,15 @@ export default function UserCard({ user }: { user: UserCardUser }) {
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </div>
             </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <Link href={SETTINGS_LINK.href}>
+                  <SETTINGS_LINK.icon aria-hidden="true" />
+                  {SETTINGS_LINK.label}
+                </Link>
+              }
+            />
             <DropdownMenuSeparator />
             <SignOutButton>
               <DropdownMenuItem>

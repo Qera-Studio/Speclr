@@ -11,12 +11,11 @@ describe('ClientsTable', () => {
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
     expect(screen.getByText('a@b.com')).toBeInTheDocument();
   });
-  it('calls onEdit when the row Edit action is chosen', async () => {
+  it('calls onEdit from the row edit button', async () => {
     const onEdit = jest.fn();
     const user = userEvent.setup();
     render(<ClientsTable clients={clients} onEdit={onEdit} />);
-    await user.click(screen.getByRole('button', { name: /actions for acme co\./i }));
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
     expect(onEdit).toHaveBeenCalledWith(clients[0]);
   });
   it('renders an empty state', () => {

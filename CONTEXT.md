@@ -40,6 +40,18 @@ Once finalized, a document **cannot be edited, overwritten, or deleted** — enf
 ### 5. The snapshot pattern
 At finalize, the document **freezes a copy** of the client (or employee, for HR docs) into a JSONB `snapshot` column. Editing that client/employee later **must never mutate an already-issued document** — the issued invoice reflects the client as they were *at issue time*. Never resolve client/employee data live for a finalized doc; always read its snapshot.
 
+**The studio side is snapshotted too.** Qera's own identity block (the "from:" address, bank, GSTIN, CIN) is editable at `/settings`, so finalize freezes a `studioSnapshot` onto the document as well. Sheets read it via `studioOf(doc)` — snapshot if present, else the `STUDIO_INFO` constant — never the live settings row. This is not a nicety: CGST s.36 requires a tax invoice to be retained unaltered for 72 months, and Rule 46 wants the supplier address *as at issue*. Moving office must not silently rewrite invoices already filed. **If you ever make studio details live again, you have created a compliance bug.**
+
+### 5a. Client `name` vs `companyName`
+Two different jobs, deliberately split: `name` is the short reference ("Clayora") used in lists, the client picker and the editor heading; `companyName` is the legal entity name ("Clayora Private Limited") that **documents print**. The form requires `companyName`; the record and the snapshot keep it **optional** so clients and snapshots written before it existed still load, and every sheet prints `companyName || name`.
+
+### 5b. Document text is content, and it is snapshotted too
+Every printed *word* that carries meaning — mastheads, the letter subject and acknowledgement, TERMS clauses, the MSA's 24 sections, badge notes, the signatory block, footer identity lines — is editable per document via `content` (`src/lib/domain/docContent.ts`). Structural labels ("DESCRIPTION", "Subtotal", "GSTIN:", "Queries:") are **not**: they are the document's grammar and Rule 46 expects several of them verbatim.
+
+Two rules keep this safe. **Drafts store only what was edited** — sheets call `contentOf(doc, spec)`, which lays a document's overrides over the type's defaults, so an untouched document prints exactly what it always did and still follows things like the intern/employee wording split. **Finalize materialises the resolved content onto the document** (`materialiseContent`), exactly as `studioSnapshot` freezes the studio identity. Without that, revising `fixedTerms` or `MSA_SECTIONS` next year would silently rewrite documents already issued. Same compliance rule as §5 — if you ever make the sheets read the constants directly again, you have created that bug.
+
+Clearing a content field to empty is an **override**, not a reset: the document prints nothing there. That is the honest reading of an empty input.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.
@@ -87,12 +99,14 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 - **Sheet styling = Tailwind + a small `print.css` layer** (not a PDF renderer yet).
 - **No data migration** — fresh Postgres. The old Upstash test data (incl. a test invoice `QS-INV-2627-001`) was **not** carried over. speclr's first real document starts a clean FY sequence.
 
-## Deliberately deferred (YAGNI — noted, not built)
+## Deferred work → `ROADMAP.md`
 
-- **Server-side PDF renderer** — print-CSS now; PDF is a future non-breaking upgrade.
-- **Roles/permissions** — allowlist + full access now.
-- **Payslip document type** — until a real salaried employee exists (stipend slip ≠ payslip; kept separate).
-- **Reporting/analytics dashboards** — the schema enables them; not built this migration.
+The YAGNI list that used to live here (PDF renderer, roles/permissions, payslip
+document type, analytics dashboards) now lives in [`ROADMAP.md`](ROADMAP.md)
+under *Deliberately deferred*, alongside every other piece of unbuilt work.
+
+This file records **decisions already made**; the roadmap records **work not yet
+done**. Keeping deferred items in one place stops the two lists drifting apart.
 
 ## Access control (two independent locks — do not weaken)
 

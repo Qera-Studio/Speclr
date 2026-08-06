@@ -6,6 +6,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { RemoveButton } from '@/components/ui/remove-button';
 
 interface ScheduleCardProps {
   schedule: ContractSchedule;
@@ -53,9 +54,11 @@ export default function ScheduleCard({ schedule, index, onChange, onRemove }: Sc
     <fieldset className="flex flex-col gap-4 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
         <legend className="px-1 text-sm font-medium">Schedule {letter}</legend>
-        <Button type="button" variant="ghost" onClick={onRemove} aria-label={`Remove schedule ${letter}`}>
-          Remove schedule
-        </Button>
+        <RemoveButton
+          label={`Remove schedule ${letter}`}
+          onConfirm={onRemove}
+          confirmDescription="The schedule and everything in it will be removed."
+        />
       </div>
 
       <Field>
@@ -85,14 +88,10 @@ export default function ScheduleCard({ schedule, index, onChange, onRemove }: Sc
                 onChange={(e) => editStringItem('scopeItems', i, e.target.value)}
               />
             </Field>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => removeStringItem('scopeItems', i)}
-              aria-label={`Remove scope item ${i + 1}`}
-            >
-              Remove
-            </Button>
+            <RemoveButton
+              label={`Remove scope item ${i + 1}`}
+              onConfirm={() => removeStringItem('scopeItems', i)}
+            />
           </div>
         ))}
         <div>
@@ -114,14 +113,10 @@ export default function ScheduleCard({ schedule, index, onChange, onRemove }: Sc
                 onChange={(e) => editStringItem('exclusionItems', i, e.target.value)}
               />
             </Field>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => removeStringItem('exclusionItems', i)}
-              aria-label={`Remove exclusion item ${i + 1}`}
-            >
-              Remove
-            </Button>
+            <RemoveButton
+              label={`Remove exclusion item ${i + 1}`}
+              onConfirm={() => removeStringItem('exclusionItems', i)}
+            />
           </div>
         ))}
         <div>
@@ -161,14 +156,10 @@ export default function ScheduleCard({ schedule, index, onChange, onRemove }: Sc
                 onChange={(e) => editMilestone(i, { scope: e.target.value })}
               />
             </Field>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => removeMilestone(i)}
-              aria-label={`Remove milestone ${i + 1}`}
-            >
-              Remove
-            </Button>
+            <RemoveButton
+              label={`Remove milestone ${i + 1}`}
+              onConfirm={() => removeMilestone(i)}
+            />
           </div>
         ))}
         <div>

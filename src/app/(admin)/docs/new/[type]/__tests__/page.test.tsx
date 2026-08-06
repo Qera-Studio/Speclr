@@ -1,3 +1,4 @@
+import { STUDIO_INFO } from '@/lib/domain/studio';
 import { render, screen } from '@testing-library/react';
 
 const requireAuthorizedUser = jest.fn();
@@ -15,6 +16,9 @@ jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: (...a: unknown[]) => requireAuthorizedUser(...a),
 }));
 jest.mock('@/db/store', () => ({
+  // The routes read the studio's live details for a draft's preview; the real
+  // constant is the fallback these documents printed before settings existed.
+  getStudioSettings: () => STUDIO_INFO,
   listClients: () => listClients(),
   listEmployees: () => listEmployees(),
   listServices: () => listServices(),

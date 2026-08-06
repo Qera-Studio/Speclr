@@ -29,7 +29,6 @@ export default async function EmployeesPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Employees</h1>
       <EmployeeManager employees={employees} />
     </div>
   );

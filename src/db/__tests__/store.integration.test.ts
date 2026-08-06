@@ -19,6 +19,10 @@ import {
   getClient,
   getDocument,
   listDocuments,
+  getLatestFinalizedInvoice,
+  searchEverything,
+  listDocumentsByType,
+  listFinalizedInvoicesForClient,
   saveClient,
   saveDocument,
 } from '../store';
@@ -140,5 +144,142 @@ describe('Postgres store (integration)', () => {
     const list = await listDocuments();
     expect(Array.isArray(list)).toBe(true);
     expect(list.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('round-trips structured address parts, and leaves old rows without them', async () => {
+    const withParts = randomUUID();
+    const withoutParts = randomUUID();
+    madeClientIds.push(withParts, withoutParts);
+    const now = Date.now();
+
+    await saveClient({
+      id: withParts,
+      name: 'Parts Co',
+      address: 'C-204,\nGhaziabad - 201017',
+      addressParts: {
+        line1: 'C-204',
+        city: 'Ghaziabad',
+        state: 'Uttar Pradesh',
+        pincode: '201017',
+        country: 'IN',
+      },
+      email: 'p@t.co',
+      phone: '+919876543210',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // A row saved without parts — the shape every pre-existing client has.
+    await saveClient({
+      id: withoutParts,
+      name: 'Legacy Co',
+      address: 'Hand typed address',
+      email: 'l@t.co',
+      phone: '9',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    expect((await getClient(withParts))?.addressParts?.city).toBe('Ghaziabad');
+    expect((await getClient(withoutParts))?.addressParts).toBeUndefined();
+    expect((await getClient(withoutParts))?.address).toBe('Hand typed address');
+  });
+
+  it('clears address parts on an edit rather than leaving stale ones behind', async () => {
+    // The upsert passes one object to both values() and the conflict set, so a
+    // missing key would silently keep the old parts on the row.
+    const id = randomUUID();
+    madeClientIds.push(id);
+    const now = Date.now();
+    const base = {
+      id,
+      name: 'Mutable Co',
+      email: 'm@t.co',
+      phone: '+919876543210',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await saveClient({
+      ...base,
+      address: 'C-204,\nPune - 411001',
+      addressParts: { line1: 'C-204', city: 'Pune', state: 'MH', pincode: '411001', country: 'IN' },
+    });
+    expect((await getClient(id))?.addressParts?.city).toBe('Pune');
+
+    await saveClient({ ...base, address: 'Back to free text' });
+    expect((await getClient(id))?.addressParts).toBeUndefined();
+  });
+
+  it('offers only this client’s finalized invoices, newest first', async () => {
+    const clientId = randomUUID();
+    const otherClientId = randomUUID();
+    madeClientIds.push(clientId, otherClientId);
+    const now = Date.now();
+    await saveClient({ id: clientId, name: 'Payer', address: 'A', email: 'p@t.co', phone: '1', createdAt: now, updatedAt: now });
+    await saveClient({ id: otherClientId, name: 'Other', address: 'A', email: 'o@t.co', phone: '1', createdAt: now, updatedAt: now });
+
+    const older = randomUUID();
+    const newer = randomUUID();
+    const draftId = randomUUID();
+    const othersId = randomUUID();
+    madeDocIds.push(older, newer, draftId, othersId);
+
+    const finalize = async (id: string, owner: string, issueDate: string) => {
+      const claim = await claimSerial('INV', TEST_FY);
+      await saveDocument({
+        ...draftInvoice(id, owner),
+        issueDate,
+        status: 'finalized',
+        number: claim.number,
+        serial: claim.serial,
+        year: 9999,
+        finalizedAt: Date.now(),
+      });
+    };
+
+    await finalize(older, clientId, '2026-05-01');
+    await finalize(newer, clientId, '2026-09-01');
+    await finalize(othersId, otherClientId, '2026-09-15');
+    // A draft has no number yet, so it is not something a receipt can reference.
+    await saveDocument(draftInvoice(draftId, clientId));
+
+    const list = await listFinalizedInvoicesForClient(clientId);
+    const ids = list.map((d) => d.id);
+
+    expect(ids).toEqual([newer, older]);
+    expect(ids).not.toContain(draftId);
+    expect(ids).not.toContain(othersId);
+
+    // The per-type list is the working surface, so it keeps drafts too.
+    const invoices = await listDocumentsByType('INV');
+    const invoiceIds = invoices.map((d) => d.id);
+    expect(invoiceIds).toEqual(expect.arrayContaining([older, newer, draftId, othersId]));
+    expect(invoices.every((d) => d.type === 'INV')).toBe(true);
+
+    // Receipts share the table but must never appear in the invoice list.
+    expect(await listDocumentsByType('REC')).toEqual(
+      expect.not.arrayContaining([expect.objectContaining({ id: newer })]),
+    );
+
+    // The newest *issued* invoice — never a draft.
+    const latest = await getLatestFinalizedInvoice();
+    expect(latest?.status).toBe('finalized');
+    expect(latest?.id).not.toBe(draftId);
+
+    // Search: a client by name, and that client's documents by foreign key.
+    const byClient = await searchEverything('Payer');
+    expect(byClient.clients.map((c) => c.id)).toContain(clientId);
+    expect(byClient.documents.some((d) => d.clientId === clientId)).toBe(true);
+
+    // ...and a document by its number, case-insensitively.
+    const numbered = (await getLatestFinalizedInvoice())!.number!;
+    const byNumber = await searchEverything(numbered.toLowerCase());
+    expect(byNumber.documents.map((d) => d.number)).toContain(numbered);
+
+    // A one-character query is not a search — it would match everything.
+    expect(await searchEverything('P')).toEqual({
+      documents: [], clients: [], employees: [], services: [],
+    });
   });
 });

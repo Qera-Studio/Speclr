@@ -1,14 +1,15 @@
 'use client';
 
-import { MoreHorizontal, Users } from 'lucide-react';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Button } from '@/components/ui/button';
+import { BadgeIndianRupee, Building2, Mail, Phone, Users } from 'lucide-react';
+import ColumnLabel from '../ColumnLabel';
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import { EditButton, RowActions } from '../RowActions';
 import {
   Table,
   TableBody,
@@ -46,39 +47,38 @@ export default function ClientsTable({
       <TableCaption className="sr-only">Saved clients, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Phone</TableHead>
-          <TableHead>GSTIN</TableHead>
           <TableHead>
+            <ColumnLabel icon={Building2}>Name</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Mail}>Email</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Phone}>Phone</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={BadgeIndianRupee}>GSTIN</ColumnLabel>
+          </TableHead>
+          <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {clients.map((client) => (
-          <TableRow key={client.id}>
+          <TableRow key={client.id} className="group/row">
             <TableCell>{client.name}</TableCell>
             <TableCell>{client.email}</TableCell>
             <TableCell>{client.phone}</TableCell>
             <TableCell>{client.gstin || '—'}</TableCell>
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Actions for ${client.name}`}
-                    />
-                  }
-                >
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => onEdit(client)}>Edit</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <TableCell className="py-0 text-right">
+              {/*
+                Edit is the only action a client has — clients are never
+                deleted, since issued documents reference them.
+              */}
+              <RowActions>
+                <EditButton label={`Edit ${client.name}`} onClick={() => onEdit(client)} />
+              </RowActions>
             </TableCell>
           </TableRow>
         ))}

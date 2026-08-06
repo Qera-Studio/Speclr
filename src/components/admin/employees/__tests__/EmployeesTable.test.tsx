@@ -30,21 +30,23 @@ describe('EmployeesTable', () => {
     expect(screen.getByText('intern')).toBeInTheDocument();
   });
 
-  it('calls onEdit when the row Edit action is chosen', async () => {
+  it('calls onEdit from the row Edit action', async () => {
     const onEdit = jest.fn();
     const user = userEvent.setup();
     render(<EmployeesTable employees={employees} onEdit={onEdit} onDelete={() => {}} />);
-    await user.click(screen.getByRole('button', { name: /actions for riya sharma/i }));
-    await user.click(await screen.findByRole('menuitem', { name: /edit/i }));
+    await user.click(screen.getByRole('button', { name: /edit riya sharma/i }));
     expect(onEdit).toHaveBeenCalledWith(employees[0]);
   });
 
-  it('calls onDelete when the row Delete action is chosen', async () => {
+  it('confirms before deleting', async () => {
     const onDelete = jest.fn();
     const user = userEvent.setup();
     render(<EmployeesTable employees={employees} onEdit={() => {}} onDelete={onDelete} />);
-    await user.click(screen.getByRole('button', { name: /actions for riya sharma/i }));
-    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+    await user.click(screen.getByRole('button', { name: /delete riya sharma/i }));
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await user.click(await screen.findByRole('button', { name: /^remove$/i }));
     expect(onDelete).toHaveBeenCalledWith(employees[0]);
   });
 

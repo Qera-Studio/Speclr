@@ -32,7 +32,14 @@ export interface EditorFormValues {
   paymentDate: string;
   paymentMethod: PaymentMethod;
   paymentReference: string;
+  /** What prints on the receipt. Authoritative. */
   againstInvoiceNumber: string;
+  /**
+   * Id of that same invoice. Set together with the number when one is picked,
+   * and cleared if the number is then hand-edited — a stored id silently
+   * disagreeing with the printed number would be worse than no id at all.
+   */
+  againstInvoiceId: string;
 }
 
 export function emptyLineItem(): LineItemFormValues {
@@ -59,6 +66,7 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
       paymentMethod: doc.type === 'REC' ? doc.payment.method : 'Bank Transfer',
       paymentReference: doc.type === 'REC' ? (doc.payment.reference ?? '') : '',
       againstInvoiceNumber: doc.type === 'REC' ? (doc.payment.againstInvoiceNumber ?? '') : '',
+      againstInvoiceId: doc.type === 'REC' ? (doc.payment.againstInvoiceId ?? '') : '',
     };
   }
 
@@ -76,11 +84,17 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
     paymentMethod: fields.payment?.method ?? 'Bank Transfer',
     paymentReference: fields.payment?.reference ?? '',
     againstInvoiceNumber: '',
+    againstInvoiceId: '',
   };
 }
 
 /** Converts form strings into the typed payload the Server Actions validate. */
-export function toPayload(typeCode: DocTypeCode, values: EditorFormValues): DocFields {
+export function toPayload(
+  typeCode: DocTypeCode,
+  values: EditorFormValues,
+  /** Edited text overrides. Kept out of the form: it is prose, not validated input. */
+  content?: DocFields['content'],
+): DocFields {
   const fields: DocFields = {
     issueDate: values.issueDate,
     lineItems: values.lineItems.map((item) => ({
@@ -93,6 +107,7 @@ export function toPayload(typeCode: DocTypeCode, values: EditorFormValues): DocF
     gstLabel: values.gstLabel || undefined,
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
     notes: values.notes || undefined,
+    content,
   };
 
   if (DOC_TYPES[typeCode].hasDueDate && values.dueDate) {
@@ -104,6 +119,7 @@ export function toPayload(typeCode: DocTypeCode, values: EditorFormValues): DocF
       method: values.paymentMethod,
       reference: values.paymentReference || undefined,
       againstInvoiceNumber: values.againstInvoiceNumber || undefined,
+      againstInvoiceId: values.againstInvoiceId || undefined,
     };
   }
   return fields;

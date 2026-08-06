@@ -9,7 +9,10 @@
 
 import { z } from 'zod';
 import { isISODate } from './dates';
+import { addressPartsSchema } from './address';
 import { contractScheduleSchema } from './serviceTemplate';
+import { docContentSchema, type DocContent, type TermItem } from './docContent';
+import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import type { ContractSchedule, DocTypeCode, LineItem, ReceiptDocument } from './types';
 
 // ── Field schemas ─────────────────────────────────────────────────────────────
@@ -42,18 +45,46 @@ export const draftLineItemSchema = z.object({
 });
 
 export const clientInputSchema = z.object({
+  /** Short reference name — lists, dropdowns, the editor heading. */
   name: z.string().trim().min(1).max(200),
+  /**
+   * The legal name documents print. Required: an invoice addressed to a pet
+   * name is not a valid tax document. `ClientRecord.companyName` stays optional
+   * so the rows written before this existed still load — but they cannot be
+   * saved again until one is supplied.
+   */
+  companyName: z.string().trim().min(1).max(200),
+  /** The flat printable address; composed from `addressParts` when present. */
   address: z.string().trim().min(1).max(500),
+  addressParts: addressPartsSchema.optional(),
   email: z.string().trim().email().max(200),
+  /**
+   * Intentionally lenient — a length check, not an E.164 regex. This schema
+   * re-validates the whole record on every edit, and clients created before
+   * phones were structured hold arbitrary text. A strict rule here would make
+   * those rows permanently un-editable. Strict per-country validation lives in
+   * the form layer (see lib/domain/phone.ts).
+   */
   phone: z.string().trim().min(1).max(30),
   gstin: z.string().trim().max(20).optional(),
 });
 
+/**
+ * The payment methods offered anywhere in the app. Shared by the receipt's
+ * `payment.method` and the stipend slip, so the two cannot drift apart — the
+ * stipend used to default to a differently-cased 'Bank transfer'.
+ */
+export const PAYMENT_METHODS = ['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other'] as const;
+export type PaymentMethodOption = (typeof PAYMENT_METHODS)[number];
+
 const paymentSchema = z.object({
   date: isoDate,
-  method: z.enum(['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other']),
+  method: z.enum(PAYMENT_METHODS),
   reference: z.string().trim().max(100).optional(),
+  /** What prints on the receipt. Authoritative. */
   againstInvoiceNumber: z.string().trim().max(40).optional(),
+  /** Id of that same invoice — see ReceiptDocument['payment'] in types.ts. */
+  againstInvoiceId: z.string().trim().max(64).optional(),
 });
 
 // ── Document field schemas (shared base + per-type extensions) ───────────────
@@ -70,6 +101,7 @@ const baseFieldsShape = {
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
   terms: z.string().trim().max(4000).optional(),
+  content: docContentSchema.optional(),
 };
 
 /** Finalize rule shared by all money docs: GST needs a place of supply. */
@@ -125,6 +157,7 @@ const contractBaseShape = {
   issueDate: isoDate,
   // Max 26 — one per schedule letter A..Z (see scheduleLetter helper).
   schedules: z.array(contractScheduleSchema).max(26),
+  content: docContentSchema.optional(),
 };
 export const contractDraftSchema = z.object(contractBaseShape);
 export const contractFinalizeSchema = z.object({
@@ -136,16 +169,26 @@ export const contractFinalizeSchema = z.object({
 
 const stipendBaseShape = {
   issueDate: isoDate,
-  // GST fields are re-listed (not spread from baseFieldsShape) — a stipend keeps
-  // GST but not the invoice's place-of-supply/notes/terms.
-  gstRatePercent: z.number().min(0).max(28),
-  gstLabel: z.string().trim().max(120).optional(),
+  /**
+   * A stipend carries no GST, ever — it is not consideration for a supply by
+   * the studio, so nothing here becomes taxable once the studio is registered.
+   * The field is pinned to 0 rather than dropped so the existing NOT NULL
+   * column needs no migration, while a non-zero rate stays unrepresentable.
+   */
+  gstRatePercent: z.literal(0).default(0),
   employeeId: z.string().min(1),
-  stipendPeriod: z.string().trim().max(120),
+  /** Paid-in currency. Absent on slips written before currencies existed. */
+  currency: z.enum(CURRENCY_CODES).optional(),
+  /** Legacy free-text period ('12th – 31st May'); superseded by the ISO pair. */
+  stipendPeriod: z.string().trim().max(120).optional(),
+  stipendPeriodStart: isoDate.optional(),
+  stipendPeriodEnd: isoDate.optional(),
+  /** 'YYYY-MM'. Older slips hold free text ('May 2026'), so this stays a string. */
   stipendMonth: z.string().trim().max(60),
   paymentMethod: z.string().trim().max(60),
   paymentReference: z.string().trim().max(100).optional(),
   deductionsNote: z.string().trim().max(500),
+  content: docContentSchema.optional(),
 };
 export const stipendDraftSchema = z.object({
   ...stipendBaseShape,
@@ -166,6 +209,7 @@ const letterBaseShape = {
   bodyParagraphs: z.array(z.string().trim().max(4000)).max(40),
   bulletSections: z.array(bulletSectionSchema).max(10),
   payAmountPaise: z.number().int().min(0).max(1e13).optional(),
+  content: docContentSchema.optional(),
 };
 export const letterDraftSchema = z.object(letterBaseShape);
 export const letterFinalizeSchema = z.object({
@@ -190,7 +234,10 @@ export interface DocFields {
   schedules?: ContractSchedule[];
   // HR — stipend slip
   employeeId?: string;
+  currency?: CurrencyCode;
   stipendPeriod?: string;
+  stipendPeriodStart?: string;
+  stipendPeriodEnd?: string;
   stipendMonth?: string;
   paymentMethod?: string;
   paymentReference?: string;
@@ -199,13 +246,19 @@ export interface DocFields {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
+  /**
+   * Editable text overrides. Absent keys resolve to the defaults below via
+   * `contentOf`; finalize materialises the lot onto the document so an issued
+   * one reprints unchanged whatever these defaults later become.
+   */
+  content?: DocContent;
 }
 
-/** A fixed terms clause printed on every document of a type. */
-export interface FixedTerm {
-  title: string;
-  body: string;
-}
+/**
+ * A terms clause. `fixedTerms` below is the *default* set for a type — the
+ * document's own `content.terms` wins when it has been edited.
+ */
+export type FixedTerm = TermItem;
 
 export interface DocTypeSpec {
   code: DocTypeCode;
@@ -332,8 +385,8 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     draftSchema: stipendDraftSchema, finalizeSchema: stipendFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
-      employeeId: '', stipendPeriod: '', stipendMonth: '', paymentMethod: 'Bank transfer',
-      deductionsNote: 'No statutory deductions applicable for this internship engagement.',
+      employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
+      deductionsNote: 'No statutory deductions (PF, ESI, TDS) are applicable.',
     }),
     fixedTerms: [],
   },

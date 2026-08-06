@@ -6,6 +6,8 @@
  * Pure function — safe on both server (print route) and client (live preview).
  */
 
+import { currencyByCode, type CurrencyCode } from './currency';
+
 const ONES = [
   '',
   'One',
@@ -81,22 +83,64 @@ function integerWords(n: number): string {
   return parts.join(' ');
 }
 
-export function amountInWords(paise: number): string {
-  if (!Number.isInteger(paise) || paise < 0) {
-    throw new Error(`amountInWords expects a non-negative integer paise amount, got: ${paise}`);
-  }
+/** International grouping: billion (10^9) → million (10^6) → thousand (10^3). */
+const SCALES: [number, string][] = [
+  [1e9, 'Billion'],
+  [1e6, 'Million'],
+  [1e3, 'Thousand'],
+];
 
-  const rupees = Math.floor(paise / 100);
-  const p = paise % 100;
-
-  if (rupees === 0 && p === 0) return 'Zero Rupees Only';
+function internationalWords(n: number): string {
+  if (n === 0) return 'Zero';
 
   const parts: string[] = [];
-  if (rupees > 0) {
-    parts.push(`${integerWords(rupees)} ${rupees === 1 ? 'Rupee' : 'Rupees'}`);
+  let rest = n;
+
+  for (const [value, name] of SCALES) {
+    const count = Math.floor(rest / value);
+    if (count > 0) {
+      // Recurse so amounts above 999 billion read naturally.
+      parts.push(`${count >= 1000 ? internationalWords(count) : threeDigitWords(count)} ${name}`);
+      rest %= value;
+    }
   }
-  if (p > 0) {
-    parts.push(`${twoDigitWords(p)} ${p === 1 ? 'Paisa' : 'Paise'}`);
+
+  if (rest > 0) parts.push(threeDigitWords(rest));
+
+  return parts.join(' ');
+}
+
+/**
+ * Convert a minor-unit integer to words for a money document.
+ *
+ * `currency` defaults to INR and that path is unchanged — the grouping
+ * (lakh/crore) and the wording ('… Rupees and … Paise Only') are exactly what
+ * they were before currencies existed, because the domain tests for it are
+ * lifted verbatim from the source project and must keep passing.
+ *
+ * Non-INR currencies use international grouping (thousand/million/billion) and
+ * their own unit words. Every supported currency is 2-decimal — see the note in
+ * `currency.ts`.
+ */
+export function amountInWords(minor: number, currency: CurrencyCode = 'INR'): string {
+  if (!Number.isInteger(minor) || minor < 0) {
+    throw new Error(`amountInWords expects a non-negative integer paise amount, got: ${minor}`);
+  }
+
+  const spec = currencyByCode(currency) ?? currencyByCode('INR')!;
+  const major = Math.floor(minor / 100);
+  const sub = minor % 100;
+  const words = spec.indian ? integerWords : internationalWords;
+  const majorPlural = `${spec.major}s`;
+
+  if (major === 0 && sub === 0) return `Zero ${majorPlural} Only`;
+
+  const parts: string[] = [];
+  if (major > 0) {
+    parts.push(`${words(major)} ${major === 1 ? spec.major : majorPlural}`);
+  }
+  if (sub > 0) {
+    parts.push(`${twoDigitWords(sub)} ${sub === 1 ? spec.minor : spec.minorPlural}`);
   }
 
   return `${parts.join(' and ')} Only`;
