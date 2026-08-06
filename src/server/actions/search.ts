@@ -59,7 +59,7 @@ export async function searchAll(query: unknown): Promise<SearchHit[]> {
       id: service.id,
       group: 'Services' as const,
       label: service.name,
-      href: '/services',
+      href: '/docs/contract',
     })),
   ];
 }

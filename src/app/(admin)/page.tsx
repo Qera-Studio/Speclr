@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listDocuments } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
-import { AddLink } from '@/components/ui/add-button';
+import NewDocumentButton from '@/components/admin/NewDocumentButton';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Documents</h1>
-        <AddLink href="/docs/new/invoice">New invoice</AddLink>
+        <NewDocumentButton />
       </div>
       <DocumentsBrowser documents={documents} />
     </div>

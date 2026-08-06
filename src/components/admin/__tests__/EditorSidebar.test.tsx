@@ -1,8 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { EditorPanelProvider, EditorPanelContent } from '../EditorPanel';
 import EditorSidebar from '../EditorSidebar';
+
+const push = jest.fn();
+let pathname = '/docs/new/exit-letter';
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => pathname,
+}));
+
+beforeEach(() => {
+  push.mockClear();
+  pathname = '/docs/new/exit-letter';
+});
 
 function renderRail(panel?: React.ReactNode) {
   return render(
@@ -78,5 +91,58 @@ describe('EditorSidebar', () => {
 
     await user.keyboard('{Meta>}b{/Meta}');
     expect(rail()).toHaveAttribute('data-state', 'expanded');
+  });
+});
+
+/**
+ * People reach for a back arrow before a collapse icon, so the rail header has
+ * one. It leaves the page — where a draft's unsaved edits live — so it asks
+ * first rather than navigating on the click.
+ */
+describe('the back arrow', () => {
+  const openRail = async (user: ReturnType<typeof userEvent.setup>) => {
+    renderRail(
+      <EditorPanelContent title="Nirmit Agarwal's exit letter" autoOpen>
+        <p>Form</p>
+      </EditorPanelContent>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+  };
+
+  it('asks before leaving, and does not navigate on the click alone', async () => {
+    const user = userEvent.setup();
+    await openRail(user);
+
+    expect(screen.getByText('Leave this page?')).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('goes to the document type list once confirmed', async () => {
+    const user = userEvent.setup();
+    await openRail(user);
+    await user.click(screen.getByRole('button', { name: 'Leave' }));
+
+    expect(push).toHaveBeenCalledWith('/docs/exit-letter');
+  });
+
+  /**
+   * The rail lives in the admin layout, which navigation does not unmount — so
+   * unlike every other confirmation in the app, nothing else takes this dialog
+   * off screen. It stayed up over the newly loaded page.
+   */
+  it('dismisses itself on leaving, not relying on the page unmounting it', async () => {
+    const user = userEvent.setup();
+    await openRail(user);
+    await user.click(screen.getByRole('button', { name: 'Leave' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+  });
+
+  it('stays put when the user cancels', async () => {
+    const user = userEvent.setup();
+    await openRail(user);
+    await user.click(screen.getByRole('button', { name: 'Stay' }));
+
+    expect(push).not.toHaveBeenCalled();
   });
 });

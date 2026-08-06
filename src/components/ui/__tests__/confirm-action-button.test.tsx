@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 
@@ -35,6 +35,23 @@ describe('ConfirmActionButton', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Finalize' }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Regression: the confirm button was a bare `Button`, so it ran its action and
+   * left the dialog standing. Callers that navigate away hid it by unmounting
+   * the page; one in a persistent layout (the editor rail's back arrow) left the
+   * dialog on screen over the newly loaded route.
+   */
+  it('dismisses the dialog once confirmed, without the caller closing it', async () => {
+    const user = userEvent.setup();
+    render(<ConfirmActionButton {...props} onConfirm={jest.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: props.label }));
+    const dialog = await screen.findByRole('alertdialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Finalize' }));
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
   });
 
   it('abandons the action on cancel', async () => {

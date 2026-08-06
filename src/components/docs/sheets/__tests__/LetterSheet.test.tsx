@@ -107,8 +107,8 @@ describe('letterBlocks', () => {
     expect(screen.queryByLabelText('Cover')).not.toBeInTheDocument();
   });
 
-  /** Bullets added to an offer letter must print, not vanish. */
-  it('renders bullet sections on an offer letter too', () => {
+  /** Listed sections added to an offer letter must print, not vanish. */
+  it('renders listed sections on an offer letter too', () => {
     const withBullets = {
       ...offerDoc,
       bulletSections: [{ heading: 'Your responsibilities', items: ['Draft campaign copy'] }],
@@ -116,7 +116,7 @@ describe('letterBlocks', () => {
 
     render(<>{letterBlocks(withBullets)}</>);
     expect(screen.getByText('Your responsibilities')).toBeInTheDocument();
-    expect(screen.getByText('Draft campaign copy')).toBeInTheDocument();
+    expect(screen.getByText('Draft campaign copy.')).toBeInTheDocument();
   });
 });
 
@@ -170,12 +170,122 @@ describe('offer letter chrome', () => {
     ).toHaveClass('text-[14px]');
   });
 
-  /** Certifying letters were deliberately left alone this round. */
-  it('leaves the experience letter on the old signature block', () => {
+});
+
+/**
+ * The certifying letters (experience, exit) print on the offer letter's page:
+ * same header, margins, footer and signature block. Geometry is layout — jsdom
+ * cannot judge it — so what is asserted here is the chrome a reader checks a
+ * letter by.
+ */
+describe('certifying letter chrome', () => {
+  it('signs with the studio signatory alone — nobody agrees to a certificate', () => {
     render(<>{letterBlocks(experienceDoc)}</>);
 
-    expect(screen.getByText('Date:')).toBeInTheDocument();
-    expect(screen.getByText('shivanshu@qera.studio')).toBeInTheDocument();
-    expect(screen.queryByText('(Authorised Signatory)')).not.toBeInTheDocument();
+    // One column, not the offer letter's two: the recipient is not asked to
+    // confirm anything, so a second ruled line would only look unfilled.
+    expect(screen.getAllByText('Signature:')).toHaveLength(1);
+    expect(screen.getByText('(Authorised Signatory)')).toBeInTheDocument();
+    // Gone with the old block: a date over a ruled line read as the date
+    // signed, and the signatory's email was noise.
+    expect(screen.queryByText('Date:')).not.toBeInTheDocument();
+    expect(screen.queryByText('shivanshu@qera.studio')).not.toBeInTheDocument();
+  });
+
+  it('prints the registered office and website in the footer', () => {
+    render(<>{letterBlocks(experienceDoc)}</>);
+
+    const office = screen.getByText(
+      'QERA PRIVATE LIMITED. Registered office: C-204, MGI Gharaunda, Raj Nagar Extension, Ghaziabad - 201017, Uttar Pradesh, India',
+    );
+    expect(office.closest('footer')).not.toBeNull();
+    expect(screen.getByText('www.qera.studio')).toBeInTheDocument();
+  });
+
+  it('keeps the "To:" block and the sign-off', () => {
+    render(<>{letterBlocks(experienceDoc)}</>);
+
+    expect(screen.getByText('To:')).toBeInTheDocument();
+    expect(screen.getByText('Yours Sincerely,')).toBeInTheDocument();
+  });
+
+  it('closes the experience letter on a good wish, after the listed sections', () => {
+    const withSection = {
+      ...experienceDoc,
+      bulletSections: [{ heading: 'Performance & Conduct:', items: ['Met every deadline.'] }],
+    } as unknown as LetterDocument;
+
+    const blocks = letterBlocks(withSection);
+    render(<>{blocks}</>);
+
+    const wish = screen.getByText('We wish you continued success for your future endeavours.');
+    expect(wish).toBeInTheDocument();
+    // After the section, not before it — it is a valediction, not a body line.
+    expect(
+      wish.compareDocumentPosition(screen.getByText('Performance & Conduct:')),
+    ).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+  });
+
+  /** The offer and exit letters have no valediction. */
+  it('prints no closing line on an exit letter', () => {
+    render(<>{letterBlocks(exitInternDoc)}</>);
+
+    expect(
+      screen.queryByText('We wish you continued success for your future endeavours.'),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Listed points print as prose under their bold heading, not as bullets. The
+ * points are still stored (and edited) as `bulletSections` — only how they
+ * print changed, so already-saved letters reflow rather than needing migrating.
+ */
+describe('listed sections', () => {
+  const withSections = (items: string[]) =>
+    ({
+      ...experienceDoc,
+      bulletSections: [{ heading: 'We confirm that:', items }],
+    }) as unknown as LetterDocument;
+
+  it('runs the points into one paragraph, with no list markup', () => {
+    render(
+      <>
+        {letterBlocks(
+          withSections(['All dues have been settled in full.', 'No amount is outstanding.']),
+        )}
+      </>,
+    );
+
+    expect(screen.getByText('We confirm that:')).toBeInTheDocument();
+    expect(
+      screen.getByText('All dues have been settled in full. No amount is outstanding.'),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  /**
+   * The experience letter's responsibilities are unpunctuated fragments while
+   * the exit letter's assertions end in a full stop. Joining the former without
+   * normalising ran their words together.
+   */
+  it('punctuates fragment points so they do not run together', () => {
+    render(
+      <>
+        {letterBlocks(
+          withSections(['Data organisation using Excel', 'Research support for lead generation']),
+        )}
+      </>,
+    );
+
+    expect(
+      screen.getByText('Data organisation using Excel. Research support for lead generation.'),
+    ).toBeInTheDocument();
+  });
+
+  it('substitutes {name} inside the prose', () => {
+    render(<>{letterBlocks(withSections(['{name} met every deadline.']))}</>);
+
+    expect(screen.getByText('Riya Sharma met every deadline.')).toBeInTheDocument();
   });
 });

@@ -31,8 +31,10 @@ export default function ServiceManager({ services }: { services: ServiceTemplate
     <div className="flex flex-col gap-4">
       {/* The create CTA lives here whether or not the list is empty — a control
           that moves depending on state is a control you have to look for. */}
+      {/* An `h2`, not an `h1`: services are a section of the contract page now,
+          which owns the page heading. */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Services</h1>
+        <h2 className="text-lg font-semibold">Services</h2>
         <AddButton onClick={() => guardedSelect(null)}>Add service</AddButton>
       </div>
 

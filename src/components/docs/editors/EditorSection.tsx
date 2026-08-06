@@ -1,7 +1,11 @@
-'use client';
+"use client";
 
-import { ChevronRight } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronRight } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 /**
  * One collapsible block of the editor rail.
@@ -43,23 +47,29 @@ export default function EditorSection({
         render={
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+            className="flex w-full items-top gap-2 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
           >
             <ChevronRight
               aria-hidden="true"
-              className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[open]/section:rotate-90"
+              className="size-3 shrink-0 mt-[4px] text-muted-foreground transition-transform duration-200 group-data-[open]/section:rotate-90"
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{title}</span>
+              <span className="block truncate text-sm font-medium">
+                {title}
+              </span>
               {description ? (
-                <span className="block truncate text-xs text-muted-foreground">{description}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {description}
+                </span>
               ) : null}
             </span>
           </button>
         }
       />
       <CollapsibleContent>
-        <div className="flex flex-col gap-4 border-t border-border p-3">{children}</div>
+        <div className="flex flex-col gap-4 border-t border-border p-3">
+          {children}
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );

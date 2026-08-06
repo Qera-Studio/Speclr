@@ -1,22 +1,22 @@
-import { redirect } from 'next/navigation';
-import type { Metadata } from 'next';
-import { Check, Plus, Trash2, Pencil } from 'lucide-react';
-import { requireAuthorizedUser } from '@/lib/auth/session';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { Check, Plus, Trash2, Pencil } from "lucide-react";
+import { requireAuthorizedUser } from "@/lib/auth/session";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
-  title: 'Kit — speclr',
+  title: "Kit — speclr",
   robots: { index: false, follow: false },
 };
 
 // Reads the live session on every request; nothing else here is dynamic.
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * The design-system reference: every colour token, button, badge and control
@@ -38,40 +38,59 @@ export const dynamic = 'force-dynamic';
  * one is simply never generated and the swatch renders transparent.
  */
 const COLOR_TOKENS = [
-  { token: 'background', swatch: 'bg-background', use: 'Page canvas' },
-  { token: 'foreground', swatch: 'bg-foreground', use: 'Body text' },
-  { token: 'card', swatch: 'bg-card', use: 'Raised surface' },
-  { token: 'muted', swatch: 'bg-muted', use: 'Inset surface' },
-  { token: 'muted-foreground', swatch: 'bg-muted-foreground', use: 'Secondary text, icons' },
-  { token: 'primary', swatch: 'bg-primary', use: 'Brand blue: pass, required, active' },
-  { token: 'secondary', swatch: 'bg-secondary', use: 'Low-emphasis fill' },
-  { token: 'destructive', swatch: 'bg-destructive', use: 'Fail, delete, irreversible' },
-  { token: 'warning', swatch: 'bg-warning', use: 'Advisory — needs attention, not an error' },
-  { token: 'border', swatch: 'bg-border', use: 'Hairlines' },
-  { token: 'ring', swatch: 'bg-ring', use: 'Focus ring' },
+  { token: "background", swatch: "bg-background", use: "Page canvas" },
+  { token: "foreground", swatch: "bg-foreground", use: "Body text" },
+  { token: "card", swatch: "bg-card", use: "Raised surface" },
+  { token: "muted", swatch: "bg-muted", use: "Inset surface" },
+  {
+    token: "muted-foreground",
+    swatch: "bg-muted-foreground",
+    use: "Secondary text, icons",
+  },
+  {
+    token: "primary",
+    swatch: "bg-primary",
+    use: "Brand blue: pass, required, active",
+  },
+  { token: "secondary", swatch: "bg-secondary", use: "Low-emphasis fill" },
+  {
+    token: "destructive",
+    swatch: "bg-destructive",
+    use: "Fail, delete, irreversible",
+  },
+  {
+    token: "warning",
+    swatch: "bg-warning",
+    use: "Advisory — needs attention, not an error",
+  },
+  { token: "border", swatch: "bg-border", use: "Hairlines" },
+  { token: "ring", swatch: "bg-ring", use: "Focus ring" },
 ] as const;
 
 const BUTTON_VARIANTS = [
-  'default',
-  'outline',
-  'secondary',
-  'ghost',
-  'destructive',
-  'link',
+  "default",
+  "outline",
+  "secondary",
+  "ghost",
+  "destructive",
+  "link",
 ] as const;
 
 /** Every size the Button actually ships. `xs` and `icon-lg` were removed as dead. */
 const BUTTON_SIZES = [
-  { size: 'sm', note: '24px — dense table rows' },
-  { size: 'default', note: '28px — the app default' },
-  { size: 'lg', note: '32px — page-level actions' },
-  { size: 'form', note: '36px — matches Input/Combobox/DatePicker inline' },
+  { size: "sm", note: "24px — dense table rows" },
+  { size: "default", note: "28px — the app default" },
+  { size: "lg", note: "32px — page-level actions" },
+  { size: "form", note: "36px — matches Input/Combobox/DatePicker inline" },
 ] as const;
 
 const ICON_SIZES = [
-  { cls: 'size-3', note: 'Inside size="sm" buttons' },
-  { cls: 'size-3.5', note: 'Inside default buttons — one of the two workhorses' },
-  { cls: 'size-4', note: 'Standalone / form-sized — the other workhorse' },
+  { cls: "size-3", note: 'Inside size="sm" buttons' },
+  {
+    cls: "size-3.5",
+    note: "Inside default buttons — one of the two workhorses",
+  },
+  { cls: "size-4", note: "Standalone / form-sized — the other workhorse" },
 ] as const;
 
 function Section({
@@ -99,18 +118,18 @@ export default async function KitPage() {
   try {
     await requireAuthorizedUser();
   } catch (err) {
-    const reason = err instanceof Error ? err.message : '';
-    redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
+    const reason = err instanceof Error ? err.message : "";
+    redirect(reason === "UNAUTHORIZED" ? "/no-access" : "/sign-in");
   }
 
   return (
     <div className="flex max-w-4xl flex-col gap-10 p-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Kit</h1>
+        <h1 className="text-2xl font-semibold">UI Kit</h1>
         <p className="text-sm text-muted-foreground">
-          Everything the UI is allowed to use. Small on purpose — a short menu is
-          what keeps screens consistent without anyone policing them. Toggle the
-          theme to check both modes.
+          Everything the UI is allowed to use. Small on purpose — a short menu
+          is what keeps screens consistent without anyone policing them. Toggle
+          the theme to check both modes.
         </p>
       </div>
 
@@ -189,9 +208,14 @@ export default async function KitPage() {
         </div>
       </Section>
 
-      <Section title="Badges" blurb="Status and count chips. Same six-variant vocabulary as buttons.">
+      <Section
+        title="Badges"
+        blurb="Status and count chips. Same six-variant vocabulary as buttons."
+      >
         <div className="flex flex-wrap items-center gap-2">
-          {(['default', 'secondary', 'destructive', 'outline', 'ghost'] as const).map((v) => (
+          {(
+            ["default", "secondary", "destructive", "outline", "ghost"] as const
+          ).map((v) => (
             <Badge key={v} variant={v}>
               {v}
             </Badge>
@@ -206,7 +230,11 @@ export default async function KitPage() {
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="kit-default">default — 28px</Label>
-            <Input id="kit-default" placeholder="Compact" className="max-w-xs" />
+            <Input
+              id="kit-default"
+              placeholder="Compact"
+              className="max-w-xs"
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="kit-form">form — 36px</Label>
@@ -217,12 +245,19 @@ export default async function KitPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="kit-textarea">Textarea</Label>
-            <Textarea id="kit-textarea" placeholder="Notes" className="max-w-sm" />
+            <Textarea
+              id="kit-textarea"
+              placeholder="Notes"
+              className="max-w-sm"
+            />
           </div>
         </div>
       </Section>
 
-      <Section title="Icons" blurb="Lucide only. Effectively two sizes — everything larger is an avatar or an empty state, not an icon.">
+      <Section
+        title="Icons"
+        blurb="Lucide only. Effectively two sizes — everything larger is an avatar or an empty state, not an icon."
+      >
         <ul className="flex flex-col gap-2">
           {ICON_SIZES.map(({ cls, note }) => (
             <li key={cls} className="flex items-center gap-3 text-sm">
@@ -236,11 +271,16 @@ export default async function KitPage() {
         </ul>
       </Section>
 
-      <Section title="Alerts" blurb="Two variants. Anything advisory rather than broken uses the warning token inline, not a third alert.">
+      <Section
+        title="Alerts"
+        blurb="Two variants. Anything advisory rather than broken uses the warning token inline, not a third alert."
+      >
         <div className="flex flex-col gap-3">
           <Alert>
             <AlertTitle>Heads up</AlertTitle>
-            <AlertDescription>The neutral, informational case.</AlertDescription>
+            <AlertDescription>
+              The neutral, informational case.
+            </AlertDescription>
           </Alert>
           <Alert variant="destructive">
             <AlertTitle>Something failed</AlertTitle>

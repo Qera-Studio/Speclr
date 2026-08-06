@@ -13,7 +13,7 @@ jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => [])
 
 import AdminShell from '../AdminShell';
 import { EditorPanelContent } from '../EditorPanel';
-import { SIDEBAR_MIN_WIDTH } from '../SidebarResizeHandle';
+import { NAV_WIDTH } from '../AdminShell';
 
 const user = { name: 'Shivanshu', email: 'shivanshu@qera.studio' } as never;
 
@@ -31,10 +31,13 @@ describe('AdminShell', () => {
     expect(screen.getByText('Page body')).toBeInTheDocument();
   });
 
-  it('fixes the nav at the narrow width', () => {
+  // Two widths, toggled: this one and `--sidebar-width-icon`. Deliberately a
+  // constant rather than measured from the nav's content — see `NAV_WIDTH`.
+  it('fixes the nav at one width', () => {
     const { container } = renderShell();
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
-    expect(wrapper.style.getPropertyValue('--sidebar-width')).toBe(`${SIDEBAR_MIN_WIDTH}px`);
+    expect(wrapper.style.getPropertyValue('--sidebar-width')).toBe(`${NAV_WIDTH}px`);
+    expect(wrapper.style.getPropertyValue('--sidebar-width-icon')).toBe('2.5rem');
   });
 
   it('offers no drag-resize control while resizing is parked', () => {

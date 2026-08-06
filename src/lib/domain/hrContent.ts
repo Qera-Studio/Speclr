@@ -149,6 +149,10 @@ function exitContent(engagement: EngagementType, a: LetterContentArgs): LetterCo
     subheading: 'TO WHOMSOEVER IT MAY CONCERN',
     bodyParagraphs: [
       `With reference to ${a.pronoun.possessive} resignation, please note that the same has been accepted and {name} is relieved from the services of the company with effect from ${effectiveDate}.`,
+      // Employee variant only. "Therein" points at the resignation letter named
+      // above; an intern never resigns, so the intern branch has no referent for
+      // it and must not carry this line (CONTEXT §6).
+      `We confirm acceptance on the terms and conditions stipulated therein.`,
     ],
     bulletSections: [
       {

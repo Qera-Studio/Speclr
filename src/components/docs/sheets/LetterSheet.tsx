@@ -3,7 +3,7 @@ import { contentOf } from "@/lib/domain/docContent";
 import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf, type StudioInfo } from "@/lib/domain/studio";
 import type { LetterDocument } from "@/lib/domain/types";
-import { A4_PADDING, OFFER_COVER_PADDING, OFFER_PADDING } from "./frame";
+import { LETTER_PADDING, OFFER_COVER_PADDING } from "./frame";
 
 /** Qera mark from public/assets/landing/navbarLogo.svg, inlined; inherits currentColor. */
 function QeraMark({ size = 20 }: { size?: number }) {
@@ -72,57 +72,56 @@ function SharedFooter({
   );
 }
 
-function SignatureBlock({
-  employeeName,
+/**
+ * The brand + date row at the top of a letter's body page. Every letter carries
+ * the date here, so a page separated from the rest still says when it was
+ * issued — and the offer letter's cover is not the only place it appears.
+ */
+function BrandHeader({
+  studio,
   displayDate,
 }: {
-  employeeName: string;
+  studio: StudioInfo;
   displayDate: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-[48px] mt-[48px]">
-      <div className="[break-inside:avoid]">
-        <p className="text-black/70 text-[12px] font-normal mb-[2px]">
-          Signature:
-        </p>
-        <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
-        <p className="text-black text-[12px] font-semibold">Shivanshu Pareek</p>
-        <p className="text-black/70 text-[11px] font-normal">
-          Co-founder — Qera Studio
-        </p>
-        <p className="text-black/70 text-[11px] font-normal">
-          shivanshu@qera.studio
-        </p>
-      </div>
-      <div className="[break-inside:avoid]">
-        <p className="text-black/70 text-[12px] font-normal mb-[2px]">Date:</p>
-        <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
-        <p className="text-black text-[12px] font-semibold">{displayDate}</p>
-        <p className="text-black/70 text-[11px] font-normal">{employeeName}</p>
-      </div>
+    <div className="flex justify-between items-center gap-[24px] text-black mb-[40px]">
+      <span className="flex items-center gap-[6px]">
+        <QeraMark size={14} />
+        <span className="font-semibold text-[16px] text-black">
+          {studio.brandMark}
+        </span>
+      </span>
+      <span className="text-black text-[12px] font-semibold text-right">
+        {displayDate}
+      </span>
     </div>
   );
 }
 
 /**
- * The offer letter's signature pair: the studio's authorised signatory on the
- * left, the recipient on the right.
+ * A letter's signature block: the studio's authorised signatory on the left,
+ * and — only when the letter asks to be agreed to — the recipient on the right.
  *
- * No date column — the issue date is in the page header, and repeating it under
- * a signature line invites someone to read it as the date signed. The recipient
- * gets a real line to sign on because the letter above asks them to confirm
- * agreement; an acknowledgement with nowhere to sign is not one.
+ * No date column. The issue date is in the page header, and repeating it under
+ * a signature line invites someone to read it as the date signed.
+ *
+ * `employeeName` is set only on the offer letter, which asks the recipient to
+ * confirm agreement; an acknowledgement with nowhere to sign is not one. The
+ * certifying letters (experience, exit) certify rather than ask, so they get the
+ * signatory column alone — the grid stays two-column so that column keeps its
+ * width and position rather than stretching across the page.
  *
  * The signatory's name, title and qualifier are editable per document, seeded
  * from the defaults in `docContent`.
  */
-function OfferSignatureBlock({
+function LetterSignatureBlock({
   employeeName,
   signatoryName,
   signatoryTitle,
   signatoryQualifier,
 }: {
-  employeeName: string;
+  employeeName?: string;
   signatoryName: string;
   signatoryTitle: string;
   signatoryQualifier: string;
@@ -142,13 +141,15 @@ function OfferSignatureBlock({
           </p>
         ) : null}
       </div>
-      <div className="max-w-[250px] [break-inside:avoid]">
-        <p className="text-black/70 text-[12px] font-normal mb-[2px]">
-          Signature:
-        </p>
-        <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
-        <p className="text-black text-[12px] font-semibold">{employeeName}</p>
-      </div>
+      {employeeName ? (
+        <div className="max-w-[250px] [break-inside:avoid]">
+          <p className="text-black/70 text-[12px] font-normal mb-[2px]">
+            Signature:
+          </p>
+          <div className="border-b border-black h-[40px] mt-[8px] mb-[8px]" />
+          <p className="text-black text-[12px] font-semibold">{employeeName}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -160,7 +161,29 @@ function OfferSignatureBlock({
 export const LETTER_COVER_CLASSNAME =
   "flex flex-col min-h-[900px] bg-black text-white box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]";
 
-/** One bullet section, shared by every letter type. */
+/**
+ * Runs a section's items together into one paragraph.
+ *
+ * Each item is normalised to end in sentence punctuation first. The stored
+ * lists have two different shapes — the exit letter's assertions already end in
+ * a full stop, while the experience letter's responsibilities are unpunctuated
+ * fragments — so a plain `join(' ')` would run the latter's words together.
+ * Anything typed into the editor later gets the same treatment.
+ */
+function asProse(items: string[]): string {
+  return items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (/[.!?]$/.test(item) ? item : `${item}.`))
+    .join(" ");
+}
+
+/**
+ * One listed section, shared by every letter type: a bold heading with its
+ * points as flowing prose beneath it, not a bulleted list. Stored as
+ * `bulletSections` still — the points remain individually editable; only how
+ * they print changed.
+ */
 function BulletSection({
   section,
   name,
@@ -170,19 +193,12 @@ function BulletSection({
 }) {
   return (
     <div className="mb-[24px] [break-inside:avoid]">
-      <p className="text-black text-[12px] font-bold mb-[8px]">
+      <p className="text-black text-[14px] font-bold mb-[8px]">
         {fill(section.heading, name)}
       </p>
-      <ul className="m-0 pl-[24px] list-disc">
-        {section.items.map((item, ii) => (
-          <li
-            key={ii}
-            className="text-black text-[12px] font-normal leading-[1.5] mb-[4px]"
-          >
-            {fill(item, name)}
-          </li>
-        ))}
-      </ul>
+      <p className="text-black text-[14px] font-normal leading-[1.5]">
+        {fill(asProse(section.items), name)}
+      </p>
     </div>
   );
 }
@@ -210,11 +226,10 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
   const text = contentOf(doc, DOC_TYPES[doc.type]);
   const masthead = text.masthead;
 
-  // The offer letter reads at 14px; the certifying letters stay at 12px.
-  const isOffer = doc.type === "OFR";
-  const bodyClass = isOffer
-    ? "text-black text-[14px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line"
-    : "text-black text-[12px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line";
+  // Every letter reads at 14px — the certifying letters were on 12px until they
+  // were brought onto the offer letter's page.
+  const bodyClass =
+    "text-black text-[14px] font-normal leading-[1.5] mb-[20px] whitespace-pre-line";
 
   const subjectClass =
     "text-black text-[16px] font-semibold leading-[1.6] mb-[24px] whitespace-pre-line";
@@ -227,7 +242,7 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
         // the first body paragraph. Matched on the text, not the position: the
         // body is free text and can be reordered. New letters carry
         // `content.subject` and never reach this branch.
-        isOffer && SUBJECT_RE.test(p) ? subjectClass : bodyClass
+        SUBJECT_RE.test(p) ? subjectClass : bodyClass
       }
     >
       {fill(p, emp.name)}
@@ -245,8 +260,41 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
     <BulletSection key={`bullet-${si}`} section={section} name={emp.name} />
   ));
 
-  const footer = (
-    <SharedFooter key="footer" displayDate={displayDate} studio={studio} />
+  // The valediction, printed after the listed sections and above the closing
+  // rule. Empty on the offer and exit letters, which have no equivalent.
+  const closingLine = text.closingLine.trim() ? (
+    <p key="closing-line" className={bodyClass}>
+      {fill(text.closingLine, emp.name)}
+    </p>
+  ) : null;
+
+  /**
+   * The tail of a letter as **one** block: lead line, signature, registered
+   * office and footer, pinned to the foot of the last page (`mt-auto` — the page
+   * frame is a flex column). One block, not four, so a page break can never
+   * leave the signature lines stranded from the letter's footer.
+   *
+   * `recipientSigns` is the offer letter only: it asks the reader to confirm
+   * agreement, so they get a line of their own. See `LetterSignatureBlock`.
+   */
+  const closing = (leadLine: string, recipientSigns: boolean) => (
+    <div key="closing" className="mt-auto">
+      <div className="pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]">
+        <p className={bodyClass}>{fill(leadLine, emp.name)}</p>
+        <LetterSignatureBlock
+          employeeName={recipientSigns ? emp.name : undefined}
+          signatoryName={text.signatoryName}
+          signatoryTitle={text.signatoryTitle}
+          signatoryQualifier={text.signatoryQualifier}
+        />
+      </div>
+      <SharedFooter
+        displayDate={displayDate}
+        studio={studio}
+        website={text.website}
+        registeredOffice={text.registeredOffice}
+      />
+    </div>
   );
 
   // ── Offer letter — black cover block, then the body flow ─────────────────
@@ -290,22 +338,7 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
         </div>
       </div>,
 
-      // The body page carries the date too, so a page separated from the cover
-      // still says when it was issued.
-      <div
-        key="brand"
-        className="flex justify-between items-center gap-[24px] text-black mb-[40px]"
-      >
-        <span className="flex items-center gap-[6px]">
-          <QeraMark size={14} />
-          <span className="font-semibold text-[16px] text-black">
-            {studio.brandMark}
-          </span>
-        </span>
-        <span className="text-black text-[12px] font-semibold text-right">
-          {displayDate}
-        </span>
-      </div>,
+      <BrandHeader key="brand" studio={studio} displayDate={displayDate} />,
 
       ...(subject ? [subject] : []),
       ...paragraphs,
@@ -313,47 +346,15 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
       // empty list), but anything added in the editor must still print rather
       // than vanish silently.
       ...bullets,
+      ...(closingLine ? [closingLine] : []),
 
-      // Acknowledgement, signatures, registered office and footer are one block
-      // pinned to the foot of the last page (`mt-auto` — the page frame is a
-      // flex column). One block, not four, so a page break can never leave the
-      // signature lines stranded from the letter's footer.
-      <div key="closing" className="mt-auto">
-        <div className="pt-[32px] border-t border-[#d9d9d9] [break-inside:avoid]">
-          <p className={bodyClass}>{fill(text.acknowledgement, emp.name)}</p>
-          <OfferSignatureBlock
-            employeeName={emp.name}
-            signatoryName={text.signatoryName}
-            signatoryTitle={text.signatoryTitle}
-            signatoryQualifier={text.signatoryQualifier}
-          />
-        </div>
-        <SharedFooter
-          displayDate={displayDate}
-          studio={studio}
-          website={text.website}
-          registeredOffice={text.registeredOffice}
-        />
-      </div>,
+      closing(text.acknowledgement, true),
     ];
   }
 
   // ── Experience / exit — a certifying letter, no cover ────────────────────
   return [
-    <div
-      key="head"
-      className="flex justify-between items-start gap-[24px] mb-[32px]"
-    >
-      <div className="flex items-center gap-[6px] text-black">
-        <QeraMark />
-        <span className="font-semibold text-[16px] text-black">
-          {studio.brandMark}
-        </span>
-      </div>
-      <p className="text-black text-[12px] font-semibold text-right">
-        {displayDate}
-      </p>
-    </div>,
+    <BrandHeader key="brand" studio={studio} displayDate={displayDate} />,
 
     <div key="to" className="mb-[40px]">
       <p className="text-black/80 text-[12px] font-normal mb-[4px]">To:</p>
@@ -375,15 +376,10 @@ export function letterBlocks(doc: LetterDocument): React.ReactNode[] {
     ...(subject ? [subject] : []),
     ...paragraphs,
     ...bullets,
+    ...(closingLine ? [closingLine] : []),
 
-    <div key="signature" className="mt-[40px] [break-inside:avoid]">
-      <p className="text-black text-[12px] font-normal leading-[1.6] mb-[24px] whitespace-pre-line">
-        Yours Sincerely,
-      </p>
-      <SignatureBlock employeeName={emp.name} displayDate={displayDate} />
-    </div>,
-
-    footer,
+    // A certifying letter is not agreed to, so only the studio signs.
+    closing("Yours Sincerely,", false),
   ];
 }
 
@@ -416,7 +412,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
           {cover}
         </section>
         <section
-          className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${OFFER_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
+          className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${LETTER_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
           aria-label="Offer terms"
         >
           {body}
@@ -431,7 +427,7 @@ export default function LetterSheet({ doc }: { doc: LetterDocument }) {
       aria-label={`${masthead} letter`}
     >
       <section
-        className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${A4_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
+        className={`[break-before:page] flex flex-col min-h-[1123px] bg-white text-black font-sans ${LETTER_PADDING} box-border [print-color-adjust:exact] [-webkit-print-color-adjust:exact]`}
         aria-label={masthead}
       >
         {blocks}

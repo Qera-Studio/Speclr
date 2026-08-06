@@ -75,7 +75,7 @@ export default function ThemeToggle() {
         type="button"
         onClick={() => setTheme(next.value)}
         aria-label={`Theme: ${activeLabel}. Switch to ${next.label}`}
-        className="hidden size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground group-data-[collapsible=icon]:flex"
+        className="hidden size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-hover hover:text-foreground group-data-[collapsible=icon]:flex"
       >
         <ActiveIcon className="size-4" aria-hidden="true" />
       </button>

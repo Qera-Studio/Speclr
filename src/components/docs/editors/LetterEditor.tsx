@@ -30,7 +30,7 @@ import { usePulse } from '@/lib/useMinimumDuration';
 import EditorSection from './EditorSection';
 import { ContentText, shown, type ContentPatch } from './ContentFields';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
-import { OFFER_PADDING, OFFER_PADDING_Y } from '@/components/docs/sheets/frame';
+import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import { workspaceTitle } from '../workspaceTitle';
 
@@ -291,9 +291,10 @@ export default function LetterEditor({
       coverFirst={type === 'OFR'}
       firstPageClassName={type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined}
       selfPaddedSheet={false}
-      // The offer letter prints roomier pages than the shared A4 margin.
-      pagePadding={type === 'OFR' ? OFFER_PADDING : undefined}
-      pagePaddingY={type === 'OFR' ? OFFER_PADDING_Y : undefined}
+      // Letters print roomier pages than the shared A4 margin. The pair must
+      // agree — `pagePaddingY` is the height pagination reserves.
+      pagePadding={LETTER_PADDING}
+      pagePaddingY={LETTER_PADDING_Y}
       preview={letterBlocks(previewDoc)}
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
@@ -348,6 +349,14 @@ export default function LetterEditor({
               employee&rsquo;s name.
             </FieldDescription>
           </Field>
+
+          <ContentText
+            id="letter-closing-line"
+            label="Closing line"
+            description="Printed after the listed sections, above the signature rule. Leave empty for none."
+            value={shown(content, resolved, 'closingLine')}
+            onChange={(closingLine) => patchContent({ closingLine })}
+          />
         </EditorSection>
 
         {bulletSections.length > 0 ? (
@@ -438,23 +447,22 @@ export default function LetterEditor({
           />
         </EditorSection>
 
-        {type === 'OFR' ? (
-          <EditorSection title="Footer" description="Registered office and website">
-            <ContentText
-              id="letter-registered-office"
-              label="Registered office line"
-              rows={3}
-              value={shown(content, resolved, 'registeredOffice')}
-              onChange={(registeredOffice) => patchContent({ registeredOffice })}
-            />
-            <ContentText
-              id="letter-website"
-              label="Website"
-              value={shown(content, resolved, 'website')}
-              onChange={(website) => patchContent({ website })}
-            />
-          </EditorSection>
-        ) : null}
+        {/* Every letter prints these two lines, so every letter can edit them. */}
+        <EditorSection title="Footer" description="Registered office and website">
+          <ContentText
+            id="letter-registered-office"
+            label="Registered office line"
+            rows={3}
+            value={shown(content, resolved, 'registeredOffice')}
+            onChange={(registeredOffice) => patchContent({ registeredOffice })}
+          />
+          <ContentText
+            id="letter-website"
+            label="Website"
+            value={shown(content, resolved, 'website')}
+            onChange={(website) => patchContent({ website })}
+          />
+        </EditorSection>
 
         {serverError ? (
           <Alert variant="destructive" role="alert">

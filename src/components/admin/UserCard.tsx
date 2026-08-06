@@ -52,7 +52,7 @@ export default function UserCard({ user }: { user: UserCardUser }) {
             render={
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-[state=open]:bg-sidebar-active data-[state=open]:text-sidebar-accent-foreground"
               >
                 {avatar}
                 <div className="grid flex-1 text-left text-sm leading-tight">

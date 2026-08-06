@@ -27,6 +27,22 @@ function humanize(segment: string): string {
 }
 
 /**
+ * Where a "back" control on `pathname` should lead: its nearest navigable
+ * ancestor, read off the breadcrumb trail.
+ *
+ * Derived rather than passed down per page, so back and the breadcrumb can
+ * never disagree about the hierarchy — both read the nav definition. Section
+ * crumbs are skipped because they are groupings with no page of their own, and
+ * anything without an ancestor falls back to the dashboard.
+ */
+export function parentHref(pathname: string): string {
+  const ancestors = breadcrumbForPath(pathname)
+    .slice(0, -1)
+    .filter((c) => c.href);
+  return ancestors[ancestors.length - 1]?.href ?? DASHBOARD_LINK.href;
+}
+
+/**
  * Derive the breadcrumb trail for a pathname from the nav definition — the single
  * source of truth for route labels. Always starts at Dashboard. Known routes use
  * their nav label (and their section, for documents); unknown leaves (e.g. a

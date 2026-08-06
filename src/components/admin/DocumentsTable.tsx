@@ -1,5 +1,17 @@
 import Link from 'next/link';
-import { ArrowDown, ArrowUp, ArrowUpDown, FileText } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Calendar,
+  CircleDot,
+  FileText,
+  FileType,
+  Hash,
+  IndianRupee,
+  User,
+  type LucideIcon,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { SortColumn, SortState } from '@/lib/domain/documentQuery';
@@ -19,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import ColumnLabel from './ColumnLabel';
 import DocumentRowActions from './DocumentRowActions';
 import { formatDisplayDate } from '@/lib/domain/dates';
 import { computeTotals, formatINR } from '@/lib/domain/money';
@@ -45,13 +58,14 @@ export interface DocumentsTableProps {
 
 // Total is left-aligned like the rest. Right-aligned figures compare better by
 // digit position, but with a single money column consistency wins.
-const COLUMNS: { column: SortColumn; label: string }[] = [
-  { column: 'number', label: 'Number' },
-  { column: 'type', label: 'Type' },
-  { column: 'party', label: 'Client' },
-  { column: 'date', label: 'Date' },
-  { column: 'total', label: 'Total' },
-  { column: 'status', label: 'Status' },
+const COLUMNS: { column: SortColumn; label: string; icon: LucideIcon }[] = [
+  { column: 'number', label: 'Number', icon: Hash },
+  { column: 'type', label: 'Type', icon: FileType },
+  { column: 'party', label: 'Client', icon: User },
+  { column: 'date', label: 'Date', icon: Calendar },
+  // Money here is always INR, so the currency mark doubles as the column's icon.
+  { column: 'total', label: 'Total', icon: IndianRupee },
+  { column: 'status', label: 'Status', icon: CircleDot },
 ];
 
 export default function DocumentsTable({
@@ -80,9 +94,9 @@ export default function DocumentsTable({
       <TableCaption className="sr-only">All documents, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          {COLUMNS.map(({ column, label }) => {
+          {COLUMNS.map(({ column, label, icon }) => {
             const active = sort?.column === column;
-            const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
+            const SortIcon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
             return (
               <TableHead
                 key={column}
@@ -98,6 +112,18 @@ export default function DocumentsTable({
                       : 'none'
                 }
               >
+                {/*
+                  Both branches lay out identically — label, gap, then a 3.5
+                  arrow slot that is merely `invisible` when sorting is off.
+                  Dropping the arrow instead would change the header's width,
+                  and with `table-auto` that re-measures every column: toggling
+                  the control shifted the whole table sideways.
+
+                  They share `text-muted-foreground` for the same reason:
+                  `TableHead` defaults to `text-foreground`, so leaving the
+                  unsortable branch to that default darkened every heading the
+                  moment sorting was switched off.
+                */}
                 {onSortChange ? (
                   <button
                     type="button"
@@ -107,11 +133,14 @@ export default function DocumentsTable({
                       !active && 'text-muted-foreground',
                     )}
                   >
-                    {label}
-                    <Icon className="size-3.5" aria-hidden="true" />
+                    <ColumnLabel icon={icon}>{label}</ColumnLabel>
+                    <SortIcon className="size-3.5" aria-hidden="true" />
                   </button>
                 ) : (
-                  label
+                  <span className="inline-flex items-center gap-1 text-muted-foreground">
+                    <ColumnLabel icon={icon}>{label}</ColumnLabel>
+                    <SortIcon className="invisible size-3.5" aria-hidden="true" />
+                  </span>
                 )}
               </TableHead>
             );

@@ -71,6 +71,12 @@ export interface DocumentFiltersProps {
   hiddenFields?: FilterField[];
   /** Overrides the party field's label: "Client" on client docs, "Employee" on HR. */
   partyLabel?: string;
+  /**
+   * Rendered at the left end of the bar, before Add filter. A slot rather than
+   * a named prop so this component stays a filter builder — the sorting toggle
+   * that sits here is the browser's concern, not the filters'.
+   */
+  leading?: React.ReactNode;
 }
 
 /**
@@ -144,6 +150,7 @@ export default function DocumentFilters({
   options,
   hiddenFields = [],
   partyLabel,
+  leading,
 }: DocumentFiltersProps) {
   const labelOf = (field: FilterField) =>
     field === 'party' ? (partyLabel ?? FILTER_FIELDS.party.label) : FILTER_FIELDS[field].label;
@@ -208,6 +215,8 @@ export default function DocumentFilters({
 
   return (
     <div className="flex items-center gap-2">
+      {leading}
+
       {/* Fixed anchor. Add filter must not drift as conditions pile up — it
           is the one control you go back to, so it stays put. */}
       <ButtonGroup className="shrink-0">

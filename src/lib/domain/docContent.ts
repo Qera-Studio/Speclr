@@ -56,6 +56,7 @@ export const docContentSchema = z.object({
   // HR letters
   subject: z.string().trim().max(300).optional(),
   subheading: z.string().trim().max(200).optional(),
+  closingLine: z.string().trim().max(500).optional(),
   acknowledgement: z.string().trim().max(2000).optional(),
   signatoryName: z.string().trim().max(120).optional(),
   signatoryTitle: z.string().trim().max(200).optional(),
@@ -96,6 +97,7 @@ export interface ResolvedContent {
   thanksLine: string;
   subject: string;
   subheading: string;
+  closingLine: string;
   acknowledgement: string;
   signatoryName: string;
   signatoryTitle: string;
@@ -116,6 +118,15 @@ const SIGNATORY = {
 
 const ACKNOWLEDGEMENT =
   'I, {name}, confirm that I have read and agreed to the terms mentioned in this letter.';
+
+/**
+ * The valediction printed after a letter's listed sections, above the rule.
+ * The experience letter closes on a good wish; the offer and exit letters have
+ * no equivalent, so they default to nothing and print nothing.
+ */
+const CLOSING_LINE: Partial<Record<DocTypeCode, string>> = {
+  EXP: 'We wish you continued success for your future endeavours.',
+};
 
 /**
  * The masthead a letter prints, which is not `spec.masthead`: the exit letter
@@ -176,6 +187,7 @@ export function contentOf(doc: ContentSource, spec: ContentSpec): ResolvedConten
 
     subject: c.subject ?? '',
     subheading: c.subheading ?? (doc.type === 'OFR' ? '' : 'TO WHOMSOEVER IT MAY CONCERN'),
+    closingLine: c.closingLine ?? CLOSING_LINE[doc.type] ?? '',
     acknowledgement: c.acknowledgement ?? ACKNOWLEDGEMENT,
     signatoryName: c.signatoryName ?? SIGNATORY.name,
     signatoryTitle: c.signatoryTitle ?? SIGNATORY.title,
@@ -206,6 +218,7 @@ export function materialiseContent(doc: ContentSource, spec: ContentSpec): DocCo
     thanksLine: r.thanksLine,
     subject: r.subject,
     subheading: r.subheading,
+    closingLine: r.closingLine,
     acknowledgement: r.acknowledgement,
     signatoryName: r.signatoryName,
     signatoryTitle: r.signatoryTitle,

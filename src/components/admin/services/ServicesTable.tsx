@@ -1,6 +1,7 @@
 'use client';
 
-import { Package } from 'lucide-react';
+import { AlignLeft, Package } from 'lucide-react';
+import ColumnLabel from '../ColumnLabel';
 import {
   Empty,
   EmptyDescription,
@@ -9,6 +10,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { RemoveButton } from '@/components/ui/remove-button';
+import { Pagination, usePagedRows } from '@/components/ui/pagination';
 import { EditButton, RowActions } from '../RowActions';
 import {
   Table,
@@ -36,6 +38,8 @@ export default function ServicesTable({
   onEdit: (service: ServiceTemplate) => void;
   onDelete: (service: ServiceTemplate) => void;
 }) {
+  const { page, pageCount, visible, setPage } = usePagedRows(services);
+
   if (services.length === 0) {
     return (
       <Empty className="border">
@@ -51,19 +55,24 @@ export default function ServicesTable({
   }
 
   return (
+    <div className="flex flex-col gap-4">
     <Table>
       <TableCaption className="sr-only">Saved services, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Overview</TableHead>
+          <TableHead>
+            <ColumnLabel icon={Package}>Name</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={AlignLeft}>Overview</ColumnLabel>
+          </TableHead>
           <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {services.map((service) => (
+        {visible.map((service) => (
           <TableRow key={service.id} className="group/row">
             <TableCell>{service.name}</TableCell>
             <TableCell>{truncate(service.overview)}</TableCell>
@@ -83,5 +92,7 @@ export default function ServicesTable({
         ))}
       </TableBody>
     </Table>
+      <Pagination page={page} pageCount={pageCount} onPageChange={setPage} label="services" />
+    </div>
   );
 }

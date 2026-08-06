@@ -1,6 +1,7 @@
 'use client';
 
-import { IdCard } from 'lucide-react';
+import { Briefcase, Handshake, IdCard, Mail, User } from 'lucide-react';
+import ColumnLabel from '../ColumnLabel';
 import {
   Empty,
   EmptyDescription,
@@ -49,10 +50,18 @@ export default function EmployeesTable({
       <TableCaption className="sr-only">Saved employees, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Engagement</TableHead>
+          <TableHead>
+            <ColumnLabel icon={User}>Name</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Mail}>Email</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Briefcase}>Role</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Handshake}>Engagement</ColumnLabel>
+          </TableHead>
           <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>

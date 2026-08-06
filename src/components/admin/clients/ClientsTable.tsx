@@ -1,6 +1,7 @@
 'use client';
 
-import { Users } from 'lucide-react';
+import { BadgeIndianRupee, Building2, Mail, Phone, Users } from 'lucide-react';
+import ColumnLabel from '../ColumnLabel';
 import {
   Empty,
   EmptyDescription,
@@ -46,10 +47,18 @@ export default function ClientsTable({
       <TableCaption className="sr-only">Saved clients, newest first</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Phone</TableHead>
-          <TableHead>GSTIN</TableHead>
+          <TableHead>
+            <ColumnLabel icon={Building2}>Name</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Mail}>Email</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={Phone}>Phone</ColumnLabel>
+          </TableHead>
+          <TableHead>
+            <ColumnLabel icon={BadgeIndianRupee}>GSTIN</ColumnLabel>
+          </TableHead>
           <TableHead className="w-0 text-right">
             <span className="sr-only">Actions</span>
           </TableHead>

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Shortcut } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
 import { searchAll, type SearchHit } from '@/server/actions/search';
 
@@ -133,7 +134,7 @@ export default function SearchCommand() {
         aria-controls={showList ? listId : undefined}
         aria-activedescendant={showList && hits[active] ? `${listId}-${active}` : undefined}
         autoComplete="off"
-        className="pl-8"
+        className="pl-8 pr-14"
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -144,6 +145,17 @@ export default function SearchCommand() {
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown}
       />
+
+      {/* The ⌘K binding existed but was documented only in this file's header —
+          nobody could discover it. Hidden once there is text, where it would
+          sit over what the user is typing. */}
+      {query ? null : (
+        <Shortcut
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2"
+          keys={['mod', 'K']}
+        />
+      )}
 
       {showList ? (
         <div className="absolute top-full right-0 z-50 mt-1 w-full min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">

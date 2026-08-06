@@ -20,10 +20,11 @@ export const A4_PADDING_Y = 24;
 export const OFFER_COVER_PADDING = "p-[36px]";
 
 /**
- * The offer letter's body pages: 36px on three sides, 12px at the foot, so the
- * bottom-pinned signature and footer sit close to the page edge.
+ * Every HR letter's body pages (offer, experience, exit): 36px on three sides,
+ * 12px at the foot, so the bottom-pinned signature and footer sit close to the
+ * page edge. One value so the three letters print as the same stationery.
  */
-export const OFFER_PADDING = "pt-[36px] px-[36px] pb-[12px]";
+export const LETTER_PADDING = "pt-[36px] px-[36px] pb-[12px]";
 
-/** Total vertical padding `OFFER_PADDING` costs a page, in px (36 + 12). */
-export const OFFER_PADDING_Y = 48;
+/** Total vertical padding `LETTER_PADDING` costs a page, in px (36 + 12). */
+export const LETTER_PADDING_Y = 48;

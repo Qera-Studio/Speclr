@@ -1,4 +1,28 @@
-import { breadcrumbForPath } from '../breadcrumb';
+import { breadcrumbForPath, parentHref } from '../breadcrumb';
+
+describe('parentHref', () => {
+  it('sends a create form back to its type list', () => {
+    expect(parentHref('/docs/new/exit-letter')).toBe('/docs/exit-letter');
+    expect(parentHref('/docs/new/invoice')).toBe('/docs/invoice');
+  });
+
+  /** A section crumb is a grouping with no page of its own — skip it. */
+  it('skips the non-navigable section crumb', () => {
+    expect(parentHref('/docs/invoice')).toBe('/');
+  });
+
+  it('sends a single document up to the dashboard', () => {
+    expect(parentHref('/docs/2f9c1d84-0f2e-4a1b-9c3d-5e6f7a8b9c0d')).toBe('/');
+  });
+
+  it('falls back to the dashboard from the dashboard itself', () => {
+    expect(parentHref('/')).toBe('/');
+  });
+
+  it('sends a record page up to the dashboard', () => {
+    expect(parentHref('/employees')).toBe('/');
+  });
+});
 
 describe('breadcrumbForPath', () => {
   it('maps the dashboard root to a single Dashboard crumb', () => {

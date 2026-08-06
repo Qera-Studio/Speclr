@@ -1,35 +1,21 @@
-import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { requireAuthorizedUser } from '@/lib/auth/session';
-import { listServices } from '@/db/store';
-import ServiceManager from '@/components/admin/services/ServiceManager';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'speclr',
   robots: { index: false, follow: false },
 };
 
-// Session cookie must be read on every request; service list is live data.
-export const dynamic = 'force-dynamic';
-
 /**
- * Services dashboard. Enforces authorization AT THE RESOURCE (not in
- * middleware): a valid Clerk session AND an allowlisted email. Anyone else
- * is redirected to sign-in / no-access.
+ * Services moved into the contract list — a service template exists to be
+ * pulled into a contract, so it belongs beside the contracts rather than as a
+ * Records entry of its own.
+ *
+ * Kept as a redirect rather than deleted: this was a nav destination, so it is
+ * in browser histories and bookmarks, and a 404 there would read as data loss.
+ * The redirect leaks nothing — authorization is enforced at the target, the way
+ * every route in this app does it.
  */
-export default async function ServicesPage() {
-  try {
-    await requireAuthorizedUser();
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : '';
-    redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
-  }
-
-  const services = await listServices();
-
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      <ServiceManager services={services} />
-    </div>
-  );
+export default function ServicesPage() {
+  redirect('/docs/contract');
 }

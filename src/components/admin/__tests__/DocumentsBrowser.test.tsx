@@ -234,6 +234,9 @@ describe('DocumentsBrowser', () => {
     const user = userEvent.setup();
     render(<DocumentsBrowser documents={documents} />);
 
+    // Sorting is opt-in — the controls are off until asked for.
+    await user.click(screen.getByRole('button', { name: 'Sort' }));
+
     const header = () => screen.getByRole('button', { name: /^date/i });
     const parties = () =>
       screen.getAllByRole('row').slice(1).map((r) => r.textContent?.includes('Acme'));
@@ -246,5 +249,122 @@ describe('DocumentsBrowser', () => {
 
     await user.click(header());
     expect(parties()).toEqual([true, false]);
+  });
+});
+
+/**
+ * Sorting is a control you either use often or never. Off by default keeps an
+ * arrow off all six headers for the latter; the preference is remembered so the
+ * former turns it on once.
+ */
+describe('the sorting toggle', () => {
+  const toggle = () => screen.getByRole('button', { name: 'Sort' });
+
+  beforeEach(() => localStorage.clear());
+
+  it('leaves the headers as plain text until it is switched on', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    expect(screen.queryByRole('button', { name: /^date/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Date' })).toBeInTheDocument();
+
+    await user.click(toggle());
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+  });
+
+  /**
+   * Regression: hiding the arrows used to remove them from the header, which
+   * with `table-auto` re-measured every column — toggling shifted the whole
+   * table sideways. The slot stays, merely invisible. jsdom cannot measure
+   * layout, so what is asserted is that the element is still there.
+   */
+  it('keeps the arrow slot occupying its space while hidden', () => {
+    render(<DocumentsBrowser documents={documents} />);
+
+    const arrow = screen.getByRole('columnheader', { name: 'Date' }).querySelectorAll('svg');
+    // The column's own icon, plus the reserved arrow.
+    expect(arrow).toHaveLength(2);
+    expect(arrow[1]).toHaveClass('invisible');
+  });
+
+  it('reports its state to assistive tech', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    expect(toggle()).toHaveAttribute('aria-pressed', 'false');
+    await user.click(toggle());
+    expect(toggle()).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('remembers being switched on', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<DocumentsBrowser documents={documents} />);
+    await user.click(toggle());
+    unmount();
+
+    render(<DocumentsBrowser documents={documents} />);
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+  });
+
+  /**
+   * A sort left applied with its controls hidden would reorder the table with
+   * nothing on screen explaining why — and no way to undo it.
+   */
+  it('drops any applied sort when switched off', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    const parties = () =>
+      screen.getAllByRole('row').slice(1).map((r) => r.textContent?.includes('Acme'));
+
+    await user.click(toggle());
+    await user.click(screen.getByRole('button', { name: /^date/i }));
+    await user.click(screen.getByRole('button', { name: /^date/i }));
+    expect(parties()).toEqual([false, true]);
+
+    await user.click(toggle());
+    expect(parties()).toEqual([true, false]);
+  });
+});
+
+/**
+ * A long list must not push whatever follows it off the page — on the contract
+ * list, that is the services section.
+ */
+describe('DocumentsBrowser pagination', () => {
+  const many = Array.from({ length: 24 }, (_, i) => ({
+    ...documents[0],
+    id: `many-${i}`,
+    number: `QS-INV-2627-${String(i + 1).padStart(3, '0')}`,
+  })) as unknown as AdminDocument[];
+
+  it('shows ten rows at a time and pages through the rest', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={many} />);
+
+    expect(rowCount()).toBe(10);
+    expect(screen.getByText('QS-INV-2627-001')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next page of documents' }));
+    expect(screen.getByText('QS-INV-2627-011')).toBeInTheDocument();
+    expect(screen.queryByText('QS-INV-2627-001')).not.toBeInTheDocument();
+  });
+
+  it('does not page a list that already fits', () => {
+    render(<DocumentsBrowser documents={documents} />);
+
+    expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+  });
+
+  /** Page 3 of the old result set means nothing once the filters change. */
+  it('returns to the first page when the filters change', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={many} />);
+
+    await user.click(screen.getByRole('button', { name: 'Next page of documents' }));
+    expect(screen.getByText('QS-INV-2627-011')).toBeInTheDocument();
+
+    await addFilter(user, /^status$/i);
+    expect(screen.getByText('QS-INV-2627-001')).toBeInTheDocument();
   });
 });

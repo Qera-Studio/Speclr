@@ -1,8 +1,21 @@
 'use client';
 
-import { PanelRight } from 'lucide-react';
+import { ArrowLeft, PanelRight } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar, SidebarContent, SidebarHeader } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { parentHref } from './breadcrumb';
 import { useEditorPanel } from './EditorPanel';
 
 /** Wider than the nav — it holds full form fields, not links. */
@@ -24,6 +37,8 @@ export const EDITOR_RAIL_WIDTH = 384;
  */
 export default function EditorSidebar() {
   const panel = useEditorPanel();
+  const router = useRouter();
+  const pathname = usePathname();
   if (!panel) return null;
 
   const { setHost, count, title, open, setOpen, requestClose } = panel;
@@ -45,9 +60,45 @@ export default function EditorSidebar() {
       }
     >
       <SidebarHeader className="flex-row items-center justify-between gap-2 px-3 py-2">
-        <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
-          {title ?? 'Edit'}
-        </span>
+        {/*
+          A back arrow, left of the title. There is rarely anywhere to go "back"
+          to in a single-page editor, but people reach for one before they reach
+          for a collapse icon — the first thing someone shown this rail asked was
+          how to go back. It leaves the page, so it confirms first: the draft's
+          unsaved edits live in the form, not the server.
+        */}
+        <div className="flex min-w-0 items-center gap-1 group-data-[collapsible=icon]:hidden">
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Go back"
+                  className="size-7 shrink-0 text-muted-foreground"
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+              }
+            />
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Leave this page?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Anything you have not saved will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Stay</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.push(parentHref(pathname))}>
+                  Leave
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <span className="truncate text-sm font-semibold">{title ?? 'Edit'}</span>
+        </div>
         <Button
           type="button"
           variant="ghost"

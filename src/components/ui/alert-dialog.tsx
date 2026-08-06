@@ -144,14 +144,30 @@ function AlertDialogDescription({
   )
 }
 
+/**
+ * The confirming button. Renders through `Close` — exactly as
+ * `AlertDialogCancel` does — so acting on a dialog always dismisses it.
+ *
+ * It used to be a bare `Button`, which ran its `onClick` and left the dialog
+ * standing. Every caller happened to hide that: they either navigated away
+ * (unmounting the page and the dialog with it), removed the row that owned the
+ * trigger, or closed the dialog by hand from their own state. The moment one
+ * lived in a component the navigation does *not* unmount — the editor rail's
+ * back arrow, which sits in the admin layout — the dialog stayed on screen over
+ * the newly loaded page.
+ */
 function AlertDialogAction({
   className,
+  variant,
+  size = "default",
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: AlertDialogPrimitive.Close.Props &
+  Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
   return (
-    <Button
+    <AlertDialogPrimitive.Close
       data-slot="alert-dialog-action"
       className={cn(className)}
+      render={<Button variant={variant} size={size} />}
       {...props}
     />
   )

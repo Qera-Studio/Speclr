@@ -2,8 +2,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import AdminSidebar from '../AdminSidebar';
+import { NewDocumentProvider } from '../NewDocumentCommand';
 
-jest.mock('next/navigation', () => ({ usePathname: () => '/clients' }));
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/clients',
+  useRouter: () => ({ push: mockPush }),
+}));
 jest.mock('@clerk/nextjs', () => ({
   SignOutButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -12,18 +17,26 @@ const user = { name: 'Shivanshu Pareek', email: 'ops@qera.studio', imageUrl: und
 
 function renderSidebar() {
   return render(
-    <SidebarProvider>
-      <AdminSidebar user={user} />
-    </SidebarProvider>,
+    <NewDocumentProvider>
+      <SidebarProvider>
+        <AdminSidebar user={user} />
+      </SidebarProvider>
+    </NewDocumentProvider>,
   );
 }
 
 describe('AdminSidebar', () => {
   it('renders the top-level single links', () => {
     renderSidebar();
-    for (const label of ['Dashboard', 'Clients', 'Employees', 'Services', 'Icon spec']) {
+    for (const label of ['Dashboard', 'Clients', 'Employees', 'Icon spec']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
     }
+  });
+
+  /** Services moved into the contract list — see the note on `RECORD_LINKS`. */
+  it('no longer lists Services under Records', () => {
+    renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Services' })).not.toBeInTheDocument();
   });
 
   it('no longer lists Settings in the nav — it moved into the account menu', () => {
@@ -49,6 +62,22 @@ describe('AdminSidebar', () => {
     renderSidebar();
     expect(screen.getByRole('link', { name: 'Clients' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  /** Records is the shorter, more-often-scanned list — it reads first. */
+  it('lists Records above Documents', () => {
+    renderSidebar();
+    const groups = screen.getAllByText(/^(Records|Documents|Tools)$/).map((el) => el.textContent);
+    expect(groups).toEqual(['Records', 'Documents', 'Tools']);
+  });
+
+  it('offers a create button that opens the document palette', async () => {
+    const u = userEvent.setup();
+    renderSidebar();
+    const create = screen.getByRole('button', { name: /new document/i });
+    expect(create).toHaveAttribute('aria-haspopup', 'dialog');
+    await u.click(create);
+    expect(await screen.findByRole('dialog', { name: /new document/i })).toBeInTheDocument();
   });
 
   it('renders the account card with name, email, and a menu trigger', () => {

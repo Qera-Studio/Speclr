@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   useWatch,
   type ArrayPath,
@@ -9,16 +9,24 @@ import {
   type Path,
   type UseFieldArrayReturn,
   type UseFormRegister,
-} from 'react-hook-form';
-import { ChevronRight } from 'lucide-react';
-import { formatMoney, rupeesToPaise } from '@/lib/domain/money';
-import { currencyByCode, DEFAULT_CURRENCY, type CurrencyCode } from '@/lib/domain/currency';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { RemoveButton } from '@/components/ui/remove-button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { emptyLineItem, type LineItemFormValues } from './useDocumentForm';
+} from "react-hook-form";
+import { ChevronRight } from "lucide-react";
+import { formatMoney, rupeesToPaise } from "@/lib/domain/money";
+import {
+  currencyByCode,
+  DEFAULT_CURRENCY,
+  type CurrencyCode,
+} from "@/lib/domain/currency";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { RemoveButton } from "@/components/ui/remove-button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 
 /**
  * Line items for any form with a `lineItems` array of `LineItemFormValues` —
@@ -48,11 +56,14 @@ interface LineItemsEditorProps<T extends FieldValues> {
 }
 
 /** 'Internship Stipend · ₹ 2,500.00 × 1' — enough to check a line at a glance. */
-function summarize(item: LineItemFormValues | undefined, currency: CurrencyCode) {
-  const description = item?.description?.trim() || 'Untitled item';
-  const ratePaise = rupeesToPaise(item?.rate ?? '');
-  const qty = item?.qty?.trim() || '0';
-  const amount = ratePaise === null ? '—' : formatMoney(ratePaise, currency);
+function summarize(
+  item: LineItemFormValues | undefined,
+  currency: CurrencyCode,
+) {
+  const description = item?.description?.trim() || "Untitled item";
+  const ratePaise = rupeesToPaise(item?.rate ?? "");
+  const qty = item?.qty?.trim() || "0";
+  const amount = ratePaise === null ? "—" : formatMoney(ratePaise, currency);
   return { description, detail: `${amount} × ${qty}` };
 }
 
@@ -63,11 +74,11 @@ export default function LineItemsEditor<T extends FieldValues>({
   currency = DEFAULT_CURRENCY,
 }: LineItemsEditorProps<T>) {
   const { fields, append, remove } = fieldArray;
-  const currencySymbol = currencyByCode(currency)?.symbol ?? '₹';
+  const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   // The summaries have to track what is typed. `fields` holds the values the
   // array was seeded with, not the live ones, so it cannot drive them.
-  const values = useWatch({ control, name: 'lineItems' as Path<T> }) as
+  const values = useWatch({ control, name: "lineItems" as Path<T> }) as
     | LineItemFormValues[]
     | undefined;
 
@@ -114,15 +125,19 @@ export default function LineItemsEditor<T extends FieldValues>({
               render={
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                  className="flex w-full items-top gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
                 >
                   <ChevronRight
                     aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[open]/item:rotate-90"
+                    className="size-3 shrink-0 mt-[4px] text-muted-foreground transition-transform duration-200 group-data-[open]/item:rotate-90"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm">{description}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{detail}</span>
+                    <span className="block truncate text-sm">
+                      {description}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {detail}
+                    </span>
                   </span>
                 </button>
               }
@@ -131,14 +146,18 @@ export default function LineItemsEditor<T extends FieldValues>({
             <CollapsibleContent>
               <div className="flex flex-col gap-3 border-t border-border p-3">
                 <Field>
-                  <FieldLabel htmlFor={`item-desc-${index}`}>Description</FieldLabel>
+                  <FieldLabel htmlFor={`item-desc-${index}`}>
+                    Description
+                  </FieldLabel>
                   <Input
                     id={`item-desc-${index}`}
                     {...register(`lineItems.${index}.description` as Path<T>)}
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor={`item-detail-${index}`}>Detail (optional)</FieldLabel>
+                  <FieldLabel htmlFor={`item-detail-${index}`}>
+                    Detail (optional)
+                  </FieldLabel>
                   <Input
                     id={`item-detail-${index}`}
                     {...register(`lineItems.${index}.detail` as Path<T>)}
@@ -146,13 +165,17 @@ export default function LineItemsEditor<T extends FieldValues>({
                 </Field>
                 <div className="flex flex-wrap items-end gap-3">
                   <Field className="flex-1">
-                    <FieldLabel htmlFor={`item-rate-${index}`}>Rate ({currencySymbol})</FieldLabel>
+                    <FieldLabel htmlFor={`item-rate-${index}`}>
+                      Rate ({currencySymbol})
+                    </FieldLabel>
                     <Input
                       id={`item-rate-${index}`}
                       inputMode="decimal"
                       {...register(`lineItems.${index}.rate` as Path<T>, {
                         validate: (value) =>
-                          value === '' || rupeesToPaise(value) !== null || 'Enter a valid amount.',
+                          value === "" ||
+                          rupeesToPaise(value) !== null ||
+                          "Enter a valid amount.",
                       })}
                     />
                   </Field>

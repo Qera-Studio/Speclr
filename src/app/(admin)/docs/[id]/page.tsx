@@ -19,7 +19,7 @@ import StipendEditor from '@/components/docs/editors/StipendEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
-import { OFFER_PADDING, OFFER_PADDING_Y } from '@/components/docs/sheets/frame';
+import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
 import StipendSheet from '@/components/docs/sheets/StipendSheet';
 import DocumentTypeList from '@/components/admin/DocumentTypeList';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -52,12 +52,19 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
   // document ids are UUIDs, and a doc-type slug is never one.
   const listSpec = DOC_TYPE_BY_SLUG[id];
   if (listSpec) {
-    const [documents, latestInvoice] = await Promise.all([
+    // The contract list hosts the services section, so it needs the templates.
+    const [documents, latestInvoice, services] = await Promise.all([
       listDocumentsByType(listSpec.code),
       listSpec.code === 'REC' ? getLatestFinalizedInvoice() : Promise.resolve(null),
+      listSpec.code === 'CON' ? listServices() : Promise.resolve(null),
     ]);
     return (
-      <DocumentTypeList spec={listSpec} documents={documents} latestInvoice={latestInvoice} />
+      <DocumentTypeList
+        spec={listSpec}
+        documents={documents}
+        latestInvoice={latestInvoice}
+        services={services ?? undefined}
+      />
     );
   }
 
@@ -146,8 +153,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       coverFirst: doc.type === 'OFR',
       firstPageClassName: doc.type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined,
       selfPaddedSheet: false,
-      pagePadding: doc.type === 'OFR' ? OFFER_PADDING : undefined,
-      pagePaddingY: doc.type === 'OFR' ? OFFER_PADDING_Y : undefined,
+      // All three letters print the same roomier page. The pair must agree —
+      // `pagePaddingY` is the height pagination reserves.
+      pagePadding: LETTER_PADDING,
+      pagePaddingY: LETTER_PADDING_Y,
     });
   // Contracts feed their flat block list in so the preview can paginate them,
   // with the black cover pinned as its own full-bleed first page.

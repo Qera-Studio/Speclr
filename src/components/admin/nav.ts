@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   IdCard,
-  Package,
   Image,
   Handshake,
   Briefcase,
@@ -23,6 +22,13 @@ export interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
+  /**
+   * Letter that, held with Alt/Option, jumps straight into a *new* document of
+   * this type — and the hint shown beside it in the ⌘D palette. Only the
+   * document sections carry one; `NewDocumentCommand` reads them from here so
+   * the palette's grouping, labels and icons can never drift from the nav's.
+   */
+  shortcut?: string;
 }
 
 /** A collapsible parent that expands into a sub-list of links (left-line). */
@@ -45,34 +51,49 @@ export const DOCUMENT_SECTIONS: NavSection[] = [
     label: 'Client',
     icon: Handshake,
     children: [
-      { href: '/docs/contract', label: 'Contract', icon: FileSignature },
-      { href: '/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee },
-      { href: '/docs/receipt', label: 'Receipt', icon: Receipt },
+      { href: '/docs/contract', label: 'Contract', icon: FileSignature, shortcut: 'C' },
+      { href: '/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee, shortcut: 'I' },
+      { href: '/docs/receipt', label: 'Receipt', icon: Receipt, shortcut: 'R' },
     ],
   },
   {
     label: 'Admin',
     icon: Briefcase,
     children: [
-      { href: '/docs/offer-letter', label: 'Offer letter', icon: FileText },
-      { href: '/docs/stipend', label: 'Stipend', icon: Wallet },
-      { href: '/docs/experience-letter', label: 'Experience letter', icon: FileBadge },
-      { href: '/docs/exit-letter', label: 'Exit letter', icon: FileOutput },
+      { href: '/docs/offer-letter', label: 'Offer letter', icon: FileText, shortcut: 'O' },
+      { href: '/docs/stipend', label: 'Stipend', icon: Wallet, shortcut: 'S' },
+      { href: '/docs/experience-letter', label: 'Experience letter', icon: FileBadge, shortcut: 'E' },
+      { href: '/docs/exit-letter', label: 'Exit letter', icon: FileOutput, shortcut: 'X' },
     ],
   },
 ];
 
-/** Records management — plain links below the document sections. */
+/**
+ * The ⌥ letter for a document type, by slug. Lets a "New <type>" button show
+ * the same hint the ⌘D palette does — both land on `/docs/new/<slug>`, so the
+ * shortcut and the button are genuinely the same action.
+ */
+export function shortcutForSlug(slug: string): string | undefined {
+  return DOCUMENT_SECTIONS.flatMap((s) => s.children).find((c) => c.href === `/docs/${slug}`)
+    ?.shortcut;
+}
+
+/**
+ * Records management — plain links below the document sections.
+ *
+ * Services are deliberately absent: a service template exists to be pulled into
+ * a contract, so it lives as a section of the contract list rather than as a
+ * nav entry of its own. `/services` redirects there.
+ */
 export const RECORD_LINKS: NavLink[] = [
   { href: '/clients', label: 'Clients', icon: Users },
   { href: '/employees', label: 'Employees', icon: IdCard },
-  { href: '/services', label: 'Services', icon: Package },
 ];
 
 /** Tools — plain links at the bottom of the nav. */
 export const TOOL_LINKS: NavLink[] = [
   { href: '/spec', label: 'Icon spec', icon: Image },
-  { href: '/kit', label: 'Kit', icon: SwatchBook },
+  { href: '/kit', label: 'UI Kit', icon: SwatchBook },
 ];
 
 /**
