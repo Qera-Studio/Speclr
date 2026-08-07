@@ -139,8 +139,55 @@ describe('the seeded Services', () => {
   const exclusionIds = new Set(EXCLUSIONS.map((e) => e.id));
   const inputIds = new Set(CLIENT_INPUTS.map((c) => c.id));
 
-  it('loads Parts 01, 02 and 05 to prove the schema holds', () => {
-    expect(SERVICES.map((s) => s.code)).toEqual(['01', '02', '05']);
+  it('loads all twenty-two, numbered 01 to 22 with no gaps', () => {
+    expect(SERVICES.map((s) => s.code)).toEqual(
+      Array.from({ length: 22 }, (_, i) => String(i + 1).padStart(2, '0')),
+    );
+  });
+
+  /**
+   * `sortOrder` fixes Part numbering, so it has to agree with the canonical
+   * grouping in contract-system.md §3: 01–10 Build, 11–16 Monthly, 17–20 Setup,
+   * 21–22 Advice. A service filed under the wrong Schedule changes which legal
+   * terms it inherits.
+   */
+  it('files each service under the Schedule its code belongs to', () => {
+    const expected = (code: number): string =>
+      code <= 10 ? 'build' : code <= 16 ? 'monthly' : code <= 20 ? 'setup' : 'advice';
+    for (const service of SERVICES) {
+      expect(service.scheduleKey).toBe(expected(Number(service.code)));
+      expect(service.sortOrder).toBe(Number(service.code));
+    }
+  });
+
+  it('gives every service a name, an overview and something included', () => {
+    for (const service of SERVICES) {
+      expect(service.name.trim()).not.toBe('');
+      expect(service.overview.length).toBeGreaterThan(0);
+      expect(service.included.length).toBeGreaterThan(0);
+      expect(service.completion.length).toBeGreaterThan(0);
+      expect(service.receives.length).toBeGreaterThan(0);
+      expect(service.thirdPartyCosts.trim()).not.toBe('');
+    }
+  });
+
+  /**
+   * Every Part states its boundaries as numbers rather than adjectives, which
+   * is what makes "anything beyond these is Additional Work" enforceable.
+   */
+  it('quantifies every Part with a Limits table', () => {
+    for (const service of SERVICES) {
+      expect(service.limits.length).toBeGreaterThan(0);
+      expect(service.limitsNotes.length).toBeGreaterThan(0);
+    }
+  });
+
+  /** Depending on yourself, or on a service that does not exist, is a typo. */
+  it('never depends on itself', () => {
+    for (const service of SERVICES) {
+      expect(service.dependencies).not.toContain(service.code);
+      expect(service.pairings).not.toContain(service.code);
+    }
   });
 
   it('validates against the schema the Server Action uses', () => {
@@ -189,10 +236,16 @@ describe('the seeded Services', () => {
     }
   });
 
-  /** A Part with no fee cannot be quoted, and Fee is the blank that blocks export. */
-  it('gives every Part a Fee row drafted empty', () => {
+  /**
+   * A Part with no fee cannot be quoted, and the fee row is the blank that
+   * blocks export. Monthly Parts label it differently — a recurring fee is not
+   * the same commitment as a one-time one — so match on the row that carries
+   * the money rather than on a fixed label.
+   */
+  it('gives every Part a fee row drafted empty', () => {
     for (const service of SERVICES) {
-      const fee = service.fee.find((row) => row.label === 'Fee');
+      const fee = service.fee.find((row) => /fee/i.test(row.label));
+      expect(fee).toBeDefined();
       expect(fee?.value).toBe('[ ]');
     }
   });

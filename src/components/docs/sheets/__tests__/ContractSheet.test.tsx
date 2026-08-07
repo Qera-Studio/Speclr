@@ -82,6 +82,38 @@ describe('ContractSheet', () => {
     expect(screen.getAllByText('fill this in').length).toBeGreaterThan(0);
   });
 
+  /**
+   * A Monthly Part is delivered per cycle rather than finished once, so
+   * "Completion criteria" above "not applicable" would be a heading that lies.
+   */
+  it('heads a Monthly Part by cycle rather than by completion', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['14'] })} />);
+    const part = screen.getByLabelText('Part A-1');
+    expect(within(part).getByText('What is included each cycle')).toBeInTheDocument();
+    expect(within(part).getByText('How delivery is measured')).toBeInTheDocument();
+    expect(within(part).getByText('Fee and cycle')).toBeInTheDocument();
+    expect(within(part).queryByText('Completion criteria')).not.toBeInTheDocument();
+  });
+
+  it('heads a Build Part by completion and timeline', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    const part = screen.getByLabelText('Part A-1');
+    expect(within(part).getByText('Completion criteria')).toBeInTheDocument();
+    expect(within(part).getByText('Fee and timeline')).toBeInTheDocument();
+  });
+
+  /** Four Schedules, lettered in canonical order with the Parts under each. */
+  it('assembles a contract spanning every Schedule', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['21', '17', '01', '11'] })} />);
+    expect(screen.getByLabelText('Schedule A')).toBeInTheDocument();
+    expect(screen.getByLabelText('Schedule D')).toBeInTheDocument();
+    expect(screen.getByLabelText('Part A-1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Part D-1')).toBeInTheDocument();
+    // Each Schedule's clauses carry its own letter.
+    expect(screen.getByText('A2. Fees and Payment')).toBeInTheDocument();
+    expect(screen.getByText('B2. Fee and Billing')).toBeInTheDocument();
+  });
+
   it('renders both execution blocks from the record', () => {
     render(<ContractSheet doc={contractDoc()} />);
     const execution = screen.getByLabelText('Execution');

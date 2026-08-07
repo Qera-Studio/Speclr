@@ -1,7 +1,11 @@
 import { formatDisplayDate, isISODate } from '@/lib/domain/dates';
 import { assemble, withLetter } from '@/lib/domain/contract/assembly';
 import { blankValue, fillText, isUnfilled, type BlankValues } from '@/lib/domain/contract/blanks';
-import { contractScopes, type BlankScope } from '@/lib/domain/contract/completeness';
+import {
+  contractScopes,
+  partSectionLabel,
+  type BlankScope,
+} from '@/lib/domain/contract/completeness';
 import { EXECUTION_STATEMENT } from '@/lib/domain/contract/msa';
 import { contentOf } from '@/lib/domain/docContent';
 import { DOC_TYPES } from '@/lib/domain/registry';
@@ -323,9 +327,11 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
     }),
     ...parts.map(({ part, label }) => {
       const at = (section: string) => scopes.get(`part.${part.code}.${section}`);
-      const section = (heading: string, node: React.ReactNode) => (
+      // Headings come from `partSectionLabel`, which the editor reads too — a
+      // Monthly Part is delivered per cycle and says so.
+      const section = (id: string, node: React.ReactNode) => (
         <div className="[break-inside:avoid] mb-[24px]">
-          <h4 className={SUBHEADING}>{heading}</h4>
+          <h4 className={SUBHEADING}>{partSectionLabel(id, part.scheduleKey)}</h4>
           {node}
         </div>
       );
@@ -352,7 +358,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.included.length > 0
             ? section(
-                'What is included',
+                'included',
                 <ul className="m-0 pl-[24px]">
                   {part.included.map((item, i) => (
                     <li
@@ -374,7 +380,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.accountTerms.length > 0
             ? section(
-                'Account and ownership arrangement',
+                'account',
                 part.accountTerms.map((paragraph, i) => (
                   <Para
                     key={i}
@@ -389,7 +395,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.limits.length > 0
             ? section(
-                'Limits',
+                'limits',
                 <>
                   <RowTable scope={at('limits')} rows={part.limits} values={values} />
                   {part.limitsNotes.map((paragraph, i) => (
@@ -407,7 +413,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.completion.length > 0
             ? section(
-                'Completion criteria',
+                'completion',
                 part.completion.map((paragraph, i) => (
                   <Para
                     key={i}
@@ -422,7 +428,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.receives.length > 0
             ? section(
-                'What the Client receives',
+                'receives',
                 <>
                   <Bullets items={part.receives} />
                   {part.receivesNotes.map((paragraph, i) => (
@@ -446,7 +452,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
           */}
           {part.exclusionIds.length > 0
             ? section(
-                'What is not included',
+                'exclusions',
                 <>
                   <p className="text-black/60 text-[10px] font-normal italic leading-[1.6] mb-[8px]">
                     Excluded by default. Anything moved into scope is priced and written into
@@ -459,14 +465,14 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.clientInputIds.length > 0
             ? section(
-                'What the Client provides',
+                'clientInputs',
                 <Bullets items={part.clientInputIds.map((id) => libraryText(id))} />,
               )
             : null}
 
           {part.thirdPartyCosts
             ? section(
-                'Costs the Client pays directly',
+                'costs',
                 <Para
                   scope={at('costs')}
                   index={0}
@@ -478,7 +484,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
 
           {part.fee.length > 0
             ? section(
-                'Fee and timeline',
+                'fee',
                 <RowTable scope={at('fee')} rows={part.fee} values={values} />,
               )
             : null}

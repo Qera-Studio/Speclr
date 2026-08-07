@@ -21,6 +21,7 @@ import {
 } from './blanks';
 import { assemble, msaScope, partScope, scheduleScope, type ContractPart } from './assembly';
 import { MSA_CLAUSES } from './msa';
+import type { ScheduleKey } from './schedules';
 
 /** One addressable group of blanks — a clause, or a section of a Part. */
 export interface BlankScope {
@@ -54,22 +55,72 @@ function scopeOf(
   return { scope, group, label, texts, rowLabels, parsed: parseScope(scope, texts) };
 }
 
+/**
+ * The heading each Part section prints under.
+ *
+ * A Monthly Part is delivered per cycle rather than finished once, and its
+ * headings say so: it is included "each cycle", it has no completion criteria
+ * to meet, and it carries a recurring fee rather than a fee and a timeline.
+ * Content §5 requires the distinction, and it is worth keeping honest — a
+ * "Completion criteria" heading above "not applicable" is a heading that lies.
+ *
+ * One map, read by both the sheet and the editor, so the two cannot drift into
+ * calling the same section different things.
+ */
+export function partSectionLabel(section: string, scheduleKey: ScheduleKey): string {
+  const monthly = scheduleKey === 'monthly';
+  switch (section) {
+    case 'overview':
+      return 'Overview';
+    case 'included':
+      return monthly ? 'What is included each cycle' : 'What is included';
+    case 'account':
+      return 'Account and ownership arrangement';
+    case 'limits':
+      return 'Limits';
+    case 'limitsNotes':
+      return 'How the limits are counted';
+    case 'completion':
+      return monthly ? 'How delivery is measured' : 'Completion criteria';
+    case 'receives':
+      return 'What the Client receives';
+    case 'receivesNotes':
+      return 'Handover notes';
+    case 'exclusions':
+      return 'What is not included';
+    case 'clientInputs':
+      return 'What the Client provides';
+    case 'costs':
+      return 'Costs the Client pays directly';
+    case 'fee':
+      return monthly ? 'Fee and cycle' : 'Fee and timeline';
+    default:
+      return section;
+  }
+}
+
 /** The Part sections that can hold a blank, in the order the sheet prints them. */
 function partScopes(part: ContractPart, group: string): BlankScope[] {
-  const at = (section: string, label: string, texts: string[], rowLabels?: string[]) =>
-    scopeOf(partScope(part.code, section), group, label, texts, rowLabels);
+  const at = (section: string, texts: string[], rowLabels?: string[]) =>
+    scopeOf(
+      partScope(part.code, section),
+      group,
+      partSectionLabel(section, part.scheduleKey),
+      texts,
+      rowLabels,
+    );
 
   return [
-    at('overview', 'Overview', part.overview),
-    at('included', 'What is included', part.included),
-    at('account', 'Account and ownership', part.accountTerms),
-    at('limits', 'Limits', part.limits.map((r) => r.value), part.limits.map((r) => r.label)),
-    at('limitsNotes', 'How the limits are counted', part.limitsNotes),
-    at('completion', 'Completion criteria', part.completion),
-    at('receives', 'What the Client receives', part.receives),
-    at('receivesNotes', 'Handover notes', part.receivesNotes),
-    at('costs', 'Costs the Client pays directly', [part.thirdPartyCosts]),
-    at('fee', 'Fee and timeline', part.fee.map((r) => r.value), part.fee.map((r) => r.label)),
+    at('overview', part.overview),
+    at('included', part.included),
+    at('account', part.accountTerms),
+    at('limits', part.limits.map((r) => r.value), part.limits.map((r) => r.label)),
+    at('limitsNotes', part.limitsNotes),
+    at('completion', part.completion),
+    at('receives', part.receives),
+    at('receivesNotes', part.receivesNotes),
+    at('costs', [part.thirdPartyCosts]),
+    at('fee', part.fee.map((r) => r.value), part.fee.map((r) => r.label)),
   ].filter((s) => s.texts.length > 0);
 }
 
