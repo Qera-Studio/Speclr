@@ -99,15 +99,15 @@ type DocBase = DocBaseOf<AdminDocument>;
  */
 function withFields(base: DocBase, fields: DocFields): AdminDocument {
   if (base.type === 'CON') {
-    // Contracts carry schedules, never line items / GST / payment. Empty
-    // financial defaults satisfy BaseDocument's required fields (mirrors the
-    // registry's CON defaultFields).
+    // Contracts carry Parts and blanks, never line items / GST / payment.
+    // Empty financial defaults satisfy BaseDocument's required fields (mirrors
+    // the registry's CON defaultFields).
     return {
       ...base,
       issueDate: fields.issueDate,
       lineItems: [],
       gstRatePercent: 0,
-      schedules: fields.schedules ?? [],
+      contract: fields.contract ?? { parts: [], blanks: {}, library: {} },
       content: fields.content,
     };
   }
@@ -369,15 +369,18 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     clientSnapshot = clientSnapshotOf(client);
   }
 
-  // Numbered docs: financial (invoices/receipts) and hr-slip (stipend). Letters
-  // and contracts are unnumbered. Number per Indian financial year (Apr–Mar),
+  // Numbered docs: financial (invoices/receipts), hr-slip (stipend and pay) and
+  // contracts. Only the HR letters are unnumbered — nothing files them by
+  // reference. A contract's number is internal rather than statutory, but the
+  // same atomic claim gives it the one guarantee that matters: two agreements
+  // can never share a reference. Number per Indian financial year (Apr–Mar),
   // not calendar year, so each FY's sequence stays consecutive as GST Rule 46
   // expects. `year` stores the FY start (e.g. 2025 for FY 2025-26); the number
   // carries the compact FY code (e.g. '2526').
   let number: string | undefined;
   let serial: number | undefined;
   let year: number | undefined;
-  if (spec.kind === 'financial' || spec.kind === 'hr-slip') {
+  if (spec.kind === 'financial' || spec.kind === 'hr-slip' || spec.kind === 'contract') {
     year = financialYearStart(existing.issueDate);
     const fyCode = financialYearCodeOfISODate(existing.issueDate);
 

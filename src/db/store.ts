@@ -2,13 +2,22 @@ import 'server-only';
 
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { db } from './index';
-import { clients, documents, employees, serviceTemplates, studioSettings } from './schema';
+import {
+  clientInputs,
+  clients,
+  documents,
+  employees,
+  exclusions,
+  services,
+  studioSettings,
+} from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
 import { DEV_UNLIMITED } from '@/lib/devMode';
+import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
 import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/types';
+import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
 import type { EmployeeRecord } from '@/lib/domain/employee';
-import type { ServiceTemplate } from '@/lib/domain/serviceTemplate';
 
 /**
  * Persistence for speclr documents, clients, employees, and service templates,
@@ -168,60 +177,104 @@ export async function deleteEmployee(id: string): Promise<void> {
   await db.delete(employees).where(eq(employees.id, id));
 }
 
-// ─── Service templates ────────────────────────────────────────────────────────
+// ─── Services, and the two shared libraries ───────────────────────────────────
 
-export async function saveService(svc: ServiceTemplate): Promise<void> {
+function serviceFromRow(r: typeof services.$inferSelect): ContractService {
+  return {
+    code: r.code,
+    name: r.name,
+    scheduleKey: r.scheduleKey,
+    sortOrder: r.sortOrder,
+    archived: r.archived,
+    ...r.content,
+  };
+}
+
+export async function saveService(svc: ContractService): Promise<void> {
+  const { code, name, scheduleKey, sortOrder, archived, ...content } = svc;
   const row = {
-    id: svc.id,
-    name: svc.name,
-    content: {
-      overview: svc.overview,
-      scopeItems: svc.scopeItems,
-      exclusionItems: svc.exclusionItems,
-      priceNote: svc.priceNote,
-      milestones: svc.milestones,
-      revisionsNote: svc.revisionsNote,
-      disclaimerNote: svc.disclaimerNote,
-      supportNote: svc.supportNote,
-    },
-    createdAt: new Date(svc.createdAt),
-    updatedAt: new Date(svc.updatedAt),
+    code,
+    name,
+    scheduleKey,
+    sortOrder,
+    archived,
+    content,
+    updatedAt: new Date(),
   };
   await db
-    .insert(serviceTemplates)
+    .insert(services)
     .values(row)
-    .onConflictDoUpdate({ target: serviceTemplates.id, set: row });
+    .onConflictDoUpdate({ target: services.code, set: row });
 }
 
-function serviceFromRow(r: typeof serviceTemplates.$inferSelect): ServiceTemplate {
-  return {
-    id: r.id,
-    name: r.name,
-    overview: r.content.overview,
-    scopeItems: r.content.scopeItems,
-    exclusionItems: r.content.exclusionItems,
-    priceNote: r.content.priceNote,
-    milestones: r.content.milestones,
-    revisionsNote: r.content.revisionsNote,
-    disclaimerNote: r.content.disclaimerNote,
-    supportNote: r.content.supportNote,
-    createdAt: r.createdAt.getTime(),
-    updatedAt: r.updatedAt.getTime(),
-  };
-}
-
-export async function getService(id: string): Promise<ServiceTemplate | null> {
-  const rows = await db.select().from(serviceTemplates).where(eq(serviceTemplates.id, id)).limit(1);
+export async function getService(code: string): Promise<ContractService | null> {
+  const rows = await db.select().from(services).where(eq(services.code, code)).limit(1);
   return rows[0] ? serviceFromRow(rows[0]) : null;
 }
 
-export async function listServices(): Promise<ServiceTemplate[]> {
-  const rows = await db.select().from(serviceTemplates).orderBy(desc(serviceTemplates.createdAt));
-  return rows.map(serviceFromRow);
+/**
+ * Every service, in canonical order — Schedule first, then position within it.
+ * That order is what fixes Part numbering, so it is the store's job, not a
+ * caller's.
+ */
+export async function listServices(includeArchived = false): Promise<ContractService[]> {
+  const rows = await db
+    .select()
+    .from(services)
+    .where(includeArchived ? undefined : eq(services.archived, false))
+    .orderBy(services.scheduleKey, services.sortOrder);
+  return rows.map(serviceFromRow).sort((a, b) => {
+    const schedule =
+      SCHEDULE_BY_KEY[a.scheduleKey].number - SCHEDULE_BY_KEY[b.scheduleKey].number;
+    return schedule !== 0 ? schedule : a.sortOrder - b.sortOrder;
+  });
 }
 
-export async function deleteService(id: string): Promise<void> {
-  await db.delete(serviceTemplates).where(eq(serviceTemplates.id, id));
+/**
+ * Archives rather than deletes. A service that has been on a contract must stay
+ * readable for audit, and every contract holds its own copy regardless — so
+ * there is no case where removing the row is the right answer.
+ */
+export async function archiveService(code: string): Promise<void> {
+  await db
+    .update(services)
+    .set({ archived: true, updatedAt: new Date() })
+    .where(eq(services.code, code));
+}
+
+function libraryFromRow(r: { id: string; text: string; category: string; archived: boolean }) {
+  return { id: r.id, text: r.text, category: r.category, archived: r.archived };
+}
+
+export async function listExclusions(includeArchived = false): Promise<LibraryLine[]> {
+  const rows = await db
+    .select()
+    .from(exclusions)
+    .where(includeArchived ? undefined : eq(exclusions.archived, false))
+    .orderBy(exclusions.id);
+  return rows.map(libraryFromRow);
+}
+
+export async function listClientInputs(includeArchived = false): Promise<LibraryLine[]> {
+  const rows = await db
+    .select()
+    .from(clientInputs)
+    .where(includeArchived ? undefined : eq(clientInputs.archived, false))
+    .orderBy(clientInputs.id);
+  return rows.map(libraryFromRow);
+}
+
+export async function saveExclusion(line: LibraryLine): Promise<void> {
+  const row = { ...line, updatedAt: new Date() };
+  await db.insert(exclusions).values(row).onConflictDoUpdate({ target: exclusions.id, set: row });
+}
+
+export async function saveClientInput(line: LibraryLine): Promise<void> {
+  const row = { ...line, updatedAt: new Date() };
+  await db
+    .insert(clientInputs)
+    .values(row)
+    .onConflictDoUpdate({ target: clientInputs.id, set: row });
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────
@@ -330,7 +383,7 @@ export interface SearchResults {
   documents: AdminDocument[];
   clients: ClientRecord[];
   employees: EmployeeRecord[];
-  services: ServiceTemplate[];
+  services: ContractService[];
 }
 
 const EMPTY_SEARCH: SearchResults = { documents: [], clients: [], employees: [], services: [] };
@@ -373,9 +426,9 @@ export async function searchEverything(query: string): Promise<SearchResults> {
       .limit(SEARCH_LIMIT),
     db
       .select()
-      .from(serviceTemplates)
-      .where(ilike(serviceTemplates.name, pattern))
-      .orderBy(serviceTemplates.name)
+      .from(services)
+      .where(and(eq(services.archived, false), ilike(services.name, pattern)))
+      .orderBy(services.sortOrder)
       .limit(SEARCH_LIMIT),
   ]);
 

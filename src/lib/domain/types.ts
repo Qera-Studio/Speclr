@@ -5,6 +5,8 @@
 
 import type { AddressParts } from './address';
 import type { StudioInfo } from './studio';
+import type { BlankValues } from './contract/blanks';
+import type { ContractPart } from './contract/assembly';
 import type { CurrencyCode } from './currency';
 import type { DocContent } from './docContent';
 
@@ -214,28 +216,44 @@ export interface ReceiptDocument extends ClientDocument {
   };
 }
 
-export interface ContractMilestone {
-  label: string;
-  scope: string;
-}
-
-export interface ContractSchedule {
-  /** Which service template this was copied from (provenance only). */
-  sourceServiceId?: string;
-  title: string;
-  overview: string;
-  scopeItems: string[];
-  exclusionItems: string[];
-  priceNote: string;
-  milestones: ContractMilestone[];
-  revisionsNote: string;
-  disclaimerNote: string;
-  supportNote: string;
+/**
+ * The contract-specific payload: which Parts this agreement includes, and every
+ * blank someone filled in.
+ *
+ * **Parts are copies, not references.** A Part is taken from the services
+ * library at the moment it is ticked and detached. Editing that service next
+ * year must be incapable of changing an agreement signed last year
+ * (CONTEXT.md §5) — and copying at tick time also fixes the blank keys, so a
+ * library edit cannot shift the fields of an open draft either.
+ *
+ * Ticking and unticking an exclusion or a client input edits the copied Part's
+ * own id list. There is no separate selection structure: the copy *is* the
+ * selection, and what the Part holds is what the contract prints.
+ *
+ * The Master Agreement and the Schedule bodies are not stored here. They
+ * resolve from code on a draft and are frozen onto the document by
+ * `materialiseContent` at finalize, exactly as every other document's wording
+ * is (CONTEXT.md §5b).
+ */
+export interface ContractData {
+  parts: ContractPart[];
+  /** Blank values, keyed `msa.8#2`, `sch.build.9#1`, `part.01.limits#3`. */
+  blanks: BlankValues;
+  /**
+   * The exclusion and client-input lines this contract prints, id → text,
+   * copied in alongside the Parts that name them.
+   *
+   * A Part carries ids; the words live in the shared libraries, which are meant
+   * to grow and be reworded. Without this map an issued contract would resolve
+   * its "not included" list against a table that has moved on — which is the
+   * same compliance bug as reading live studio details (CONTEXT.md §5).
+   */
+  library: Record<string, string>;
 }
 
 export interface ContractDocument extends ClientDocument {
   type: 'CON';
-  schedules: ContractSchedule[];
+  contract: ContractData;
 }
 
 export type EngagementType = 'intern' | 'employee';

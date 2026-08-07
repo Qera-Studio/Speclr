@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { flattenAddress } from './address';
 import { exitMasthead, payslipTerms, stipendTerms } from './hrContent';
-import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_SECTIONS, type MsaSection } from './msaBoilerplate';
+import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_CLAUSES, type MsaClause } from './contract/msa';
 import { studioOf, type StudioInfo } from './studio';
 import type { DocTypeCode, EngagementType } from './types';
 
@@ -110,7 +110,7 @@ export interface ResolvedContent {
   website: string;
   intro: string;
   preamble: string;
-  clauses: MsaSection[];
+  clauses: MsaClause[];
 }
 
 /** The one signatory Qera has. Move to `StudioInfo` when there is a second. */
@@ -206,7 +206,7 @@ export function contentOf(doc: ContentSource, spec: ContentSpec): ResolvedConten
 
     intro: c.intro ?? CONTRACT_INTRO,
     preamble: c.preamble ?? AGREEMENT_PREAMBLE,
-    clauses: c.clauses ?? MSA_SECTIONS,
+    clauses: c.clauses ?? MSA_CLAUSES,
   };
 }
 

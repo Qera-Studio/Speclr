@@ -28,6 +28,8 @@ jest.mock('@/db/store', () => ({
   listClients: () => listClients(),
   listEmployees: () => listEmployees(),
   listServices: () => listServices(),
+  listExclusions: () => Promise.resolve([]),
+  listClientInputs: () => Promise.resolve([]),
   listDocumentsByType: (...a: unknown[]) => listDocumentsByType(...(a as [])),
   getLatestFinalizedInvoice: () => getLatestFinalizedInvoice(),
 }));
@@ -46,14 +48,6 @@ jest.mock('@/server/actions/documents', () => ({
   deleteDraftAction: jest.fn(),
   createReceiptForInvoice: jest.fn(),
 }));
-// Same reason: the contract list carries the services section, whose form
-// imports the service actions.
-jest.mock('@/server/actions/services', () => ({
-  createService: jest.fn(),
-  updateService: jest.fn(),
-  deleteServiceAction: jest.fn(),
-}));
-
 import DocumentPage from '../page';
 
 const draftInvoice = {

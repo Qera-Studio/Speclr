@@ -8,7 +8,7 @@ import {
   listClients,
   listDocumentsByType,
   listEmployees,
-  listServices,
+  listClientInputs, listExclusions, listServices,
 } from '@/db/store';
 import { DOC_TYPES, DOC_TYPE_BY_SLUG, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
@@ -109,11 +109,17 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
     }
     const clients = await listClients();
     if (doc.type === 'CON') {
-      const services = await listServices();
+      const [services, exclusions, clientInputs] = await Promise.all([
+        listServices(),
+        listExclusions(),
+        listClientInputs(),
+      ]);
       return (
         <ContractEditor
           clients={clients}
           services={services}
+          exclusions={exclusions}
+          clientInputs={clientInputs}
           doc={doc}
           studio={studio}
           title={heading}

@@ -2,7 +2,7 @@
 
 import { ChevronRight } from 'lucide-react';
 import type { DocContent, ResolvedContent, TermItem } from '@/lib/domain/docContent';
-import type { MsaSection } from '@/lib/domain/msaBoilerplate';
+import type { MsaClause } from '@/lib/domain/contract/msa';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,10 +164,10 @@ export function ClauseFields({
   clauses,
   onChange,
 }: {
-  clauses: MsaSection[];
-  onChange: (next: MsaSection[]) => void;
+  clauses: MsaClause[];
+  onChange: (next: MsaClause[]) => void;
 }) {
-  const update = (index: number, patch: Partial<MsaSection>) =>
+  const update = (index: number, patch: Partial<MsaClause>) =>
     onChange(clauses.map((c, i) => (i === index ? { ...c, ...patch } : c)));
 
   return (

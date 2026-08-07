@@ -10,17 +10,12 @@
 import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
-import { contractScheduleSchema } from './serviceTemplate';
+import { contractComplete } from './contract/completeness';
+import { serviceInputSchema } from './contract/service';
 import { docContentSchema, type DocContent, type TermItem } from './docContent';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import { slipTotals } from './money';
-import type {
-  AdminDocument,
-  ContractSchedule,
-  DocTypeCode,
-  LineItem,
-  ReceiptDocument,
-} from './types';
+import type { ContractData, AdminDocument, DocTypeCode, LineItem, ReceiptDocument } from './types';
 
 // ── Field schemas ─────────────────────────────────────────────────────────────
 
@@ -160,17 +155,45 @@ export const receiptDraftSchema = baseDraftSchema.extend({
 
 // ── Contract schemas ─────────────────────────────────────────────────────────
 
+/**
+ * A blank value. Empty is representable and meaningful — clearing a blank is an
+ * override, and it is what `contractComplete` then refuses at finalize.
+ */
+const blankValuesSchema = z.record(z.string().max(80), z.string().trim().max(500));
+
 const contractBaseShape = {
   issueDate: isoDate,
-  // Max 26 — one per schedule letter A..Z (see scheduleLetter helper).
-  schedules: z.array(contractScheduleSchema).max(26),
+  contract: z.object({
+    parts: z.array(serviceInputSchema).max(22),
+    blanks: blankValuesSchema,
+    library: z.record(z.string().max(10), z.string().trim().max(500)),
+  }),
   content: docContentSchema.optional(),
 };
+
 export const contractDraftSchema = z.object(contractBaseShape);
-export const contractFinalizeSchema = z.object({
-  ...contractBaseShape,
-  schedules: z.array(contractScheduleSchema).min(1).max(26),
-});
+
+/**
+ * Finalize demands a Part and every blank filled.
+ *
+ * The unfilled-blank check is a refinement rather than a field rule because a
+ * blank's *existence* comes from the text, not from the stored values — an
+ * untouched blank has no entry in `blanks` at all and is perfectly valid until
+ * the moment someone tries to issue the contract. See `contractComplete`.
+ */
+export const contractFinalizeSchema = z
+  .object({
+    ...contractBaseShape,
+    contract: z.object({
+      parts: z.array(serviceInputSchema).min(1).max(22),
+      blanks: blankValuesSchema,
+      library: z.record(z.string().max(10), z.string().trim().max(500)),
+    }),
+  })
+  .refine((doc) => contractComplete(doc.contract).length === 0, {
+    message: 'Fill every blank before issuing this contract.',
+    path: ['contract'],
+  });
 
 // ── HR schemas ────────────────────────────────────────────────────────────────
 
@@ -291,7 +314,7 @@ export interface DocFields {
   terms?: string;
   dueDate?: string;
   payment?: ReceiptDocument['payment'];
-  schedules?: ContractSchedule[];
+  contract?: ContractData;
   // HR — the slips (stipend + pay)
   employeeId?: string;
   currency?: CurrencyCode;
@@ -433,7 +456,12 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     hasDueDate: false,
     draftSchema: contractDraftSchema,
     finalizeSchema: contractFinalizeSchema,
-    defaultFields: (todayIso) => ({ issueDate: todayIso, lineItems: [], gstRatePercent: 0, schedules: [] }),
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      lineItems: [],
+      gstRatePercent: 0,
+      contract: { parts: [], blanks: {}, library: {} },
+    }),
     fixedTerms: [],
   },
   STP: {

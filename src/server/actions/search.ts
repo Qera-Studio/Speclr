@@ -56,7 +56,7 @@ export async function searchAll(query: unknown): Promise<SearchHit[]> {
       href: '/employees',
     })),
     ...services.map((service) => ({
-      id: service.id,
+      id: service.code,
       group: 'Services' as const,
       label: service.name,
       href: '/docs/contract',

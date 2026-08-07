@@ -8,9 +8,9 @@ import {
 import { shortcutForSlug } from "./nav";
 import DocumentsBrowser from "./DocumentsBrowser";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
-import ServiceManager from "./services/ServiceManager";
+import ServiceCards from "./services/ServiceCards";
 import { isHrDocType, type DocTypeSpec } from "@/lib/domain/registry";
-import type { ServiceTemplate } from "@/lib/domain/serviceTemplate";
+import type { ContractService } from "@/lib/domain/contract/service";
 import type { AdminDocument } from "@/lib/domain/types";
 
 /**
@@ -20,8 +20,8 @@ import type { AdminDocument } from "@/lib/domain/types";
  * most visits are to find something already made, and "new" is one button away.
  *
  * The receipt list gets an extra shortcut to receipt the last invoice issued.
- * The contract list carries the services section below it: a service template
- * exists to be pulled into a contract, so it belongs beside the contracts
+ * The contract list carries the services library below it: a Service exists to
+ * be pulled into a contract as a Part, so it belongs beside the contracts
  * rather than off in its own nav entry under Records.
  */
 export default function DocumentTypeList({
@@ -35,7 +35,7 @@ export default function DocumentTypeList({
   /** Only passed for the receipt list, and only when an invoice has been issued. */
   latestInvoice?: AdminDocument | null;
   /** Only passed for the contract list, which hosts the services section. */
-  services?: ServiceTemplate[];
+  services?: ContractService[];
 }) {
   const label = spec.label.toLowerCase();
   const newHref = `/docs/new/${spec.slug}`;
@@ -90,7 +90,8 @@ export default function DocumentTypeList({
       */}
       {services ? (
         <div className="mt-auto pt-12">
-          <ServiceManager services={services} />
+          <h2 className="mb-4 text-lg font-semibold">Services</h2>
+          <ServiceCards services={services} />
         </div>
       ) : null}
     </div>

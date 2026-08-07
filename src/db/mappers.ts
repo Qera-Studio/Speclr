@@ -107,7 +107,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     case 'CON':
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
-      data.schedules = doc.schedules;
+      data.contract = doc.contract;
       break;
     case 'STP':
     case 'PAY':
@@ -240,6 +240,6 @@ export function fromRow(row: DocumentRow): AdminDocument {
   return {
     ...clientBase,
     type: 'CON',
-    schedules: row.data.schedules ?? [],
+    contract: row.data.contract ?? { parts: [], blanks: {}, library: {} },
   } satisfies ContractDocument;
 }

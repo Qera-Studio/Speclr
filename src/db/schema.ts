@@ -15,6 +15,7 @@
 
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   date,
   index,
   integer,
@@ -26,17 +27,18 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import type { AddressParts } from '@/lib/domain/address';
+import type { ScheduleKey } from '@/lib/domain/contract/schedules';
+import type { ServiceContent } from '@/lib/domain/contract/service';
 import type { CurrencyCode } from '@/lib/domain/currency';
 import type { DocContent } from '@/lib/domain/docContent';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { StudioInfo } from '@/lib/domain/studio';
 import type {
   ClientSnapshot,
+  ContractData,
   DocStatus,
   DocTypeCode,
   EmployeeSnapshot,
-  ContractMilestone,
-  ContractSchedule,
   LineItem,
   PayrollIds,
 } from '@/lib/domain/types';
@@ -123,28 +125,60 @@ export const employees = pgTable(
   ],
 );
 
-// ─── Service templates ────────────────────────────────────────────────────────
+// ─── Services, and the two shared libraries ───────────────────────────────────
 
-export const serviceTemplates = pgTable('service_templates', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(), // queryable projection of the template name
-  /** The full ServiceTemplate record (overview, scope, milestones, notes…). */
-  content: jsonb('content').notNull().$type<ServiceTemplateContent>(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+/**
+ * The 22 Services — one row per thing Qera sells, each appended to exactly one
+ * Schedule as a Part.
+ *
+ * Keyed by its two-digit code rather than a uuid: the code is what the specs,
+ * the Parts and the cross-references all use, it is stable, and there is no
+ * second Shopify storefront. `schedule_key` and `sort_order` are real columns
+ * because assembly reads them on every render; everything else is the Part's
+ * text and lives in `content`, validated by `serviceContentSchema` on write.
+ */
+export const services = pgTable(
+  'services',
+  {
+    code: text('code').primaryKey(), // '01'–'22'
+    name: text('name').notNull(),
+    scheduleKey: text('schedule_key').notNull().$type<ScheduleKey>(),
+    sortOrder: integer('sort_order').notNull(),
+    content: jsonb('content').notNull().$type<ServiceContent>(),
+    /** Archived services leave new contracts but stay readable for audit. */
+    archived: boolean('archived').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('services_schedule_key_idx').on(t.scheduleKey)],
+);
+
+/**
+ * The exclusion library — shared "not included" lines, attached to services
+ * through the id arrays in `services.content`.
+ *
+ * Deliberately not a join table. Nothing queries "which services carry E01"
+ * except one admin screen; lines are archived rather than deleted, so an id
+ * cannot dangle; and it removes two tables from the write path.
+ * ponytail: id arrays over join tables — promote to joins if attachment ever
+ * needs querying from the exclusion side at scale.
+ */
+export const exclusions = pgTable('exclusions', {
+  id: text('id').primaryKey(), // 'E01'–
+  text: text('text').notNull(),
+  category: text('category').notNull(),
+  archived: boolean('archived').notNull().default(false),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** The ServiceTemplate fields stored in `content` (everything except id/name/timestamps). */
-export interface ServiceTemplateContent {
-  overview: string;
-  scopeItems: string[];
-  exclusionItems: string[];
-  priceNote: string;
-  milestones: ContractMilestone[];
-  revisionsNote: string;
-  disclaimerNote: string;
-  supportNote: string;
-}
+/** The client-input library. Same mechanics as `exclusions`, opposite purpose. */
+export const clientInputs = pgTable('client_inputs', {
+  id: text('id').primaryKey(), // 'I01'–
+  text: text('text').notNull(),
+  category: text('category').notNull(),
+  archived: boolean('archived').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ─── Studio settings ──────────────────────────────────────────────────────────
 
@@ -192,7 +226,8 @@ export interface DocumentData {
   terms?: string;
   dueDate?: string; // INV
   payment?: unknown; // REC — ReceiptDocument['payment']
-  schedules?: ContractSchedule[]; // CON
+  /** CON — the included Parts, copied, plus every filled blank. */
+  contract?: ContractData;
   // STP
   currency?: CurrencyCode;
   stipendPeriod?: string;

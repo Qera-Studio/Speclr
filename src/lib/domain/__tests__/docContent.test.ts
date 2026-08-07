@@ -1,7 +1,7 @@
 import { contentOf, docContentSchema, materialiseContent, splitTerms } from '../docContent';
 import type { ContentSpec, ContentSource } from '../docContent';
 import { DOC_TYPES } from '../registry';
-import { MSA_SECTIONS } from '../msaBoilerplate';
+import { MSA_CLAUSES } from '../contract/msa';
 import { stipendTerms } from '../hrContent';
 
 const invoiceSpec: ContentSpec = DOC_TYPES.INV;
@@ -59,7 +59,7 @@ describe('contentOf defaults', () => {
   });
 
   it('carries the whole MSA for a contract', () => {
-    expect(contentOf({ type: 'CON' }, DOC_TYPES.CON).clauses).toEqual(MSA_SECTIONS);
+    expect(contentOf({ type: 'CON' }, DOC_TYPES.CON).clauses).toEqual(MSA_CLAUSES);
   });
 });
 

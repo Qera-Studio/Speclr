@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getStudioSettings, listClients, listEmployees, listServices } from '@/db/store';
+import { getStudioSettings, listClients, listEmployees, listClientInputs, listExclusions, listServices } from '@/db/store';
 import { DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
@@ -53,9 +53,20 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
   // ── Client-based documents ─────────────────────────────────────
   const clients = await listClients();
   if (spec.code === 'CON') {
-    const services = await listServices();
+    const [services, exclusions, clientInputs] = await Promise.all([
+      listServices(),
+      listExclusions(),
+      listClientInputs(),
+    ]);
     return (
-      <ContractEditor clients={clients} services={services} studio={studio} title={title} />
+      <ContractEditor
+        clients={clients}
+        services={services}
+        exclusions={exclusions}
+        clientInputs={clientInputs}
+        studio={studio}
+        title={title}
+      />
     );
   }
 

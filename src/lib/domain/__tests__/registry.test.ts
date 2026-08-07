@@ -1,5 +1,6 @@
 import {
   clientInputSchema,
+  contractDraftSchema,
   contractFinalizeSchema,
   DOC_TYPE_BY_SLUG,
   DOC_TYPE_LIST,
@@ -11,6 +12,8 @@ import {
   receiptFinalizeSchema,
   stipendFinalizeSchema,
 } from '../registry';
+import { contractComplete } from '../contract/completeness';
+import { SERVICES } from '../contract/seed/services';
 
 const validLineItem = { description: 'Shopify website final (50%)', ratePaise: 2500000, qty: 1 };
 
@@ -231,13 +234,38 @@ describe('CON registry entry', () => {
     expect(DOC_TYPES.INV.kind).toBe('financial');
     expect(DOC_TYPES.REC.kind).toBe('financial');
   });
-  it('contract finalize requires at least one schedule', () => {
-    const oneSchedule = {
+  /**
+   * Two separate finalize guards, and both matter. A contract with no Part
+   * commits Qera to nothing; a contract with an unfilled blank is the "ZaibQ
+   * Stuioh" failure content §1 exists to prevent.
+   */
+  it('contract finalize requires at least one Part', () => {
+    const part = SERVICES.find((s) => s.code === '01')!;
+    const filled = Object.fromEntries(
+      contractComplete({ parts: [part], blanks: {} }).map(({ blank }) => [blank.key, '1']),
+    );
+    const doc = {
       issueDate: '2026-07-21',
-      schedules: [{ title: 'Shopify', overview: '', scopeItems: [], exclusionItems: [], priceNote: '', milestones: [], revisionsNote: '', disclaimerNote: '', supportNote: '' }],
+      contract: { parts: [part], blanks: filled, library: {} },
     };
-    expect(contractFinalizeSchema.safeParse(oneSchedule).success).toBe(true);
-    expect(contractFinalizeSchema.safeParse({ ...oneSchedule, schedules: [] }).success).toBe(false);
+    expect(contractFinalizeSchema.safeParse(doc).success).toBe(true);
+    expect(
+      contractFinalizeSchema.safeParse({
+        ...doc,
+        contract: { parts: [], blanks: {}, library: {} },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('contract finalize refuses an unfilled blank', () => {
+    const part = SERVICES.find((s) => s.code === '01')!;
+    // Untouched: Part 01's Fee row is drafted '[ ]' and resolves to nothing.
+    const doc = {
+      issueDate: '2026-07-21',
+      contract: { parts: [part], blanks: {}, library: {} },
+    };
+    expect(contractFinalizeSchema.safeParse(doc).success).toBe(false);
+    expect(contractDraftSchema.safeParse(doc).success).toBe(true);
   });
 });
 

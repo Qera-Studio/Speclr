@@ -1,51 +1,91 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import ContractSheet from '../ContractSheet';
-import type { ContractDocument, ClientSnapshot } from '@/lib/domain/types';
-
-const clientSnapshot: ClientSnapshot = {
-  name: 'Aarav Mehta',
-  address: 'Sector 62, Noida',
-  email: 'aarav@example.com',
-  phone: '9876500000',
-};
-
-const contractDoc = {
-  type: 'CON',
-  status: 'finalized',
-  issueDate: '2026-06-10',
-  clientId: 'client-1',
-  clientSnapshot,
-  lineItems: [],
-  gstRatePercent: 0,
-  schedules: [
-    {
-      title: 'Website Design & Development',
-      overview: 'A full-scope website build.',
-      scopeItems: ['Homepage design', 'Contact page'],
-      exclusionItems: ['Copywriting'],
-      priceNote: '₹50,000 - 50% advance, 50% on delivery',
-      milestones: [{ label: 'Design', scope: 'Approved mockups' }],
-      revisionsNote: 'Two rounds of revisions included.',
-      disclaimerNote: '',
-      supportNote: '',
-    },
-  ],
-} as unknown as ContractDocument;
+import { contractDoc } from '@/lib/domain/contract/__tests__/fixture';
 
 describe('ContractSheet', () => {
-  it('renders the cover with the contract title and client name', () => {
-    render(<ContractSheet doc={contractDoc} />);
-    expect(screen.getByText('Contract Agreement')).toBeInTheDocument();
-    expect(screen.getAllByText('Aarav Mehta').length).toBeGreaterThan(0);
+  it('renders the cover with the agreement title and the client', () => {
+    render(<ContractSheet doc={contractDoc()} />);
+    expect(screen.getByText('Master Service Agreement')).toBeInTheDocument();
+    expect(screen.getAllByText('Clayora Private Limited').length).toBeGreaterThan(0);
   });
 
-  it('renders an MSA clause heading', () => {
-    render(<ContractSheet doc={contractDoc} />);
-    expect(screen.getByText(/DEFINITIONS/)).toBeInTheDocument();
+  /** The legal name, not the short reference used in lists (CONTEXT.md §5a). */
+  it('prints the legal entity name rather than the short one', () => {
+    render(<ContractSheet doc={contractDoc()} />);
+    expect(screen.queryByText('Clayora')).not.toBeInTheDocument();
   });
 
-  it('renders the schedule title', () => {
-    render(<ContractSheet doc={contractDoc} />);
-    expect(screen.getByText('Website Design & Development')).toBeInTheDocument();
+  it('renders the Master Agreement clauses', () => {
+    render(<ContractSheet doc={contractDoc()} />);
+    expect(screen.getByText('1. Definitions and Interpretation')).toBeInTheDocument();
+    expect(screen.getByText('27. Governing Law and Jurisdiction')).toBeInTheDocument();
+  });
+
+  it('renders a Schedule cover with only the Parts it includes', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    const schedule = screen.getByLabelText('Schedule A');
+    expect(within(schedule).getByText('Build')).toBeInTheDocument();
+    expect(within(schedule).getByText('Part A-1')).toBeInTheDocument();
+    expect(within(schedule).getByText('Shopify storefront')).toBeInTheDocument();
+  });
+
+  it('renders no Schedule at all when nothing is ticked', () => {
+    render(<ContractSheet doc={contractDoc({ codes: [] })} />);
+    expect(screen.queryByLabelText('Schedule A')).not.toBeInTheDocument();
+  });
+
+  it('letters Schedule clauses with the letter this contract assigned', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    expect(screen.getByText('A2. Fees and Payment')).toBeInTheDocument();
+  });
+
+  it('renders a Part with its own sections', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    const part = screen.getByLabelText('Part A-1');
+    expect(within(part).getByText('What is included')).toBeInTheDocument();
+    expect(within(part).getByText('Limits')).toBeInTheDocument();
+    expect(within(part).getByText('What is not included')).toBeInTheDocument();
+    expect(within(part).getByText('What the Client provides')).toBeInTheDocument();
+  });
+
+  /**
+   * The exclusion text comes from the contract's own frozen copy. Printing the
+   * bare id would mean the live library had moved on underneath an issued
+   * agreement.
+   */
+  it('prints exclusion lines as text, never as ids', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    const part = screen.getByLabelText('Part A-1');
+    expect(within(part).getByText('Copywriting of any kind')).toBeInTheDocument();
+    expect(within(part).queryByText('E01')).not.toBeInTheDocument();
+  });
+
+  it('prints a drafted default where a blank has not been touched', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    // Part 01's Limits table: 'Products uploaded' is drafted [50].
+    expect(screen.getAllByText('50').length).toBeGreaterThan(0);
+  });
+
+  it('prints a filled blank as ordinary text', () => {
+    const doc = contractDoc({ codes: ['01'], blanks: { 'part.01.limits#1': '120' } });
+    render(<ContractSheet doc={doc} />);
+    expect(screen.getByText('120')).toBeInTheDocument();
+  });
+
+  /**
+   * The failure content §1 exists to prevent: a blank must never print as empty
+   * space, which reads as finished text.
+   */
+  it('marks an unfilled blank rather than printing nothing', () => {
+    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    // Part 01's Fee row is drafted '[ ]' — nothing to fall back on.
+    expect(screen.getAllByText('fill this in').length).toBeGreaterThan(0);
+  });
+
+  it('renders both execution blocks from the record', () => {
+    render(<ContractSheet doc={contractDoc()} />);
+    const execution = screen.getByLabelText('Execution');
+    expect(within(execution).getByText('Qera Private Limited')).toBeInTheDocument();
+    expect(within(execution).getByText('Clayora Private Limited')).toBeInTheDocument();
   });
 });
