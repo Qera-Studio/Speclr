@@ -128,6 +128,15 @@ describe('SlipSheet — stipend slip wording', () => {
   });
 
   /**
+   * The pay slip labels the studio "Employer"; this one cannot, or the header
+   * would assert the relationship the term above denies.
+   */
+  it('does not label the studio as the Employer', () => {
+    render(<SlipSheet doc={baseStipend} />);
+    expect(screen.queryByText('Employer')).not.toBeInTheDocument();
+  });
+
+  /**
    * The heading follows the document, not the snapshot. A snapshot frozen
    * before the two slips were separated could say "employee" on a stipend slip;
    * the document is what decides which account block this is.

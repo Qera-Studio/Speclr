@@ -314,6 +314,17 @@ export default function SlipSheet({ doc }: { doc: SlipDocument }) {
           <p className="text-black font-semibold text-[16px]">
             {studio.legalName}
           </p>
+          {/* The studio's counterpart to the employee's designation, and the
+              same rule: pay slip only. "Employer" is the statutory role — the
+              Code on Wages 2019 and Payment of Wages Act s.13A put the duty to
+              issue a wage slip on the employer. On a stipend slip it would
+              assert the very employment relationship the slip's first clause
+              exists to deny (CONTEXT.md §6a), so nothing prints there. */}
+          {isPay ? (
+            <p className="text-black/80 text-[12px] font-normal mb-[6px]">
+              Employer
+            </p>
+          ) : null}
           <p className="text-black/80 text-[12px] font-normal whitespace-pre-line mb-[6px]">
             {studio.address}
           </p>
@@ -537,10 +548,7 @@ export default function SlipSheet({ doc }: { doc: SlipDocument }) {
               </h3>
               <dl className="m-0">
                 {payrollIds.map(({ label, value }) => (
-                  <div
-                    key={label}
-                    className="flex justify-between gap-[16px]"
-                  >
+                  <div key={label} className="flex justify-between gap-[16px]">
                     <dt className="text-black/70 text-[12px] font-normal">
                       {label}
                     </dt>

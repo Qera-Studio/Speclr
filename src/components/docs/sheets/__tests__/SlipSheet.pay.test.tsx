@@ -245,6 +245,17 @@ describe('SlipSheet — pay slip', () => {
     expect(screen.getByText('101234567890')).toBeInTheDocument();
   });
 
+  /**
+   * The wage slip names the issuer by its statutory role — the Code on Wages
+   * 2019 and Payment of Wages Act s.13A put the duty to issue one on the
+   * employer. The stipend slip must not (see its own test): asserting an
+   * employment relationship there contradicts the clause denying it.
+   */
+  it('names the studio as the Employer', () => {
+    render(<SlipSheet doc={basePay} />);
+    expect(screen.getByText('Employer')).toBeInTheDocument();
+  });
+
   /** A row reading '—' would imply the number exists and is simply unknown. */
   it('omits an identifier that was never recorded rather than printing a dash', () => {
     render(<SlipSheet doc={basePay} />);
