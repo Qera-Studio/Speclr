@@ -29,7 +29,7 @@ Finalized numbered documents get a number like `QS-INV-2627-001`:
 - Per **Indian financial year (April–March)**, *not* calendar year. FY 2026-27 → code `2627`.
 - Sequential per (doc-type, FY), starting at `001`.
 - **Claimed atomically at finalize** (Postgres row-lock/sequence via the `counters` table). A number is only taken when a document is finalized — abandoned drafts never burn a number. A gap is acceptable; a **duplicate is never** (GST Rule 46 requires consecutive, unique invoice numbers).
-- Only **financial** docs (invoice, receipt) and **hr-slip** (stipend) are numbered. Contracts and letters are unnumbered.
+- **Financial** docs (invoice, receipt), **hr-slip** (stipend, pay) and **contracts** are numbered. Only the HR letters are not — nothing files them by reference. A contract's `QS-CON-2627-nnn` is an internal filing reference rather than a statutory one, but it comes from the same atomic claim, which is what guarantees two agreements can never share one.
 
 ### 3. "Place of supply" is required when GST applies
 An invoice/receipt with `gstRatePercent > 0` **cannot be finalized without a place-of-supply state code**. This drives the CGST/SGST-vs-IGST split (same state as the studio → CGST+SGST; different state → IGST). This is a hard validation guard, not a nicety — issuing a GST document without it is legally incomplete. If finalize fails with "Document is incomplete," this is the usual cause.
