@@ -14,14 +14,16 @@ import { useNewDocument } from './NewDocumentCommand';
 export default function NewDocumentButton({
   children = 'New document',
   className,
+  variant,
 }: {
   children?: React.ReactNode;
   className?: string;
+  variant?: React.ComponentProps<typeof AddButton>['variant'];
 }) {
   const { open } = useNewDocument();
 
   return (
-    <AddButton onClick={open} aria-haspopup="dialog" className={className}>
+    <AddButton onClick={open} aria-haspopup="dialog" variant={variant} className={className}>
       {children}
     </AddButton>
   );

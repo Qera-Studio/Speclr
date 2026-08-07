@@ -155,10 +155,23 @@ export default function DocumentsTable({
           // Letters carry no line items — a ₹0 total would mislead, so show —.
           const hasMoney = hasTotal(doc);
           const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
+          /*
+            The whole row opens the document, via one stretched link rather than
+            a row `onClick`: it stays a real anchor (middle-click, ⌘-click,
+            keyboard, "copy link"), and the table stays server-rendered with no
+            client JS.
+
+            The overlay stops short of the actions cell — that cell is
+            positioned, so being later in DOM order it paints above the `after`
+            layer and its buttons keep their own hit area.
+          */
           return (
-            <TableRow key={doc.id} className="group/row">
+            <TableRow key={doc.id} className="group/row relative cursor-pointer">
               <TableCell>
-                <Link href={`/docs/${doc.id}`} className="underline underline-offset-4">
+                <Link
+                  href={`/docs/${doc.id}`}
+                  className="underline underline-offset-4 after:absolute after:inset-0 after:content-['']"
+                >
                   {doc.number ?? 'Draft'}
                 </Link>
               </TableCell>
@@ -171,7 +184,7 @@ export default function DocumentsTable({
                   {doc.status === 'finalized' ? 'Finalized' : 'Draft'}
                 </Badge>
               </TableCell>
-              <TableCell className="py-0 text-right">
+              <TableCell className="relative py-0 text-right">
                 <DocumentRowActions doc={doc} />
               </TableCell>
             </TableRow>

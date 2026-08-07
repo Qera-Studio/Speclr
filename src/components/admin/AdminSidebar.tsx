@@ -206,14 +206,17 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
                   `--radius-sm`-based squircle the icon rows use. A radius that
                   changes with the rail animates on its own clock — the button
                   went pill-shaped a beat before the sidebar had moved. */}
-            <NewDocumentButton className="mt-1 h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-primary-foreground/90 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <NewDocumentButton
+              variant="ghost"
+              className="mt-1 h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-primary hover:text-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            >
               <span className="group-data-[collapsible=icon]:hidden">
                 New document
               </span>
-              {/* Grey keycaps on a blue button read as disabled. Tinted with
-                    the button's own foreground so they belong to it. */}
+              {/* Grey keycaps beside blue text read as disabled. Tinted with
+                    the button's own accent so they belong to it. */}
               <Shortcut
-                className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-primary-foreground/15 [&_[data-slot=kbd]]:text-primary-foreground/80"
+                className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-primary/10 [&_[data-slot=kbd]]:text-primary/70"
                 keys={["mod", "D"]}
               />
             </NewDocumentButton>

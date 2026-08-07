@@ -6,6 +6,7 @@ import { Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import type { VariantProps } from "class-variance-authority"
 
 /**
  * The "add a thing" button: a plus that turns a quarter-turn on hover.
@@ -21,7 +22,7 @@ import { buttonVariants } from "@/components/ui/button"
 export interface AddButtonProps
   extends Omit<React.ComponentProps<"button">, "children"> {
   children: React.ReactNode
-  variant?: "default" | "outline"
+  variant?: VariantProps<typeof buttonVariants>["variant"]
 }
 
 function AddButton({
@@ -64,7 +65,7 @@ function AddLink({
   ...props
 }: Omit<React.ComponentProps<"a">, "children"> & {
   children: React.ReactNode
-  variant?: "default" | "outline"
+  variant?: VariantProps<typeof buttonVariants>["variant"]
 }) {
   return (
     <motion.a
