@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import {
@@ -320,9 +320,9 @@ export default function SlipEditor({
   };
 
   /**
-   * Selecting an employee seeds the first line item with their pay and their
-   * recorded currency — the common case is "this month's stipend, as agreed".
-   * Only an untouched first item is overwritten; anything already typed stays.
+   * Selecting an employee sets their recorded currency — the common case is
+   * "this month's stipend, as agreed". The earnings themselves are seeded by
+   * the effect below, which also covers a pay change made after this point.
    */
   const onSelectEmployee = (id: string) => {
     setValue("employeeId", id);
@@ -330,8 +330,6 @@ export default function SlipEditor({
     if (!e) return;
     pulseSeeding();
     setValue("currency", e.payCurrency ?? DEFAULT_CURRENCY);
-    const first = getValues("lineItems")[0];
-    if (first && !first.description && !first.rate) writeSeed(e);
   };
 
   /**
@@ -380,6 +378,59 @@ export default function SlipEditor({
 
   const lineItems = toLineItems(lineItemValues);
   const deductions = isPay ? toLineItems(deductionValues) : undefined;
+
+  /**
+   * Are the earnings still exactly what `slipEarningsSeed` would produce for
+   * their own total — i.e. seeded from an employee's pay and never adjusted?
+   *
+   * The test is self-referential on purpose: it needs no memory of which
+   * figure was seeded, so it recognises a stale seed loaded from the database
+   * just as well as one seeded a moment ago. A split someone has actually
+   * tuned (a different basic, an extra line, a renamed description) fails it
+   * and is left alone.
+   */
+  const isUntouchedSeed = (values: LineItemFormValues[]): boolean => {
+    const items = toLineItems(values);
+    // A single blank row is the new-draft starting state, not an edit.
+    if (items.length === 1 && !items[0].description && !items[0].ratePaise) {
+      return true;
+    }
+    const gross = items.reduce((sum, i) => sum + i.ratePaise * i.qty, 0);
+    const seed = slipEarningsSeed(type, gross);
+    return (
+      items.length === seed.length &&
+      items.every(
+        (item, i) =>
+          item.qty === 1 &&
+          item.description === seed[i].description &&
+          item.ratePaise === seed[i].ratePaise,
+      )
+    );
+  };
+
+  /**
+   * A draft's earnings follow the employee's recorded pay, always.
+   *
+   * The employee's *identity* was already live in a draft — `employeeSnapshot`
+   * is rebuilt from the record on every render, and only finalize freezes it.
+   * Their pay was the one thing that wasn't, because it lands in editable line
+   * items: correcting a salary left an open draft quoting the old figure, a
+   * reload did not help (the stale rate is stored on the draft), and re-picking
+   * the same person did not either (the old seed counted as "already typed").
+   * Switching recipient changed every detail on the slip except the amount.
+   *
+   * So re-seed whenever the earnings are still an untouched seed. Nothing that
+   * was typed is overwritten, and the resulting figure is persisted on the next
+   * save — including the save that finalize performs before it freezes.
+   */
+  useEffect(() => {
+    if (!employee || !isUntouchedSeed(getValues("lineItems"))) return;
+    writeSeed(employee);
+    // Re-runs when the selected employee changes or their record does (a new
+    // server payload after a salary edit). `writeSeed` is idempotent here, so a
+    // re-run that changes nothing settles immediately.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee]);
 
   /** '' → undefined: an unrecorded day count is absent, not zero. */
   const toCount = (value: string): number | undefined => {

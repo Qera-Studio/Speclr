@@ -146,7 +146,6 @@ export default function LetterEditor({
   const [bulletSections, setBulletSections] = useState<LetterDocument['bulletSections']>(
     doc?.bulletSections ?? [],
   );
-  const [payAmountPaise, setPayAmountPaise] = useState<number | undefined>(doc?.payAmountPaise);
   /**
    * Stored text overrides. Only what has actually been edited lives here —
    * every input renders `content[key] ?? resolved[key]`, so an untouched field
@@ -168,6 +167,19 @@ export default function LetterEditor({
     ? snapshotOf(employee)
     : (doc?.employeeSnapshot ?? EMPTY_SNAPSHOT);
 
+  /**
+   * Derived from the employee, never held in state — same rule as the snapshot
+   * above and as the slip's earnings: on a draft, anything taken from the
+   * employee record stays taken from it, and only finalize freezes. Held in
+   * state it went stale the moment a salary was corrected.
+   *
+   * Only the offer letter records it, and no sheet prints it — the figure a
+   * letter *shows* is prose inside `bodyParagraphs`, which is edited text and
+   * so can only be re-seeded by re-picking the employee.
+   */
+  const payAmountPaise =
+    type === 'OFR' ? (employee?.payAmountPaise ?? doc?.payAmountPaise) : doc?.payAmountPaise;
+
   // Selecting an employee seeds the editable body from the default content for
   // this letter type + their engagement type (intern/employee wording).
   const onSelectEmployee = (id: string) => {
@@ -179,7 +191,6 @@ export default function LetterEditor({
       setBodyText(seeded.bodyParagraphs.join('\n\n'));
       setBulletSections(seeded.bulletSections);
       patchContent({ subject: seeded.subject });
-      if (type === 'OFR') setPayAmountPaise(e.payAmountPaise);
     }
   };
 

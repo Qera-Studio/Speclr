@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import SlipEditor from '../SlipEditor';
+import { slipEarningsSeed } from '@/lib/domain/hrContent';
+import { paiseToRupees } from '@/lib/domain/money';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 /**
@@ -161,6 +163,86 @@ describe('SlipEditor — pay slip', () => {
       expect(alert).toHaveTextContent(/Riya/);
       expect(alert).toHaveTextContent(/intern/i);
       expect(alert).toHaveTextContent(/stipend slip/i);
+    });
+  });
+
+  /**
+   * A draft's earnings follow the employee's recorded pay.
+   *
+   * The employee's identity was always live in a draft; their pay was not,
+   * because it lands in editable line items. Correcting a salary left an open
+   * draft quoting the old figure — a reload did not help, and re-picking the
+   * same person did not either.
+   */
+  describe('keeping the earnings in step with the record', () => {
+    /** A draft seeded when the salary was ₹50,000, opened after a rise. */
+    const staleDraft = {
+      id: 'd1',
+      type: 'PAY',
+      status: 'draft',
+      employeeId: 'e1',
+      employeeSnapshot: employees[0],
+      issueDate: '2026-06-30',
+      lineItems: slipEarningsSeed('PAY', 5000000).map((e) => ({ ...e, qty: 1 })),
+      gstRatePercent: 0,
+      stipendMonth: '2026-06',
+      paymentMethod: 'Bank Transfer',
+      deductionsNote: '',
+      createdAt: 0,
+      updatedAt: 0,
+    } as never;
+
+    /** The rate inputs of the earnings list, in order, as rupee strings. */
+    async function earningRates(u: ReturnType<typeof userEvent.setup>) {
+      const rates: string[] = [];
+      for (const { description } of slipEarningsSeed('PAY', 1)) {
+        await u.click(screen.getByRole('button', { name: new RegExp(description) }));
+        rates.push((screen.getByLabelText(/^rate/i) as HTMLInputElement).value);
+        await u.click(screen.getByRole('button', { name: new RegExp(description) }));
+      }
+      return rates;
+    }
+
+    const expected = (grossPaise: number) =>
+      slipEarningsSeed('PAY', grossPaise).map((e) => paiseToRupees(e.ratePaise));
+
+    it('re-seeds a stored draft whose figures predate a salary change', async () => {
+      const u = userEvent.setup();
+      render(<SlipEditor type="PAY" employees={employees} title="Edit pay slip" doc={staleDraft} />);
+
+      expect(await earningRates(u)).toEqual(expected(6000000));
+    });
+
+    /** The other half of the same bug, on the slip type it was first seen on. */
+    it('re-seeds when the recipient changes', async () => {
+      const u = userEvent.setup();
+      const interns = [
+        employees[1],
+        { ...employees[1], id: 'e3', name: 'Dev', payAmountPaise: 3500000 },
+      ] as EmployeeRecord[];
+      render(<SlipEditor type="STP" employees={interns} title="New stipend slip" />);
+
+      await selectComboboxOption(u, /employee/i, /Riya/);
+      await selectComboboxOption(u, /employee/i, /Dev/);
+      await u.click(screen.getByRole('button', { name: /Internship Stipend/ }));
+
+      expect(screen.getByLabelText(/^rate/i)).toHaveValue('35000.00');
+    });
+
+    /**
+     * The guard on all of the above: a split someone has actually tuned is not
+     * a seed, and syncing must never overwrite what was typed.
+     */
+    it('leaves a hand-adjusted split alone', async () => {
+      const u = userEvent.setup();
+      const tuned = {
+        ...(staleDraft as object),
+        lineItems: [{ description: 'Basic salary', ratePaise: 4000000, qty: 1 }],
+      } as never;
+      render(<SlipEditor type="PAY" employees={employees} title="Edit pay slip" doc={tuned} />);
+
+      await u.click(screen.getByRole('button', { name: /Basic salary/ }));
+      expect(screen.getByLabelText(/^rate/i)).toHaveValue('40000.00');
     });
   });
 
