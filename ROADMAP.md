@@ -105,6 +105,59 @@ Sync clients across tools and services so they aren't re-entered per surface.
 - If it touches money or issued documents, correctness rules apply in full:
   integer paise, atomic FY numbering, immutability.
 
+### 7. Hiring flow — an onboarding checklist, then an employee portal
+
+A guided hiring process: phases with a progress bar, starting at "open a role"
+and ending at a confirmed employee with a code, a signed agreement and every
+required document on file. Then, later, the portal both sides of it.
+
+The reason this is worth building rather than remembering: Qera has hired twice
+and neither time followed a written process. The checklist **is** the knowledge —
+the app knowing what comes next is what stops a step being skipped.
+
+**The phases, and what is asked at each.** Nothing is collected before it is
+needed; asking for a PAN from someone who hasn't accepted an offer is both rude
+and a data-protection liability.
+
+| Phase | What happens | What speclr already does |
+|---|---|---|
+| 1 — Define the role | Title, engagement type (**employee or intern — the legal split**), pay band, start date | `/tools/ctc` prices the band |
+| 2 — Select | Interviews, references. Nothing collected, nothing legal | — |
+| 3 — Offer | Issue the **offer letter**; get a signed acceptance back | built (`OFR`) |
+| 4 — Collect, *after* acceptance | PAN (mandatory, TDS), Aadhaar/address proof, cancelled cheque (account + IFSC), photo, degree certificates, emergency contact; from a prior employer: relieving letter, last payslips, **Form 12B** if joining mid-year; **UAN** if they are already a PF member | fields exist on the employee record; the *asking* does not |
+| 5 — Day one | **Employee code assigned**; sign the appointment letter, **NDA + IP assignment** (a design studio's actual asset), policy acknowledgements (leave, conduct, **POSH**); issue laptop and accounts | code generator built; the agreements are not |
+| 6 — Probation | Probation period, then a **confirmation letter** at the end of it | not built — a 9th document type |
+| 7 — Ongoing | Monthly **pay slip**; TDS deposited and 24Q filed quarterly; **Form 16** by 15 June | pay slip built |
+| 8 — Exit | Notice, full & final, **relieving or internship-completion letter** | built (`EXT`, and it already branches on engagement type) |
+
+**Missing document types this implies:** appointment letter, NDA/IP assignment,
+confirmation-of-probation letter. Each is a real legal artifact and gets the same
+treatment as the existing eight — snapshotted content, immutable once finalized.
+
+**Registers a company this size must keep anyway** (Payment of Wages s.13A, UP
+Shops & Establishments): wage, attendance and leave. Timesheets are not a
+productivity feature here — they are the attendance register, which is why they
+belong in the same system as the slips rather than in a separate tool.
+
+**Then the portal.** Employee side: their documents, slips, leave balance,
+timesheet, reimbursement claims. Admin side: the same across everyone, plus
+approvals. Deliberately *after* the checklist — the checklist is useful with two
+people, a portal is not.
+
+Three constraints, all of which have bitten this project's neighbours already:
+
+- **Storing identity documents is a different legal posture.** PAN, Aadhaar and
+  bank details are personal data belonging to someone who is not the account
+  holder. Retention, deletion and access control are Legal-checklist concerns and
+  outrank everything else here. Aadhaar in particular: store the number only if
+  genuinely needed, never the image casually.
+- **Employees logging in makes them external users** — the same jump `#5` makes
+  for clients, and the same answer: structural isolation, ownership verified
+  server-side on every action, IDOR as the primary risk. It also needs roles
+  (`#1`) to exist first.
+- **The snapshot pattern still governs.** An employee editing their own address
+  must never alter a slip already issued to them.
+
 ---
 
 ## Deliberately deferred (YAGNI — noted, not built)
