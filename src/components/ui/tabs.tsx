@@ -82,7 +82,7 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
     <TabsPrimitive.Indicator
       data-slot="tabs-indicator"
       className={cn(
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-background shadow-sm transition-[translate,width] duration-200 ease-out dark:border dark:border-input dark:bg-input/30",
+        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-background shadow-sm transition-[translate,width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border dark:border-input dark:bg-input/30",
         className
       )}
       {...props}
@@ -99,7 +99,7 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
         // The panel carries the direction the tabs were moved in, so the
         // arriving content comes from the side it was reached from. Inactive
         // panels unmount, so this is an entrance only — the pushing is implied.
-        "duration-200 data-[activation-direction=left]:animate-in data-[activation-direction=left]:fade-in-0 data-[activation-direction=left]:slide-in-from-left-6 data-[activation-direction=right]:animate-in data-[activation-direction=right]:fade-in-0 data-[activation-direction=right]:slide-in-from-right-6",
+        "duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction=left]:animate-in data-[activation-direction=left]:fade-in-0 data-[activation-direction=left]:slide-in-from-left-10 data-[activation-direction=right]:animate-in data-[activation-direction=right]:fade-in-0 data-[activation-direction=right]:slide-in-from-right-10",
         className
       )}
       {...props}

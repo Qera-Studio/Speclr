@@ -15,28 +15,15 @@ import { cn } from '@/lib/utils';
  * The triggers give up their own active background to the sliding indicator;
  * see the note on `TabsIndicator`.
  */
-export default function ScheduleTabList({
-  size = 'default',
-  className,
-}: {
-  size?: 'default' | 'lg';
-  className?: string;
-}) {
-  const lg = size === 'lg';
-
+export default function ScheduleTabList({ className }: { className?: string }) {
   return (
-    <TabsList
-      className={cn('w-full', lg && 'group-data-horizontal/tabs:h-11 rounded-xl', className)}
-    >
-      <TabsIndicator className={cn(lg && 'rounded-lg')} />
+    <TabsList className={cn('w-full', className)}>
+      <TabsIndicator />
       {SCHEDULE_TABS.map((schedule) => (
         <TabsTrigger
           key={schedule.key}
           value={schedule.key}
-          className={cn(
-            'data-active:bg-transparent dark:data-active:border-transparent dark:data-active:bg-transparent',
-            lg && 'text-sm',
-          )}
+          className="text-sm data-active:bg-transparent dark:data-active:border-transparent dark:data-active:bg-transparent"
         >
           {schedule.name}
         </TabsTrigger>
