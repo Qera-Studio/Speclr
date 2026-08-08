@@ -22,7 +22,7 @@ describe('ContractSheet', () => {
   });
 
   it('renders a Schedule cover with only the Parts it includes', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
     const schedule = screen.getByLabelText('Schedule A');
     expect(within(schedule).getByText('Build')).toBeInTheDocument();
     expect(within(schedule).getByText('Part A-1')).toBeInTheDocument();
@@ -35,12 +35,12 @@ describe('ContractSheet', () => {
   });
 
   it('letters Schedule clauses with the letter this contract assigned', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
     expect(screen.getByText('A2. Fees and Payment')).toBeInTheDocument();
   });
 
   it('renders a Part with its own sections', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
     const part = screen.getByLabelText('Part A-1');
     expect(within(part).getByText('What is included')).toBeInTheDocument();
     expect(within(part).getByText('Limits')).toBeInTheDocument();
@@ -54,20 +54,20 @@ describe('ContractSheet', () => {
    * agreement.
    */
   it('prints exclusion lines as text, never as ids', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
     const part = screen.getByLabelText('Part A-1');
     expect(within(part).getByText('Copywriting of any kind')).toBeInTheDocument();
     expect(within(part).queryByText('E01')).not.toBeInTheDocument();
   });
 
   it('prints a drafted default where a blank has not been touched', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
-    // Part 01's Limits table: 'Products uploaded' is drafted [50].
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
+    // Part 05's Limits table: 'Products uploaded' is drafted [50].
     expect(screen.getAllByText('50').length).toBeGreaterThan(0);
   });
 
   it('prints a filled blank as ordinary text', () => {
-    const doc = contractDoc({ codes: ['01'], blanks: { 'part.01.limits#1': '120' } });
+    const doc = contractDoc({ codes: ['05'], blanks: { 'part.05.limits#1': '120' } });
     render(<ContractSheet doc={doc} />);
     expect(screen.getByText('120')).toBeInTheDocument();
   });
@@ -77,8 +77,8 @@ describe('ContractSheet', () => {
    * space, which reads as finished text.
    */
   it('marks an unfilled blank rather than printing nothing', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
-    // Part 01's Fee row is drafted '[ ]' — nothing to fall back on.
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
+    // Part 05's Fee row is drafted '[ ]' — nothing to fall back on.
     expect(screen.getAllByText('fill this in').length).toBeGreaterThan(0);
   });
 
@@ -87,7 +87,7 @@ describe('ContractSheet', () => {
    * "Completion criteria" above "not applicable" would be a heading that lies.
    */
   it('heads a Retainer Part by cycle rather than by completion', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['14'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['18'] })} />);
     const part = screen.getByLabelText('Part A-1');
     expect(within(part).getByText('What is included each cycle')).toBeInTheDocument();
     expect(within(part).getByText('How delivery is measured')).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe('ContractSheet', () => {
   });
 
   it('heads a Build Part by completion and timeline', () => {
-    render(<ContractSheet doc={contractDoc({ codes: ['01'] })} />);
+    render(<ContractSheet doc={contractDoc({ codes: ['05'] })} />);
     const part = screen.getByLabelText('Part A-1');
     expect(within(part).getByText('Completion criteria')).toBeInTheDocument();
     expect(within(part).getByText('Fee and timeline')).toBeInTheDocument();
@@ -109,9 +109,9 @@ describe('ContractSheet', () => {
     expect(screen.getByLabelText('Schedule D')).toBeInTheDocument();
     expect(screen.getByLabelText('Part A-1')).toBeInTheDocument();
     expect(screen.getByLabelText('Part D-1')).toBeInTheDocument();
-    // Each Schedule's clauses carry its own letter.
-    expect(screen.getByText('A2. Fees and Payment')).toBeInTheDocument();
-    expect(screen.getByText('B2. Fee and Billing')).toBeInTheDocument();
+    // Each Schedule's clauses carry its own letter — A is Setup, B is Build.
+    expect(screen.getByText('A2. Fee and Payment')).toBeInTheDocument();
+    expect(screen.getByText('B2. Fees and Payment')).toBeInTheDocument();
   });
 
   it('renders both execution blocks from the record', () => {

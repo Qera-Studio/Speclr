@@ -1,7 +1,7 @@
 'use client';
 
 import { TabsIndicator, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SCHEDULE_TABS } from '@/lib/domain/contract/schedules';
+import { SCHEDULES } from '@/lib/domain/contract/schedules';
 import { cn } from '@/lib/utils';
 
 /**
@@ -19,7 +19,7 @@ export default function ScheduleTabList({ className }: { className?: string }) {
   return (
     <TabsList className={cn('w-full', className)}>
       <TabsIndicator />
-      {SCHEDULE_TABS.map((schedule) => (
+      {SCHEDULES.map((schedule) => (
         <TabsTrigger
           key={schedule.key}
           value={schedule.key}

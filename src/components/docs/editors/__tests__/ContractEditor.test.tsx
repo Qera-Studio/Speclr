@@ -138,7 +138,7 @@ describe('ContractEditor', () => {
       'c1',
       expect.objectContaining({
         contract: expect.objectContaining({
-          parts: [expect.objectContaining({ code: '01' })],
+          parts: [expect.objectContaining({ code: '05' })],
           // The words the Part names, frozen onto the contract at tick time.
           library: expect.objectContaining({ E01: 'Copywriting of any kind' }),
         }),

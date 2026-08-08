@@ -3,10 +3,10 @@
  * `docs/contract-content.md` §4 through §4ac.
  *
  * `sortOrder` follows the canonical ordering in contract-system.md §3, which is
- * what fixes Part numbering: 01–10 Build, 11–16 Retainer, 17–20 Setup, 21–22
+ * what fixes Part numbering: 01–04 Setup, 05–14 Build, 15–20 Retainer, 21–22
  * Audit. A Service belongs to exactly one Schedule, and where the same work is
- * built once and then operated monthly that is two Services — 08/09/10 build,
- * 16 operates.
+ * built once and then operated monthly that is two Services — 12/13/14 build,
+ * 20 operates.
  *
  * These seed the database and are then owned by it. Editing a Service in admin
  * afterwards must never change a contract already generated; a contract holds
@@ -16,9 +16,9 @@
  *
  * **Not carried here, deliberately.** The boundary rules in content §4e, §4i,
  * §4n, §4s, §4v, §4aa and §4ad are selection guidance for whoever builds the
- * contract ("does it sell through a cart? → Part 01"), not text a Client ever
+ * contract ("does it sell through a cart? → Part 05"), not text a Client ever
  * reads — content §4e says so in as many words. And the platform matrix in §4o
- * belongs to the *contract*, not the service: two Clients buying Part 12 have
+ * belongs to the *contract*, not the service: two Clients buying Part 16 have
  * different matrices. Both are their own features; neither is service data.
  */
 
@@ -27,12 +27,251 @@ import type { ContractService } from '../service';
 export const SERVICES: ContractService[] = [
   {
     code: '01',
-    name: 'Shopify storefront',
-    scheduleKey: 'build',
+    name: 'Domain and DNS',
+    scheduleKey: 'setup',
     sortOrder: 1,
     archived: false,
     dependencies: [],
-    pairings: ['17', '19', '05'],
+    pairings: ['02'],
+    overview: [
+      "Purchase and configuration of a domain, and setup of the DNS records needed to point it at the Client's site, email and connected services.",
+    ],
+    included: [
+      'Availability check against up to [5] preferred names supplied by the Client',
+      "Registration of [1] domain in the Client's name",
+      'DNS configuration — A, CNAME, MX, TXT and any records required by connected services',
+      'Email authentication records — SPF, DKIM and DMARC, where email is in scope',
+      'SSL provisioning through the host or registrar',
+      'Redirect configuration for [2] additional domains or subdomains, where supplied',
+      'Written record of every record created',
+      'Transfer of registrar access under the Setup Schedule',
+    ],
+    accountTerms: [
+      "The domain is registered in the Client's name, with the Client as registrant, from purchase. Qera Private Limited does not hold or retain ownership of any Client domain.",
+      'Administrative and DNS access is held by Qera Private Limited during any related Build engagement, because DNS changes are required throughout development, and is released under the Setup Schedule on completion and full payment.',
+      "Where the domain cost is included within a Build advance, it is stated in the approved Proposal. Renewal is the Client's responsibility from the first renewal date onward.",
+      "Availability of any given name cannot be guaranteed. Premium pricing, registry restrictions and prior registration are outside Qera Private Limited's control.",
+    ],
+    limits: [
+      { label: 'Domains registered', value: '[1]' },
+      { label: 'Names checked for availability', value: '[5]' },
+      { label: 'Redirected domains or subdomains', value: '[2]' },
+      { label: 'Connected services configured', value: '[4]' },
+    ],
+    limitsNotes: ['Anything beyond these is Additional Work.'],
+    completion: [
+      'The domain is registered to the Client, every record listed above resolves correctly, SSL is active, and the record documentation has been delivered.',
+      'Propagation delays of up to forty-eight hours are normal and do not indicate incomplete work.',
+    ],
+    receives: [
+      'The domain, registered in its own name',
+      'Registrar access and credentials, on release',
+      'A written record of every DNS record created',
+      'Email authentication records, where email is in scope',
+    ],
+    receivesNotes: [],
+    thirdPartyCosts:
+      'Domain registration and renewal · premium domain pricing, where applicable · privacy protection · SSL, where the host charges separately',
+    exclusionIds: ['E30', 'E31', 'E48', 'E49', 'E52', 'E53', 'E57', 'E83', 'E85', 'E87', 'E90'],
+    clientInputIds: ['I02', 'I26', 'I27', 'I28', 'I61', 'I63'],
+    fee: [
+      { label: 'Fee', value: '[ ]' },
+      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
+      { label: 'Timeline', value: '[3] working days from receipt of inputs' },
+      { label: 'Correction window', value: '[14] days' },
+    ],
+  },
+  {
+    code: '02',
+    name: 'Business email and workspace',
+    scheduleKey: 'setup',
+    sortOrder: 2,
+    archived: false,
+    dependencies: ['01'],
+    pairings: ['01'],
+    overview: [
+      "Setup of a business email and productivity workspace on the Client's own domain — mailboxes, aliases, groups and the authentication records that keep mail deliverable.",
+    ],
+    included: [
+      "Workspace creation on the Client's domain",
+      'Domain verification and connection',
+      'Creation of up to [5] mailboxes',
+      'Creation of up to [5] aliases or groups',
+      'SPF, DKIM and DMARC configuration',
+      'Email signature template, applied to [1] format',
+      'Basic security configuration — two-factor enforcement and recovery settings',
+      'One handover walkthrough covering the admin console',
+    ],
+    accountTerms: [
+      "The workspace is created in the Client's name and the subscription is paid by the Client on the Client's own payment method, provided before setup begins. Qera Private Limited does not hold a payment method for any Client subscription.",
+      'Administrative access transfers to the Client on completion of this Part, not at the end of any wider engagement. This is the carve-out permitted under the Setup Schedule, and exists because the Client needs its email in daily use immediately.',
+      "DNS records for mail remain under Qera Private Limited's administration during any related Build engagement, and are released with the domain under the Setup Schedule. Release of the workspace does not release the domain.",
+      'From transfer, the Client is solely responsible for user administration, billing, security, recovery access and second-factor methods.',
+      'Deliverability is not guaranteed. Inbox placement depends on sending behaviour, list quality, recipient filtering and sender reputation built over time, none of which are set at configuration.',
+    ],
+    limits: [
+      { label: 'Mailboxes created', value: '[5]' },
+      { label: 'Aliases or groups', value: '[5]' },
+      { label: 'Signature formats', value: '[1]' },
+      { label: 'Domains connected', value: '[1]' },
+      { label: 'Mailbox migrations', value: '[0]' },
+    ],
+    limitsNotes: ['Anything beyond these is Additional Work.'],
+    completion: [
+      "The workspace is active on the Client's domain, every mailbox listed sends and receives successfully through a test message, authentication records pass validation, and administrative access has been transferred.",
+    ],
+    receives: [
+      'Full administrative access to the workspace',
+      'All mailbox credentials, for onward distribution by the Client',
+      'A record of the authentication records configured',
+      'A handover walkthrough covering the admin console',
+    ],
+    receivesNotes: [],
+    thirdPartyCosts:
+      'Workspace subscription and per-seat charges · additional storage · any paid add-on · domain renewal',
+    exclusionIds: [
+      'E30', 'E31', 'E48', 'E49', 'E52', 'E53', 'E57', 'E72', 'E82', 'E83', 'E85', 'E87',
+    ],
+    clientInputIds: ['I02', 'I06', 'I26', 'I27', 'I28', 'I62'],
+    fee: [
+      { label: 'Fee', value: '[ ]' },
+      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
+      { label: 'Timeline', value: '[3] working days from receipt of inputs' },
+      { label: 'Correction window', value: '[14] days' },
+    ],
+  },
+  {
+    code: '03',
+    name: 'Analytics and tracking',
+    scheduleKey: 'setup',
+    sortOrder: 3,
+    archived: false,
+    dependencies: [],
+    pairings: ['11', '17', '19'],
+    overview: [
+      'Setup of analytics and conversion tracking so the Client can see what people do on its property — property creation, tag deployment, event configuration and a working report view.',
+    ],
+    included: [
+      "Analytics property creation on the Client's account",
+      'Tag manager container setup and deployment',
+      'Configuration of up to [6] conversion events',
+      'Advertising pixel installation for up to [2] platforms',
+      'Ecommerce or form-submission tracking, where applicable',
+      'Cross-domain configuration, where [1] additional domain is in scope',
+      'Verification that every event fires correctly',
+      '[1] report view or dashboard covering the configured events',
+      'One handover walkthrough',
+    ],
+    accountTerms: [
+      "All analytics, tag and advertising accounts are created in the Client's name and owned by the Client from creation. Qera Private Limited holds access only for setup and, where a related retainer is attached, for its duration.",
+      'Measurement is approximate. Ad blockers, browser tracking restrictions, cookie consent choices, device switching and platform attribution models all cause undercounting and discrepancy between platforms. Figures from two platforms will not match and neither is wrong.',
+      "Privacy and consent compliance is the Client's responsibility. Cookie consent, privacy notices, data processing agreements and compliance with applicable data protection law are not included in this Part and require the Client's own legal advice.",
+      'Historic data cannot be backfilled into a newly created property. Measurement begins from the date of installation.',
+    ],
+    limits: [
+      { label: 'Analytics properties', value: '[1]' },
+      { label: 'Conversion events', value: '[6]' },
+      { label: 'Advertising pixels', value: '[2]' },
+      { label: 'Additional domains', value: '[1]' },
+      { label: 'Dashboards or report views', value: '[1]' },
+    ],
+    limitsNotes: ['Anything beyond these is Additional Work.'],
+    completion: [
+      'Every configured event fires correctly under test, tags are live on the property, pixels report receiving data, and the dashboard displays the configured events.',
+      "Data accuracy against any other platform's figures is not an acceptance criterion.",
+    ],
+    receives: [
+      'Full ownership of every analytics and tag account',
+      'A written record of every event and tag configured',
+      'The dashboard or report view',
+      'A handover walkthrough covering where to find each figure',
+    ],
+    receivesNotes: [],
+    thirdPartyCosts:
+      'Analytics platform subscriptions, where a paid tier is used · consent management tool subscriptions · any paid tag or tracking service',
+    exclusionIds: [
+      'E22', 'E25', 'E27', 'E30', 'E38', 'E39', 'E45', 'E46', 'E48', 'E49', 'E52',
+      'E54', 'E56', 'E64', 'E85', 'E86', 'E88', 'E89',
+    ],
+    clientInputIds: ['I01', 'I03', 'I07', 'I26', 'I27', 'I28', 'I37'],
+    fee: [
+      { label: 'Fee', value: '[ ]' },
+      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
+      { label: 'Timeline', value: '[5] working days from receipt of inputs' },
+      { label: 'Correction window', value: '[14] days' },
+    ],
+  },
+  {
+    code: '04',
+    name: 'Social account setup and verification',
+    scheduleKey: 'setup',
+    sortOrder: 4,
+    archived: false,
+    dependencies: ['09'],
+    pairings: ['15', '16', '17'],
+    overview: [
+      'Creation and configuration of social accounts on the platforms the Client needs — handles, profile setup, business account conversion, and the business portfolio structure required to run advertising.',
+    ],
+    included: [
+      'Handle availability check across up to [5] platforms',
+      'Account creation on up to [5] platforms',
+      'Conversion to business or professional account type',
+      'Profile setup — image, banner, bio, links and contact details, from Client-supplied assets',
+      "Business portfolio or business manager creation, in the Client's name",
+      'Ad account creation and linking, where advertising is in scope',
+      "Linking of accounts to each other and to the Client's site",
+      "Two-factor and recovery configuration, on the Client's own details",
+      'Submission of [1] verification application per platform, where the Client qualifies',
+      'Credential handover and one walkthrough',
+    ],
+    accountTerms: [
+      "Every account, business portfolio and ad account is created in the Client's name and owned by the Client from creation. Where advertising is in scope, the ad account sits inside the Client's own business portfolio, and Qera Private Limited operates as an assigned partner rather than as owner. Qera Private Limited does not create Client accounts under its own portfolio.",
+      "Two-factor authentication and recovery are configured against the Client's own phone number and recovery email. The Client is responsible for retaining these. Qera Private Limited cannot recover an account for which the Client has lost recovery access.",
+      "Handle availability is not guaranteed. A preferred name may already be taken, reserved or restricted. Alternatives are agreed from the Client's priority list.",
+      'Verification outcomes are not guaranteed. Approval, badge issuance, reinstatement and eligibility are decided entirely by the platform against criteria it does not publish and may change. A declined application does not reduce the fee, and reapplication is Additional Work.',
+    ],
+    limits: [
+      { label: 'Platforms', value: '[5]' },
+      { label: 'Verification applications', value: '[1] per platform' },
+      { label: 'Business portfolios', value: '[1]' },
+      { label: 'Ad accounts', value: '[1]' },
+      { label: 'Profile revision rounds', value: '[1]' },
+    ],
+    limitsNotes: ['Anything beyond these is Additional Work.'],
+    completion: [
+      'Every account listed is created, converted to the correct type, configured with the supplied profile assets, secured with two-factor authentication, linked as agreed, and credentials have been delivered to the Client.',
+      "Submission of a verification application completes that item. The platform's decision does not.",
+    ],
+    receives: [
+      'Full ownership of every account created',
+      'All credentials and recovery configuration details',
+      'Business portfolio and ad account under its own ownership',
+      'A written record of every account, handle and link created',
+      'A handover walkthrough',
+    ],
+    receivesNotes: [],
+    thirdPartyCosts:
+      'Any paid verification or subscription tier · advertising spend · profile photography or asset production · business documentation costs required for verification',
+    exclusionIds: [
+      'E01', 'E02', 'E03', 'E32', 'E34', 'E38', 'E39', 'E40', 'E44', 'E46', 'E48',
+      'E52', 'E55', 'E57', 'E58', 'E75', 'E76', 'E77', 'E85', 'E90', 'E91',
+    ],
+    clientInputIds: ['I05', 'I17', 'I19', 'I21', 'I26', 'I27', 'I28', 'I52', 'I64', 'I65'],
+    fee: [
+      { label: 'Fee', value: '[ ]' },
+      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
+      { label: 'Timeline', value: '[5] working days from receipt of inputs' },
+      { label: 'Correction window', value: '[14] days' },
+    ],
+  },
+  {
+    code: '05',
+    name: 'Shopify storefront',
+    scheduleKey: 'build',
+    sortOrder: 5,
+    archived: false,
+    dependencies: [],
+    pairings: ['01', '03', '09'],
     overview: [
       "Setup, customisation and deployment of a Shopify storefront, built on a selected Shopify theme and adapted to the Client's brand. The result is a live, responsive store ready to take orders.",
     ],
@@ -102,16 +341,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '02',
+    code: '06',
     name: 'Custom web build',
     scheduleKey: 'build',
-    sortOrder: 2,
+    sortOrder: 6,
     archived: false,
     dependencies: [],
-    pairings: ['17', '18', '19', '05'],
+    pairings: ['01', '02', '03', '09'],
     overview: [
       'Design and development of a custom website built in code rather than on a visual builder or storefront platform. The Client receives a live site, the repository containing it, and the ability to have it maintained by any competent developer.',
-      'Use this Part where the work involves writing code. Where the site is assembled on a visual builder, use Part 03. Where the site is a storefront, use Part 01.',
+      'Use this Part where the work involves writing code. Where the site is assembled on a visual builder, use the Webflow or Framer site Part. Where the site is a storefront, use the Shopify storefront Part.',
     ],
     included: [
       'Technical architecture and stack selection',
@@ -130,7 +369,7 @@ export const SERVICES: ContractService[] = [
     accountTerms: [
       'Hosting takes one of two forms, selected before start.',
       "Where the Client hosts, the site is deployed to a hosting account in the Client's name. Where the account is created by Qera Private Limited, it is created in the Client's name and belongs to the Client from creation.",
-      "Where Qera Private Limited hosts — available only alongside Part 14 — the site runs on infrastructure managed by Qera Private Limited, and hosting cost is included in the Part 14 fee. The Client is not locked in by this arrangement: on request or on ending, Qera Private Limited shall migrate the deployment to an account of the Client's choosing, or provide a complete export and configuration record sufficient for any competent developer to redeploy it, within [14 days] and at no charge.",
+      "Where Qera Private Limited hosts — available only alongside the Website maintenance Part — the site runs on infrastructure managed by Qera Private Limited, and hosting cost is included in the Website maintenance fee. The Client is not locked in by this arrangement: on request or on ending, Qera Private Limited shall migrate the deployment to an account of the Client's choosing, or provide a complete export and configuration record sufficient for any competent developer to redeploy it, within [14 days] and at no charge.",
       'The repository is created in a Qera Private Limited organisation during development and transferred to the Client on receipt of full payment.',
       'Qera Private Limited retains ownership of its internal starter framework, component library and reusable systems. Where these form part of the delivered site, the Client receives a perpetual, non-exclusive, royalty-free licence to use, modify and host them as part of this site. The Client does not receive the right to redistribute, resell or reuse them in a separate project. This licence is granted on full payment and cannot be revoked.',
       'Administrative access to hosting and DNS is held by Qera Private Limited through the build and support window, and released under the Setup Schedule.',
@@ -185,16 +424,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '03',
+    code: '07',
     name: 'Webflow or Framer site',
     scheduleKey: 'build',
-    sortOrder: 3,
+    sortOrder: 7,
     archived: false,
     dependencies: [],
-    pairings: ['17', '19', '05'],
+    pairings: ['01', '03', '09'],
     overview: [
       "Design and build of a website on a visual development platform — Webflow or Framer — adapted to the Client's brand. The Client receives a live site and full ownership of the project inside their own platform account, editable without a developer.",
-      'Use this Part where the site is assembled on a visual builder. Where the work involves writing an application in code, use Part 02.',
+      'Use this Part where the site is assembled on a visual builder. Where the work involves writing an application in code, use the Custom web build Part.',
     ],
     included: [
       'Platform and plan selection',
@@ -228,7 +467,7 @@ export const SERVICES: ContractService[] = [
       'Page templates are the counted unit. A template is a layout designed and built once. The number of pages or collection records using an existing template is not limited and is not Additional Work.',
       'A page that cannot be produced from an approved template counts as a new template.',
       'The default ten templates are: home, about, contact, service listing, single service, technical or specification, process, terms, privacy, and 404. Where a Client needs a different set, agree the list before start and record it here.',
-      'Functionality not natively supported by the selected platform and plan is outside this Part. Where the Client requires it, the work moves to Part 02 or is quoted as Additional Work.',
+      'Functionality not natively supported by the selected platform and plan is outside this Part. Where the Client requires it, the work moves to the Custom web build Part or is quoted as Additional Work.',
     ],
     completion: [
       "The site is published on the Client's domain, every page template listed above exists and functions as described, forms deliver to the named destination, the site displays correctly at the platform's standard breakpoints on current browsers, and the project has been transferred to the Client's account.",
@@ -263,16 +502,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '04',
+    code: '08',
     name: 'Landing page or funnel',
     scheduleKey: 'build',
-    sortOrder: 4,
+    sortOrder: 8,
     archived: false,
     dependencies: [],
-    pairings: ['19', '07', '13'],
+    pairings: ['03', '11', '17'],
     overview: [
       'Design and build of a small set of pages aimed at a single conversion goal — a campaign page, a lead capture page, or a short sequence leading to one action. Built for speed of delivery and measurable response rather than as a full site.',
-      'Use this Part where the scope is a single conversion goal and a small page count. Where the Client needs a full site with navigation, multiple sections and ongoing content, use Part 02 or Part 03.',
+      'Use this Part where the scope is a single conversion goal and a small page count. Where the Client needs a full site with navigation, multiple sections and ongoing content, use the Custom web build Part or the Webflow or Framer site Part.',
     ],
     included: [
       'One conversion goal, defined and agreed before start',
@@ -287,7 +526,7 @@ export const SERVICES: ContractService[] = [
     ],
     accountTerms: [
       "Pages are deployed to a hosting or platform account in the Client's name. Where the account is created by Qera Private Limited, it is created in the Client's name and belongs to the Client from creation.",
-      'Where pages are built in code, the repository is transferred on full payment and the framework licence described in Part 02 applies on the same terms. Where pages are built on a visual platform, the project is transferred on full payment.',
+      'Where pages are built in code, the repository is transferred on full payment and the framework licence described in the Custom web build Part applies on the same terms. Where pages are built on a visual platform, the project is transferred on full payment.',
     ],
     limits: [
       { label: 'Pages', value: '[3]' },
@@ -300,7 +539,7 @@ export const SERVICES: ContractService[] = [
     ],
     limitsNotes: [
       'Anything beyond these is Additional Work.',
-      'This Part does not include navigation systems, content management, blog structures or multi-section site architecture. Where those are required, the work moves to Part 02 or Part 03.',
+      'This Part does not include navigation systems, content management, blog structures or multi-section site architecture. Where those are required, the work moves to the Custom web build Part or the Webflow or Framer site Part.',
     ],
     completion: [
       'The pages are live at the agreed address, the form submits successfully to the named destination through a test submission, the conversion event fires where analytics access was provided, and the pages display correctly on current desktop and mobile browsers.',
@@ -333,13 +572,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '05',
+    code: '09',
     name: 'Brand identity',
     scheduleKey: 'build',
-    sortOrder: 5,
+    sortOrder: 9,
     archived: false,
     dependencies: [],
-    pairings: ['06', '01', '02', '03', '11'],
+    pairings: ['10', '05', '06', '07', '15'],
     overview: [
       "Creation of a visual identity for the Client's business — logo, typography, colour and the rules governing their use. The Client receives a complete identity they own outright, in every file format needed to apply it across print, screen and third-party suppliers.",
       'This Part covers visual identity only. Naming, tagline and verbal identity are not included.',
@@ -409,16 +648,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '06',
+    code: '10',
     name: 'Design system',
     scheduleKey: 'build',
-    sortOrder: 6,
+    sortOrder: 10,
     archived: false,
-    dependencies: ['05'],
-    pairings: ['02', '03'],
+    dependencies: ['09'],
+    pairings: ['06', '07'],
     overview: [
       'Creation of a reusable component library and design foundation in Figma, so that future screens and pages can be assembled consistently without redesigning from scratch each time.',
-      'This Part produces design files. It does not produce code. Where components are to be built in code, that work sits under Part 02.',
+      'This Part produces design files. It does not produce code. Where components are to be built in code, that work sits under the Custom web build Part.',
     ],
     included: [
       'Audit of existing design files or interfaces, where they exist',
@@ -477,16 +716,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '07',
+    code: '11',
     name: 'Conversion optimisation build',
     scheduleKey: 'build',
-    sortOrder: 7,
+    sortOrder: 11,
     archived: false,
-    dependencies: ['19'],
-    pairings: ['04', '15'],
+    dependencies: ['03'],
+    pairings: ['08', '19'],
     overview: [
       'Analysis of an existing site and implementation of a defined set of changes intended to improve conversion. Delivered once, against a fixed list of changes agreed before work begins.',
-      'This Part is a one-time implementation. Ongoing testing, iteration and monitoring over successive months sit under Part 15.',
+      'This Part is a one-time implementation. Ongoing testing, iteration and monitoring over successive months sit under the Conversion optimisation retainer Part.',
     ],
     included: [
       'Review of existing analytics covering at least [3] months of data',
@@ -512,7 +751,7 @@ export const SERVICES: ContractService[] = [
     ],
     limitsNotes: [
       'Anything beyond these is Additional Work.',
-      'A change is a discrete modification to copy, layout, form, flow or component. Rebuilding a page, restructuring navigation or replacing a template is not a change and sits under Part 02, 03 or 04.',
+      'A change is a discrete modification to copy, layout, form, flow or component. Rebuilding a page, restructuring navigation or replacing a template is not a change and sits under the Custom web build Part, the Webflow or Framer site Part or the Landing page or funnel Part.',
     ],
     completion: [
       'The findings document has been delivered, the agreed list of changes has been implemented and is live, conversion tracking fires correctly where access was provided, and the walkthrough has been delivered.',
@@ -544,16 +783,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '08',
+    code: '12',
     name: 'Automation build',
     scheduleKey: 'build',
-    sortOrder: 8,
+    sortOrder: 12,
     archived: false,
     dependencies: [],
-    pairings: ['16', '19', '02'],
+    pairings: ['20', '03', '06'],
     overview: [
       "Design and build of automated workflows that move data and trigger actions between the Client's existing systems — forms, spreadsheets, CRMs, messaging platforms, storefronts and internal tools. Delivered as working automations the Client owns and can operate.",
-      'This Part covers rule-based automation. Where a workflow depends on a language model to interpret, generate or decide, use Part 09.',
+      'This Part covers rule-based automation. Where a workflow depends on a language model to interpret, generate or decide, use the AI assistant build Part.',
     ],
     included: [
       'Mapping of the current process before automation',
@@ -608,13 +847,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '09',
+    code: '13',
     name: 'AI assistant build',
     scheduleKey: 'build',
-    sortOrder: 9,
+    sortOrder: 13,
     archived: false,
     dependencies: [],
-    pairings: ['16', '08', '02'],
+    pairings: ['20', '12', '06'],
     overview: [
       "Design and build of an assistant powered by a third-party language model — a support responder, an internal knowledge assistant, a lead qualifier or similar — configured against the Client's own content and connected to the Client's systems.",
     ],
@@ -636,7 +875,7 @@ export const SERVICES: ContractService[] = [
       'The Client is responsible for reviewing output before it is relied upon, published or acted on, and names a person accountable for that review. Qera Private Limited is not liable for any consequence of output that was published, sent or acted upon without review.',
       'The assistant must not be deployed for medical, legal, financial, employment, credit, insurance or safety decisions, or any use where an incorrect output causes regulatory exposure or physical harm, unless that use is expressly named in this Part and the Client has obtained its own compliance advice.',
       'Qera Private Limited does not use Client data to train models. Third-party providers process submitted data under their own terms, which Qera Private Limited does not control. The Client identifies any data that must not be sent to a third-party provider before build begins.',
-      'Qera Private Limited retains ownership of its internal prompt patterns, evaluation methods and system architecture, licensed to the Client on the same terms as Part 08.',
+      'Qera Private Limited retains ownership of its internal prompt patterns, evaluation methods and system architecture, licensed to the Client on the same terms as the Automation build Part.',
     ],
     limits: [
       { label: 'Assistants', value: '[1]' },
@@ -678,16 +917,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '10',
+    code: '14',
     name: 'Generative content system',
     scheduleKey: 'build',
-    sortOrder: 10,
+    sortOrder: 14,
     archived: false,
-    dependencies: ['05'],
-    pairings: ['11', '16'],
+    dependencies: ['09'],
+    pairings: ['15', '20'],
     overview: [
       'Build of a repeatable system for producing content at volume using generative tools — templates, prompt sets, brand constraints and a defined workflow, so that the Client or Qera Private Limited can generate consistent output without starting from nothing each time.',
-      'The deliverable is the system, not a content library. Content produced on an ongoing basis sits under Part 11 or Part 16.',
+      'The deliverable is the system, not a content library. Content produced on an ongoing basis sits under the Content production Part or the AI system operation Part.',
     ],
     included: [
       'Definition of output types and formats in scope',
@@ -704,7 +943,7 @@ export const SERVICES: ContractService[] = [
       'Generated output is not guaranteed to be original, accurate or free from resemblance to existing work. Generative tools produce output derived from training data whose composition and licensing Qera Private Limited does not control and cannot audit.',
       "Ownership and copyright status of generated output is unsettled and varies by jurisdiction. Qera Private Limited makes no assurance that generated output attracts copyright protection, that it can be registered, or that it does not infringe third-party rights. The Client is responsible for its own clearance before commercial use, and for compliance with each provider's terms including any attribution or disclosure requirement.",
       'Every output must be reviewed by a named person before publication. The Client accepts that publishing unreviewed generative output carries reputational and legal risk that sits with the Client.',
-      'Qera Private Limited retains ownership of its internal prompt patterns, constraint frameworks and review methods, licensed to the Client on the same terms as Part 08.',
+      'Qera Private Limited retains ownership of its internal prompt patterns, constraint frameworks and review methods, licensed to the Client on the same terms as the Automation build Part.',
     ],
     limits: [
       { label: 'Output types', value: '[2]' },
@@ -746,16 +985,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '11',
+    code: '15',
     name: 'Content production',
     scheduleKey: 'retainer',
-    sortOrder: 11,
+    sortOrder: 15,
     archived: false,
-    dependencies: ['05'],
-    pairings: ['12', '13', '10'],
+    dependencies: ['09'],
+    pairings: ['16', '17', '14'],
     overview: [
       'Monthly planning, design and delivery of social content — static posts, carousels, stories and short-form video edits — produced against an agreed calendar and the platforms ticked on the matrix.',
-      'This Part produces and publishes content. It does not include replying to the audience, which is Part 12.',
+      'This Part produces and publishes content. It does not include replying to the audience, which is the Community management Part.',
     ],
     included: [
       'A content calendar for the cycle, delivered for approval before production',
@@ -815,16 +1054,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '12',
+    code: '16',
     name: 'Community management',
     scheduleKey: 'retainer',
-    sortOrder: 12,
+    sortOrder: 16,
     archived: false,
     dependencies: [],
-    pairings: ['11', '13'],
+    pairings: ['15', '17'],
     overview: [
       "Monitoring and responding to the Client's audience across the platforms ticked on the matrix — comments, direct messages, mentions and reviews — within an agreed tone and an agreed set of approved responses.",
-      'This Part handles conversation. It does not produce content, which is Part 11.',
+      'This Part handles conversation. It does not produce content, which is the Content production Part.',
     ],
     included: [
       'Monitoring of comments, direct messages and mentions on platforms ticked on the matrix',
@@ -881,13 +1120,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '13',
+    code: '17',
     name: 'Paid social management',
     scheduleKey: 'retainer',
-    sortOrder: 13,
+    sortOrder: 17,
     archived: false,
-    dependencies: ['19'],
-    pairings: ['11', '04'],
+    dependencies: ['03'],
+    pairings: ['15', '08'],
     overview: [
       'Planning, setup and ongoing management of paid campaigns on the platforms ticked on the matrix — audience structure, campaign build, budget pacing and reporting.',
       'The management fee covers the work. Advertising spend is separate and is paid by the Client.',
@@ -897,7 +1136,7 @@ export const SERVICES: ContractService[] = [
       'Build and launch of up to [3] campaigns',
       'Audience and targeting setup',
       'Ad set structure and budget pacing',
-      'Use of up to [6] creatives supplied under Part 11 or by the Client',
+      'Use of up to [6] creatives supplied under the Content production Part or by the Client',
       'Ongoing optimisation — budget shifts, audience adjustment, pausing underperformers',
       'Conversion tracking review, where access is provided',
       'A written performance report at cycle end',
@@ -930,7 +1169,7 @@ export const SERVICES: ContractService[] = [
     ],
     receivesNotes: [],
     thirdPartyCosts:
-      'All advertising spend · platform fees · analytics or attribution tool subscriptions · creative production beyond what Part 11 supplies · landing page or destination costs',
+      'All advertising spend · platform fees · analytics or attribution tool subscriptions · creative production beyond what the Content production Part supplies · landing page or destination costs',
     exclusionIds: [
       'E01', 'E02', 'E03', 'E38', 'E40', 'E44', 'E46', 'E52', 'E54', 'E56', 'E58',
       'E65', 'E76', 'E77', 'E78', 'E79', 'E80', 'E81',
@@ -948,13 +1187,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '14',
+    code: '18',
     name: 'Website maintenance',
     scheduleKey: 'retainer',
-    sortOrder: 14,
+    sortOrder: 18,
     archived: false,
     dependencies: [],
-    pairings: ['15', '19'],
+    pairings: ['19', '03'],
     overview: [
       'Keeping an existing site working — applying platform and dependency updates, taking backups, monitoring availability, fixing faults and making small content changes each cycle.',
       'This Part maintains what exists. Adding pages, features or templates is a Build engagement.',
@@ -1014,16 +1253,16 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '15',
+    code: '19',
     name: 'Conversion optimisation retainer',
     scheduleKey: 'retainer',
-    sortOrder: 15,
+    sortOrder: 19,
     archived: false,
-    dependencies: ['19'],
-    pairings: ['14', '13', '04'],
+    dependencies: ['03'],
+    pairings: ['18', '17', '08'],
     overview: [
       'Continuous improvement of an existing site or funnel — forming a hypothesis each cycle, making a change, measuring what happened and deciding what to do next.',
-      'This Part is iterative and ongoing. A fixed list of changes delivered once is Part 07.',
+      'This Part is iterative and ongoing. A fixed list of changes delivered once is the Conversion optimisation build Part.',
     ],
     included: [
       "Review of the prior cycle's changes against measured outcome",
@@ -1078,13 +1317,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '16',
+    code: '20',
     name: 'AI system operation',
     scheduleKey: 'retainer',
-    sortOrder: 16,
+    sortOrder: 20,
     archived: false,
-    dependencies: ['08', '09', '10'],
-    pairings: ['08', '09', '10'],
+    dependencies: ['12', '13', '14'],
+    pairings: ['12', '13', '14'],
     overview: [
       'Ongoing operation of automations, assistants or generative systems already built — monitoring that they are running, responding when they fail, adjusting them as the Client’s business changes, and keeping them working when providers change underneath them.',
       "Without this Part, a delivered system is the Client's to operate from the end of its support window.",
@@ -1141,252 +1380,13 @@ export const SERVICES: ContractService[] = [
     ],
   },
   {
-    code: '17',
-    name: 'Domain and DNS',
-    scheduleKey: 'setup',
-    sortOrder: 17,
-    archived: false,
-    dependencies: [],
-    pairings: ['18'],
-    overview: [
-      "Purchase and configuration of a domain, and setup of the DNS records needed to point it at the Client's site, email and connected services.",
-    ],
-    included: [
-      'Availability check against up to [5] preferred names supplied by the Client',
-      "Registration of [1] domain in the Client's name",
-      'DNS configuration — A, CNAME, MX, TXT and any records required by connected services',
-      'Email authentication records — SPF, DKIM and DMARC, where email is in scope',
-      'SSL provisioning through the host or registrar',
-      'Redirect configuration for [2] additional domains or subdomains, where supplied',
-      'Written record of every record created',
-      'Transfer of registrar access under the Setup Schedule',
-    ],
-    accountTerms: [
-      "The domain is registered in the Client's name, with the Client as registrant, from purchase. Qera Private Limited does not hold or retain ownership of any Client domain.",
-      'Administrative and DNS access is held by Qera Private Limited during any related Build engagement, because DNS changes are required throughout development, and is released under the Setup Schedule on completion and full payment.',
-      "Where the domain cost is included within a Build advance, it is stated in the approved Proposal. Renewal is the Client's responsibility from the first renewal date onward.",
-      "Availability of any given name cannot be guaranteed. Premium pricing, registry restrictions and prior registration are outside Qera Private Limited's control.",
-    ],
-    limits: [
-      { label: 'Domains registered', value: '[1]' },
-      { label: 'Names checked for availability', value: '[5]' },
-      { label: 'Redirected domains or subdomains', value: '[2]' },
-      { label: 'Connected services configured', value: '[4]' },
-    ],
-    limitsNotes: ['Anything beyond these is Additional Work.'],
-    completion: [
-      'The domain is registered to the Client, every record listed above resolves correctly, SSL is active, and the record documentation has been delivered.',
-      'Propagation delays of up to forty-eight hours are normal and do not indicate incomplete work.',
-    ],
-    receives: [
-      'The domain, registered in its own name',
-      'Registrar access and credentials, on release',
-      'A written record of every DNS record created',
-      'Email authentication records, where email is in scope',
-    ],
-    receivesNotes: [],
-    thirdPartyCosts:
-      'Domain registration and renewal · premium domain pricing, where applicable · privacy protection · SSL, where the host charges separately',
-    exclusionIds: ['E30', 'E31', 'E48', 'E49', 'E52', 'E53', 'E57', 'E83', 'E85', 'E87', 'E90'],
-    clientInputIds: ['I02', 'I26', 'I27', 'I28', 'I61', 'I63'],
-    fee: [
-      { label: 'Fee', value: '[ ]' },
-      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
-      { label: 'Timeline', value: '[3] working days from receipt of inputs' },
-      { label: 'Correction window', value: '[14] days' },
-    ],
-  },
-  {
-    code: '18',
-    name: 'Business email and workspace',
-    scheduleKey: 'setup',
-    sortOrder: 18,
-    archived: false,
-    dependencies: ['17'],
-    pairings: ['17'],
-    overview: [
-      "Setup of a business email and productivity workspace on the Client's own domain — mailboxes, aliases, groups and the authentication records that keep mail deliverable.",
-    ],
-    included: [
-      "Workspace creation on the Client's domain",
-      'Domain verification and connection',
-      'Creation of up to [5] mailboxes',
-      'Creation of up to [5] aliases or groups',
-      'SPF, DKIM and DMARC configuration',
-      'Email signature template, applied to [1] format',
-      'Basic security configuration — two-factor enforcement and recovery settings',
-      'One handover walkthrough covering the admin console',
-    ],
-    accountTerms: [
-      "The workspace is created in the Client's name and the subscription is paid by the Client on the Client's own payment method, provided before setup begins. Qera Private Limited does not hold a payment method for any Client subscription.",
-      'Administrative access transfers to the Client on completion of this Part, not at the end of any wider engagement. This is the carve-out permitted under the Setup Schedule, and exists because the Client needs its email in daily use immediately.',
-      "DNS records for mail remain under Qera Private Limited's administration during any related Build engagement, and are released with the domain under the Setup Schedule. Release of the workspace does not release the domain.",
-      'From transfer, the Client is solely responsible for user administration, billing, security, recovery access and second-factor methods.',
-      'Deliverability is not guaranteed. Inbox placement depends on sending behaviour, list quality, recipient filtering and sender reputation built over time, none of which are set at configuration.',
-    ],
-    limits: [
-      { label: 'Mailboxes created', value: '[5]' },
-      { label: 'Aliases or groups', value: '[5]' },
-      { label: 'Signature formats', value: '[1]' },
-      { label: 'Domains connected', value: '[1]' },
-      { label: 'Mailbox migrations', value: '[0]' },
-    ],
-    limitsNotes: ['Anything beyond these is Additional Work.'],
-    completion: [
-      "The workspace is active on the Client's domain, every mailbox listed sends and receives successfully through a test message, authentication records pass validation, and administrative access has been transferred.",
-    ],
-    receives: [
-      'Full administrative access to the workspace',
-      'All mailbox credentials, for onward distribution by the Client',
-      'A record of the authentication records configured',
-      'A handover walkthrough covering the admin console',
-    ],
-    receivesNotes: [],
-    thirdPartyCosts:
-      'Workspace subscription and per-seat charges · additional storage · any paid add-on · domain renewal',
-    exclusionIds: [
-      'E30', 'E31', 'E48', 'E49', 'E52', 'E53', 'E57', 'E72', 'E82', 'E83', 'E85', 'E87',
-    ],
-    clientInputIds: ['I02', 'I06', 'I26', 'I27', 'I28', 'I62'],
-    fee: [
-      { label: 'Fee', value: '[ ]' },
-      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
-      { label: 'Timeline', value: '[3] working days from receipt of inputs' },
-      { label: 'Correction window', value: '[14] days' },
-    ],
-  },
-  {
-    code: '19',
-    name: 'Analytics and tracking',
-    scheduleKey: 'setup',
-    sortOrder: 19,
-    archived: false,
-    dependencies: [],
-    pairings: ['07', '13', '15'],
-    overview: [
-      'Setup of analytics and conversion tracking so the Client can see what people do on its property — property creation, tag deployment, event configuration and a working report view.',
-    ],
-    included: [
-      "Analytics property creation on the Client's account",
-      'Tag manager container setup and deployment',
-      'Configuration of up to [6] conversion events',
-      'Advertising pixel installation for up to [2] platforms',
-      'Ecommerce or form-submission tracking, where applicable',
-      'Cross-domain configuration, where [1] additional domain is in scope',
-      'Verification that every event fires correctly',
-      '[1] report view or dashboard covering the configured events',
-      'One handover walkthrough',
-    ],
-    accountTerms: [
-      "All analytics, tag and advertising accounts are created in the Client's name and owned by the Client from creation. Qera Private Limited holds access only for setup and, where a related retainer is attached, for its duration.",
-      'Measurement is approximate. Ad blockers, browser tracking restrictions, cookie consent choices, device switching and platform attribution models all cause undercounting and discrepancy between platforms. Figures from two platforms will not match and neither is wrong.',
-      "Privacy and consent compliance is the Client's responsibility. Cookie consent, privacy notices, data processing agreements and compliance with applicable data protection law are not included in this Part and require the Client's own legal advice.",
-      'Historic data cannot be backfilled into a newly created property. Measurement begins from the date of installation.',
-    ],
-    limits: [
-      { label: 'Analytics properties', value: '[1]' },
-      { label: 'Conversion events', value: '[6]' },
-      { label: 'Advertising pixels', value: '[2]' },
-      { label: 'Additional domains', value: '[1]' },
-      { label: 'Dashboards or report views', value: '[1]' },
-    ],
-    limitsNotes: ['Anything beyond these is Additional Work.'],
-    completion: [
-      'Every configured event fires correctly under test, tags are live on the property, pixels report receiving data, and the dashboard displays the configured events.',
-      "Data accuracy against any other platform's figures is not an acceptance criterion.",
-    ],
-    receives: [
-      'Full ownership of every analytics and tag account',
-      'A written record of every event and tag configured',
-      'The dashboard or report view',
-      'A handover walkthrough covering where to find each figure',
-    ],
-    receivesNotes: [],
-    thirdPartyCosts:
-      'Analytics platform subscriptions, where a paid tier is used · consent management tool subscriptions · any paid tag or tracking service',
-    exclusionIds: [
-      'E22', 'E25', 'E27', 'E30', 'E38', 'E39', 'E45', 'E46', 'E48', 'E49', 'E52',
-      'E54', 'E56', 'E64', 'E85', 'E86', 'E88', 'E89',
-    ],
-    clientInputIds: ['I01', 'I03', 'I07', 'I26', 'I27', 'I28', 'I37'],
-    fee: [
-      { label: 'Fee', value: '[ ]' },
-      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
-      { label: 'Timeline', value: '[5] working days from receipt of inputs' },
-      { label: 'Correction window', value: '[14] days' },
-    ],
-  },
-  {
-    code: '20',
-    name: 'Social account setup and verification',
-    scheduleKey: 'setup',
-    sortOrder: 20,
-    archived: false,
-    dependencies: ['05'],
-    pairings: ['11', '12', '13'],
-    overview: [
-      'Creation and configuration of social accounts on the platforms the Client needs — handles, profile setup, business account conversion, and the business portfolio structure required to run advertising.',
-    ],
-    included: [
-      'Handle availability check across up to [5] platforms',
-      'Account creation on up to [5] platforms',
-      'Conversion to business or professional account type',
-      'Profile setup — image, banner, bio, links and contact details, from Client-supplied assets',
-      "Business portfolio or business manager creation, in the Client's name",
-      'Ad account creation and linking, where advertising is in scope',
-      "Linking of accounts to each other and to the Client's site",
-      "Two-factor and recovery configuration, on the Client's own details",
-      'Submission of [1] verification application per platform, where the Client qualifies',
-      'Credential handover and one walkthrough',
-    ],
-    accountTerms: [
-      "Every account, business portfolio and ad account is created in the Client's name and owned by the Client from creation. Where advertising is in scope, the ad account sits inside the Client's own business portfolio, and Qera Private Limited operates as an assigned partner rather than as owner. Qera Private Limited does not create Client accounts under its own portfolio.",
-      "Two-factor authentication and recovery are configured against the Client's own phone number and recovery email. The Client is responsible for retaining these. Qera Private Limited cannot recover an account for which the Client has lost recovery access.",
-      "Handle availability is not guaranteed. A preferred name may already be taken, reserved or restricted. Alternatives are agreed from the Client's priority list.",
-      'Verification outcomes are not guaranteed. Approval, badge issuance, reinstatement and eligibility are decided entirely by the platform against criteria it does not publish and may change. A declined application does not reduce the fee, and reapplication is Additional Work.',
-    ],
-    limits: [
-      { label: 'Platforms', value: '[5]' },
-      { label: 'Verification applications', value: '[1] per platform' },
-      { label: 'Business portfolios', value: '[1]' },
-      { label: 'Ad accounts', value: '[1]' },
-      { label: 'Profile revision rounds', value: '[1]' },
-    ],
-    limitsNotes: ['Anything beyond these is Additional Work.'],
-    completion: [
-      'Every account listed is created, converted to the correct type, configured with the supplied profile assets, secured with two-factor authentication, linked as agreed, and credentials have been delivered to the Client.',
-      "Submission of a verification application completes that item. The platform's decision does not.",
-    ],
-    receives: [
-      'Full ownership of every account created',
-      'All credentials and recovery configuration details',
-      'Business portfolio and ad account under its own ownership',
-      'A written record of every account, handle and link created',
-      'A handover walkthrough',
-    ],
-    receivesNotes: [],
-    thirdPartyCosts:
-      'Any paid verification or subscription tier · advertising spend · profile photography or asset production · business documentation costs required for verification',
-    exclusionIds: [
-      'E01', 'E02', 'E03', 'E32', 'E34', 'E38', 'E39', 'E40', 'E44', 'E46', 'E48',
-      'E52', 'E55', 'E57', 'E58', 'E75', 'E76', 'E77', 'E85', 'E90', 'E91',
-    ],
-    clientInputIds: ['I05', 'I17', 'I19', 'I21', 'I26', 'I27', 'I28', 'I52', 'I64', 'I65'],
-    fee: [
-      { label: 'Fee', value: '[ ]' },
-      { label: 'Payment', value: 'in full in advance, or within a Build advance' },
-      { label: 'Timeline', value: '[5] working days from receipt of inputs' },
-      { label: 'Correction window', value: '[14] days' },
-    ],
-  },
-  {
     code: '21',
     name: 'Audit or teardown',
     scheduleKey: 'audit',
     sortOrder: 21,
     archived: false,
     dependencies: [],
-    pairings: ['07', '02', '03', '16'],
+    pairings: ['11', '06', '07', '20'],
     overview: [
       'Structured review of an existing property, system or presence, delivered as a written document setting out findings, their commercial significance and prioritised recommendations.',
       'This Part delivers analysis. Implementation of any recommendation constitutes a separate engagement under the Build, Retainer or Setup Schedule.',
@@ -1447,7 +1447,7 @@ export const SERVICES: ContractService[] = [
     sortOrder: 22,
     archived: false,
     dependencies: [],
-    pairings: ['11', '13'],
+    pairings: ['15', '17'],
     overview: [
       'A time-boxed engagement addressing a defined strategic question, delivered through working sessions and a written recommendation document.',
       'This Part delivers a recommended course of action. Execution of that course of action constitutes a separate engagement under the Build, Retainer or Setup Schedule.',

@@ -78,6 +78,13 @@
       "when": 1786230000000,
       "tag": "0010_rename_schedule_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786310000000,
+      "tag": "0011_renumber_services",
+      "breakpoints": true
     }
   ]
 }

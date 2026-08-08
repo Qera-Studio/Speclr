@@ -1,5 +1,5 @@
 /**
- * The four Schedules — Build, Retainer, Setup and Audit. Transcribed from
+ * The four Schedules — Setup, Build, Retainer and Audit. Transcribed from
  * `docs/contract-content.md` §3, §3b, §3c and §3d.
  *
  * The list is closed. Per contract-system.md §3, the four are distinguished by
@@ -41,7 +41,12 @@ export interface ScheduleClause {
 
 export interface Schedule {
   key: ScheduleKey;
-  /** Canonical order, 1–4. Fixes both letter assignment and Part ordering. */
+  /**
+   * Canonical order, 1–4 — the order an engagement runs in: something is set
+   * up, built, then run, and looked at. It fixes the letter each Schedule
+   * prints under and the order the Services are numbered in, so the whole
+   * system reads in one direction.
+   */
   number: number;
   name: string;
   /** The italic statement under the schedule's cover heading. */
@@ -49,10 +54,15 @@ export interface Schedule {
   clauses: ScheduleClause[];
 }
 
-export const SCHEDULES: Schedule[] = [
+/**
+ * The four, in the order they were transcribed. `number` is what orders them —
+ * see `SCHEDULES` below. Left in transcription order so a clause can be checked
+ * against `docs/contract-content.md` §3–§3d without hunting for it.
+ */
+const TRANSCRIBED: Schedule[] = [
   {
     key: 'build',
-    number: 1,
+    number: 2,
     name: 'Build',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client, and governs work delivered as a defined project for a one-time fee.',
@@ -155,7 +165,7 @@ export const SCHEDULES: Schedule[] = [
   },
   {
     key: 'retainer',
-    number: 2,
+    number: 3,
     name: 'Retainer',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs all work delivered on a recurring monthly basis for a recurring fee.',
@@ -274,7 +284,7 @@ export const SCHEDULES: Schedule[] = [
   },
   {
     key: 'setup',
-    number: 3,
+    number: 1,
     name: 'Setup',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs configuration of accounts, domains and infrastructure that are set up once and then operated by the Client.',
@@ -471,22 +481,19 @@ export const SCHEDULES: Schedule[] = [
   },
 ];
 
+/**
+ * The four in canonical order — Setup, Build, Retainer, Audit.
+ *
+ * This is the order everything else follows: the letters `assemble()` hands
+ * out, the Service codes (01–04 Setup, 05–14 Build, …), and the tabs on both
+ * screens that list the library. One order, so the document and the tool cannot
+ * come to disagree about which Schedule comes first.
+ */
+export const SCHEDULES: Schedule[] = [...TRANSCRIBED].sort(
+  (a, b) => a.number - b.number,
+);
+
 /** The Schedules in canonical order, keyed. */
 export const SCHEDULE_BY_KEY: Record<ScheduleKey, Schedule> = Object.fromEntries(
   SCHEDULES.map((s) => [s.key, s]),
 ) as Record<ScheduleKey, Schedule>;
-
-/**
- * Browsing order for the two screens that show the library — the services page
- * and the contract builder's tick-list. It follows the shape of an engagement
- * (set something up, build it, run it, then look at it), which is the order a
- * person picks work in.
- *
- * Deliberately not `SCHEDULES`. That order is the document's: it fixes the
- * `number` each Schedule is known by and therefore the letter it prints under,
- * so changing it would restructure every contract. This one is only how the
- * screen is arranged.
- */
-export const SCHEDULE_TABS: Schedule[] = (
-  ['setup', 'build', 'retainer', 'audit'] as ScheduleKey[]
-).map((key) => SCHEDULE_BY_KEY[key]);

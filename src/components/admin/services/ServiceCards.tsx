@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsPanels } from "@/components/ui/tabs";
 import ScheduleTabList from "@/components/contract/ScheduleTabList";
 import { Package } from "lucide-react";
-import { SCHEDULE_TABS } from "@/lib/domain/contract/schedules";
+import { SCHEDULES } from "@/lib/domain/contract/schedules";
 import type { ContractService } from "@/lib/domain/contract/service";
 
 const Heading = () => (
@@ -45,8 +45,8 @@ const ROW = { "--service-row": "11rem" } as React.CSSProperties;
  * a time says all of it — so the tabs share the heading's row and take the
  * width, rather than sitting under it as a control.
  *
- * Tab order is `SCHEDULE_TABS` — the order an engagement runs in, not the
- * order the Schedules print in.
+ * Tab order is `SCHEDULES` — the order an engagement runs in, which is also
+ * the order the Schedules print in and the order the codes are numbered in.
  *
  * Read-only. Editing a Service is not in this milestone: the twenty-two are
  * seeded from the specs and there is nothing yet to correct.
@@ -76,14 +76,14 @@ export default function ServiceCards({
   }
 
   return (
-    <Tabs defaultValue={SCHEDULE_TABS[0].key} className="gap-5">
+    <Tabs defaultValue={SCHEDULES[0].key} className="gap-5">
       <div className="flex items-center gap-96">
         <Heading />
         <ScheduleTabList className="flex-1" />
       </div>
 
       <TabsPanels>
-        {SCHEDULE_TABS.map((schedule) => {
+        {SCHEDULES.map((schedule) => {
           const mine = services.filter((s) => s.scheduleKey === schedule.key);
 
           return (

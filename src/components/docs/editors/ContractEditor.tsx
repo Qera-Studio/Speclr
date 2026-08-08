@@ -19,7 +19,7 @@ import {
   type BlankValues,
 } from "@/lib/domain/contract/blanks";
 import { contractScopes } from "@/lib/domain/contract/completeness";
-import { SCHEDULE_TABS } from "@/lib/domain/contract/schedules";
+import { SCHEDULES } from "@/lib/domain/contract/schedules";
 import type {
   ContractService,
   LibraryLine,
@@ -339,7 +339,7 @@ export default function ContractEditor({
               />
             </Field>
 
-            <Tabs defaultValue={SCHEDULE_TABS[0].key}>
+            <Tabs defaultValue={SCHEDULES[0].key}>
               <ScheduleTabList />
 
               {/*
@@ -348,7 +348,7 @@ export default function ContractEditor({
                 mid-transition and shrink again on Setup's four.
               */}
               <TabsPanels className="h-56 overflow-y-auto">
-                {SCHEDULE_TABS.map((schedule) => {
+                {SCHEDULES.map((schedule) => {
                   const mine = filtered.filter(
                     (s) => s.scheduleKey === schedule.key,
                   );

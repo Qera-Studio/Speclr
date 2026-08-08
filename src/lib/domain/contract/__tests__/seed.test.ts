@@ -65,7 +65,7 @@ describe('the Master Service Agreement', () => {
 
 describe('the Schedules', () => {
   it('are exactly the four, in canonical order', () => {
-    expect(SCHEDULES.map((s) => s.key)).toEqual(['build', 'retainer', 'setup', 'audit']);
+    expect(SCHEDULES.map((s) => s.key)).toEqual(['setup', 'build', 'retainer', 'audit']);
     expect(SCHEDULES.map((s) => s.number)).toEqual([1, 2, 3, 4]);
   });
 
@@ -147,13 +147,13 @@ describe('the seeded Services', () => {
 
   /**
    * `sortOrder` fixes Part numbering, so it has to agree with the canonical
-   * grouping in contract-system.md §3: 01–10 Build, 11–16 Retainer, 17–20 Setup,
-   * 21–22 Audit. A service filed under the wrong Schedule changes which legal
-   * terms it inherits.
+   * grouping: 01–04 Setup, 05–14 Build, 15–20 Retainer, 21–22 Audit — the order
+   * an engagement runs in, matching `SCHEDULES`. A service filed under the
+   * wrong Schedule changes which legal terms it inherits.
    */
   it('files each service under the Schedule its code belongs to', () => {
     const expected = (code: number): string =>
-      code <= 10 ? 'build' : code <= 16 ? 'retainer' : code <= 20 ? 'setup' : 'audit';
+      code <= 4 ? 'setup' : code <= 14 ? 'build' : code <= 20 ? 'retainer' : 'audit';
     for (const service of SERVICES) {
       expect(service.scheduleKey).toBe(expected(Number(service.code)));
       expect(service.sortOrder).toBe(Number(service.code));
