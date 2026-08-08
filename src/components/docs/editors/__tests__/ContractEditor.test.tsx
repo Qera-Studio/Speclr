@@ -69,7 +69,7 @@ describe('ContractEditor', () => {
    */
   it('offers one tab per Schedule, in engagement order', () => {
     renderEditor();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))).toEqual([
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'Setup',
       'Build',
       'Retainer',

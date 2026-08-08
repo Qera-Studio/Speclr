@@ -24,7 +24,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  "group/tabs-list relative inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
   {
     variants: {
       variant: {
@@ -69,14 +69,49 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   )
 }
 
-function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+/**
+ * The pill behind the active tab. Base UI measures the active trigger onto
+ * `--active-tab-left` / `--active-tab-width`, so this slides between them
+ * rather than blinking from one to the next.
+ *
+ * A list using it should suppress its triggers' own `data-active` background —
+ * otherwise that paints instantly and there is nothing left to watch.
+ */
+function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
   return (
-    <TabsPrimitive.Panel
-      data-slot="tabs-content"
-      className={cn("flex-1 text-xs/relaxed outline-none", className)}
+    <TabsPrimitive.Indicator
+      data-slot="tabs-indicator"
+      className={cn(
+        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-background shadow-sm transition-[translate,width] duration-200 ease-out dark:border dark:border-input dark:bg-input/30",
+        className
+      )}
       {...props}
     />
   )
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+  return (
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      className={cn(
+        "flex-1 text-xs/relaxed outline-none",
+        // The panel carries the direction the tabs were moved in, so the
+        // arriving content comes from the side it was reached from. Inactive
+        // panels unmount, so this is an entrance only — the pushing is implied.
+        "duration-200 data-[activation-direction=left]:animate-in data-[activation-direction=left]:fade-in-0 data-[activation-direction=left]:slide-in-from-left-6 data-[activation-direction=right]:animate-in data-[activation-direction=right]:fade-in-0 data-[activation-direction=right]:slide-in-from-right-6",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsIndicator,
+  TabsContent,
+  tabsListVariants,
+}

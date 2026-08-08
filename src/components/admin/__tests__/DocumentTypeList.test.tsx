@@ -24,7 +24,7 @@ describe('DocumentTypeList', () => {
     expect(screen.getByRole('heading', { name: 'Services' })).toBeInTheDocument();
     // A tab per Schedule, because which Schedule a Service belongs to is what
     // decides how the work is paid for, approved and owned. Setup opens.
-    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))).toEqual([
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'Setup',
       'Build',
       'Retainer',

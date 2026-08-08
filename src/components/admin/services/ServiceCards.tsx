@@ -9,10 +9,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import ScheduleTabList from '@/components/contract/ScheduleTabList';
 import { Package } from 'lucide-react';
 import { SCHEDULE_TABS } from '@/lib/domain/contract/schedules';
 import type { ContractService } from '@/lib/domain/contract/service';
+
+const Heading = () => <h2 className="shrink-0 text-lg font-semibold">Services</h2>;
 
 /**
  * The services library, as cards grouped by Schedule.
@@ -20,7 +23,8 @@ import type { ContractService } from '@/lib/domain/contract/service';
  * One tab per Schedule, because the grouping *is* the information: a Service
  * belongs to exactly one Schedule, and which one decides how the work is paid
  * for, approved and owned. Twenty-two cards at once say none of that; a tab at
- * a time says all of it.
+ * a time says all of it — so the tabs share the heading's row and take the
+ * width, rather than sitting under it as a control.
  *
  * Tab order is `SCHEDULE_TABS` — the order an engagement runs in, not the
  * order the Schedules print in.
@@ -31,32 +35,30 @@ import type { ContractService } from '@/lib/domain/contract/service';
 export default function ServiceCards({ services }: { services: ContractService[] }) {
   if (services.length === 0) {
     return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Package />
-          </EmptyMedia>
-          <EmptyTitle>No services yet</EmptyTitle>
-          <EmptyDescription>
-            Run the contract seed to load the services library.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <>
+        <Heading />
+        <Empty className="mt-4 border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Package />
+            </EmptyMedia>
+            <EmptyTitle>No services yet</EmptyTitle>
+            <EmptyDescription>
+              Run the contract seed to load the services library.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </>
     );
   }
 
   return (
-    <Tabs defaultValue={SCHEDULE_TABS[0].key} className="gap-4">
-      <TabsList>
-        {SCHEDULE_TABS.map((schedule) => (
-          <TabsTrigger key={schedule.key} value={schedule.key}>
-            {schedule.name}
-            <span className="text-muted-foreground tabular-nums">
-              {services.filter((s) => s.scheduleKey === schedule.key).length}
-            </span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
+    // Clipped horizontally so a panel sliding in cannot widen the page.
+    <Tabs defaultValue={SCHEDULE_TABS[0].key} className="gap-5 overflow-x-clip">
+      <div className="flex items-center gap-6">
+        <Heading />
+        <ScheduleTabList size="lg" className="flex-1" />
+      </div>
 
       {SCHEDULE_TABS.map((schedule) => {
         const mine = services.filter((s) => s.scheduleKey === schedule.key);

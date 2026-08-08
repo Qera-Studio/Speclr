@@ -37,7 +37,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import ScheduleTabList from '@/components/contract/ScheduleTabList';
 import { DatePicker } from '@/components/ui/date-picker';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -274,11 +275,11 @@ export default function ContractEditor({
           </EditorSection>
 
           {/*
-            One tab per Schedule, so the list is a dozen-odd choices rather than
-            twenty-two. The Schedule is still not a decision to make
+            One tab per Schedule, so the list is a handful of choices rather
+            than twenty-two. The Schedule is still not a decision to make
             (contract-system.md §10) — it is where a service already lives, and
-            the tabs say so. Search cuts across all four; the count on each tab
-            is how many of that Schedule's services are ticked.
+            the tabs say so. Search cuts across all four. How many are ticked
+            is on the section header, where it counts the whole contract.
           */}
           <EditorSection
             title="Services"
@@ -296,22 +297,8 @@ export default function ContractEditor({
               />
             </Field>
 
-            <Tabs defaultValue={SCHEDULE_TABS[0].key}>
-              <TabsList className="w-full">
-                {SCHEDULE_TABS.map((schedule) => {
-                  const count = contract.parts.filter(
-                    (p) => p.scheduleKey === schedule.key,
-                  ).length;
-                  return (
-                    <TabsTrigger key={schedule.key} value={schedule.key}>
-                      {schedule.name}
-                      {count > 0 ? (
-                        <span className="text-muted-foreground tabular-nums">{count}</span>
-                      ) : null}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+            <Tabs defaultValue={SCHEDULE_TABS[0].key} className="overflow-x-clip">
+              <ScheduleTabList />
 
               {SCHEDULE_TABS.map((schedule) => {
                 const mine = filtered.filter((s) => s.scheduleKey === schedule.key);

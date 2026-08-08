@@ -90,7 +90,7 @@ export default function DocumentTypeList({
       */}
       {services ? (
         <div className="mt-auto pt-12">
-          <h2 className="mb-4 text-lg font-semibold">Services</h2>
+          {/* The heading lives inside ServiceCards — it shares a row with the tabs. */}
           <ServiceCards services={services} />
         </div>
       ) : null}
