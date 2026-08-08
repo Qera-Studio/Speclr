@@ -59,7 +59,7 @@ export const MSA_CLAUSES: MsaClause[] = [
       '"Proposal" means the commercial quotation setting out fees, timelines and engagement-specific particulars provided to the Client.',
       '"Retained Materials" has the meaning given at clause 11.2.',
       '"Revision" has the meaning given at clause 7.1.',
-      '"Schedule" means any of the Build, Monthly, Setup or Advice Schedules forming part of this Agreement.',
+      '"Schedule" means any of the Build, Retainer, Setup or Audit Schedules forming part of this Agreement.',
       '"Services" means the services performed by Qera under this Agreement.',
       '"Third-Party Services" means any platform, application programming interface, hosting provider, model provider, software tool, plugin, advertising platform, infrastructure service or technology not owned or controlled by Qera.',
       '1.2 Headings are for convenience only and shall not affect construction. References to a clause are references to a clause of this Agreement. Words importing the singular include the plural and vice versa. "Including" means including without limitation. A reference to writing includes email.',

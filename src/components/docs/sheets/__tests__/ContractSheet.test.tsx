@@ -83,10 +83,10 @@ describe('ContractSheet', () => {
   });
 
   /**
-   * A Monthly Part is delivered per cycle rather than finished once, so
+   * A Retainer Part is delivered per cycle rather than finished once, so
    * "Completion criteria" above "not applicable" would be a heading that lies.
    */
-  it('heads a Monthly Part by cycle rather than by completion', () => {
+  it('heads a Retainer Part by cycle rather than by completion', () => {
     render(<ContractSheet doc={contractDoc({ codes: ['14'] })} />);
     const part = screen.getByLabelText('Part A-1');
     expect(within(part).getByText('What is included each cycle')).toBeInTheDocument();

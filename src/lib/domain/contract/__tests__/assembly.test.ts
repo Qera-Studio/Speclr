@@ -31,37 +31,37 @@ describe('assemble', () => {
   });
 
   it('renders only the Schedules that have a Part', () => {
-    const assembled = assemble([part('14', 'monthly', 14)]);
+    const assembled = assemble([part('14', 'retainer', 14)]);
     expect(assembled).toHaveLength(1);
-    expect(assembled[0].schedule.key).toBe('monthly');
+    expect(assembled[0].schedule.key).toBe('retainer');
     expect(assembled[0].parts.map((p) => p.label)).toEqual(['A-1']);
   });
 
   /**
-   * The rule that catches people out (contract-system.md §4). Monthly is
+   * The rule that catches people out (contract-system.md §4). Retainer is
    * Schedule 2 and Setup is Schedule 3, but a contract holding only those two
    * letters them A and B. Lettering has no gaps.
    */
   it('letters from A with no gaps when earlier Schedules are absent', () => {
-    const assembled = assemble([part('14', 'monthly', 14), part('17', 'setup', 17)]);
+    const assembled = assemble([part('14', 'retainer', 14), part('17', 'setup', 17)]);
     expect(assembled.map((s) => [s.schedule.key, s.letter])).toEqual([
-      ['monthly', 'A'],
+      ['retainer', 'A'],
       ['setup', 'B'],
     ]);
   });
 
   it('orders Schedules canonically regardless of tick order', () => {
     const assembled = assemble([
-      part('21', 'advice', 21),
+      part('21', 'audit', 21),
       part('17', 'setup', 17),
       part('01', 'build', 1),
-      part('11', 'monthly', 11),
+      part('11', 'retainer', 11),
     ]);
     expect(assembled.map((s) => s.schedule.key)).toEqual([
       'build',
-      'monthly',
+      'retainer',
       'setup',
-      'advice',
+      'audit',
     ]);
     expect(assembled.map((s) => s.letter)).toEqual(['A', 'B', 'C', 'D']);
   });
@@ -79,7 +79,7 @@ describe('assemble', () => {
     const assembled = assemble([
       part('01', 'build', 1),
       part('05', 'build', 5),
-      part('11', 'monthly', 11),
+      part('11', 'retainer', 11),
     ]);
     expect(assembled[0].parts.map((p) => p.label)).toEqual(['A-1', 'A-2']);
     expect(assembled[1].parts.map((p) => p.label)).toEqual(['B-1']);
@@ -90,7 +90,7 @@ describe('assemble', () => {
     const assembled = assemble([
       part('01', 'build', 1),
       part('05', 'build', 5),
-      part('12', 'monthly', 12),
+      part('12', 'retainer', 12),
       part('17', 'setup', 17),
     ]);
     expect(

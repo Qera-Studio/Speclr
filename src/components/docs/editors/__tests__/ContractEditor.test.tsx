@@ -44,31 +44,52 @@ function renderEditor() {
   );
 }
 
+/** The tick-list is one tab per Schedule; Build is not the one that opens. */
+const openBuild = (u: ReturnType<typeof userEvent.setup>) =>
+  u.click(screen.getByRole('tab', { name: /^Build/ }));
+
 beforeEach(() => {
   jest.clearAllMocks();
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:x') });
 });
 
 describe('ContractEditor', () => {
-  it('renders the client picker and the service list', () => {
+  it('renders the client picker and the service list', async () => {
+    const u = userEvent.setup();
     renderEditor();
     expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
+    await openBuild(u);
     expect(screen.getByRole('checkbox', { name: /Shopify storefront/i })).toBeInTheDocument();
   });
 
   /**
-   * A flat, searchable list with the Schedule as a quiet label — the user picks
-   * work, and the system routes it (contract-system.md §4).
+   * A tab per Schedule, in the order an engagement runs rather than the order
+   * the Schedules print in. The user picks work; the system routes it
+   * (contract-system.md §4), so the tab is where a service already lives.
    */
-  it('shows each service with the Schedule it routes to, not as a filter', () => {
+  it('offers one tab per Schedule, in engagement order', () => {
     renderEditor();
-    expect(screen.getByRole('checkbox', { name: /Shopify storefront.*Build/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/schedule/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))).toEqual([
+      'Setup',
+      'Build',
+      'Retainer',
+      'Audit',
+    ]);
+  });
+
+  it('lists a service only under its own Schedule', async () => {
+    const u = userEvent.setup();
+    renderEditor();
+    // Setup is the tab that opens, and Shopify is Build work.
+    expect(screen.queryByRole('checkbox', { name: /Shopify storefront/i })).not.toBeInTheDocument();
+    await openBuild(u);
+    expect(screen.getByRole('checkbox', { name: /Shopify storefront/i })).toBeInTheDocument();
   });
 
   it('filters the service list by search', async () => {
     const u = userEvent.setup();
     renderEditor();
+    await openBuild(u);
     await u.type(screen.getByLabelText(/search services/i), 'brand');
     expect(screen.getByRole('checkbox', { name: /Brand identity/i })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Shopify/i })).not.toBeInTheDocument();
@@ -77,6 +98,7 @@ describe('ContractEditor', () => {
   it('opens a Part section once a service is ticked', async () => {
     const u = userEvent.setup();
     renderEditor();
+    await openBuild(u);
     await u.click(screen.getByRole('checkbox', { name: /Shopify storefront/i }));
     expect(screen.getByRole('button', { name: /Part A-1 — Shopify storefront/ })).toBeInTheDocument();
   });
@@ -85,6 +107,7 @@ describe('ContractEditor', () => {
   it('numbers Parts canonically, not in tick order', async () => {
     const u = userEvent.setup();
     renderEditor();
+    await openBuild(u);
     await u.click(screen.getByRole('checkbox', { name: /Brand identity/i }));
     await u.click(screen.getByRole('checkbox', { name: /Shopify storefront/i }));
     expect(screen.getByRole('button', { name: /Part A-1 — Shopify storefront/ })).toBeInTheDocument();
@@ -94,6 +117,7 @@ describe('ContractEditor', () => {
   it('reports the blanks still to fill', async () => {
     const u = userEvent.setup();
     renderEditor();
+    await openBuild(u);
     await u.click(screen.getByRole('checkbox', { name: /Shopify storefront/i }));
     // Part 01's Fee row is drafted '[ ]', so at least one is outstanding.
     expect(screen.getByText(/blank(s)? still to fill/i)).toBeInTheDocument();
@@ -105,6 +129,7 @@ describe('ContractEditor', () => {
     renderEditor();
 
     await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await openBuild(u);
     await u.click(screen.getByRole('checkbox', { name: /Shopify storefront/i }));
     await u.click(screen.getByRole('button', { name: /save draft/i }));
 

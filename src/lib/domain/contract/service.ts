@@ -107,7 +107,7 @@ export const serviceContentSchema = z.object({
 export const serviceInputSchema = serviceContentSchema.extend({
   code: z.string().trim().regex(/^\d{2}$/, 'A service code is two digits.'),
   name: z.string().trim().min(1).max(200),
-  scheduleKey: z.enum(['build', 'monthly', 'setup', 'advice']),
+  scheduleKey: z.enum(['build', 'retainer', 'setup', 'audit']),
   sortOrder: z.number().int().min(0).max(99),
   archived: z.boolean(),
 });

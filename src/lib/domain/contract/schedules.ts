@@ -1,5 +1,5 @@
 /**
- * The four Schedules — Build, Monthly, Setup and Advice. Transcribed from
+ * The four Schedules — Build, Retainer, Setup and Audit. Transcribed from
  * `docs/contract-content.md` §3, §3b, §3c and §3d.
  *
  * The list is closed. Per contract-system.md §3, the four are distinguished by
@@ -10,7 +10,7 @@
  * ## Two conventions in this file
  *
  * **`{L}` is the schedule's rendered letter.** A Schedule's letter depends on
- * which other Schedules a given contract includes — a contract of Monthly and
+ * which other Schedules a given contract includes — a contract of Retainer and
  * Setup work letters them A and B, not B and C (contract-system.md §4). So the
  * letter cannot be baked in here; `{L}` is substituted at assembly time, in
  * both the clause's own number and in every cross-reference to a sibling
@@ -27,7 +27,7 @@
  */
 
 /** Which Schedule a service belongs to. Closed set — see the note above. */
-export type ScheduleKey = 'build' | 'monthly' | 'setup' | 'advice';
+export type ScheduleKey = 'build' | 'retainer' | 'setup' | 'audit';
 
 export interface ScheduleClause {
   number: number;
@@ -154,9 +154,9 @@ export const SCHEDULES: Schedule[] = [
     ],
   },
   {
-    key: 'monthly',
+    key: 'retainer',
     number: 2,
-    name: 'Monthly',
+    name: 'Retainer',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs all work delivered on a recurring monthly basis for a recurring fee.',
     clauses: [
@@ -379,9 +379,9 @@ export const SCHEDULES: Schedule[] = [
     ],
   },
   {
-    key: 'advice',
+    key: 'audit',
     number: 4,
-    name: 'Advice',
+    name: 'Audit',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs engagements where the deliverable is analysis, recommendation or strategy rather than implementation.',
     clauses: [
@@ -399,7 +399,7 @@ export const SCHEDULES: Schedule[] = [
         heading: 'The Deliverable is a Document',
         body: [
           '{L}2.1 Work under this Schedule is delivered as a written document, a recorded walkthrough, a working session, or a combination of these, as stated in the Part.',
-          '{L}2.2 This Schedule includes no implementation. Building, changing, configuring or operating anything identified in the deliverable is separate work under the Build, Monthly or Setup Schedule.',
+          '{L}2.2 This Schedule includes no implementation. Building, changing, configuring or operating anything identified in the deliverable is separate work under the Build, Retainer or Setup Schedule.',
         ],
       },
       {
@@ -475,3 +475,18 @@ export const SCHEDULES: Schedule[] = [
 export const SCHEDULE_BY_KEY: Record<ScheduleKey, Schedule> = Object.fromEntries(
   SCHEDULES.map((s) => [s.key, s]),
 ) as Record<ScheduleKey, Schedule>;
+
+/**
+ * Browsing order for the two screens that show the library — the services page
+ * and the contract builder's tick-list. It follows the shape of an engagement
+ * (set something up, build it, run it, then look at it), which is the order a
+ * person picks work in.
+ *
+ * Deliberately not `SCHEDULES`. That order is the document's: it fixes the
+ * `number` each Schedule is known by and therefore the letter it prints under,
+ * so changing it would restructure every contract. This one is only how the
+ * screen is arranged.
+ */
+export const SCHEDULE_TABS: Schedule[] = (
+  ['setup', 'build', 'retainer', 'audit'] as ScheduleKey[]
+).map((key) => SCHEDULE_BY_KEY[key]);

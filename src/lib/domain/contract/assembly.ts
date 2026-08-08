@@ -8,7 +8,7 @@
  * 1. **A Schedule renders only where at least one of its services was ticked.**
  *    Nothing empty appears anywhere.
  * 2. **Letters are assigned in canonical Schedule order, skipping the absent.**
- *    A contract of Monthly and Setup work letters them A and B, not B and C.
+ *    A contract of Retainer and Setup work letters them A and B, not B and C.
  *    The Schedule's own key is stored; the letter is derived per contract and
  *    is never persisted.
  * 3. **Parts are numbered in canonical service order, not tick order.** Ticking

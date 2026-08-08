@@ -65,13 +65,13 @@ describe('the Master Service Agreement', () => {
 
 describe('the Schedules', () => {
   it('are exactly the four, in canonical order', () => {
-    expect(SCHEDULES.map((s) => s.key)).toEqual(['build', 'monthly', 'setup', 'advice']);
+    expect(SCHEDULES.map((s) => s.key)).toEqual(['build', 'retainer', 'setup', 'audit']);
     expect(SCHEDULES.map((s) => s.number)).toEqual([1, 2, 3, 4]);
   });
 
   it('are reachable by key', () => {
     expect(SCHEDULE_BY_KEY.build.name).toBe('Build');
-    expect(SCHEDULE_BY_KEY.advice.number).toBe(4);
+    expect(SCHEDULE_BY_KEY.audit.number).toBe(4);
   });
 
   it('number every clause sequentially from 1', () => {
@@ -147,13 +147,13 @@ describe('the seeded Services', () => {
 
   /**
    * `sortOrder` fixes Part numbering, so it has to agree with the canonical
-   * grouping in contract-system.md §3: 01–10 Build, 11–16 Monthly, 17–20 Setup,
-   * 21–22 Advice. A service filed under the wrong Schedule changes which legal
+   * grouping in contract-system.md §3: 01–10 Build, 11–16 Retainer, 17–20 Setup,
+   * 21–22 Audit. A service filed under the wrong Schedule changes which legal
    * terms it inherits.
    */
   it('files each service under the Schedule its code belongs to', () => {
     const expected = (code: number): string =>
-      code <= 10 ? 'build' : code <= 16 ? 'monthly' : code <= 20 ? 'setup' : 'advice';
+      code <= 10 ? 'build' : code <= 16 ? 'retainer' : code <= 20 ? 'setup' : 'audit';
     for (const service of SERVICES) {
       expect(service.scheduleKey).toBe(expected(Number(service.code)));
       expect(service.sortOrder).toBe(Number(service.code));
@@ -238,7 +238,7 @@ describe('the seeded Services', () => {
 
   /**
    * A Part with no fee cannot be quoted, and the fee row is the blank that
-   * blocks export. Monthly Parts label it differently — a recurring fee is not
+   * blocks export. Retainer Parts label it differently — a recurring fee is not
    * the same commitment as a one-time one — so match on the row that carries
    * the money rather than on a fixed label.
    */

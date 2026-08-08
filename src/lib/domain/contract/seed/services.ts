@@ -3,8 +3,8 @@
  * `docs/contract-content.md` §4 through §4ac.
  *
  * `sortOrder` follows the canonical ordering in contract-system.md §3, which is
- * what fixes Part numbering: 01–10 Build, 11–16 Monthly, 17–20 Setup, 21–22
- * Advice. A Service belongs to exactly one Schedule, and where the same work is
+ * what fixes Part numbering: 01–10 Build, 11–16 Retainer, 17–20 Setup, 21–22
+ * Audit. A Service belongs to exactly one Schedule, and where the same work is
  * built once and then operated monthly that is two Services — 08/09/10 build,
  * 16 operates.
  *
@@ -748,7 +748,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '11',
     name: 'Content production',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 11,
     archived: false,
     dependencies: ['05'],
@@ -770,7 +770,7 @@ export const SERVICES: ContractService[] = [
     accountTerms: [
       'All platform accounts remain owned by and registered to the Client throughout. Qera Private Limited holds access only for the engagement and only for platforms on the matrix.',
       'The Client maintains its own recovery email, recovery phone and second-factor access on every account. Qera Private Limited is not liable for loss of access, restriction, suspension or enforcement action taken by a platform.',
-      'Final approved content delivered in a cycle may be used by the Client for its business from the cycle in which it was paid for. Working files, unused concepts, raw footage and project files remain the property of Qera Private Limited, as set out in the Monthly Schedule.',
+      'Final approved content delivered in a cycle may be used by the Client for its business from the cycle in which it was paid for. Working files, unused concepts, raw footage and project files remain the property of Qera Private Limited, as set out in the Retainer Schedule.',
       'Content is produced from footage and assets supplied by the Client. Shooting, filming and photography are not included.',
     ],
     limits: [
@@ -817,7 +817,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '12',
     name: 'Community management',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 12,
     archived: false,
     dependencies: [],
@@ -883,7 +883,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '13',
     name: 'Paid social management',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 13,
     archived: false,
     dependencies: ['19'],
@@ -921,7 +921,7 @@ export const SERVICES: ContractService[] = [
     ],
     completion: [
       'Not applicable. Delivery under this Part is measured by cycle, against the included items above.',
-      'Return on ad spend, cost per acquisition, cost per lead, reach and revenue are not deliverables and are not guaranteed, on the terms set out in the Monthly Schedule.',
+      'Return on ad spend, cost per acquisition, cost per lead, reach and revenue are not deliverables and are not guaranteed, on the terms set out in the Retainer Schedule.',
     ],
     receives: [
       "Campaigns built and running in the Client's own ad account",
@@ -950,7 +950,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '14',
     name: 'Website maintenance',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 14,
     archived: false,
     dependencies: [],
@@ -1016,7 +1016,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '15',
     name: 'Conversion optimisation retainer',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 15,
     archived: false,
     dependencies: ['19'],
@@ -1052,7 +1052,7 @@ export const SERVICES: ContractService[] = [
     limitsNotes: ['Anything beyond these is Additional Work.'],
     completion: [
       'Not applicable. Delivery under this Part is measured by cycle, against the included items above.',
-      'Conversion rate, revenue, lead volume and any improvement over a prior period are not deliverables and are not guaranteed, on the terms set out in the Monthly Schedule.',
+      'Conversion rate, revenue, lead volume and any improvement over a prior period are not deliverables and are not guaranteed, on the terms set out in the Retainer Schedule.',
     ],
     receives: [
       'Changes implemented and live on its own property',
@@ -1080,7 +1080,7 @@ export const SERVICES: ContractService[] = [
   {
     code: '16',
     name: 'AI system operation',
-    scheduleKey: 'monthly',
+    scheduleKey: 'retainer',
     sortOrder: 16,
     archived: false,
     dependencies: ['08', '09', '10'],
@@ -1382,14 +1382,14 @@ export const SERVICES: ContractService[] = [
   {
     code: '21',
     name: 'Audit or teardown',
-    scheduleKey: 'advice',
+    scheduleKey: 'audit',
     sortOrder: 21,
     archived: false,
     dependencies: [],
     pairings: ['07', '02', '03', '16'],
     overview: [
       'Structured review of an existing property, system or presence, delivered as a written document setting out findings, their commercial significance and prioritised recommendations.',
-      'This Part delivers analysis. Implementation of any recommendation constitutes a separate engagement under the Build, Monthly or Setup Schedule.',
+      'This Part delivers analysis. Implementation of any recommendation constitutes a separate engagement under the Build, Retainer or Setup Schedule.',
     ],
     included: [
       'Review of [1] property or system, being a website, storefront, social presence, automation system or brand presence as specified',
@@ -1443,14 +1443,14 @@ export const SERVICES: ContractService[] = [
   {
     code: '22',
     name: 'Strategy sprint',
-    scheduleKey: 'advice',
+    scheduleKey: 'audit',
     sortOrder: 22,
     archived: false,
     dependencies: [],
     pairings: ['11', '13'],
     overview: [
       'A time-boxed engagement addressing a defined strategic question, delivered through working sessions and a written recommendation document.',
-      'This Part delivers a recommended course of action. Execution of that course of action constitutes a separate engagement under the Build, Monthly or Setup Schedule.',
+      'This Part delivers a recommended course of action. Execution of that course of action constitutes a separate engagement under the Build, Retainer or Setup Schedule.',
     ],
     included: [
       'Definition of [1] strategic question, agreed in writing prior to commencement',

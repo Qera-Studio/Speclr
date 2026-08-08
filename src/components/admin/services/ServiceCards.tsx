@@ -1,3 +1,5 @@
+'use client';
+
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -7,19 +9,21 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package } from 'lucide-react';
-import { SCHEDULES } from '@/lib/domain/contract/schedules';
+import { SCHEDULE_TABS } from '@/lib/domain/contract/schedules';
 import type { ContractService } from '@/lib/domain/contract/service';
 
 /**
  * The services library, as cards grouped by Schedule.
  *
- * Grouped rather than listed flat because the grouping *is* the information: a
- * Service belongs to exactly one Schedule, and which one decides how the work
- * is paid for, approved and owned. The contract builder deliberately does the
- * opposite — there the list is flat and searchable with the Schedule as a quiet
- * label, because at build time you pick work, not legal frames
- * (contract-system.md §10).
+ * One tab per Schedule, because the grouping *is* the information: a Service
+ * belongs to exactly one Schedule, and which one decides how the work is paid
+ * for, approved and owned. Twenty-two cards at once say none of that; a tab at
+ * a time says all of it.
+ *
+ * Tab order is `SCHEDULE_TABS` — the order an engagement runs in, not the
+ * order the Schedules print in.
  *
  * Read-only. Editing a Service is not in this milestone: the twenty-two are
  * seeded from the specs and there is nothing yet to correct.
@@ -42,19 +46,24 @@ export default function ServiceCards({ services }: { services: ContractService[]
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {SCHEDULES.map((schedule) => {
+    <Tabs defaultValue={SCHEDULE_TABS[0].key} className="gap-4">
+      <TabsList>
+        {SCHEDULE_TABS.map((schedule) => (
+          <TabsTrigger key={schedule.key} value={schedule.key}>
+            {schedule.name}
+            <span className="text-muted-foreground tabular-nums">
+              {services.filter((s) => s.scheduleKey === schedule.key).length}
+            </span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {SCHEDULE_TABS.map((schedule) => {
         const mine = services.filter((s) => s.scheduleKey === schedule.key);
-        if (mine.length === 0) return null;
 
         return (
-          <section key={schedule.key} className="flex flex-col gap-3">
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-sm font-semibold">{schedule.name}</h3>
-              <p className="text-xs text-muted-foreground">
-                {mine.length} {mine.length === 1 ? 'service' : 'services'}
-              </p>
-            </div>
+          <TabsContent key={schedule.key} value={schedule.key}>
+            <p className="mb-3 text-xs text-muted-foreground">{schedule.preamble}</p>
 
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {mine.map((service) => (
@@ -89,9 +98,9 @@ export default function ServiceCards({ services }: { services: ContractService[]
                 </li>
               ))}
             </ul>
-          </section>
+          </TabsContent>
         );
       })}
-    </div>
+    </Tabs>
   );
 }

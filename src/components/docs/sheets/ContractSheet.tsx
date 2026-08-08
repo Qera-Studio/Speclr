@@ -328,7 +328,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
     ...parts.map(({ part, label }) => {
       const at = (section: string) => scopes.get(`part.${part.code}.${section}`);
       // Headings come from `partSectionLabel`, which the editor reads too — a
-      // Monthly Part is delivered per cycle and says so.
+      // Retainer Part is delivered per cycle and says so.
       const section = (id: string, node: React.ReactNode) => (
         <div className="[break-inside:avoid] mb-[24px]">
           <h4 className={SUBHEADING}>{partSectionLabel(id, part.scheduleKey)}</h4>

@@ -19,7 +19,7 @@ import {
   type BlankValues,
 } from '@/lib/domain/contract/blanks';
 import { contractScopes } from '@/lib/domain/contract/completeness';
-import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
+import { SCHEDULE_TABS } from '@/lib/domain/contract/schedules';
 import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
 import type { StudioInfo } from '@/lib/domain/studio';
 import {
@@ -37,6 +37,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatePicker } from '@/components/ui/date-picker';
 import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
@@ -273,10 +274,11 @@ export default function ContractEditor({
           </EditorSection>
 
           {/*
-            A flat, searchable list with the Schedule as a quiet label rather
-            than a filter (contract-system.md §10). You pick work here; the
-            system routes it. Which Schedule a service lands in is information,
-            not a decision to make.
+            One tab per Schedule, so the list is a dozen-odd choices rather than
+            twenty-two. The Schedule is still not a decision to make
+            (contract-system.md §10) — it is where a service already lives, and
+            the tabs say so. Search cuts across all four; the count on each tab
+            is how many of that Schedule's services are ticked.
           */}
           <EditorSection
             title="Services"
@@ -294,35 +296,57 @@ export default function ContractEditor({
               />
             </Field>
 
-            <ul className="flex flex-col gap-1">
-              {filtered.map((service) => (
-                <li key={service.code}>
-                  <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={ticked.has(service.code)}
-                      onCheckedChange={(checked) =>
-                        checked ? addPart(service) : removePart(service.code)
-                      }
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm">
-                        <span className="text-muted-foreground tabular-nums">{service.code}</span>{' '}
-                        {service.name}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {SCHEDULE_BY_KEY[service.scheduleKey].name}
-                      </span>
-                    </span>
-                  </label>
-                </li>
-              ))}
-              {filtered.length === 0 ? (
-                <li className="px-2 py-1.5 text-sm text-muted-foreground">
-                  No matching services.
-                </li>
-              ) : null}
-            </ul>
+            <Tabs defaultValue={SCHEDULE_TABS[0].key}>
+              <TabsList className="w-full">
+                {SCHEDULE_TABS.map((schedule) => {
+                  const count = contract.parts.filter(
+                    (p) => p.scheduleKey === schedule.key,
+                  ).length;
+                  return (
+                    <TabsTrigger key={schedule.key} value={schedule.key}>
+                      {schedule.name}
+                      {count > 0 ? (
+                        <span className="text-muted-foreground tabular-nums">{count}</span>
+                      ) : null}
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+
+              {SCHEDULE_TABS.map((schedule) => {
+                const mine = filtered.filter((s) => s.scheduleKey === schedule.key);
+                return (
+                  <TabsContent key={schedule.key} value={schedule.key}>
+                    <ul className="flex flex-col gap-1">
+                      {mine.map((service) => (
+                        <li key={service.code}>
+                          <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
+                            <Checkbox
+                              className="mt-0.5"
+                              checked={ticked.has(service.code)}
+                              onCheckedChange={(checked) =>
+                                checked ? addPart(service) : removePart(service.code)
+                              }
+                            />
+                            <span className="min-w-0 flex-1 text-sm">
+                              <span className="text-muted-foreground tabular-nums">
+                                {service.code}
+                              </span>{' '}
+                              {service.name}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                      {mine.length === 0 ? (
+                        <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No matching services.
+                        </li>
+                      ) : null}
+                    </ul>
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
           </EditorSection>
 
           {/*

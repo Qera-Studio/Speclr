@@ -22,10 +22,15 @@ describe('DocumentTypeList', () => {
     render(<DocumentTypeList spec={DOC_TYPES.CON} documents={[]} services={services} />);
 
     expect(screen.getByRole('heading', { name: 'Services' })).toBeInTheDocument();
-    expect(screen.getByText('Brand identity')).toBeInTheDocument();
-    // Grouped by Schedule, because which Schedule a Service belongs to is what
-    // decides how the work is paid for, approved and owned.
-    expect(screen.getByRole('heading', { name: 'Build' })).toBeInTheDocument();
+    // A tab per Schedule, because which Schedule a Service belongs to is what
+    // decides how the work is paid for, approved and owned. Setup opens.
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.replace(/\d+$/, ''))).toEqual([
+      'Setup',
+      'Build',
+      'Retainer',
+      'Audit',
+    ]);
+    expect(screen.getByText('Domain and DNS')).toBeInTheDocument();
   });
 
   it('shows the services empty state when there are none', () => {

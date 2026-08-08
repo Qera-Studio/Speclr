@@ -58,7 +58,7 @@ function scopeOf(
 /**
  * The heading each Part section prints under.
  *
- * A Monthly Part is delivered per cycle rather than finished once, and its
+ * A Retainer Part is delivered per cycle rather than finished once, and its
  * headings say so: it is included "each cycle", it has no completion criteria
  * to meet, and it carries a recurring fee rather than a fee and a timeline.
  * Content §5 requires the distinction, and it is worth keeping honest — a
@@ -68,12 +68,12 @@ function scopeOf(
  * calling the same section different things.
  */
 export function partSectionLabel(section: string, scheduleKey: ScheduleKey): string {
-  const monthly = scheduleKey === 'monthly';
+  const retainer = scheduleKey === 'retainer';
   switch (section) {
     case 'overview':
       return 'Overview';
     case 'included':
-      return monthly ? 'What is included each cycle' : 'What is included';
+      return retainer ? 'What is included each cycle' : 'What is included';
     case 'account':
       return 'Account and ownership arrangement';
     case 'limits':
@@ -81,7 +81,7 @@ export function partSectionLabel(section: string, scheduleKey: ScheduleKey): str
     case 'limitsNotes':
       return 'How the limits are counted';
     case 'completion':
-      return monthly ? 'How delivery is measured' : 'Completion criteria';
+      return retainer ? 'How delivery is measured' : 'Completion criteria';
     case 'receives':
       return 'What the Client receives';
     case 'receivesNotes':
@@ -93,7 +93,7 @@ export function partSectionLabel(section: string, scheduleKey: ScheduleKey): str
     case 'costs':
       return 'Costs the Client pays directly';
     case 'fee':
-      return monthly ? 'Fee and cycle' : 'Fee and timeline';
+      return retainer ? 'Fee and cycle' : 'Fee and timeline';
     default:
       return section;
   }
