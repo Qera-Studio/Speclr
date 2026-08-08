@@ -1,53 +1,69 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   createDraft,
   deleteDraftAction,
   finalizeDocument,
   updateDraft,
-} from '@/server/actions/documents';
-import { todayISO } from '@/lib/domain/dates';
-import { DOC_TYPES } from '@/lib/domain/registry';
-import { assemble } from '@/lib/domain/contract/assembly';
+} from "@/server/actions/documents";
+import { todayISO } from "@/lib/domain/dates";
+import { DOC_TYPES } from "@/lib/domain/registry";
+import { assemble } from "@/lib/domain/contract/assembly";
 import {
   blankValue,
   blanksOf,
   disagreeingRows,
   isUnfilled,
   type BlankValues,
-} from '@/lib/domain/contract/blanks';
-import { contractScopes } from '@/lib/domain/contract/completeness';
-import { SCHEDULE_TABS } from '@/lib/domain/contract/schedules';
-import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
-import type { StudioInfo } from '@/lib/domain/studio';
+} from "@/lib/domain/contract/blanks";
+import { contractScopes } from "@/lib/domain/contract/completeness";
+import { SCHEDULE_TABS } from "@/lib/domain/contract/schedules";
+import type {
+  ContractService,
+  LibraryLine,
+} from "@/lib/domain/contract/service";
+import type { StudioInfo } from "@/lib/domain/studio";
 import {
   clientSnapshotOf,
   type ClientRecord,
   type ClientSnapshot,
   type ContractData,
   type ContractDocument,
-} from '@/lib/domain/types';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Combobox } from '@/components/ui/combobox';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import ScheduleTabList from '@/components/contract/ScheduleTabList';
-import { DatePicker } from '@/components/ui/date-picker';
-import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
-import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
-import EditorSection from './EditorSection';
-import { ClauseFields, ContentText, shown, type ContentPatch } from './ContentFields';
-import { contentOf, type DocContent } from '@/lib/domain/docContent';
-import { workspaceTitle } from '../workspaceTitle';
+} from "@/lib/domain/types";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Combobox } from "@/components/ui/combobox";
+import { Tabs, TabsContent, TabsPanels } from "@/components/ui/tabs";
+import ScheduleTabList from "@/components/contract/ScheduleTabList";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  contractBlocks,
+  COVER_CLASSNAME,
+} from "@/components/docs/sheets/ContractSheet";
+import DocumentWorkspace from "@/components/docs/DocumentWorkspace";
+import EditorSection from "./EditorSection";
+import {
+  ClauseFields,
+  ContentText,
+  shown,
+  type ContentPatch,
+} from "./ContentFields";
+import { contentOf, type DocContent } from "@/lib/domain/docContent";
+import { workspaceTitle } from "../workspaceTitle";
 
-const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
+const EMPTY_SNAPSHOT: ClientSnapshot = {
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+};
 const EMPTY_CONTRACT: ContractData = { parts: [], blanks: {}, library: {} };
 
 interface ContractEditorProps {
@@ -73,13 +89,16 @@ export default function ContractEditor({
   title,
 }: ContractEditorProps) {
   const router = useRouter();
-  const [clientId, setClientId] = useState(doc?.clientId ?? '');
+  const [clientId, setClientId] = useState(doc?.clientId ?? "");
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
-  const [contract, setContract] = useState<ContractData>(doc?.contract ?? EMPTY_CONTRACT);
+  const [contract, setContract] = useState<ContractData>(
+    doc?.contract ?? EMPTY_CONTRACT,
+  );
   /** Text overrides — see the note in `DocumentEditor`. */
   const [content, setContent] = useState<DocContent>(doc?.content ?? {});
-  const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
-  const [serviceQuery, setServiceQuery] = useState('');
+  const patchContent: ContentPatch = (patch) =>
+    setContent((prev) => ({ ...prev, ...patch }));
+  const [serviceQuery, setServiceQuery] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,10 +110,10 @@ export default function ContractEditor({
     : (doc?.clientSnapshot ?? EMPTY_SNAPSHOT);
 
   const previewDoc: ContractDocument = {
-    id: doc?.id ?? 'preview',
+    id: doc?.id ?? "preview",
     studioSnapshot: doc?.studioSnapshot ?? studio,
-    type: 'CON',
-    status: doc?.status ?? 'draft',
+    type: "CON",
+    status: doc?.status ?? "draft",
     clientId,
     clientSnapshot,
     issueDate,
@@ -118,11 +137,18 @@ export default function ContractEditor({
   const addPart = (service: ContractService) => {
     const library = { ...contract.library };
     for (const line of [...exclusions, ...clientInputs]) {
-      if (service.exclusionIds.includes(line.id) || service.clientInputIds.includes(line.id)) {
+      if (
+        service.exclusionIds.includes(line.id) ||
+        service.clientInputIds.includes(line.id)
+      ) {
         library[line.id] = line.text;
       }
     }
-    setContract((prev) => ({ ...prev, parts: [...prev.parts, { ...service }], library }));
+    setContract((prev) => ({
+      ...prev,
+      parts: [...prev.parts, { ...service }],
+      library,
+    }));
   };
 
   /**
@@ -132,7 +158,10 @@ export default function ContractEditor({
    * finalize, when only the resolved contract is materialised.
    */
   const removePart = (code: string) =>
-    setContract((prev) => ({ ...prev, parts: prev.parts.filter((p) => p.code !== code) }));
+    setContract((prev) => ({
+      ...prev,
+      parts: prev.parts.filter((p) => p.code !== code),
+    }));
 
   const patchPart = (code: string, patch: Partial<ContractService>) =>
     setContract((prev) => ({
@@ -141,11 +170,16 @@ export default function ContractEditor({
     }));
 
   const setBlank = (key: string, value: string) =>
-    setContract((prev) => ({ ...prev, blanks: { ...prev.blanks, [key]: value } }));
+    setContract((prev) => ({
+      ...prev,
+      blanks: { ...prev.blanks, [key]: value },
+    }));
 
   const scopes = useMemo(() => contractScopes(contract), [contract]);
   const unfilled = scopes.flatMap((scope) =>
-    blanksOf(scope.parsed).filter((blank) => isUnfilled(contract.blanks, blank)),
+    blanksOf(scope.parsed).filter((blank) =>
+      isUnfilled(contract.blanks, blank),
+    ),
   );
 
   /**
@@ -159,7 +193,7 @@ export default function ContractEditor({
         [...part.limits, ...part.fee].map((row, i) => ({
           label: row.label,
           value: blankValue(contract.blanks, {
-            key: `part.${part.code}.${part.limits.includes(row) ? 'limits' : 'fee'}#${i}`,
+            key: `part.${part.code}.${part.limits.includes(row) ? "limits" : "fee"}#${i}`,
             fallback: row.value,
           }),
           source: `Part ${label}`,
@@ -169,7 +203,9 @@ export default function ContractEditor({
   );
 
   const filtered = services.filter((s) =>
-    `${s.code} ${s.name}`.toLowerCase().includes(serviceQuery.trim().toLowerCase()),
+    `${s.code} ${s.name}`
+      .toLowerCase()
+      .includes(serviceQuery.trim().toLowerCase()),
   );
 
   const buildPayload = () => ({ issueDate, contract, content });
@@ -186,10 +222,10 @@ export default function ContractEditor({
       const payload = buildPayload();
       const result = doc
         ? await updateDraft(doc.id, clientId, payload)
-        : await createDraft('CON', clientId, payload);
+        : await createDraft("CON", clientId, payload);
 
       if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
+        setServerError(result.error ?? "Something went wrong.");
         return;
       }
       if (doc) {
@@ -210,12 +246,12 @@ export default function ContractEditor({
     try {
       const saveResult = await updateDraft(doc.id, clientId, buildPayload());
       if (!saveResult.success) {
-        setServerError(saveResult.error ?? 'Something went wrong.');
+        setServerError(saveResult.error ?? "Something went wrong.");
         return;
       }
       const result = await finalizeDocument(doc.id);
       if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
+        setServerError(result.error ?? "Something went wrong.");
         return;
       }
       router.push(`/docs/${doc.id}/print`);
@@ -231,10 +267,10 @@ export default function ContractEditor({
     try {
       const result = await deleteDraftAction(doc.id);
       if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
+        setServerError(result.error ?? "Something went wrong.");
         return;
       }
-      router.push('/');
+      router.push("/");
     } finally {
       setIsSubmitting(false);
     }
@@ -249,7 +285,11 @@ export default function ContractEditor({
     >
       <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
-          <EditorSection title="Client & date" description="Who it is with, and when" defaultOpen>
+          <EditorSection
+            title="Client & date"
+            description="Who it is with, and when"
+            defaultOpen
+          >
             <Field>
               <FieldLabel htmlFor="con-client">Client</FieldLabel>
               <Combobox
@@ -287,7 +327,9 @@ export default function ContractEditor({
             defaultOpen
           >
             <Field>
-              <FieldLabel htmlFor="con-service-search">Search services</FieldLabel>
+              <FieldLabel htmlFor="con-service-search">
+                Search services
+              </FieldLabel>
               <Input
                 id="con-service-search"
                 size="form"
@@ -297,42 +339,53 @@ export default function ContractEditor({
               />
             </Field>
 
-            <Tabs defaultValue={SCHEDULE_TABS[0].key} className="overflow-x-clip">
+            <Tabs defaultValue={SCHEDULE_TABS[0].key}>
               <ScheduleTabList />
 
-              {SCHEDULE_TABS.map((schedule) => {
-                const mine = filtered.filter((s) => s.scheduleKey === schedule.key);
-                return (
-                  <TabsContent key={schedule.key} value={schedule.key}>
-                    <ul className="flex flex-col gap-1">
-                      {mine.map((service) => (
-                        <li key={service.code}>
-                          <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
-                            <Checkbox
-                              className="mt-0.5"
-                              checked={ticked.has(service.code)}
-                              onCheckedChange={(checked) =>
-                                checked ? addPart(service) : removePart(service.code)
-                              }
-                            />
-                            <span className="min-w-0 flex-1 text-sm">
-                              <span className="text-muted-foreground tabular-nums">
-                                {service.code}
-                              </span>{' '}
-                              {service.name}
-                            </span>
-                          </label>
-                        </li>
-                      ))}
-                      {mine.length === 0 ? (
-                        <li className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No matching services.
-                        </li>
-                      ) : null}
-                    </ul>
-                  </TabsContent>
-                );
-              })}
+              {/*
+                A fixed height, because the panels overlap for the length of the
+                slide: without one the sidebar would grow to Build's ten rows
+                mid-transition and shrink again on Setup's four.
+              */}
+              <TabsPanels className="h-56 overflow-y-auto">
+                {SCHEDULE_TABS.map((schedule) => {
+                  const mine = filtered.filter(
+                    (s) => s.scheduleKey === schedule.key,
+                  );
+                  return (
+                    <TabsContent key={schedule.key} value={schedule.key}>
+                      <ul className="flex flex-col gap-1">
+                        {mine.map((service) => (
+                          <li key={service.code}>
+                            <label className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
+                              <Checkbox
+                                className="mt-0.5"
+                                checked={ticked.has(service.code)}
+                                onCheckedChange={(checked) =>
+                                  checked
+                                    ? addPart(service)
+                                    : removePart(service.code)
+                                }
+                              />
+                              <span className="min-w-0 flex-1 text-sm">
+                                <span className="text-muted-foreground tabular-nums">
+                                  {service.code}
+                                </span>{" "}
+                                {service.name}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                        {mine.length === 0 ? (
+                          <li className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No matching services.
+                          </li>
+                        ) : null}
+                      </ul>
+                    </TabsContent>
+                  );
+                })}
+              </TabsPanels>
             </Tabs>
           </EditorSection>
 
@@ -344,7 +397,9 @@ export default function ContractEditor({
           */}
           {assembled.flatMap(({ letter, schedule, parts }) =>
             parts.map(({ part, label }) => {
-              const partScopes = scopes.filter((s) => s.scope.startsWith(`part.${part.code}.`));
+              const partScopes = scopes.filter((s) =>
+                s.scope.startsWith(`part.${part.code}.`),
+              );
               return (
                 <EditorSection
                   key={part.code}
@@ -353,20 +408,26 @@ export default function ContractEditor({
                 >
                   {partScopes.map((scope) => (
                     <div key={scope.scope} className="flex flex-col gap-2">
-                      <p className="text-xs font-medium text-muted-foreground">{scope.label}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {scope.label}
+                      </p>
                       {scope.parsed.flatMap((parsed, i) =>
                         parsed.blanks.map((blank, j) => (
                           <Field key={blank.key}>
                             <FieldLabel htmlFor={blank.key}>
                               {scope.rowLabels?.[i] ??
-                                `${scope.label}${parsed.blanks.length > 1 ? ` (${j + 1})` : ''}`}
+                                `${scope.label}${parsed.blanks.length > 1 ? ` (${j + 1})` : ""}`}
                             </FieldLabel>
                             <Input
                               id={blank.key}
                               size="form"
-                              aria-invalid={isUnfilled(contract.blanks, blank) || undefined}
+                              aria-invalid={
+                                isUnfilled(contract.blanks, blank) || undefined
+                              }
                               value={blankValue(contract.blanks, blank)}
-                              onChange={(e) => setBlank(blank.key, e.target.value)}
+                              onChange={(e) =>
+                                setBlank(blank.key, e.target.value)
+                              }
                             />
                           </Field>
                         )),
@@ -405,7 +466,9 @@ export default function ContractEditor({
                               patchPart(part.code, {
                                 exclusionIds: checked
                                   ? [...part.exclusionIds, line.id].sort()
-                                  : part.exclusionIds.filter((id) => id !== line.id),
+                                  : part.exclusionIds.filter(
+                                      (id) => id !== line.id,
+                                    ),
                               })
                             }
                           />
@@ -436,7 +499,9 @@ export default function ContractEditor({
                               patchPart(part.code, {
                                 clientInputIds: checked
                                   ? [...part.clientInputIds, line.id].sort()
-                                  : part.clientInputIds.filter((id) => id !== line.id),
+                                  : part.clientInputIds.filter(
+                                      (id) => id !== line.id,
+                                    ),
                               })
                             }
                           />
@@ -455,7 +520,7 @@ export default function ContractEditor({
             description="Periods, rates and splits in the standing text"
           >
             {scopes
-              .filter((s) => !s.scope.startsWith('part.'))
+              .filter((s) => !s.scope.startsWith("part."))
               .map((scope) => (
                 <div key={scope.scope} className="flex flex-col gap-2">
                   <p className="text-xs font-medium text-muted-foreground">
@@ -470,7 +535,9 @@ export default function ContractEditor({
                         <Input
                           id={blank.key}
                           size="form"
-                          aria-invalid={isUnfilled(contract.blanks, blank) || undefined}
+                          aria-invalid={
+                            isUnfilled(contract.blanks, blank) || undefined
+                          }
                           value={blankValue(contract.blanks, blank)}
                           onChange={(e) => setBlank(blank.key, e.target.value)}
                         />
@@ -481,25 +548,28 @@ export default function ContractEditor({
               ))}
           </EditorSection>
 
-          <EditorSection title="Cover" description="Masthead, intro and the parties preamble">
+          <EditorSection
+            title="Cover"
+            description="Masthead, intro and the parties preamble"
+          >
             <ContentText
               id="con-masthead"
               label="Masthead"
-              value={shown(content, resolved, 'masthead')}
+              value={shown(content, resolved, "masthead")}
               onChange={(masthead) => patchContent({ masthead })}
             />
             <ContentText
               id="con-intro"
               label="Cover intro"
               rows={5}
-              value={shown(content, resolved, 'intro')}
+              value={shown(content, resolved, "intro")}
               onChange={(intro) => patchContent({ intro })}
             />
             <ContentText
               id="con-preamble"
               label="Parties preamble"
               rows={3}
-              value={shown(content, resolved, 'preamble')}
+              value={shown(content, resolved, "preamble")}
               onChange={(preamble) => patchContent({ preamble })}
             />
           </EditorSection>
@@ -509,7 +579,7 @@ export default function ContractEditor({
             description="The Master Service Agreement — 28 clauses"
           >
             <ClauseFields
-              clauses={shown(content, resolved, 'clauses')}
+              clauses={shown(content, resolved, "clauses")}
               onChange={(clauses) => patchContent({ clauses })}
             />
           </EditorSection>
@@ -517,10 +587,12 @@ export default function ContractEditor({
           {unfilled.length > 0 ? (
             <Alert role="status">
               <AlertTitle>
-                {unfilled.length} blank{unfilled.length === 1 ? '' : 's'} still to fill
+                {unfilled.length} blank{unfilled.length === 1 ? "" : "s"} still
+                to fill
               </AlertTitle>
               <AlertDescription>
-                They show in the preview. The contract cannot be issued until every one is filled.
+                They show in the preview. The contract cannot be issued until
+                every one is filled.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -532,8 +604,10 @@ export default function ContractEditor({
                 <ul className="flex flex-col gap-1">
                   {disagreements.map((d) => (
                     <li key={d.label}>
-                      <span className="font-medium">{d.label}</span>{' '}
-                      {d.values.map((v) => `${v.source}: ${v.value}`).join(' · ')}
+                      <span className="font-medium">{d.label}</span>{" "}
+                      {d.values
+                        .map((v) => `${v.source}: ${v.value}`)
+                        .join(" · ")}
                     </li>
                   ))}
                 </ul>
@@ -555,7 +629,7 @@ export default function ContractEditor({
 
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving…' : 'Save draft'}
+              {isSubmitting ? "Saving…" : "Save draft"}
             </Button>
             {doc ? (
               <>
@@ -565,7 +639,11 @@ export default function ContractEditor({
                   description="The contract becomes immutable and takes its number. Corrections after this mean duplicating it as a new draft."
                   confirmLabel="Finalize"
                   onConfirm={onFinalize}
-                  disabled={isSubmitting || unfilled.length > 0 || contract.parts.length === 0}
+                  disabled={
+                    isSubmitting ||
+                    unfilled.length > 0 ||
+                    contract.parts.length === 0
+                  }
                 />
                 <ConfirmActionButton
                   label="Delete draft"
@@ -581,8 +659,9 @@ export default function ContractEditor({
             ) : null}
             {contract.parts.length > 0 ? (
               <Badge variant="outline">
-                {assembled.length} schedule{assembled.length === 1 ? '' : 's'} ·{' '}
-                {contract.parts.length} part{contract.parts.length === 1 ? '' : 's'}
+                {assembled.length} schedule{assembled.length === 1 ? "" : "s"} ·{" "}
+                {contract.parts.length} part
+                {contract.parts.length === 1 ? "" : "s"}
               </Badge>
             ) : null}
           </div>

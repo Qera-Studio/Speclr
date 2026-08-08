@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
-import { cva, type VariantProps } from "class-variance-authority"
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Tabs({
   className,
@@ -16,11 +16,11 @@ function Tabs({
       data-orientation={orientation}
       className={cn(
         "group/tabs flex gap-2 data-horizontal:flex-col",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 const tabsListVariants = cva(
@@ -35,8 +35,8 @@ const tabsListVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 function TabsList({
   className,
@@ -50,7 +50,7 @@ function TabsList({
       className={cn(tabsListVariants({ variant }), className)}
       {...props}
     />
-  )
+  );
 }
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
@@ -62,11 +62,11 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 /**
@@ -83,28 +83,62 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
       data-slot="tabs-indicator"
       className={cn(
         "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-background shadow-sm transition-[translate,width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border dark:border-input dark:bg-input/30",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+/**
+ * Stacks the panels on one grid cell so the outgoing one is still on screen
+ * while the incoming one arrives — which is what makes the movement read as
+ * one panel pushing the other rather than a swap.
+ *
+ * Clipped horizontally, because for that half-second there are two panels'
+ * widths in a one-panel space.
+ */
+function TabsPanels({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="tabs-panels"
+      className={cn(
+        "grid overflow-x-clip **:data-[slot=tabs-content]:[grid-area:1/1]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Panels are kept mounted so the one leaving can animate out; Base UI marks it
+ * `data-ending-style` and waits for the transition before hiding it. The
+ * direction of travel decides which way each goes — moving right, the arriving
+ * panel comes from the right and the leaving one goes out to the left.
+ *
+ * Belongs inside `TabsPanels`. On its own the two panels would stack
+ * vertically for the length of the transition.
+ */
+function TabsContent({
+  className,
+  keepMounted = true,
+  ...props
+}: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
+      keepMounted={keepMounted}
       className={cn(
         "flex-1 text-xs/relaxed outline-none",
-        // The panel carries the direction the tabs were moved in, so the
-        // arriving content comes from the side it was reached from. Inactive
-        // panels unmount, so this is an entrance only — the pushing is implied.
-        "duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction=left]:animate-in data-[activation-direction=left]:fade-in-0 data-[activation-direction=left]:slide-in-from-left-10 data-[activation-direction=right]:animate-in data-[activation-direction=right]:fade-in-0 data-[activation-direction=right]:slide-in-from-right-10",
-        className
+        "transition-[translate] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "data-[activation-direction=right]:data-[starting-style]:translate-x-full data-[activation-direction=right]:data-[ending-style]:-translate-x-full",
+        "data-[activation-direction=left]:data-[starting-style]:-translate-x-full data-[activation-direction=left]:data-[ending-style]:translate-x-full",
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -112,6 +146,7 @@ export {
   TabsList,
   TabsTrigger,
   TabsIndicator,
+  TabsPanels,
   TabsContent,
   tabsListVariants,
-}
+};
