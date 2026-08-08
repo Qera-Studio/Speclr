@@ -117,6 +117,9 @@ function TabsPanels({ className, ...props }: React.ComponentProps<"div">) {
  * direction of travel decides which way each goes — moving right, the arriving
  * panel comes from the right and the leaving one goes out to the left.
  *
+ * 1.5s. Base UI holds the leaving panel in the DOM for the whole of it, so the
+ * tabs stay clickable throughout — a second click mid-slide just redirects it.
+ *
  * Belongs inside `TabsPanels`. On its own the two panels would stack
  * vertically for the length of the transition.
  */
@@ -131,7 +134,7 @@ function TabsContent({
       keepMounted={keepMounted}
       className={cn(
         "flex-1 text-xs/relaxed outline-none",
-        "transition-[translate] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "transition-[translate] duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
         "data-[activation-direction=right]:data-[starting-style]:translate-x-full data-[activation-direction=right]:data-[ending-style]:-translate-x-full",
         "data-[activation-direction=left]:data-[starting-style]:-translate-x-full data-[activation-direction=left]:data-[ending-style]:translate-x-full",
         className,
