@@ -264,7 +264,7 @@ function Para({
       className={`${className} flex gap-[6px]${sub ? " pl-[18px]" : ""}`}
     >
       {marker ? (
-        <span className="shrink-0 font-medium tabular-nums">{marker}</span>
+        <span className="shrink-0 font-semibold tabular-nums">{marker}</span>
       ) : null}
       <span className="min-w-0 flex-1">{body}</span>
     </p>
