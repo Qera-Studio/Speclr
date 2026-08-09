@@ -41,7 +41,7 @@ export default function EditorSidebar() {
   const pathname = usePathname();
   if (!panel) return null;
 
-  const { setHost, count, title, open, setOpen, requestClose } = panel;
+  const { setHost, setFooterHost, count, title, open, setOpen, requestClose } = panel;
   const hasContent = count > 0;
   // A page with nothing editable can't be expanded; collapse if content goes.
   const expanded = open && hasContent;
@@ -59,7 +59,12 @@ export default function EditorSidebar() {
         } as React.CSSProperties
       }
     >
-      <SidebarHeader className="flex-row items-center justify-between gap-2 px-3 py-2">
+      {/*
+        The rule matters: a page can put its own back button at the top of the
+        panel, and two back arrows stacked with nothing between them read as one
+        control that has been drawn twice.
+      */}
+      <SidebarHeader className="flex-row items-center justify-between gap-2 border-b px-3 py-2 group-data-[collapsible=icon]:border-b-0">
         {/*
           A back arrow, left of the title. There is rarely anywhere to go "back"
           to in a single-page editor, but people reach for one before they reach
@@ -117,6 +122,17 @@ export default function EditorSidebar() {
         {/* The portal target. Kept mounted so panels can fill it at any time. */}
         <div ref={setHost} data-slot="editor-panel-host" />
       </SidebarContent>
+
+      {/*
+        The second target, outside the scroll. `empty:hidden` is what keeps it
+        from drawing a bare rule on every page that supplies no footer — the
+        node is empty until something is portalled into it, and CSS notices.
+      */}
+      <div
+        ref={setFooterHost}
+        data-slot="editor-panel-footer-host"
+        className="shrink-0 border-t p-4 empty:hidden group-data-[collapsible=icon]:hidden"
+      />
     </Sidebar>
   );
 }

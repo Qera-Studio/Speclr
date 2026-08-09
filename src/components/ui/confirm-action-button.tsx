@@ -30,6 +30,12 @@ import type { VariantProps } from "class-variance-authority"
  */
 interface ConfirmActionButtonProps {
   label: string
+  /**
+   * Drawn instead of the label, which then names the button for assistive tech.
+   * For the action that is understood from its glyph alone and is better small —
+   * deleting a draft, beside a full-width primary action.
+   */
+  icon?: React.ReactNode
   title: string
   description: string
   /** Text on the confirming button inside the dialog. Defaults to `label`. */
@@ -45,6 +51,7 @@ interface ConfirmActionButtonProps {
 
 function ConfirmActionButton({
   label,
+  icon,
   title,
   description,
   confirmLabel,
@@ -60,7 +67,14 @@ function ConfirmActionButton({
       <AlertDialogTrigger
         render={
           <Button type="button" variant={variant} size={size} disabled={disabled} className={className}>
-            {label}
+            {icon ? (
+              <>
+                {icon}
+                <span className="sr-only">{label}</span>
+              </>
+            ) : (
+              label
+            )}
           </Button>
         }
       />

@@ -2,7 +2,10 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { EditorPanelContent } from '@/components/admin/EditorPanel';
-import DocumentPreview, { type DocumentPreviewHandle } from './DocumentPreview';
+import DocumentPreview, {
+  type DocumentPreviewHandle,
+  type PageChrome,
+} from './DocumentPreview';
 import DocumentWorkspaceBar from './DocumentWorkspaceBar';
 
 /**
@@ -22,15 +25,34 @@ import DocumentWorkspaceBar from './DocumentWorkspaceBar';
 export default function DocumentWorkspace({
   title,
   preview,
+  main,
   coverFirst = false,
   firstPageClassName,
   selfPaddedSheet = !coverFirst,
   pagePadding,
   pagePaddingY,
+  darkPageClassName,
+  pageHeader,
+  pageFooter,
+  chromeHeight,
+  columns,
+  columnWidth,
+  columnGap,
+  railFooter,
   children,
 }: {
   title: string;
-  preview: React.ReactNode;
+  preview?: React.ReactNode;
+  /**
+   * Shown in the card *instead of* the document. The contract uses it for the
+   * stage before there is a document worth previewing: you are choosing
+   * services, and twenty-two of them do not fit a 384px rail.
+   *
+   * The rail is still this component's child either way, which is the whole
+   * reason the stage is state rather than a route — both stages edit one
+   * contract object, and it must not remount between them.
+   */
+  main?: React.ReactNode;
   coverFirst?: boolean;
   firstPageClassName?: string;
   /** Page margin override — see `DocumentPreview`. The offer letter uses it. */
@@ -43,6 +65,22 @@ export default function DocumentWorkspace({
    * which is every doc type except the block-fed contract.
    */
   selfPaddedSheet?: boolean;
+  /** Running page furniture and its colours — see `DocumentPreview`. Only the
+   * contract uses these; the other sheets carry their own header and footer
+   * inside the artwork. */
+  darkPageClassName?: string;
+  pageHeader?: PageChrome;
+  pageFooter?: PageChrome;
+  chromeHeight?: number;
+  /** Column layout — see `DocumentPreview`. Only the contract sets these. */
+  columns?: number;
+  columnWidth?: number;
+  columnGap?: number;
+  /**
+   * Pinned below the rail's scroll rather than at the end of the form — the
+   * stage's one forward action, and on the last stage Finalize and Delete.
+   */
+  railFooter?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [pageCount, setPageCount] = useState(1);
@@ -71,6 +109,7 @@ export default function DocumentWorkspace({
       // Arrow keys page the document. The form lives in the rail — a separate
       // DOM subtree — so this never hijacks caret movement in its inputs.
       onKeyDown={(e) => {
+        if (main) return;
         if (e.key === 'ArrowRight') goToPage(safePage + 1);
         if (e.key === 'ArrowLeft') goToPage(safePage - 1);
       }}
@@ -78,25 +117,36 @@ export default function DocumentWorkspace({
       <DocumentWorkspaceBar
         title={title}
         currentPage={safePage}
-        pageCount={pageCount}
+        pageCount={main ? undefined : pageCount}
         onPrev={() => goToPage(safePage - 1)}
         onNext={() => goToPage(safePage + 1)}
       />
-      <DocumentPreview
-        ref={previewRef}
-        coverFirst={coverFirst}
-        firstPageClassName={firstPageClassName}
-        selfPaddedSheet={selfPaddedSheet}
-        pagePadding={pagePadding}
-        pagePaddingY={pagePaddingY}
-        onPageCountChange={setPageCount}
-        onCurrentPageChange={setCurrentPage}
-      >
-        {preview}
-      </DocumentPreview>
+      {main ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">{main}</div>
+      ) : (
+        <DocumentPreview
+          ref={previewRef}
+          coverFirst={coverFirst}
+          firstPageClassName={firstPageClassName}
+          selfPaddedSheet={selfPaddedSheet}
+          pagePadding={pagePadding}
+          pagePaddingY={pagePaddingY}
+          darkPageClassName={darkPageClassName}
+          pageHeader={pageHeader}
+          pageFooter={pageFooter}
+          chromeHeight={chromeHeight}
+          columns={columns}
+          columnWidth={columnWidth}
+          columnGap={columnGap}
+          onPageCountChange={setPageCount}
+          onCurrentPageChange={setCurrentPage}
+        >
+          {preview}
+        </DocumentPreview>
+      )}
 
       {/* The form is the point of a document page, so open the rail on arrival. */}
-      <EditorPanelContent title={title} autoOpen>
+      <EditorPanelContent title={title} autoOpen footer={railFooter}>
         {children}
       </EditorPanelContent>
     </div>

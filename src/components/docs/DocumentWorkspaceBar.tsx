@@ -13,25 +13,30 @@ import { Button } from '@/components/ui/button';
  */
 export default function DocumentWorkspaceBar({
   title,
-  currentPage,
+  currentPage = 0,
   pageCount,
   onPrev,
   onNext,
 }: {
   title: string;
-  currentPage: number;
-  pageCount: number;
-  onPrev: () => void;
-  onNext: () => void;
+  /**
+   * Absent where the card is showing something other than the document — the
+   * contract's service picker, say. A page counter over a page that is not on
+   * screen is a lie, so it goes rather than reading "Page 1 / 11".
+   */
+  pageCount?: number;
+  currentPage?: number;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const atFirst = currentPage <= 0;
-  const atLast = currentPage >= pageCount - 1;
+  const atLast = pageCount === undefined || currentPage >= pageCount - 1;
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border px-4">
       <h1 className="truncate text-sm font-medium">{title}</h1>
 
-      <div className="flex items-center gap-3">
+      {pageCount === undefined ? null : (
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -60,7 +65,7 @@ export default function DocumentWorkspaceBar({
             <ChevronRight />
           </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

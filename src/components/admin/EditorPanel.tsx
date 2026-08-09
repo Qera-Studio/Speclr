@@ -31,6 +31,13 @@ type EditorPanelContextValue = {
   /** The rail's portal target. Null until the rail mounts (or when absent). */
   host: HTMLElement | null;
   setHost: (node: HTMLElement | null) => void;
+  /**
+   * A second target, below the scrolling area. A page's primary actions belong
+   * here: in the rail proper they scroll away under a long form, and the one
+   * control someone is looking for is the one they cannot reach.
+   */
+  footerHost: HTMLElement | null;
+  setFooterHost: (node: HTMLElement | null) => void;
   /** How many panels are currently mounted — drives the rail's enabled state. */
   count: number;
   register: () => () => void;
@@ -51,6 +58,7 @@ const EditorPanelContext = createContext<EditorPanelContextValue | null>(null);
 
 export function EditorPanelProvider({ children }: { children: React.ReactNode }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
+  const [footerHost, setFooterHost] = useState<HTMLElement | null>(null);
   const [count, setCount] = useState(0);
   const [title, setTitle] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -76,6 +84,8 @@ export function EditorPanelProvider({ children }: { children: React.ReactNode })
     () => ({
       host,
       setHost,
+      footerHost,
+      setFooterHost,
       count,
       register,
       title,
@@ -85,7 +95,7 @@ export function EditorPanelProvider({ children }: { children: React.ReactNode })
       setDirtyGuard,
       requestClose,
     }),
-    [host, count, register, title, open, setDirtyGuard, requestClose],
+    [host, footerHost, count, register, title, open, setDirtyGuard, requestClose],
   );
 
   return <EditorPanelContext.Provider value={value}>{children}</EditorPanelContext.Provider>;
@@ -110,13 +120,18 @@ export function useEditorPanel(): EditorPanelContextValue | null {
  *
  * `autoOpen` expands the rail on mount; document editors want this (the form is
  * the point of the page), record managers do not (the rail opens on "Add").
+ *
+ * `footer` lands below the scrolling area instead, so a page's primary action
+ * stays on screen however long its form runs.
  */
 export function EditorPanelContent({
   children,
+  footer,
   title,
   autoOpen = false,
 }: {
   children: React.ReactNode;
+  footer?: React.ReactNode;
   title?: string;
   autoOpen?: boolean;
 }) {
@@ -140,6 +155,20 @@ export function EditorPanelContent({
     if (autoOpen) setOpen?.(true);
   }, [autoOpen, setOpen]);
 
-  if (!panel?.host) return <>{children}</>;
-  return createPortal(children, panel.host);
+  if (!panel?.host) {
+    return (
+      <>
+        {children}
+        {footer}
+      </>
+    );
+  }
+  return (
+    <>
+      {createPortal(children, panel.host)}
+      {/* Before the rail's footer node exists there is nowhere to put it; it
+          arrives on the same commit, so this is one frame at most. */}
+      {footer && panel.footerHost ? createPortal(footer, panel.footerHost) : null}
+    </>
+  );
 }
