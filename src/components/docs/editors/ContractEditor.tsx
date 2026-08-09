@@ -1,55 +1,102 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import {
   createDraft,
   deleteDraftAction,
   finalizeDocument,
   updateDraft,
-} from '@/server/actions/documents';
-import { todayISO } from '@/lib/domain/dates';
-import { DOC_TYPES } from '@/lib/domain/registry';
-import { assemble } from '@/lib/domain/contract/assembly';
+} from "@/server/actions/documents";
+import { formatDisplayDate, todayISO } from "@/lib/domain/dates";
+import { DOC_TYPES } from "@/lib/domain/registry";
+import { assemble } from "@/lib/domain/contract/assembly";
 import {
-  blankValue,
   blanksOf,
-  disagreeingRows,
   isUnfilled,
   type BlankValues,
-} from '@/lib/domain/contract/blanks';
-import { contractScopes } from '@/lib/domain/contract/completeness';
-import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
-import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
-import type { StudioInfo } from '@/lib/domain/studio';
+} from "@/lib/domain/contract/blanks";
+import { contractScopes } from "@/lib/domain/contract/completeness";
+import { MSA_CLAUSES } from "@/lib/domain/contract/msa";
+import type {
+  ContractService,
+  LibraryLine,
+} from "@/lib/domain/contract/service";
+import type { StudioInfo } from "@/lib/domain/studio";
 import {
   clientSnapshotOf,
   type ClientRecord,
   type ClientSnapshot,
   type ContractData,
   type ContractDocument,
-} from '@/lib/domain/types';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Combobox } from '@/components/ui/combobox';
-import { DatePicker } from '@/components/ui/date-picker';
-import PartCard from '@/components/contract/PartCard';
-import ServiceDialog from '@/components/contract/ServiceDialog';
-import ServicePicker from '@/components/contract/ServicePicker';
-import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
-import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
-import EditorSection from './EditorSection';
-import { ClauseFields, ContentText, shown, type ContentPatch } from './ContentFields';
-import { contentOf, type DocContent } from '@/lib/domain/docContent';
-import { workspaceTitle } from '../workspaceTitle';
+} from "@/lib/domain/types";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
+import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Combobox } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
+import PartCard from "@/components/contract/PartCard";
+import ServiceDialog from "@/components/contract/ServiceDialog";
+import ServiceCatalog from "@/components/contract/ServiceCatalog";
+import TermsForm from "@/components/contract/TermsForm";
+import {
+  contractBlocks,
+  contractPageProps,
+} from "@/components/docs/sheets/ContractSheet";
+import DocumentWorkspace from "@/components/docs/DocumentWorkspace";
+import {
+  ClauseFields,
+  ContentText,
+  shown,
+  type ContentPatch,
+} from "./ContentFields";
+import { useUnsavedGuard } from "./useUnsavedGuard";
+import { contentOf, type DocContent } from "@/lib/domain/docContent";
+import { workspaceTitle } from "../workspaceTitle";
 
-const EMPTY_SNAPSHOT: ClientSnapshot = { name: '', address: '', email: '', phone: '' };
+const EMPTY_SNAPSHOT: ClientSnapshot = {
+  name: "",
+  address: "",
+  email: "",
+  phone: "",
+};
 const EMPTY_CONTRACT: ContractData = { parts: [], blanks: {}, library: {} };
+
+/**
+ * How long the editor waits after the last change before writing.
+ *
+ * Long enough that a sentence typed into a clause is one write rather than
+ * forty; short enough that closing the tab straight after an edit is still
+ * covered by the unsaved-changes guard.
+ */
+const AUTOSAVE_MS = 1000;
+
+/** Services → the standing terms → the document. */
+type Step = "services" | "terms" | "preview";
 
 interface ContractEditorProps {
   clients: ClientRecord[];
@@ -65,17 +112,18 @@ interface ContractEditorProps {
 }
 
 /**
- * Building a contract, in two passes.
+ * Building a contract, in three passes.
  *
- * **Services first, then the contract.** Everything used to live in one rail —
- * client, a twenty-two row list, one collapsible per Part holding its blanks
- * *and* its twenty-odd exclusions *and* its client inputs, then the standing
- * terms, the cover and twenty-eight clauses. Four services made it unreadable.
- * Now a Service is picked and configured on its own in a dialog, and only what
- * belongs to the contract as a whole is left for the second screen.
+ * Everything used to live in one 384px rail — client, a twenty-two row list, one
+ * collapsible per Part holding its blanks *and* its twenty-odd exclusions, then
+ * thirty figures of standing terms, the cover and twenty-eight clauses. Each
+ * stage now gets the whole card: the library while services are being chosen,
+ * the standing terms while they are being set, the document once there is one.
+ * The rail carries only what is being decided, and on the last stage only a
+ * summary of what has been.
  *
- * The step is local state rather than a route: the A4 preview is computed from
- * this component's state and must stay mounted across the change.
+ * The stage is local state rather than a route: every field on all three feeds
+ * one `contract` object, and a remount between them would throw it away.
  */
 export default function ContractEditor({
   clients,
@@ -87,21 +135,64 @@ export default function ContractEditor({
   title,
 }: ContractEditorProps) {
   const router = useRouter();
-  const [clientId, setClientId] = useState(doc?.clientId ?? '');
+  const [clientId, setClientId] = useState(doc?.clientId ?? "");
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
-  const [contract, setContract] = useState<ContractData>(doc?.contract ?? EMPTY_CONTRACT);
+  const [contract, setContract] = useState<ContractData>(
+    doc?.contract ?? EMPTY_CONTRACT,
+  );
   /** Text overrides — see the note in `DocumentEditor`. */
   const [content, setContent] = useState<DocContent>(doc?.content ?? {});
-  const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
-  const [serviceQuery, setServiceQuery] = useState('');
+  const [serviceQuery, setServiceQuery] = useState("");
   /** Which Service the dialog is showing, by code. */
   const [openCode, setOpenCode] = useState<string | null>(null);
-  const [step, setStep] = useState<'services' | 'details'>(
-    doc?.contract.parts.length ? 'details' : 'services',
+  const [step, setStep] = useState<Step>(
+    doc?.contract.parts.length ? "preview" : "services",
   );
+  const [clausesOpen, setClausesOpen] = useState(false);
+  const [termsPrompt, setTermsPrompt] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * The draft's own id once there is one — from the route, or from the save
+   * that runs the moment a client is chosen. Everything that used to ask "is
+   * there a `doc`?" asks this instead, because a contract created here is just
+   * as real as one loaded from the URL.
+   *
+   * Mirrored in a ref because writes are queued: a job sitting in the queue was
+   * closed over before the create that precedes it returned, and reading `docId`
+   * from that closure would create a second draft instead of updating the first.
+   */
+  const [docId, setDocId] = useState<string | null>(doc?.id ?? null);
+  const docIdRef = useRef(doc?.id ?? null);
+  const claimDocId = (id: string) => {
+    docIdRef.current = id;
+    setDocId(id);
+    window.history.replaceState(null, "", `/docs/${id}`);
+  };
+
+  const [dirty, setDirty] = useState(false);
+  const guard = useUnsavedGuard(dirty);
+
+  /**
+   * Every write to this draft, in order.
+   *
+   * Autosave fires on a timer while the user keeps typing, so two writes can
+   * easily be in flight at once — and two `updateDraft` calls landing out of
+   * order would persist the older contract over the newer. Chaining them costs
+   * one ref and removes the whole class of race; a rejected job never stalls the
+   * queue because the chain recovers on both settlements.
+   */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueue = <T,>(job: () => Promise<T>): Promise<T> => {
+    const next = queue.current.then(job, job);
+    queue.current = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  };
 
   const client = clients.find((c) => c.id === clientId);
   const heading = workspaceTitle(title, DOC_TYPES.CON.label, client?.name);
@@ -110,10 +201,10 @@ export default function ContractEditor({
     : (doc?.clientSnapshot ?? EMPTY_SNAPSHOT);
 
   const previewDoc: ContractDocument = {
-    id: doc?.id ?? 'preview',
+    id: docId ?? "preview",
     studioSnapshot: doc?.studioSnapshot ?? studio,
-    type: 'CON',
-    status: doc?.status ?? 'draft',
+    type: "CON",
+    status: doc?.status ?? "draft",
     clientId,
     clientSnapshot,
     issueDate,
@@ -127,6 +218,12 @@ export default function ContractEditor({
 
   const assembled = assemble(contract.parts);
   const added = new Set(contract.parts.map((p) => p.code));
+  const buildPayload = () => ({ issueDate, contract, content });
+
+  const patchContent: ContentPatch = (patch) => {
+    setDirty(true);
+    setContent((prev) => ({ ...prev, ...patch }));
+  };
 
   /**
    * Committing copies the Service onto the contract, with the text of every
@@ -137,10 +234,14 @@ export default function ContractEditor({
   const commitPart = (part: ContractService, partBlanks: BlankValues) => {
     const library = { ...contract.library };
     for (const line of [...exclusions, ...clientInputs]) {
-      if (part.exclusionIds.includes(line.id) || part.clientInputIds.includes(line.id)) {
+      if (
+        part.exclusionIds.includes(line.id) ||
+        part.clientInputIds.includes(line.id)
+      ) {
         library[line.id] = line.text;
       }
     }
+    setDirty(true);
     setContract((prev) => ({
       parts: prev.parts.some((p) => p.code === part.code)
         ? prev.parts.map((p) => (p.code === part.code ? part : p))
@@ -157,15 +258,32 @@ export default function ContractEditor({
    * who removed it by accident expects; the stale keys are inert and are
    * dropped at finalize, when only the resolved contract is materialised.
    */
-  const removePart = (code: string) =>
-    setContract((prev) => ({ ...prev, parts: prev.parts.filter((p) => p.code !== code) }));
+  const removePart = (code: string) => {
+    setDirty(true);
+    setContract((prev) => ({
+      ...prev,
+      parts: prev.parts.filter((p) => p.code !== code),
+    }));
+  };
 
-  const setBlank = (key: string, value: string) =>
-    setContract((prev) => ({ ...prev, blanks: { ...prev.blanks, [key]: value } }));
+  const setBlank = (key: string, value: string) => {
+    setDirty(true);
+    setContract((prev) => ({
+      ...prev,
+      blanks: { ...prev.blanks, [key]: value },
+    }));
+  };
 
   const scopes = useMemo(() => contractScopes(contract), [contract]);
+  const termScopes = scopes.filter((s) => !s.scope.startsWith("part."));
+  const termFigures = termScopes.reduce(
+    (n, s) => n + blanksOf(s.parsed).length,
+    0,
+  );
   const unfilled = scopes.flatMap((scope) =>
-    blanksOf(scope.parsed).filter((blank) => isUnfilled(contract.blanks, blank)),
+    blanksOf(scope.parsed).filter((blank) =>
+      isUnfilled(contract.blanks, blank),
+    ),
   );
   const unfilledIn = (code: string) =>
     scopes
@@ -173,313 +291,385 @@ export default function ContractEditor({
       .flatMap((s) => blanksOf(s.parsed))
       .filter((blank) => isUnfilled(contract.blanks, blank)).length;
 
-  /**
-   * The only cross-check per-occurrence blanks allow. See `disagreeingRows` —
-   * it compares labelled figures across Parts, which is where the same number
-   * genuinely repeats.
-   */
-  const disagreements = disagreeingRows(
-    assembled.flatMap(({ parts }) =>
-      parts.flatMap(({ part, label }) =>
-        [...part.limits, ...part.fee].map((row, i) => ({
-          label: row.label,
-          value: blankValue(contract.blanks, {
-            key: `part.${part.code}.${part.limits.includes(row) ? 'limits' : 'fee'}#${i}`,
-            fallback: row.value,
-          }),
-          source: `Part ${label}`,
-        })),
-      ),
-    ),
-  );
-
-  const buildPayload = () => ({ issueDate, contract, content });
-
   // What the contract will print — the source for every content input's value.
   const resolved = contentOf(previewDoc, DOC_TYPES.CON);
 
-  const onSaveDraft = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setServerError(null);
-    setSaved(false);
-    setIsSubmitting(true);
-    try {
-      const payload = buildPayload();
-      const result = doc
-        ? await updateDraft(doc.id, clientId, payload)
-        : await createDraft('CON', clientId, payload);
-
-      if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
-        return;
-      }
-      if (doc) {
-        setSaved(true);
-        router.refresh();
-      } else {
-        router.push(`/docs/${result.id}`);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+  /**
+   * Choosing a client is the first moment there is enough to save —
+   * `createDraft` refuses without one. So that is when the draft starts
+   * existing, and the URL quietly becomes its own. `history.replaceState` rather
+   * than the router, because a navigation here would remount this component and
+   * take the half-built contract with it.
+   */
+  const onClientChange = (id: string) => {
+    setClientId(id);
+    setDirty(true);
   };
 
+  /**
+   * Writes the current form state, creating the draft if this is the first one.
+   * Always call through `enqueue` — never twice at once.
+   */
+  const save = async () => {
+    const id = docIdRef.current;
+    const payload = buildPayload();
+    const result = id
+      ? await updateDraft(id, clientId, payload)
+      : await createDraft("CON", clientId, payload);
+    if (!result.success) {
+      setServerError(result.error ?? "Something went wrong.");
+      return false;
+    }
+    if (!id && result.id) claimDocId(result.id);
+    setDirty(false);
+    return true;
+  };
+
+  /**
+   * The draft saves itself.
+   *
+   * A contract is built over a long sitting — twenty-two services, thirty
+   * figures, twenty-eight clauses — and a Save button on that is a trap: the one
+   * time it is forgotten, an hour of work is gone. So a change schedules a write
+   * a second after the typing stops, rather than one per keystroke.
+   *
+   * Two things hold it back. There is nothing to save before a client is chosen,
+   * because `createDraft` refuses without one. And it must not fire on arrival,
+   * which `dirty` covers: opening an existing document is not a change to it.
+   */
+  useEffect(() => {
+    if (!dirty || !clientId) return;
+    const timer = setTimeout(() => {
+      setSaveState("saving");
+      setServerError(null);
+      enqueue(async () => {
+        setSaveState((await save()) ? "saved" : "idle");
+      });
+    }, AUTOSAVE_MS);
+    return () => clearTimeout(timer);
+    // `save` reads exactly the state listed here, and `dirty` is what says any
+    // of it actually changed. Depending on `save` itself would re-arm the timer
+    // on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, clientId, issueDate, contract, content]);
+
   const onFinalize = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
-      const saveResult = await updateDraft(doc.id, clientId, buildPayload());
-      if (!saveResult.success) {
-        setServerError(saveResult.error ?? 'Something went wrong.');
-        return;
-      }
-      const result = await finalizeDocument(doc.id);
+      // Behind whatever autosave already has in flight, so the document being
+      // frozen is the one on screen.
+      if (!(await enqueue(save))) return;
+      const result = await finalizeDocument(docId);
       if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
+        setServerError(result.error ?? "Something went wrong.");
         return;
       }
-      router.push(`/docs/${doc.id}/print`);
+      router.push(`/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const onDelete = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
     try {
-      const result = await deleteDraftAction(doc.id);
+      const result = await deleteDraftAction(docId);
       if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
+        setServerError(result.error ?? "Something went wrong.");
         return;
       }
-      router.push('/');
+      setDirty(false);
+      router.push("/");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   /**
-   * What the contract holds, in the order it prints. Repeated on both screens:
-   * on the first it is what you are assembling, on the second it is how you get
-   * back into a Part to correct a fee.
+   * What the contract holds, in the order it prints.
+   *
+   * The Agreement is one row — it is in every contract and there is nothing to
+   * decide about it. The services fold into a card of their own, open while they
+   * are being chosen (it is the only feedback that a click landed) and shut
+   * afterwards, when the rail is about the document rather than its parts.
    */
-  const partCards = (
-    <div className="flex flex-col gap-2">
+  const partCards = (openByDefault: boolean) => (
+    <>
+      <PartCard title="Master Service Agreement" />
       <PartCard
-        title="Master Service Agreement"
-        subtitle={`${MSA_CLAUSES.length} clauses · always included`}
-      />
-      {assembled.flatMap(({ letter, schedule, parts }) =>
-        parts.map(({ part, label }) => (
-          <PartCard
-            key={part.code}
-            label={`Part ${label}`}
-            title={part.name}
-            subtitle={`Schedule ${letter} · ${schedule.name}`}
-            unfilled={unfilledIn(part.code)}
-            onOpen={() => setOpenCode(part.code)}
-            onRemove={() => removePart(part.code)}
-          />
-        )),
-      )}
-      {contract.parts.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-          No services yet. Pick one below to add the first Part.
-        </p>
-      ) : null}
-    </div>
+        title="Services"
+        subtitle={`${contract.parts.length} added`}
+        unfilled={unfilled.length}
+        defaultOpen={openByDefault}
+      >
+        {contract.parts.length === 0 ? (
+          <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+            Add a service
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {assembled.flatMap(({ parts }) =>
+              parts.map(({ part }) => (
+                <PartCard
+                  key={part.code}
+                  title={part.name}
+                  unfilled={unfilledIn(part.code)}
+                  onOpen={() => setOpenCode(part.code)}
+                  onRemove={() => removePart(part.code)}
+                />
+              )),
+            )}
+          </div>
+        )}
+      </PartCard>
+    </>
   );
 
-  const openService = openCode ? services.find((s) => s.code === openCode) : undefined;
+  const clientFields = (
+    <>
+      <Field>
+        <FieldLabel htmlFor="con-client">Client</FieldLabel>
+        <Combobox
+          id="con-client"
+          size="form"
+          options={clients.map((c) => ({ value: c.id, label: c.name }))}
+          value={clientId}
+          onValueChange={onClientChange}
+          placeholder="Select a client…"
+          emptyMessage="No matching clients."
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="con-issue-date">Agreement date</FieldLabel>
+        <DatePicker
+          id="con-issue-date"
+          size="form"
+          value={issueDate}
+          onValueChange={(value) => {
+            setDirty(true);
+            setIssueDate(value);
+          }}
+        />
+      </Field>
+    </>
+  );
+
+  /**
+   * The client and the date, as one line. A "Client & date" title above
+   * "Clayora · 9 Aug 2026" says nothing the line does not already say.
+   */
+  const clientCard = (
+    <PartCard
+      title={`${client?.name ?? "No client selected"} · ${formatDisplayDate(issueDate)}`}
+    >
+      {clientFields}
+    </PartCard>
+  );
+
+  /**
+   * The forward button, greyed and explaining itself until there is a Part.
+   *
+   * Full width, because it is the one thing the stage is asking for and it sits
+   * alone in the pinned footer.
+   */
+  const advance = (label: string, to: Step) =>
+    contract.parts.length === 0 ? (
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex w-full" />}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled
+            className="w-full cursor-not-allowed"
+          >
+            {label}
+            <ArrowRight />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Add a service</TooltipContent>
+      </Tooltip>
+    ) : (
+      <Button type="button" className="w-full" onClick={() => setStep(to)}>
+        {label}
+        <ArrowRight />
+      </Button>
+    );
+
+  /** Going back is a small move, so it is a small button — it hugs its label. */
+  const back = (label: string, to: Step) => (
+    <Button
+      type="button"
+      variant="outline"
+      className="self-start"
+      onClick={() => setStep(to)}
+    >
+      <ArrowLeft />
+      {label}
+    </Button>
+  );
+
+  /**
+   * The stage's action, pinned below the rail's scroll.
+   *
+   * A contract's rail runs to twenty-odd cards; with the buttons at the end of
+   * the form, the two that matter most — go on, and finalize — were the two you
+   * had to go looking for. Finalize is the primary action and takes the width;
+   * deleting a draft is rare, destructive and understood from its glyph, so it
+   * is a square beside it.
+   */
+  const railFooter =
+    step === "services" ? (
+      advance("Agreement terms", "terms")
+    ) : step === "terms" ? (
+      advance("Preview", "preview")
+    ) : docId ? (
+      <div className="flex items-center gap-2">
+        <ConfirmActionButton
+          label="Finalize"
+          title="Finalize this contract?"
+          description="The contract becomes immutable and takes its number. Corrections after this mean duplicating it as a new draft."
+          confirmLabel="Finalize"
+          variant="default"
+          className="flex-1"
+          onConfirm={onFinalize}
+          disabled={
+            isSubmitting || unfilled.length > 0 || contract.parts.length === 0
+          }
+        />
+        <ConfirmActionButton
+          label="Delete draft"
+          icon={<Trash2 />}
+          size="icon"
+          title="Delete this draft?"
+          description="This cannot be undone."
+          confirmLabel="Delete"
+          confirmVariant="destructive"
+          className="shrink-0 text-destructive hover:text-destructive"
+          onConfirm={onDelete}
+          disabled={isSubmitting}
+        />
+      </div>
+    ) : null;
+
+  const openService = openCode
+    ? services.find((s) => s.code === openCode)
+    : undefined;
 
   return (
     <DocumentWorkspace
       title={heading}
-      coverFirst
-      firstPageClassName={COVER_CLASSNAME}
-      preview={contractBlocks(previewDoc)}
+      {...contractPageProps(previewDoc)}
+      railFooter={railFooter}
+      // The card carries the library while services are being chosen, the
+      // standing terms while they are being set, and the document once there is
+      // one worth looking at.
+      main={
+        step === "services" ? (
+          <ServiceCatalog
+            services={services}
+            query={serviceQuery}
+            onQueryChange={setServiceQuery}
+            added={added}
+            onPick={(service) => setOpenCode(service.code)}
+          />
+        ) : step === "terms" ? (
+          <TermsForm
+            scopes={termScopes}
+            values={contract.blanks}
+            onChange={setBlank}
+          />
+        ) : undefined
+      }
+      preview={step === "preview" ? contractBlocks(previewDoc) : undefined}
     >
-      <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
-        <FieldGroup size="form">
-          {step === 'services' ? (
+      {/*
+        Still a form — the fields want its semantics — but there is nothing to
+        submit any more, so Enter in a text field does nothing rather than
+        reloading the page.
+      */}
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        className="flex flex-col gap-4"
+        noValidate
+      >
+        {/*
+          Keyed on the stage: the three screens are different content sitting at
+          the same positions in one branch, so React would otherwise reuse each
+          card across the switch and hand an uncontrolled Collapsible a new
+          `defaultOpen`.
+        */}
+        <FieldGroup key={step} size="form">
+          {step === "services" ? (
             <>
-              <EditorSection title="Client & date" description="Who it is with, and when" defaultOpen>
-                <Field>
-                  <FieldLabel htmlFor="con-client">Client</FieldLabel>
-                  <Combobox
-                    id="con-client"
-                    size="form"
-                    options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                    value={clientId}
-                    onValueChange={setClientId}
-                    placeholder="Select a client…"
-                    emptyMessage="No matching clients."
-                  />
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="con-issue-date">Agreement date</FieldLabel>
-                  <DatePicker
-                    id="con-issue-date"
-                    size="form"
-                    value={issueDate}
-                    onValueChange={setIssueDate}
-                  />
-                </Field>
-              </EditorSection>
-
-              <EditorSection
-                title="In this contract"
-                description={`${contract.parts.length} of ${services.length} services`}
-                defaultOpen
-              >
-                {partCards}
-              </EditorSection>
-
-              {/*
-                One tab per Schedule, so the list is a handful of choices rather
-                than twenty-two. Which Schedule a Service belongs to is still
-                not a decision to make (contract-system.md §10) — it is where
-                the Service already lives, and the tabs say so.
-              */}
-              <EditorSection title="Add a service" description="Search or browse by Schedule" defaultOpen>
-                <ServicePicker
-                  services={services}
-                  query={serviceQuery}
-                  onQueryChange={setServiceQuery}
-                  added={added}
-                  onPick={(service) => setOpenCode(service.code)}
-                />
-              </EditorSection>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  onClick={() => setStep('details')}
-                  disabled={contract.parts.length === 0}
-                >
-                  Contract details
-                  <ArrowRight />
-                </Button>
-                {contract.parts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Add a service first.</p>
-                ) : null}
-              </div>
+              {clientFields}
+              {partCards(true)}
+            </>
+          ) : step === "terms" ? (
+            <>
+              {back("Services", "services")}
+              {clientCard}
+              {partCards(false)}
             </>
           ) : (
             <>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" onClick={() => setStep('services')}>
-                  <ArrowLeft />
-                  Services
-                </Button>
-                <Badge variant="outline">
-                  {assembled.length} schedule{assembled.length === 1 ? '' : 's'} ·{' '}
-                  {contract.parts.length} part{contract.parts.length === 1 ? '' : 's'}
-                </Badge>
-              </div>
+              {back("Terms", "terms")}
 
-              <EditorSection
-                title="In this contract"
-                description="Open a Part to change its figures"
-                defaultOpen
-              >
-                {partCards}
-              </EditorSection>
+              {clientCard}
+              {partCards(false)}
 
-              {/* The Agreement's and Schedules' own blanks, kept away from the Parts. */}
-              <EditorSection
+              {/* Thirty figures do not belong in a rail — the card holds them. */}
+              <PartCard
                 title="Agreement & schedule terms"
-                description="Periods, rates and splits in the standing text"
-              >
-                {scopes
-                  .filter((s) => !s.scope.startsWith('part.'))
-                  .map((scope) => (
-                    <div key={scope.scope} className="flex flex-col gap-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {scope.group} · {scope.label}
-                      </p>
-                      {scope.parsed.flatMap((parsed) =>
-                        parsed.blanks.map((blank) => (
-                          <Field key={blank.key}>
-                            <FieldLabel htmlFor={blank.key} className="sr-only">
-                              {scope.label}
-                            </FieldLabel>
-                            <Input
-                              id={blank.key}
-                              size="form"
-                              aria-invalid={isUnfilled(contract.blanks, blank) || undefined}
-                              value={blankValue(contract.blanks, blank)}
-                              onChange={(e) => setBlank(blank.key, e.target.value)}
-                            />
-                          </Field>
-                        )),
-                      )}
-                    </div>
-                  ))}
-              </EditorSection>
+                subtitle={`${termFigures} figure${termFigures === 1 ? "" : "s"} in the standing text`}
+                onOpen={() => setTermsPrompt(true)}
+              />
 
-              <EditorSection title="Cover" description="Masthead, intro and the parties preamble">
+              <PartCard
+                title="Clauses"
+                subtitle={`${MSA_CLAUSES.length} clauses of the Master Agreement`}
+                onOpen={() => setClausesOpen(true)}
+              />
+
+              <PartCard
+                title="Cover"
+                subtitle="Masthead, intro and the parties preamble"
+              >
                 <ContentText
                   id="con-masthead"
                   label="Masthead"
-                  value={shown(content, resolved, 'masthead')}
+                  value={shown(content, resolved, "masthead")}
                   onChange={(masthead) => patchContent({ masthead })}
                 />
                 <ContentText
                   id="con-intro"
                   label="Cover intro"
                   rows={5}
-                  value={shown(content, resolved, 'intro')}
+                  value={shown(content, resolved, "intro")}
                   onChange={(intro) => patchContent({ intro })}
                 />
                 <ContentText
                   id="con-preamble"
                   label="Parties preamble"
                   rows={3}
-                  value={shown(content, resolved, 'preamble')}
+                  value={shown(content, resolved, "preamble")}
                   onChange={(preamble) => patchContent({ preamble })}
                 />
-              </EditorSection>
-
-              <EditorSection
-                title="Clauses"
-                description={`The Master Service Agreement — ${MSA_CLAUSES.length} clauses`}
-              >
-                <ClauseFields
-                  clauses={shown(content, resolved, 'clauses')}
-                  onChange={(clauses) => patchContent({ clauses })}
-                />
-              </EditorSection>
+              </PartCard>
 
               {unfilled.length > 0 ? (
                 <Alert role="status">
                   <AlertTitle>
-                    {unfilled.length} blank{unfilled.length === 1 ? '' : 's'} still to fill
+                    {unfilled.length} blank{unfilled.length === 1 ? "" : "s"}{" "}
+                    still to fill
                   </AlertTitle>
                   <AlertDescription>
-                    They show in the preview. The contract cannot be issued until every one
-                    is filled.
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-
-              {disagreements.length > 0 ? (
-                <Alert role="status">
-                  <AlertTitle>Same figure, two values</AlertTitle>
-                  <AlertDescription>
-                    <ul className="flex flex-col gap-1">
-                      {disagreements.map((d) => (
-                        <li key={d.label}>
-                          <span className="font-medium">{d.label}</span>{' '}
-                          {d.values.map((v) => `${v.source}: ${v.value}`).join(' · ')}
-                        </li>
-                      ))}
-                    </ul>
-                    Deliberate is fine — this is a warning, not a block.
+                    They show in the preview. The contract cannot be issued
+                    until every one is filled.
                   </AlertDescription>
                 </Alert>
               ) : null}
@@ -489,41 +679,15 @@ export default function ContractEditor({
                   <AlertDescription>{serverError}</AlertDescription>
                 </Alert>
               ) : null}
-              {saved ? (
+              {/*
+                The draft writes itself, so this is the only thing that says a
+                change has landed. It is a status region, not a control.
+              */}
+              {saveState === "idle" ? null : (
                 <p role="status" className="text-sm text-muted-foreground">
-                  Draft saved.
+                  {saveState === "saving" ? "Saving…" : "Saved"}
                 </p>
-              ) : null}
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Saving…' : 'Save draft'}
-                </Button>
-                {doc ? (
-                  <>
-                    <ConfirmActionButton
-                      label="Finalize"
-                      title="Finalize this contract?"
-                      description="The contract becomes immutable and takes its number. Corrections after this mean duplicating it as a new draft."
-                      confirmLabel="Finalize"
-                      onConfirm={onFinalize}
-                      disabled={
-                        isSubmitting || unfilled.length > 0 || contract.parts.length === 0
-                      }
-                    />
-                    <ConfirmActionButton
-                      label="Delete draft"
-                      title="Delete this draft?"
-                      description="This cannot be undone."
-                      confirmLabel="Delete"
-                      variant="destructive"
-                      confirmVariant="destructive"
-                      onConfirm={onDelete}
-                      disabled={isSubmitting}
-                    />
-                  </>
-                ) : null}
-              </div>
+              )}
             </>
           )}
         </FieldGroup>
@@ -541,6 +705,79 @@ export default function ContractEditor({
           onCommit={commitPart}
         />
       ) : null}
+
+      {/* The clauses are long but they are only text — no gate, no local copy. */}
+      <Dialog open={clausesOpen} onOpenChange={setClausesOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Clauses</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto border-y py-4">
+            <FieldGroup size="form">
+              <ClauseFields
+                clauses={shown(content, resolved, "clauses")}
+                onChange={(clauses) => patchContent({ clauses })}
+              />
+            </FieldGroup>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setClausesOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={termsPrompt} onOpenChange={setTermsPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Edit the standing terms?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The Agreement&apos;s and Schedules&apos; figures have a page of
+              their own — there are too many to set from here.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay here</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setTermsPrompt(false);
+                setStep("terms");
+              }}
+            >
+              Go to the terms
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={guard.pending !== null}
+        onOpenChange={(open) => open || guard.dismiss()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave with unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This contract has edits that are not in the draft yet. Leaving now
+              loses them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                if (await enqueue(save)) guard.leave();
+              }}
+            >
+              Save and leave
+            </Button>
+            <AlertDialogAction onClick={guard.leave}>Discard</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DocumentWorkspace>
   );
 }
