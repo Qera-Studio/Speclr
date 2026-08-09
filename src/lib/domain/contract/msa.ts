@@ -39,7 +39,8 @@ export const CONTRACT_INTRO =
   'This Agreement sets out the terms upon which Qera Private Limited performs work for the Client. It applies to every engagement between the Parties. The Schedules describe how each kind of work is paid for, approved, owned and ended; the Parts appended to them describe the work itself.';
 
 /** Sentence introducing the two-party block on the parties page. */
-export const AGREEMENT_PREAMBLE = 'This Master Service Agreement is made between:';
+export const AGREEMENT_PREAMBLE =
+  'This Service Agreement (“Agreement”) is entered into between:';
 
 /** The statement printed above the signature blocks (content §2, clause 29). */
 export const EXECUTION_STATEMENT =

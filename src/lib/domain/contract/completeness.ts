@@ -28,7 +28,9 @@ export interface BlankScope {
   scope: string;
   /** Where the editor files it: 'Master Agreement', 'Schedule A', 'Part A-1'. */
   group: string;
-  /** What the editor calls it: '8. Fees, Invoicing and Payment', 'Limits'. */
+  /** What the editor calls it: 'Fees, Invoicing and Payment', 'Limits'. The
+   * clause number is the document's own numbering and changes with what the
+   * contract includes — the editor names things, it does not cite them. */
   label: string;
   /** The source paragraphs, in order. */
   texts: string[];
@@ -137,7 +139,7 @@ export function contractScopes(contract: ContractShape): BlankScope[] {
     scopeOf(
       msaScope(clause.number),
       'Master Agreement',
-      `${clause.number}. ${clause.heading}`,
+      clause.heading,
       clause.body,
     ),
   );
@@ -149,7 +151,7 @@ export function contractScopes(contract: ContractShape): BlankScope[] {
       scopeOf(
         scheduleScope(schedule.key, clause.number),
         `Schedule ${letter} — ${schedule.name}`,
-        `${letter}${clause.number}. ${clause.heading}`,
+        clause.heading,
         clause.body,
       ),
     ),

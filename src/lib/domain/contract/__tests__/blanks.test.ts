@@ -1,4 +1,6 @@
 import {
+  blankKind,
+  blankLabel,
   blankValue,
   blanksOf,
   disagreeingRows,
@@ -7,6 +9,7 @@ import {
   isUnfilled,
   parseScope,
   parseText,
+  sanitiseBlank,
 } from '../blanks';
 
 describe('parseText', () => {
@@ -115,6 +118,79 @@ describe('fillText', () => {
   it('fills each occurrence independently', () => {
     const filled = fillBlanks('s', ['[50%] advance, [50%] final'], { 's#1': '40%' });
     expect(filled).toEqual(['50% advance, 40% final']);
+  });
+});
+
+describe('blankLabel', () => {
+  it('shows the figure as a rule so the sentence names the field', () => {
+    expect(blankLabel("Registration of [1] domain in the Client's name")).toBe(
+      "Registration of ___ domain in the Client's name",
+    );
+  });
+
+  it('rules every blank in a paragraph, not just the first', () => {
+    expect(blankLabel('[50%] on signing, [50%] before launch')).toBe(
+      '___ on signing, ___ before launch',
+    );
+  });
+
+  it('leaves a paragraph with no blanks alone', () => {
+    expect(blankLabel('Anything beyond these is Additional Work.')).toBe(
+      'Anything beyond these is Additional Work.',
+    );
+  });
+});
+
+describe('blankKind', () => {
+  const blank = (fallback: string) => ({ key: 's#0', fallback });
+
+  /** The fee is drafted empty on purpose, so only its label can classify it. */
+  it('reads an empty blank in a Fee row as money', () => {
+    expect(blankKind(blank(' '), 'Fee')).toBe('money');
+  });
+
+  it('reads a rupee amount as money wherever it sits', () => {
+    expect(blankKind(blank('₹1,00,000'))).toBe('money');
+  });
+
+  it('does not mistake a label merely containing the letters for money', () => {
+    expect(blankKind(blank('3'), 'Feedback rounds')).toBe('count');
+  });
+
+  it('separates percentages from plain counts', () => {
+    expect(blankKind(blank('50%'), 'Payment')).toBe('percent');
+    expect(blankKind(blank('50'), 'Products uploaded')).toBe('count');
+  });
+
+  /** Plenty of blanks are legitimately prose; those must stay free text. */
+  it('leaves anything that is not a figure as text', () => {
+    expect(blankKind(blank('1], selected before start'))).toBe('text');
+    expect(blankKind(blank('7 days'))).toBe('text');
+  });
+});
+
+describe('sanitiseBlank', () => {
+  it('prints money the way the Agreement already does', () => {
+    expect(sanitiseBlank('money', '100000')).toBe('₹1,00,000');
+  });
+
+  it('rejects everything but digits as money is typed', () => {
+    expect(sanitiseBlank('money', '₹5,000 abc')).toBe('₹5,000');
+  });
+
+  it('keeps a count to digits and a percentage to digits plus a sign', () => {
+    expect(sanitiseBlank('count', '5a0')).toBe('50');
+    expect(sanitiseBlank('percent', '50')).toBe('50%');
+  });
+
+  /** Clearing a blank is an override the content layer honours; don't fight it. */
+  it('lets a field be emptied', () => {
+    expect(sanitiseBlank('money', '')).toBe('');
+    expect(sanitiseBlank('percent', '')).toBe('');
+  });
+
+  it('passes free text through untouched', () => {
+    expect(sanitiseBlank('text', '1, selected before start')).toBe('1, selected before start');
   });
 });
 

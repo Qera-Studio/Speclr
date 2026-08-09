@@ -29,6 +29,8 @@
  * Pure, client-safe, no framework imports.
  */
 
+import { groupRupeeInput, normalizeRupeeInput } from '../money';
+
 /** One `[…]` occurrence. `fallback` is what the drafter wrote inside it. */
 export interface Blank {
   key: string;
@@ -87,6 +89,76 @@ export function parseScope(scope: string, paragraphs: string[]): ParsedText[] {
     ordinal += parsed.blanks.length;
     return parsed;
   });
+}
+
+/**
+ * A paragraph with its blanks shown as rules — `'Registration of ___ domain in
+ * the Client's name'`.
+ *
+ * The label for a prose blank. A Part's Limits and Fee tables give each figure a
+ * label of its own, but a blank inside a sentence has none, and falling back to
+ * the section heading gave a Part three inputs all reading "What is included".
+ * The sentence the figure sits in is the only honest description of it.
+ */
+export function blankLabel(text: string): string {
+  return text.replace(BLANK, '___');
+}
+
+/**
+ * What kind of value a blank wants. Inferred, because nothing records it.
+ *
+ * A blank carries only what the drafter typed between the brackets, so the type
+ * has to be read off that plus — for a table row — its label. Deliberately
+ * conservative: anything that isn't obviously a figure stays free text, because
+ * plenty of blanks legitimately are (`[1], selected before start`).
+ */
+export type BlankKind = 'money' | 'percent' | 'count' | 'text';
+
+/** Labels whose row holds an amount. Bounded so "Feedback rounds" isn't money. */
+const MONEY_LABEL = /\b(fees?|amounts?|prices?|charges?|costs?)\b/i;
+
+/**
+ * `rowLabel` is the Limits/Fee row this blank sits in, where there is one.
+ *
+ * The label carries the money rule on its own because the fee blank is drafted
+ * `[ ]` — empty, by design, so nothing ships with a placeholder price. That is
+ * precisely the field that must not be free text, and its own fallback says
+ * nothing about it.
+ */
+export function blankKind(blank: Blank, rowLabel?: string): BlankKind {
+  const fallback = blank.fallback.trim();
+  if (fallback.includes('₹') || (rowLabel !== undefined && MONEY_LABEL.test(rowLabel))) {
+    return 'money';
+  }
+  if (/^\d+(\.\d+)?%$/.test(fallback)) return 'percent';
+  if (/^\d+$/.test(fallback)) return 'count';
+  return 'text';
+}
+
+/**
+ * What a typed character is allowed to leave in the field.
+ *
+ * Applied on every keystroke rather than on blur — the value here is what the
+ * contract *prints*, so the input must never hold something the document would
+ * be embarrassed by. Same rule `normalizeRupeeInput` follows for money forms.
+ * An emptied field stays empty: clearing a blank is an override the rest of the
+ * content layer already honours, and `isUnfilled` is what stops it finalizing.
+ */
+export function sanitiseBlank(kind: BlankKind, raw: string): string {
+  switch (kind) {
+    case 'money': {
+      const digits = normalizeRupeeInput(raw);
+      return digits === '' ? '' : `₹${groupRupeeInput(digits)}`;
+    }
+    case 'percent': {
+      const digits = normalizeRupeeInput(raw);
+      return digits === '' ? '' : `${digits}%`;
+    }
+    case 'count':
+      return raw.replace(/\D/g, '');
+    case 'text':
+      return raw;
+  }
 }
 
 /** What a blank prints: the stored value, else what the drafter wrote. */

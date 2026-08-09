@@ -450,7 +450,9 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: 'CON',
     slug: 'contract',
     label: 'Contract',
-    masthead: 'CONTRACT AGREEMENT',
+    // What the cover prints. Editable per document like every other masthead —
+    // the sheet reads `content.masthead`, it does not hardcode the title.
+    masthead: 'Master Service Agreement',
     kind: 'contract',
     hasPayment: false,
     hasDueDate: false,
