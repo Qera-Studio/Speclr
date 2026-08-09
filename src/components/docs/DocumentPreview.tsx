@@ -6,17 +6,16 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
   type Ref,
 } from 'react';
-import { A4_PADDING, A4_PADDING_Y } from './sheets/frame';
+import { A4_PADDING, A4_PADDING_Y, SHEET_HEIGHT, SHEET_WIDTH } from './sheets/frame';
+import { usePagination } from './usePagination';
+import type { PackedPage } from './pagination';
+import PageColumns from './PageColumns';
 
-// A4 at 96dpi.
-const SHEET_WIDTH = 794;
-const SHEET_HEIGHT = 1123;
 // Vertical gap between stacked pages in the scrolling column.
 const PAGE_GAP = 24;
 
@@ -35,48 +34,15 @@ export type DocumentPreviewHandle = {
 };
 
 /**
- * A cheap content fingerprint of the block list, used to decide when to
- * re-measure pagination.
+ * Running page furniture — the contract's header and footer, drawn into every
+ * page frame rather than into the content flow.
  *
- * It walks a block's `children` for text AND its remaining props. The props
- * matter: a sheet like `<DocumentSheet doc={…} />` has no children at all, it
- * renders everything from `doc`. A children-only fingerprint was therefore
- * constant while the user typed, so the cached pagination — and the stale
- * render with it — was reused and the preview never updated.
- *
- * Props are reduced to a length, not deep-compared, keeping this cheap. Any
- * edit that could change the layout also changes some prop's serialized size.
+ * `page` is the 0-based page index and `dark` says whether this page is
+ * painted black, so the chrome can invert itself. Whatever height the chrome
+ * costs must be declared as `chromeHeight`: it is what pagination reserves,
+ * and the two disagreeing is how content gets packed past the footer.
  */
-function blocksSignature(blocks: ReactNode[]): string {
-  const textLength = (node: ReactNode): number => {
-    if (node === null || node === undefined || typeof node === 'boolean') return 0;
-    if (typeof node === 'string' || typeof node === 'number') return String(node).length;
-    if (Array.isArray(node)) return node.reduce((sum: number, n) => sum + textLength(n), 0);
-    if (isValidElement(node)) {
-      const { children, ...rest } = node.props as { children?: ReactNode };
-      return textLength(children) + dataLength(rest);
-    }
-    return 0;
-  };
-
-  /** Serialized size of a block's data props, ignoring functions. */
-  const dataLength = (props: object): number => {
-    try {
-      return (
-        JSON.stringify(props, (_key, value) =>
-          typeof value === 'function' ? undefined : value,
-        )?.length ?? 0
-      );
-    } catch {
-      // Circular or non-serializable props. Return 0 rather than a sentinel:
-      // such a block contributes nothing to the fingerprint, so it relies on
-      // its siblings to trigger a re-measure. No sheet has such props today.
-      return 0;
-    }
-  };
-
-  return `${blocks.length}:${blocks.map(textLength).join(',')}`;
-}
+export type PageChrome = (page: number, dark: boolean) => ReactNode;
 
 /**
  * Block-aware A4 pagination rendered as a continuously scrolling page column —
@@ -85,10 +51,12 @@ function blocksSignature(blocks: ReactNode[]): string {
  *
  * Children are treated as atomic content blocks; each is measured and packed
  * into fixed A4 pages, breaking only *between* blocks — a clause heading can
- * never separate from its body. A block taller than one page (rare) gets its
- * own page and is allowed to overflow rather than being sliced — deterministic
- * and never mangled. Sheets that render as a single element (invoice, receipt)
- * simply pack as one block into one page.
+ * never separate from its body. A block can ask for a page to itself with
+ * `data-page="own"` (and a black one with `data-page-frame="dark"`), which is
+ * how the contract's cover, parties page and Schedule covers work. A block
+ * taller than one page gets its own page and is allowed to *overflow visibly*
+ * rather than being clipped or sliced. Sheets that render as a single element
+ * (invoice, receipt) simply pack as one block into one page.
  *
  * All pages are stacked and scroll vertically like a PDF viewer. Zoom and the
  * current page are *controlled* by the parent (the workspace bar owns those
@@ -96,11 +64,12 @@ function blocksSignature(blocks: ReactNode[]): string {
  * which page is in view while the user scrolls.
  *
  * When `coverFirst` is set, block 0 (the cover) is its own dedicated full-bleed
- * first page (no default padding/background) with `firstPageClassName` applied —
- * e.g. the black contract / offer-letter cover.
+ * first page (no default padding/background) with `firstPageClassName` applied.
+ * That predates `data-page="own"` and survives for the offer letter; the
+ * contract uses the block attributes instead.
  *
- * The sheet itself owns its A4 sizing; this component never changes it, so the
- * print route can keep rendering the same sheet unscaled.
+ * Measuring and packing live in `usePagination` / `pagination.ts`, shared with
+ * the print route so paper and preview cannot disagree.
  */
 export default function DocumentPreview({
   children,
@@ -109,6 +78,13 @@ export default function DocumentPreview({
   selfPaddedSheet = false,
   pagePadding = A4_PADDING,
   pagePaddingY = A4_PADDING_Y,
+  darkPageClassName,
+  pageHeader,
+  pageFooter,
+  chromeHeight = 0,
+  columns = 1,
+  columnWidth,
+  columnGap = 0,
   onPageCountChange,
   onCurrentPageChange,
   ref,
@@ -133,6 +109,25 @@ export default function DocumentPreview({
    * frame for their A4 margins.
    */
   selfPaddedSheet?: boolean;
+  /** Painted on a page whose block asked for `data-page-frame="dark"`. */
+  darkPageClassName?: string;
+  pageHeader?: PageChrome;
+  pageFooter?: PageChrome;
+  /** Total px the header and footer cost a page, reserved by pagination. */
+  chromeHeight?: number;
+  /**
+   * How many columns a page of this document has, how wide each is and what
+   * separates them. The contract prints two; everything else prints one.
+   *
+   * `columnWidth` comes from the sheet rather than being derived here: only the
+   * sheet knows its own horizontal margins, and a width guessed from
+   * `pagePaddingY` would be wrong the moment a document's margins stop being
+   * square. It is a number, not a class — Tailwind scans source text, so an
+   * interpolated arbitrary value never generates one.
+   */
+  columns?: number;
+  columnWidth?: number;
+  columnGap?: number;
   onPageCountChange?: (count: number) => void;
   onCurrentPageChange?: (index: number) => void;
   ref?: Ref<DocumentPreviewHandle>;
@@ -141,54 +136,20 @@ export default function DocumentPreview({
   const coverBlock = coverFirst ? blocks[0] : null;
   const flowBlocks = coverFirst ? blocks.slice(1) : blocks;
 
-  const flowRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const signature = blocksSignature(flowBlocks);
-
-  // Committed pagination tagged with the signature it was measured against; a
-  // mismatch means content changed since measuring, so we re-render phase 1.
-  const [computed, setComputed] = useState<{ signature: string; pages: number[][] } | null>(null);
-  const flowPages = computed && computed.signature === signature ? computed.pages : null;
 
   const [scale, setScale] = useState(0.5);
 
-  // A4 content box height minus this document's page padding. Blocks are packed
-  // until the next one would overflow it.
-  const pageContentHeight = SHEET_HEIGHT - pagePaddingY;
-
-  // Measure the un-paginated flow and pack blocks into pages. Runs inside a
-  // ResizeObserver callback so it also re-fires if the flow settles late.
-  useLayoutEffect(() => {
-    const container = flowRef.current;
-    if (!container || flowPages !== null) return;
-
-    const measure = () => {
-      const nodes = Array.from(container.children) as HTMLElement[];
-      const heights = nodes.map((n) => n.offsetHeight);
-      // No real measurements (jsdom / pre-layout) → stay un-paginated.
-      if (heights.every((h) => h === 0)) return;
-
-      const next: number[][] = [];
-      let current: number[] = [];
-      let used = 0;
-      heights.forEach((h, i) => {
-        if (current.length > 0 && used + h > pageContentHeight) {
-          next.push(current);
-          current = [];
-          used = 0;
-        }
-        current.push(i);
-        used += h;
-      });
-      if (current.length > 0) next.push(current);
-      setComputed({ signature, pages: next.length > 0 ? next : [[]] });
-    };
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [flowPages, signature, pageContentHeight]);
+  // A4 content box height minus this document's page padding and whatever its
+  // running header and footer take. Blocks are packed until the next one would
+  // overflow it.
+  const pageContentHeight = SHEET_HEIGHT - pagePaddingY - chromeHeight;
+  const { flowRef, pages: flowPages } = usePagination(
+    flowBlocks,
+    pageContentHeight,
+    columns,
+  );
 
   // Fit the A4 page *width* into the viewport — with a continuously scrolling
   // column the pane is no longer A4-shaped, so height must not bind (it would
@@ -281,19 +242,21 @@ export default function DocumentPreview({
     return () => observer.disconnect();
   }, [measuring, pageCount, reportCurrent]);
 
-  const pageFrame = `w-[794px] h-[1123px] box-border overflow-hidden ${PAGE_SHADOW}`;
+  // Literal 794/1123 rather than the constants: Tailwind scans source text, so
+  // an interpolated arbitrary value never gets a class generated.
+  const pageFrame = `w-[794px] h-[1123px] box-border ${PAGE_SHADOW}`;
   // A flex column so a trailing block can pin itself to the foot of the page
-  // with `mt-auto` — how the letters' signature and footer sit at the bottom.
-  // `shrink-0` keeps the old behaviour for a block taller than one page: it
-  // overflows (and is clipped) rather than being squashed out of shape.
+  // with `mt-auto` — how the letters' signature and footer sit at the bottom,
+  // and how the contract's footer sits under its last clause. `shrink-0` keeps
+  // a block taller than one page its true height rather than squashing it.
   const flowColumn = 'flex flex-col [&>*]:shrink-0';
   // Bare content blocks (the contract's clause list) need the page's own A4
   // margins. A self-contained sheet already paints its full 794px artwork
   // including its margins, so adding padding here would shrink it inside the
   // frame and clip its right edge.
   const flowFrame = selfPaddedSheet
-    ? `${pageFrame} ${flowColumn} bg-white text-black`
-    : `${pageFrame} ${flowColumn} ${pagePadding} bg-white text-black`;
+    ? `${pageFrame} ${flowColumn}`
+    : `${pageFrame} ${flowColumn} ${pagePadding}`;
 
   // Unscaled height of the whole stacked column, used to reserve the correct
   // on-screen footprint for the transform-scaled holder. While measuring, the
@@ -307,6 +270,30 @@ export default function DocumentPreview({
   const capturePage = (index: number) => (el: HTMLDivElement | null) => {
     pageRefs.current[index] = el;
   };
+
+  /** One packed page, with its furniture and its own colour. */
+  const renderPage = (page: PackedPage, index: number) => (
+    <div
+      key={index}
+      ref={capturePage(coverCount + index)}
+      className={[
+        'paginatorPage',
+        flowFrame,
+        // A block too tall for its page spills rather than being cut in half.
+        page.overflows ? 'overflow-visible' : 'overflow-hidden',
+        page.dark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black',
+      ].join(' ')}
+    >
+      {pageHeader?.(coverCount + index, page.dark)}
+      <PageColumns
+        page={page}
+        blocks={flowBlocks}
+        columnWidth={columns > 1 ? columnWidth : undefined}
+        columnGap={columnGap}
+      />
+      {pageFooter?.(coverCount + index, page.dark)}
+    </div>
+  );
 
   return (
     <div
@@ -337,7 +324,9 @@ export default function DocumentPreview({
             <div
               ref={capturePage(0)}
               className={
-                firstPageClassName ? `paginatorPage ${pageFrame} ${firstPageClassName}` : `paginatorPage ${pageFrame}`
+                firstPageClassName
+                  ? `paginatorPage ${pageFrame} overflow-hidden ${firstPageClassName}`
+                  : `paginatorPage ${pageFrame} overflow-hidden`
               }
             >
               {coverBlock}
@@ -352,6 +341,10 @@ export default function DocumentPreview({
                 flowRef.current = el;
                 capturePage(coverCount)(el);
               }}
+              // Measured at full page width. A block that will sit in a column
+              // carries its own width, so the same paragraph is measured in the
+              // box it will really occupy without the flow having to know which
+              // blocks those are.
               className={`paginatorPage w-[794px] ${
                 selfPaddedSheet ? '' : pagePadding
               } ${flowColumn} box-border bg-white text-black h-auto min-h-[1123px] ${PAGE_SHADOW}`}
@@ -359,11 +352,7 @@ export default function DocumentPreview({
               {flowBlocks}
             </div>
           ) : (
-            flowPages.map((blockIndices, i) => (
-              <div key={i} ref={capturePage(coverCount + i)} className={`paginatorPage ${flowFrame}`}>
-                {blockIndices.map((blockIndex) => flowBlocks[blockIndex])}
-              </div>
-            ))
+            flowPages.map(renderPage)
           )}
         </div>
       </div>

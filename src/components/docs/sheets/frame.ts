@@ -11,10 +11,43 @@
  * margin to fall back on. If physical output clips at the edges, raise this
  * one constant — every sheet follows it.
  */
+/** A4 at 96dpi — the paper every sheet and every preview page is cut to. */
+export const SHEET_WIDTH = 794;
+export const SHEET_HEIGHT = 1123;
+
 export const A4_PADDING = "p-[12px]";
 
 /** Total vertical padding `A4_PADDING` costs a page, in px (top + bottom). */
 export const A4_PADDING_Y = 24;
+
+/**
+ * The contract's page margin. Wider than the shared value because a contract is
+ * read as prose across twenty-odd pages and carries a running header and footer
+ * inside this margin, where the slips are dense single-page forms.
+ */
+export const CONTRACT_PADDING = "p-[24px]";
+
+/** Total vertical padding `CONTRACT_PADDING` costs a page, in px (24 + 24). */
+export const CONTRACT_PADDING_Y = 48;
+
+/**
+ * The contract sets its points in two columns.
+ *
+ * Not the whole page — a section's heading, its tables and its lists run the
+ * full measure, and the numbered points beneath the heading flow in these two
+ * columns. Not for density alone: a 14px line across the full 746px measure
+ * runs to ~105 characters, half again past the point where the eye reliably
+ * finds the next line. Two columns put it at ~50, which is the measure a
+ * printed agreement has always used.
+ *
+ * Width is derived here so the three numbers cannot drift: 794 − 48 of margin −
+ * 24 of gutter, halved.
+ */
+export const CONTRACT_COLUMNS = 2;
+export const CONTRACT_COLUMN_GAP = 24;
+export const CONTRACT_COLUMN_WIDTH =
+  (SHEET_WIDTH - CONTRACT_PADDING_Y - CONTRACT_COLUMN_GAP * (CONTRACT_COLUMNS - 1)) /
+  CONTRACT_COLUMNS;
 
 /** The offer letter's cover page — roomier margins than the slip sheets. */
 export const OFFER_COVER_PADDING = "p-[36px]";

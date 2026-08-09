@@ -30,6 +30,27 @@
   -webkit-print-color-adjust: exact;
 }
 
+/*
+ * A document paginated by `PrintPages` arrives as a stack of finished pages
+ * rather than one long flow, so each page is one sheet and the browser is told
+ * not to look for breaks of its own. On screen the same stack needs a gap to
+ * read as separate sheets.
+ */
+.paginatorPage {
+  break-after: page;
+  break-inside: avoid;
+}
+
+.paginatorPage:last-child {
+  break-after: auto;
+}
+
+@media screen {
+  .doc-sheet-wrap .paginatorPage + .paginatorPage {
+    margin-top: 24px;
+  }
+}
+
 @media print {
   html,
   body {

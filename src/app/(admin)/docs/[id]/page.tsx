@@ -17,7 +17,7 @@ import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
-import { contractBlocks, COVER_CLASSNAME } from '@/components/docs/sheets/ContractSheet';
+import { ContractWorkspace } from '@/components/docs/ContractPages';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
 import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
 import SlipSheet from '@/components/docs/sheets/SlipSheet';
@@ -172,9 +172,14 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
       pagePadding: LETTER_PADDING,
       pagePaddingY: LETTER_PADDING_Y,
     });
-  // Contracts feed their flat block list in so the preview can paginate them,
-  // with the black cover pinned as its own full-bleed first page.
+  // The contract carries a running header and footer, so its chrome has to be
+  // built inside a client component — see `ContractPages`. Same workspace, same
+  // actions rail.
   if (doc.type === 'CON')
-    return shell(contractBlocks(doc), { coverFirst: true, firstPageClassName: COVER_CLASSNAME });
+    return (
+      <ContractWorkspace doc={doc} title={heading}>
+        <FinalizedActions docId={doc.id} isSlip={false} />
+      </ContractWorkspace>
+    );
   return shell(<DocumentSheet doc={doc} />);
 }

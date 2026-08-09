@@ -5,7 +5,7 @@ import { getDocument, getStudioSettings } from '@/db/store';
 import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
-import ContractSheet from '@/components/docs/sheets/ContractSheet';
+import { ContractPrint } from '@/components/docs/ContractPages';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import PrintToolbar from '@/components/docs/PrintToolbar';
@@ -73,9 +73,11 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
       `${slug(spec.label)}-${slug(doc.employeeSnapshot.name)}-${doc.issueDate}`,
     );
   }
+  // The contract prints the same packed pages the preview shows — same blocks,
+  // same measuring, same packer — so paper and screen cannot break differently.
   if (doc.type === 'CON') {
     return shell(
-      <ContractSheet doc={doc} />,
+      <ContractPrint doc={doc} />,
       `Contract-${slug(doc.clientSnapshot.name)}-${doc.issueDate}`,
     );
   }
