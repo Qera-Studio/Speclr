@@ -3,12 +3,7 @@
 import { useState } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import {
-  createDraft,
-  deleteDraftAction,
-  finalizeDocument,
-  updateDraft,
-} from '@/server/actions/documents';
+import { deleteDraftAction, finalizeDocument } from '@/server/actions/documents';
 import { computeTotals } from '@/lib/domain/money';
 import { contentOf, type DocContent } from '@/lib/domain/docContent';
 import { DOC_TYPES } from '@/lib/domain/registry';
@@ -23,7 +18,6 @@ import {
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
@@ -50,6 +44,8 @@ import { paiseToRupees } from '@/lib/domain/money';
 import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
 import type { StudioInfo } from '@/lib/domain/studio';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
+import { useDraftAutosave } from './useDraftAutosave';
+import { AutosaveStatus, UnsavedChangesDialog } from './draftStatus';
 import { workspaceTitle } from '../workspaceTitle';
 import { numericField } from '@/components/form/inputFilters';
 
@@ -132,14 +128,7 @@ export default function DocumentEditor({
   const router = useRouter();
   const spec = DOC_TYPES[typeCode];
   const { form, lineItems } = useDocumentForm(typeCode, doc);
-  const {
-    register,
-    handleSubmit,
-    getValues,
-    setValue,
-    control,
-    formState: { isSubmitting },
-  } = form;
+  const { register, getValues, setValue, control } = form;
   /**
    * Text overrides. Deliberately outside react-hook-form: this is prose with
    * no validation to run, and keeping it out means the form's dirty/valid
@@ -153,8 +142,7 @@ export default function DocumentEditor({
   const [content, setContent] = useState<DocContent>(doc?.content ?? {});
   const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
 
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
    * Which GST branch the editor is showing. Seeded from the document itself —
@@ -210,42 +198,45 @@ export default function DocumentEditor({
     clients.find((c) => c.id === values.clientId)?.name,
   );
 
-  const onSaveDraft = handleSubmit(async (formValues) => {
-    setServerError(null);
-    setSaved(false);
-    const payload = toPayload(typeCode, formValues, content);
-    const result = doc
-      ? await updateDraft(doc.id, formValues.clientId, payload)
-      : await createDraft(typeCode, formValues.clientId, payload);
-
-    if (!result.success) {
-      setServerError(result.error ?? 'Something went wrong.');
-      return;
-    }
-    if (doc) {
-      setSaved(true);
-      router.refresh();
-    } else {
-      router.push(`/docs/${result.id}`);
-    }
+  /**
+   * The draft writes itself — there is no Save button. See `useDraftAutosave`
+   * for why, and for the one thing it cannot do: nothing is written until a
+   * client is picked, because `createDraft` refuses without one.
+   */
+  const autosave = useDraftAutosave({
+    typeCode,
+    initialDocId: doc?.id,
+    recipientId: values.clientId,
+    payload: toPayload(typeCode, values, content),
   });
+  const { docId, serverError, setServerError } = autosave;
 
-  const onFinalize = handleSubmit(async (formValues) => {
-    if (!doc) return;
+  const onFinalize = async () => {
+    if (!docId) return;
     setServerError(null);
-    // Persist any unsaved edits first, then finalize the stored draft.
-    const saveResult = await updateDraft(doc.id, formValues.clientId, toPayload(typeCode, formValues, content));
-    if (!saveResult.success) {
-      setServerError(saveResult.error ?? 'Something went wrong.');
-      return;
+    setIsSubmitting(true);
+    // Frozen first, then flushed: no timer may fire at a document that is about
+    // to stop being a draft. The flush goes behind whatever autosave already has
+    // in flight, so the document frozen is the one on screen.
+    autosave.freeze();
+    try {
+      if (!(await autosave.flush())) {
+        autosave.thaw();
+        return;
+      }
+      const result = await finalizeDocument(docId);
+      if (!result.success) {
+        // Usually a missing place of supply — recoverable, and fixed right
+        // here. Autosaving has to come back or the fix is never written down.
+        setServerError(result.error ?? 'Something went wrong.');
+        autosave.thaw();
+        return;
+      }
+      router.push(`/docs/${docId}/print`);
+    } finally {
+      setIsSubmitting(false);
     }
-    const result = await finalizeDocument(doc.id);
-    if (!result.success) {
-      setServerError(result.error ?? 'Something went wrong.');
-      return;
-    }
-    router.push(`/docs/${doc.id}/print`);
-  });
+  };
 
   /**
    * Copies an invoice's billing detail into this receipt.
@@ -293,11 +284,15 @@ export default function DocumentEditor({
   };
 
   const onDelete = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
-    const result = await deleteDraftAction(doc.id);
+    // As in `onFinalize`: stop autosaving before the row goes, or a timer
+    // recreates what was just deleted.
+    autosave.freeze();
+    const result = await deleteDraftAction(docId);
     if (!result.success) {
       setServerError(result.error ?? 'Something went wrong.');
+      autosave.thaw();
       return;
     }
     router.push('/');
@@ -305,7 +300,9 @@ export default function DocumentEditor({
 
   return (
     <DocumentWorkspace title={heading} preview={<DocumentSheet doc={previewDoc} />}>
-      <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
+      {/* Not a submitting form any more — the draft writes itself. `onSubmit`
+          is swallowed so a stray Enter in a text field cannot reload the page. */}
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
           <EditorSection title="Client & dates" description="Who it is for, and when" defaultOpen>
           <Field>
@@ -538,17 +535,12 @@ export default function DocumentEditor({
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
-        {saved ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            Draft saved.
-          </p>
-        ) : null}
+        <AutosaveStatus autosave={autosave} />
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save draft'}
-          </Button>
-          {doc ? (
+          {/* Finalize and Delete need a row to act on, which exists from the
+              first autosave — not from the route. */}
+          {docId ? (
             <>
               <ConfirmActionButton
                 label="Finalize & assign number"
@@ -572,6 +564,8 @@ export default function DocumentEditor({
           ) : null}
         </div>
       </form>
+
+      <UnsavedChangesDialog autosave={autosave} label={spec.label.toLowerCase()} />
     </DocumentWorkspace>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import SlipEditor from '../SlipEditor';
@@ -36,6 +36,18 @@ async function expandLineItem(
   name: RegExp,
 ) {
   await u.click(screen.getByRole('button', { name }));
+}
+
+/**
+ * There is no Save button — the slip writes itself a second after the typing
+ * stops (`AUTOSAVE_MS`). Waiting on the assertion rather than on "a call
+ * happened" is deliberate: autosave may bank an intermediate version first, and
+ * what these tests are about is what finally lands.
+ */
+async function autosavedWith(payload: object, type = 'STP', recipient = 'e1') {
+  await waitFor(() => expect(createDraft).toHaveBeenCalledWith(type, recipient, payload), {
+    timeout: 3000,
+  });
 }
 
 describe('SlipEditor (new)', () => {
@@ -94,11 +106,8 @@ describe('SlipEditor (new)', () => {
     const month = screen.getByLabelText(/stipend month/i);
     await u.clear(month);
     await u.type(month, '2026-06');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         stipendPeriodStart: '2026-06-01',
         stipendPeriodEnd: '2026-06-30',
@@ -122,11 +131,8 @@ describe('SlipEditor (new)', () => {
     const month = screen.getByLabelText(/stipend month/i);
     await u.clear(month);
     await u.type(month, '2026-06');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         lineItems: expect.arrayContaining([
           expect.objectContaining({ description: 'Bonus payment' }),
@@ -147,13 +153,8 @@ describe('SlipEditor (new)', () => {
     expect(screen.queryByLabelText(/currency/i)).not.toBeInTheDocument();
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
-      expect.objectContaining({ currency: 'INR' }),
-    );
+    await autosavedWith(expect.objectContaining({ currency: 'INR' }));
   });
 
   /**
@@ -166,34 +167,34 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         deductionsNote: 'No statutory deductions (PF, ESI, TDS) are applicable.',
       }),
     );
   });
 
-  it('creates a draft with the amount in paise on save', async () => {
+  it('creates a draft with the amount in paise, with no save button pressed', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-stp' });
+    const replaceState = jest.spyOn(window.history, 'replaceState');
     const u = userEvent.setup();
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
-    await selectComboboxOption(u, /employee/i, /Riya/);
-    // Selecting an employee seeds line item 1 from payAmountPaise (2000000 → "20000").
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
+    expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    // Selecting an employee seeds line item 1 from payAmountPaise (2000000 → "20000").
+    await selectComboboxOption(u, /employee/i, /Riya/);
+
+    await autosavedWith(
       expect.objectContaining({
         lineItems: expect.arrayContaining([expect.objectContaining({ ratePaise: 2000000 })]),
       }),
     );
-    expect(push).toHaveBeenCalledWith('/docs/new-stp');
+    // The URL becomes the draft's own without a navigation, so the half-filled
+    // slip is not remounted out from under the user.
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-stp');
+    expect(push).not.toHaveBeenCalled();
   });
 
   /**
@@ -207,13 +208,8 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
-      expect.objectContaining({ employeeId: 'e1' }),
-    );
+    await autosavedWith(expect.objectContaining({ employeeId: 'e1' }));
   });
 
   /** A stipend is never taxed — the payload must never carry a rate. */
@@ -223,13 +219,8 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
-      expect.objectContaining({ gstRatePercent: 0 }),
-    );
+    await autosavedWith(expect.objectContaining({ gstRatePercent: 0 }));
   });
 
   /** Reimbursed expenses ride along with the stipend as further line items. */
@@ -245,11 +236,8 @@ describe('SlipEditor (new)', () => {
     const rates = screen.getAllByLabelText(/^rate/i);
     expect(rates).toHaveLength(1);
     await u.type(rates[0], '2500');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         lineItems: expect.arrayContaining([
           expect.objectContaining({ ratePaise: 2000000 }),
@@ -269,11 +257,8 @@ describe('SlipEditor (new)', () => {
     const month = screen.getByLabelText(/stipend month/i);
     await u.clear(month);
     await u.type(month, '2026-06');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'STP',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         stipendMonth: '2026-06',
         stipendPeriodStart: '2026-06-01',

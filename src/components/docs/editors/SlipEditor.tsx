@@ -3,12 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import {
-  createDraft,
-  deleteDraftAction,
-  finalizeDocument,
-  updateDraft,
-} from "@/server/actions/documents";
+import { deleteDraftAction, finalizeDocument } from "@/server/actions/documents";
+import { useDraftAutosave } from "./useDraftAutosave";
+import { AutosaveStatus, UnsavedChangesDialog } from "./draftStatus";
 import {
   firstDayOfMonth,
   isISOMonth,
@@ -39,7 +36,6 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
@@ -239,12 +235,11 @@ export default function SlipEditor({
   const patchContent: ContentPatch = (patch) =>
     setContent((prev) => ({ ...prev, ...patch }));
 
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, control, watch, setValue, getValues, handleSubmit } =
-    useForm<SlipFormValues>({ defaultValues: defaultsFor(type, doc) });
+  const { register, control, watch, setValue, getValues } = useForm<SlipFormValues>({
+    defaultValues: defaultsFor(type, doc),
+  });
   const fieldArray = useFieldArray({ control, name: "lineItems" });
   const deductionsArray = useFieldArray({ control, name: "deductions" });
 
@@ -268,6 +263,32 @@ export default function SlipEditor({
   const daysInPeriod = watch("daysInPeriod");
   const daysPaid = watch("daysPaid");
   const lopDays = watch("lopDays");
+
+  /**
+   * The watched fields back as one object, for autosave to hash and send.
+   *
+   * Assembled by hand rather than read from `getValues()`: that is an ordinary
+   * function call during render, which is exactly what the note above forbids —
+   * the compiler would cache the first result and the draft would save the
+   * empty form for ever. Every field is already watched individually; this only
+   * puts them back together.
+   */
+  const liveValues: SlipFormValues = {
+    employeeId,
+    issueDate,
+    currency,
+    lineItems: lineItemValues,
+    stipendMonth,
+    stipendPeriodStart,
+    stipendPeriodEnd,
+    paymentMethod,
+    paymentReference,
+    deductionsNote,
+    deductions: deductionValues,
+    daysInPeriod,
+    daysPaid,
+    lopDays,
+  };
 
   const employee = employees.find((e) => e.id === employeeId);
   const heading = workspaceTitle(title, spec.label, employee?.name);
@@ -498,64 +519,49 @@ export default function SlipEditor({
     content,
   });
 
-  const onSaveDraft = handleSubmit(async (values) => {
-    setServerError(null);
-    setSaved(false);
-    setIsSubmitting(true);
-    try {
-      const payload = buildPayload(values);
-      const result = doc
-        ? await updateDraft(doc.id, values.employeeId, payload)
-        : await createDraft(type, values.employeeId, payload);
-      if (!result.success) {
-        setServerError(result.error ?? "Something went wrong.");
-        return;
-      }
-      if (doc) {
-        setSaved(true);
-        router.refresh();
-      } else {
-        router.push(`/docs/${result.id}`);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+  /** The slip writes itself — see `useDraftAutosave`. */
+  const autosave = useDraftAutosave({
+    typeCode: type,
+    initialDocId: doc?.id,
+    recipientId: employeeId,
+    payload: buildPayload(liveValues),
   });
+  const { docId, serverError, setServerError } = autosave;
 
   const onFinalize = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    // Freeze before flushing — see the note in `DocumentEditor.onFinalize`.
+    autosave.freeze();
     try {
-      const values = getValues();
-      const saveResult = await updateDraft(
-        doc.id,
-        values.employeeId,
-        buildPayload(values),
-      );
-      if (!saveResult.success) {
-        setServerError(saveResult.error ?? "Something went wrong.");
+      if (!(await autosave.flush())) {
+        autosave.thaw();
         return;
       }
-      const result = await finalizeDocument(doc.id);
+      const result = await finalizeDocument(docId);
       if (!result.success) {
+        // A pay slip for an intern is refused here, and fixed here.
         setServerError(result.error ?? "Something went wrong.");
+        autosave.thaw();
         return;
       }
-      router.push(`/docs/${doc.id}/print`);
+      router.push(`/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const onDelete = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    autosave.freeze();
     try {
-      const result = await deleteDraftAction(doc.id);
+      const result = await deleteDraftAction(docId);
       if (!result.success) {
         setServerError(result.error ?? "Something went wrong.");
+        autosave.thaw();
         return;
       }
       router.push("/");
@@ -566,7 +572,8 @@ export default function SlipEditor({
 
   return (
     <DocumentWorkspace title={heading} preview={<SlipSheet doc={previewDoc} />}>
-      <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
+      {/* No longer submits — the draft writes itself. See `DocumentEditor`. */}
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
           <EditorSection title="Recipient & date" description="Who it is for, and when" defaultOpen>
           <Field>
@@ -875,17 +882,10 @@ export default function SlipEditor({
               <AlertDescription>{serverError}</AlertDescription>
             </Alert>
           ) : null}
-          {saved ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              Draft saved.
-            </p>
-          ) : null}
+          <AutosaveStatus autosave={autosave} recipient="employee" />
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : "Save draft"}
-            </Button>
-            {doc ? (
+            {docId ? (
               <>
                 <ConfirmActionButton
                   label="Finalize & assign number"
@@ -910,6 +910,8 @@ export default function SlipEditor({
           </div>
         </FieldGroup>
       </form>
+
+      <UnsavedChangesDialog autosave={autosave} label={spec.label.toLowerCase()} />
     </DocumentWorkspace>
   );
 }

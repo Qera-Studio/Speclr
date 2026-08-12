@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DocumentEditor from '../DocumentEditor';
 import { selectComboboxOption } from '@/test-utils/combobox';
@@ -51,6 +51,16 @@ async function expandLineItem(
   name: RegExp = /Untitled item/,
 ) {
   await u.click(screen.getByRole('button', { name }));
+}
+
+/**
+ * There is no Save button — the draft writes itself a second after the typing
+ * stops (`AUTOSAVE_MS`). Real timers rather than fake ones: these tests drive
+ * Base UI comboboxes, which schedule their own work, and faking the clock under
+ * them is a bigger liability than the second this costs.
+ */
+async function autosaved(action: jest.Mock) {
+  await waitFor(() => expect(action).toHaveBeenCalled(), { timeout: 3000 });
 }
 
 describe('DocumentEditor (new invoice)', () => {
@@ -109,8 +119,9 @@ describe('DocumentEditor (new invoice)', () => {
     expect(screen.queryByLabelText(/notes/i)).not.toBeInTheDocument();
   });
 
-  it('creates a draft with rupees converted to paise on save', async () => {
+  it('creates a draft with rupees converted to paise, with no save button pressed', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-doc' });
+    const replaceState = jest.spyOn(window.history, 'replaceState');
     const u = userEvent.setup();
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
@@ -118,7 +129,7 @@ describe('DocumentEditor (new invoice)', () => {
     await expandLineItem(u);
     await u.type(screen.getByLabelText(/^description$/i), 'Design');
     await u.type(screen.getByLabelText(/rate \(₹\)/i), '1500');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
+    await autosaved(createDraft);
 
     expect(createDraft).toHaveBeenCalledWith(
       'INV',
@@ -127,7 +138,22 @@ describe('DocumentEditor (new invoice)', () => {
         lineItems: expect.arrayContaining([expect.objectContaining({ ratePaise: 150000 })]),
       }),
     );
-    expect(push).toHaveBeenCalledWith('/docs/new-doc');
+    // The URL becomes the draft's own without a navigation — a `router.push`
+    // here would remount the editor and take the half-typed document with it.
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-doc');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  /** No button to forget, so the affordance is the status line. */
+  it('has no save button, and says so once there is something to save', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
+
+    await expandLineItem(u);
+    await u.type(screen.getByLabelText(/^description$/i), 'Design');
+    expect(screen.getByRole('status')).toHaveTextContent('Pick a client to start saving.');
   });
 
   it('filters a long client list by typing', async () => {
@@ -228,7 +254,7 @@ describe('DocumentEditor (new receipt)', () => {
 
     await selectComboboxOption(u, /^client$/i, 'Acme Co.');
     await selectComboboxOption(u, 'Against invoice', /QS-INV-2627-001/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
+    await autosaved(createDraft);
 
     expect(createDraft).toHaveBeenCalledWith(
       'REC',
@@ -251,13 +277,23 @@ describe('DocumentEditor (new receipt)', () => {
     await selectComboboxOption(u, /^client$/i, 'Acme Co.');
     await selectComboboxOption(u, 'Against invoice', /QS-INV-2627-001/);
     await u.type(screen.getByLabelText('Invoice number'), '-AMENDED');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
     // A stored id that disagrees with the printed number is worse than no id:
     // once the number is retyped, the link can no longer be vouched for.
-    const payload = createDraft.mock.calls[0][2] as { payment: Record<string, unknown> };
-    expect(payload.payment.againstInvoiceNumber).toBe('QS-INV-2627-001-AMENDED');
-    expect(payload.payment.againstInvoiceId).toBeUndefined();
+    //
+    // Asserted on the *last* write rather than the first: autosave may already
+    // have banked the un-amended version, which is correct — it was true when
+    // it was written.
+    await waitFor(
+      () => {
+        const payload = createDraft.mock.calls.at(-1)?.[2] as
+          | { payment: Record<string, unknown> }
+          | undefined;
+        expect(payload?.payment.againstInvoiceNumber).toBe('QS-INV-2627-001-AMENDED');
+        expect(payload?.payment.againstInvoiceId).toBeUndefined();
+      },
+      { timeout: 3000 },
+    );
   });
 });
 

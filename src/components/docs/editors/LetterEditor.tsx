@@ -2,12 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  createDraft,
-  deleteDraftAction,
-  finalizeDocument,
-  updateDraft,
-} from '@/server/actions/documents';
+import { deleteDraftAction, finalizeDocument } from '@/server/actions/documents';
+import { useDraftAutosave } from './useDraftAutosave';
+import { AutosaveStatus, UnsavedChangesDialog } from './draftStatus';
 import { formatDisplayDate, todayISO } from '@/lib/domain/dates';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import type { StudioInfo } from '@/lib/domain/studio';
@@ -157,8 +154,6 @@ export default function LetterEditor({
   const [seeding, pulseSeeding] = usePulse();
   const [content, setContent] = useState<DocContent>(doc?.content ?? {});
   const patchContent: ContentPatch = (patch) => setContent((prev) => ({ ...prev, ...patch }));
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const employee = employees.find((e) => e.id === employeeId);
@@ -229,60 +224,48 @@ export default function LetterEditor({
     content,
   });
 
-  const onSaveDraft = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setServerError(null);
-    setSaved(false);
-    setIsSubmitting(true);
-    try {
-      const payload = buildPayload();
-      const result = doc
-        ? await updateDraft(doc.id, employeeId, payload)
-        : await createDraft(type, employeeId, payload);
-      if (!result.success) {
-        setServerError(result.error ?? 'Something went wrong.');
-        return;
-      }
-      if (doc) {
-        setSaved(true);
-        router.refresh();
-      } else {
-        router.push(`/docs/${result.id}`);
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  /** The letter writes itself — see `useDraftAutosave`. */
+  const autosave = useDraftAutosave({
+    typeCode: type,
+    initialDocId: doc?.id,
+    recipientId: employeeId,
+    payload: buildPayload(),
+  });
+  const { docId, serverError, setServerError } = autosave;
 
   const onFinalize = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    // Freeze before flushing — see the note in `DocumentEditor.onFinalize`.
+    autosave.freeze();
     try {
-      const saveResult = await updateDraft(doc.id, employeeId, buildPayload());
-      if (!saveResult.success) {
-        setServerError(saveResult.error ?? 'Something went wrong.');
+      if (!(await autosave.flush())) {
+        autosave.thaw();
         return;
       }
-      const result = await finalizeDocument(doc.id);
+      const result = await finalizeDocument(docId);
       if (!result.success) {
         setServerError(result.error ?? 'Something went wrong.');
+        autosave.thaw();
         return;
       }
-      router.push(`/docs/${doc.id}/print`);
+      router.push(`/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const onDelete = async () => {
-    if (!doc) return;
+    if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    autosave.freeze();
     try {
-      const result = await deleteDraftAction(doc.id);
+      const result = await deleteDraftAction(docId);
       if (!result.success) {
         setServerError(result.error ?? 'Something went wrong.');
+        autosave.thaw();
         return;
       }
       router.push('/');
@@ -319,7 +302,8 @@ export default function LetterEditor({
       pagePaddingY={LETTER_PADDING_Y}
       preview={letterBlocks(previewDoc)}
     >
-      <form onSubmit={onSaveDraft} className="flex flex-col gap-4" noValidate>
+      {/* No longer submits — the draft writes itself. See `DocumentEditor`. */}
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4" noValidate>
         <FieldGroup size="form">
         <EditorSection title="Recipient & date" description="Who it is for, and when" defaultOpen>
           <Field>
@@ -491,17 +475,10 @@ export default function LetterEditor({
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         ) : null}
-        {saved ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            Draft saved.
-          </p>
-        ) : null}
+        <AutosaveStatus autosave={autosave} recipient="employee" />
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving…' : 'Save draft'}
-          </Button>
-          {doc ? (
+          {docId ? (
             <>
               <ConfirmActionButton
                 label="Finalize"
@@ -526,6 +503,8 @@ export default function LetterEditor({
           </div>
         </FieldGroup>
       </form>
+
+      <UnsavedChangesDialog autosave={autosave} label="letter" />
     </DocumentWorkspace>
   );
 }

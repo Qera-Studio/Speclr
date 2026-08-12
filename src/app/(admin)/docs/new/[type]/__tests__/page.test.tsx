@@ -48,7 +48,9 @@ describe('/docs/new/[type]', () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
     render(await NewDocumentPage({ params: Promise.resolve({ type: 'invoice' }) }));
     expect(screen.getByRole('heading', { name: /new invoice/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save draft/i })).toBeInTheDocument();
+    // The client picker, not a save button — the draft writes itself, so there
+    // is no button here until the first autosave gives it a row to act on.
+    expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
   });
 
   it('notFound for an unknown slug', async () => {

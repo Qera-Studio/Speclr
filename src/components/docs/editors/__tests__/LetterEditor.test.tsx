@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import LetterEditor from '../LetterEditor';
@@ -27,29 +27,41 @@ beforeEach(() => {
   Object.defineProperty(URL, 'createObjectURL', { writable: true, value: jest.fn(() => 'blob:x') });
 });
 
+/**
+ * There is no Save button — the letter writes itself a second after the typing
+ * stops (`AUTOSAVE_MS`). Waiting on the assertion rather than on "a call
+ * happened": autosave may bank an intermediate version first, and what these
+ * tests are about is what finally lands.
+ */
+async function autosavedWith(payload: object, type = 'OFR', recipient = 'e1') {
+  await waitFor(() => expect(createDraft).toHaveBeenCalledWith(type, recipient, payload), {
+    timeout: 3000,
+  });
+}
+
 describe('LetterEditor (offer letter)', () => {
   it('renders the employee picker', () => {
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
   });
 
-  it('seeds the body on employee select and creates a draft', async () => {
+  it('seeds the body on employee select and creates a draft, with no save button', async () => {
     createDraft.mockResolvedValue({ success: true, id: 'new-ofr' });
+    const replaceState = jest.spyOn(window.history, 'replaceState');
     const u = userEvent.setup();
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
+
+    expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     // Seeding fills the single body pane, paragraphs separated by blank lines.
     const body = screen.getByLabelText(/letter body/i) as HTMLTextAreaElement;
     expect(body.value).toContain('\n\n');
 
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
-    expect(createDraft).toHaveBeenCalledWith(
-      'OFR',
-      'e1',
-      expect.objectContaining({ bodyParagraphs: expect.any(Array) }),
-    );
-    expect(push).toHaveBeenCalledWith('/docs/new-ofr');
+    await autosavedWith(expect.objectContaining({ bodyParagraphs: expect.any(Array) }));
+    // Swapped in place — a navigation would remount and lose the letter.
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-ofr');
+    expect(push).not.toHaveBeenCalled();
   });
 
   /**
@@ -64,13 +76,8 @@ describe('LetterEditor (offer letter)', () => {
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'OFR',
-      'e1',
-      expect.objectContaining({ employeeId: 'e1' }),
-    );
+    await autosavedWith(expect.objectContaining({ employeeId: 'e1' }));
   });
 
   /** A blank line is the paragraph separator; runs of blank lines collapse. */
@@ -83,11 +90,8 @@ describe('LetterEditor (offer letter)', () => {
     const body = screen.getByLabelText(/letter body/i);
     await u.clear(body);
     await u.type(body, 'First para.{Enter}{Enter}Second para.');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'OFR',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({ bodyParagraphs: ['First para.', 'Second para.'] }),
     );
   });
@@ -121,11 +125,8 @@ describe('LetterEditor subject', () => {
     const subject = screen.getByLabelText(/^subject$/i);
     await u.clear(subject);
     await u.type(subject, 'Subject: Internship');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'OFR',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         content: expect.objectContaining({ subject: 'Subject: Internship' }),
       }),
@@ -135,7 +136,7 @@ describe('LetterEditor subject', () => {
 
 describe('LetterEditor rail sections', () => {
   /**
-   * The rail is 384px wide and now has an input for every printed word. The
+   * The rail is 352px wide and now has an input for every printed word. The
    * sections you touch on every letter are open; the rest stay shut.
    */
   it('opens the letter itself and leaves the boilerplate collapsed', () => {
@@ -167,11 +168,8 @@ describe('LetterEditor rail sections', () => {
     const designation = screen.getByLabelText(/^designation$/i);
     await u.clear(designation);
     await u.type(designation, 'Director');
-    await u.click(screen.getByRole('button', { name: /save draft/i }));
 
-    expect(createDraft).toHaveBeenCalledWith(
-      'OFR',
-      'e1',
+    await autosavedWith(
       expect.objectContaining({
         content: expect.objectContaining({ signatoryTitle: 'Director' }),
       }),

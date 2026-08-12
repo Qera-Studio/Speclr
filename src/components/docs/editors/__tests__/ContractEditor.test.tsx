@@ -450,15 +450,34 @@ describe('ContractEditor — not losing the draft', () => {
    * over when the write was queued — otherwise a second change arriving before
    * the first render lands would create a second contract.
    */
-  it('does not start a second draft when the client is changed again', async () => {
+  it('does not start a second draft when it is edited again', async () => {
     const u = userEvent.setup();
     renderEditor();
     await selectComboboxOption(u, /^client$/i, 'Acme Co.');
     await autosaved();
-    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+
+    await addShopify(u);
     await waitFor(() => expect(updateDraft).toHaveBeenCalled(), { timeout: 3000 });
 
     expect(createDraft).toHaveBeenCalledTimes(1);
+    expect(updateDraft).toHaveBeenCalledWith('new-con', 'c1', expect.anything());
+  });
+
+  /**
+   * Autosave compares the payload by value, so re-picking the client already on
+   * the contract is not an edit. This replaced a hand-set `dirty` flag that
+   * fired on the act of choosing rather than on anything changing.
+   */
+  it('writes nothing when a change leaves the contract identical', async () => {
+    const u = userEvent.setup();
+    renderEditor();
+    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await autosaved();
+
+    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await new Promise((r) => setTimeout(r, 1500));
+
+    expect(updateDraft).not.toHaveBeenCalled();
   });
 
   it('asks before an in-app link throws unsaved edits away', async () => {

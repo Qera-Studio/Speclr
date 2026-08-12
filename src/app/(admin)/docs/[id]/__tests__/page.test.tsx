@@ -75,7 +75,9 @@ describe('/docs/[id]', () => {
     getDocument.mockResolvedValue(draftInvoice);
     await renderPage();
     expect(screen.getByRole('heading', { name: /edit invoice draft/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /save draft/i })).toBeInTheDocument();
+    // Finalize marks the editor now. There is no save button — the draft writes
+    // itself — and Finalize appears exactly when there is a row to finalize.
+    expect(screen.getByRole('button', { name: /finalize/i })).toBeInTheDocument();
   });
 
   it('renders the finalized sheet + actions (no edit) for a finalized invoice', async () => {
@@ -83,7 +85,9 @@ describe('/docs/[id]', () => {
     getDocument.mockResolvedValue(finalInvoice);
     await renderPage();
     expect(screen.getByRole('button', { name: /duplicate/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /save draft/i })).not.toBeInTheDocument();
+    // No editor at all: a finalized document is immutable, so the route never
+    // mounts one — and with it no Finalize button and no autosave.
+    expect(screen.queryByRole('button', { name: /finalize/i })).not.toBeInTheDocument();
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
   });
 

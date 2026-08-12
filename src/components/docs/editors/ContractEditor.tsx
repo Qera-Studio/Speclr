@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
-import {
-  createDraft,
-  deleteDraftAction,
-  finalizeDocument,
-  updateDraft,
-} from "@/server/actions/documents";
+import { deleteDraftAction, finalizeDocument } from "@/server/actions/documents";
 import { formatDisplayDate, todayISO } from "@/lib/domain/dates";
 import { DOC_TYPES } from "@/lib/domain/registry";
 import { assemble } from "@/lib/domain/contract/assembly";
@@ -74,7 +69,8 @@ import {
   shown,
   type ContentPatch,
 } from "./ContentFields";
-import { useUnsavedGuard } from "./useUnsavedGuard";
+import { useDraftAutosave } from "./useDraftAutosave";
+import { UnsavedChangesDialog } from "./draftStatus";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { workspaceTitle } from "../workspaceTitle";
 
@@ -85,15 +81,6 @@ const EMPTY_SNAPSHOT: ClientSnapshot = {
   phone: "",
 };
 const EMPTY_CONTRACT: ContractData = { parts: [], blanks: {}, library: {} };
-
-/**
- * How long the editor waits after the last change before writing.
- *
- * Long enough that a sentence typed into a clause is one write rather than
- * forty; short enough that closing the tab straight after an edit is still
- * covered by the unsaved-changes guard.
- */
-const AUTOSAVE_MS = 1000;
 
 /** Services → the standing terms → the document. */
 type Step = "services" | "terms" | "preview";
@@ -150,49 +137,26 @@ export default function ContractEditor({
   );
   const [clausesOpen, setClausesOpen] = useState(false);
   const [termsPrompt, setTermsPrompt] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * The draft's own id once there is one — from the route, or from the save
-   * that runs the moment a client is chosen. Everything that used to ask "is
-   * there a `doc`?" asks this instead, because a contract created here is just
-   * as real as one loaded from the URL.
-   *
-   * Mirrored in a ref because writes are queued: a job sitting in the queue was
-   * closed over before the create that precedes it returned, and reading `docId`
-   * from that closure would create a second draft instead of updating the first.
-   */
-  const [docId, setDocId] = useState<string | null>(doc?.id ?? null);
-  const docIdRef = useRef(doc?.id ?? null);
-  const claimDocId = (id: string) => {
-    docIdRef.current = id;
-    setDocId(id);
-    window.history.replaceState(null, "", `/docs/${id}`);
-  };
-
-  const [dirty, setDirty] = useState(false);
-  const guard = useUnsavedGuard(dirty);
+  const buildPayload = () => ({ issueDate, contract, content });
 
   /**
-   * Every write to this draft, in order.
+   * The draft writes itself. This editor had that first and alone; the logic now
+   * lives in `useDraftAutosave`, where the other three editors share it.
    *
-   * Autosave fires on a timer while the user keeps typing, so two writes can
-   * easily be in flight at once — and two `updateDraft` calls landing out of
-   * order would persist the older contract over the newer. Chaining them costs
-   * one ref and removes the whole class of race; a rejected job never stalls the
-   * queue because the chain recovers on both settlements.
+   * `docId` is the draft's own id once there is one — from the route, or from
+   * the save that runs the moment a client is chosen. Everything that used to
+   * ask "is there a `doc`?" asks this instead, because a contract created here
+   * is just as real as one loaded from the URL.
    */
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
-  const enqueue = <T,>(job: () => Promise<T>): Promise<T> => {
-    const next = queue.current.then(job, job);
-    queue.current = next.then(
-      () => undefined,
-      () => undefined,
-    );
-    return next;
-  };
+  const autosave = useDraftAutosave({
+    typeCode: "CON",
+    initialDocId: doc?.id,
+    recipientId: clientId,
+    payload: buildPayload(),
+  });
+  const { docId, saveState, serverError, setServerError } = autosave;
 
   const client = clients.find((c) => c.id === clientId);
   const heading = workspaceTitle(title, DOC_TYPES.CON.label, client?.name);
@@ -218,12 +182,12 @@ export default function ContractEditor({
 
   const assembled = assemble(contract.parts);
   const added = new Set(contract.parts.map((p) => p.code));
-  const buildPayload = () => ({ issueDate, contract, content });
 
-  const patchContent: ContentPatch = (patch) => {
-    setDirty(true);
+  // No `setDirty` here or in any other mutator: `useDraftAutosave` compares the
+  // payload by value, so a change is a change whether or not someone remembered
+  // to say so. Four hand-maintained flags used to live in these functions.
+  const patchContent: ContentPatch = (patch) =>
     setContent((prev) => ({ ...prev, ...patch }));
-  };
 
   /**
    * Committing copies the Service onto the contract, with the text of every
@@ -241,7 +205,6 @@ export default function ContractEditor({
         library[line.id] = line.text;
       }
     }
-    setDirty(true);
     setContract((prev) => ({
       parts: prev.parts.some((p) => p.code === part.code)
         ? prev.parts.map((p) => (p.code === part.code ? part : p))
@@ -259,7 +222,6 @@ export default function ContractEditor({
    * dropped at finalize, when only the resolved contract is materialised.
    */
   const removePart = (code: string) => {
-    setDirty(true);
     setContract((prev) => ({
       ...prev,
       parts: prev.parts.filter((p) => p.code !== code),
@@ -267,7 +229,6 @@ export default function ContractEditor({
   };
 
   const setBlank = (key: string, value: string) => {
-    setDirty(true);
     setContract((prev) => ({
       ...prev,
       blanks: { ...prev.blanks, [key]: value },
@@ -294,76 +255,23 @@ export default function ContractEditor({
   // What the contract will print — the source for every content input's value.
   const resolved = contentOf(previewDoc, DOC_TYPES.CON);
 
-  /**
-   * Choosing a client is the first moment there is enough to save —
-   * `createDraft` refuses without one. So that is when the draft starts
-   * existing, and the URL quietly becomes its own. `history.replaceState` rather
-   * than the router, because a navigation here would remount this component and
-   * take the half-built contract with it.
-   */
-  const onClientChange = (id: string) => {
-    setClientId(id);
-    setDirty(true);
-  };
-
-  /**
-   * Writes the current form state, creating the draft if this is the first one.
-   * Always call through `enqueue` — never twice at once.
-   */
-  const save = async () => {
-    const id = docIdRef.current;
-    const payload = buildPayload();
-    const result = id
-      ? await updateDraft(id, clientId, payload)
-      : await createDraft("CON", clientId, payload);
-    if (!result.success) {
-      setServerError(result.error ?? "Something went wrong.");
-      return false;
-    }
-    if (!id && result.id) claimDocId(result.id);
-    setDirty(false);
-    return true;
-  };
-
-  /**
-   * The draft saves itself.
-   *
-   * A contract is built over a long sitting — twenty-two services, thirty
-   * figures, twenty-eight clauses — and a Save button on that is a trap: the one
-   * time it is forgotten, an hour of work is gone. So a change schedules a write
-   * a second after the typing stops, rather than one per keystroke.
-   *
-   * Two things hold it back. There is nothing to save before a client is chosen,
-   * because `createDraft` refuses without one. And it must not fire on arrival,
-   * which `dirty` covers: opening an existing document is not a change to it.
-   */
-  useEffect(() => {
-    if (!dirty || !clientId) return;
-    const timer = setTimeout(() => {
-      setSaveState("saving");
-      setServerError(null);
-      enqueue(async () => {
-        setSaveState((await save()) ? "saved" : "idle");
-      });
-    }, AUTOSAVE_MS);
-    return () => clearTimeout(timer);
-    // `save` reads exactly the state listed here, and `dirty` is what says any
-    // of it actually changed. Depending on `save` itself would re-arm the timer
-    // on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, clientId, issueDate, contract, content]);
-
   const onFinalize = async () => {
     if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    // Freeze before flushing — see the note in `DocumentEditor.onFinalize`. The
+    // flush goes behind whatever autosave already has in flight, so the
+    // document being frozen is the one on screen.
+    autosave.freeze();
     try {
-      // Behind whatever autosave already has in flight, so the document being
-      // frozen is the one on screen.
-      if (!(await enqueue(save))) return;
+      if (!(await autosave.flush())) {
+        autosave.thaw();
+        return;
+      }
       const result = await finalizeDocument(docId);
       if (!result.success) {
         setServerError(result.error ?? "Something went wrong.");
+        autosave.thaw();
         return;
       }
       router.push(`/docs/${docId}/print`);
@@ -376,13 +284,14 @@ export default function ContractEditor({
     if (!docId) return;
     setServerError(null);
     setIsSubmitting(true);
+    autosave.freeze();
     try {
       const result = await deleteDraftAction(docId);
       if (!result.success) {
         setServerError(result.error ?? "Something went wrong.");
+        autosave.thaw();
         return;
       }
-      setDirty(false);
       router.push("/");
     } finally {
       setIsSubmitting(false);
@@ -438,7 +347,7 @@ export default function ContractEditor({
           size="form"
           options={clients.map((c) => ({ value: c.id, label: c.name }))}
           value={clientId}
-          onValueChange={onClientChange}
+          onValueChange={setClientId}
           placeholder="Select a client…"
           emptyMessage="No matching clients."
         />
@@ -450,10 +359,7 @@ export default function ContractEditor({
           id="con-issue-date"
           size="form"
           value={issueDate}
-          onValueChange={(value) => {
-            setDirty(true);
-            setIssueDate(value);
-          }}
+          onValueChange={setIssueDate}
         />
       </Field>
     </>
@@ -751,33 +657,7 @@ export default function ContractEditor({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={guard.pending !== null}
-        onOpenChange={(open) => open || guard.dismiss()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Leave with unsaved changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This contract has edits that are not in the draft yet. Leaving now
-              loses them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                if (await enqueue(save)) guard.leave();
-              }}
-            >
-              Save and leave
-            </Button>
-            <AlertDialogAction onClick={guard.leave}>Discard</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UnsavedChangesDialog autosave={autosave} label="contract" />
     </DocumentWorkspace>
   );
 }
