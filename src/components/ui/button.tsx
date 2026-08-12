@@ -9,6 +9,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // `default`, given an edge. The stroke is mixed from `--primary` rather
+        // than hard-coded, so it darkens with whatever the theme sets and stays
+        // two steps down from the fill in both. The two inset lines are a lit
+        // top edge and a shaded bottom one — enough to read as a raised surface
+        // at a glance, not enough to look like a 2010 gradient button.
+        //
+        // On trial on the dashboard's "New document" only. Roll it into
+        // `default` if it holds up, or delete it — do not leave it half-adopted.
+        raised:
+          "bg-primary text-primary-foreground border-[color-mix(in_oklch,var(--primary),black_18%)] shadow-[inset_0_1px_0_color-mix(in_oklch,white,transparent_78%),inset_0_-1px_0_color-mix(in_oklch,black,transparent_88%)] hover:bg-[color-mix(in_oklch,var(--primary),white_6%)]",
         outline:
           "border-border hover:bg-input/50 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/30",
         secondary:
