@@ -168,6 +168,17 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 - **Server-side PDF renderer** — print-CSS now. Sheets stay pure `data → markup`
   precisely so this lands later as a non-breaking, additive upgrade. Don't couple
   sheets to the DOM in the meantime (see §3, which touches the same surface).
+- **One-click download for a finalized document** — blocked on the renderer
+  above, and deferred with it. A browser cannot be made to save a PDF: the print
+  dialog is the only route, and the user still has to choose "Save as PDF"
+  there. So a download *icon* would be a second button doing precisely what
+  Print already does at `DocumentRowActions.tsx` — worse than nothing, because
+  it promises a file it cannot deliver. A real one needs
+  `/api/docs/[id]/pdf`, rendering the sheet through headless Chromium. Two
+  pieces of the groundwork already exist: the sheets are pure `data → markup`,
+  and `PrintToolbar` (`handlePrint`) already derives the right filename per doc
+  type, which that route would reuse verbatim. Raised August 2026; revisit when
+  the renderer is picked up.
 - **Roles/permissions** — allowlist + full access now. **No longer really
   deferred:** §1 needs them, and the original bet was that adding roles "must not
   require a rewrite." §1 is where that bet gets tested.
