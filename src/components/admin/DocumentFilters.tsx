@@ -77,6 +77,11 @@ export interface DocumentFiltersProps {
    * that sits here is the browser's concern, not the filters'.
    */
   leading?: React.ReactNode;
+  /**
+   * Rendered at the right end of the same bar. The conditions between the two
+   * slots are `flex-1`, so this is pinned to the edge without a spacer.
+   */
+  trailing?: React.ReactNode;
 }
 
 /**
@@ -151,6 +156,7 @@ export default function DocumentFilters({
   hiddenFields = [],
   partyLabel,
   leading,
+  trailing,
 }: DocumentFiltersProps) {
   const labelOf = (field: FilterField) =>
     field === 'party' ? (partyLabel ?? FILTER_FIELDS.party.label) : FILTER_FIELDS[field].label;
@@ -407,6 +413,8 @@ export default function DocumentFilters({
           );
         })}
       </div>
+
+      {trailing}
     </div>
   );
 }

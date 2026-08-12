@@ -308,10 +308,11 @@ describe('the sorting toggle', () => {
   });
 
   /**
-   * A sort left applied with its controls hidden would reorder the table with
-   * nothing on screen explaining why — and no way to undo it.
+   * The eye hides the *controls*, not the order. Dropping the sort on hide
+   * meant a list sorted by total could only be read with the arrows showing on
+   * all six headers — so the two things you might want were mutually exclusive.
    */
-  it('drops any applied sort when switched off', async () => {
+  it('keeps the applied sort when switched off', async () => {
     const user = userEvent.setup();
     render(<DocumentsBrowser documents={documents} />);
     const parties = () =>
@@ -323,7 +324,24 @@ describe('the sorting toggle', () => {
     expect(parties()).toEqual([false, true]);
 
     await user.click(toggle());
-    expect(parties()).toEqual([true, false]);
+    expect(screen.queryByRole('button', { name: /^date/i })).not.toBeInTheDocument();
+    expect(parties()).toEqual([false, true]);
+  });
+
+  /** Turning the eye back on reveals the sort that was still in force. */
+  it('shows the surviving sort again when switched back on', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    await user.click(toggle());
+    await user.click(screen.getByRole('button', { name: /^date/i }));
+    await user.click(toggle());
+    await user.click(toggle());
+
+    expect(screen.getByRole('columnheader', { name: /^date/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
   });
 });
 
@@ -366,5 +384,63 @@ describe('DocumentsBrowser pagination', () => {
 
     await addFilter(user, /^status$/i);
     expect(screen.getByText('QS-INV-2627-001')).toBeInTheDocument();
+  });
+
+  describe('card view', () => {
+    afterEach(() => localStorage.clear());
+
+    it('swaps the table for cards, keeping every document', async () => {
+      const user = userEvent.setup();
+      render(<DocumentsBrowser documents={documents} />);
+
+      await user.click(screen.getByRole('button', { name: 'Cards' }));
+
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Draft' })).toBeInTheDocument();
+      expect(screen.getByText('Acme Co.')).toBeInTheDocument();
+      expect(screen.getByText('₹ 1,000.00')).toBeInTheDocument();
+    });
+
+    /** Filters and paging belong to the browser, not to either renderer. */
+    it('keeps filtering working in card view', async () => {
+      const user = userEvent.setup();
+      render(<DocumentsBrowser documents={documents} />);
+
+      await user.click(screen.getByRole('button', { name: 'Cards' }));
+      await addFilter(user, /^status$/i);
+      await user.click(screen.getByRole('button', { name: /status value/i }));
+      await user.click(await screen.findByRole('menuitemcheckbox', { name: /^finalized$/i }));
+
+      expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Draft' })).not.toBeInTheDocument();
+    });
+
+    /**
+     * Sorting's only control is the column headers. Leaving the eye visible in
+     * card view would offer a toggle that changes nothing on screen.
+     */
+    it('hides the sort toggle in card view', async () => {
+      const user = userEvent.setup();
+      render(<DocumentsBrowser documents={documents} />);
+
+      expect(screen.getByRole('button', { name: 'Sort' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Cards' }));
+      expect(screen.queryByRole('button', { name: 'Sort' })).not.toBeInTheDocument();
+    });
+
+    it('remembers the choice across a remount', async () => {
+      const user = userEvent.setup();
+      const { unmount } = render(<DocumentsBrowser documents={documents} />);
+      await user.click(screen.getByRole('button', { name: 'Cards' }));
+      unmount();
+
+      render(<DocumentsBrowser documents={documents} />);
+      expect(await screen.findByRole('button', { name: 'Cards' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    });
   });
 });
