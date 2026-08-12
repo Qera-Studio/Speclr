@@ -18,8 +18,18 @@ import {
 import { parentHref } from './breadcrumb';
 import { useEditorPanel } from './EditorPanel';
 
-/** Wider than the nav — it holds full form fields, not links. */
-export const EDITOR_RAIL_WIDTH = 384;
+/**
+ * Wider than the nav (`NAV_WIDTH` in `AdminShell`), because it holds full form
+ * fields rather than links. Matching the two was tried and reverted — at the
+ * same number the nav looked oversized for a list of short labels.
+ *
+ * 336 is the floor, and it is arithmetic rather than taste: the rail loses 16px
+ * to the inset `p-2` and 32px to `SidebarContent`'s `p-4`, so the `field-group`
+ * container is width − 48. `FieldRow` puts two fields side by side at 288px
+ * (`@2xs`). Below 336 every paired field in every editor silently stacks — see
+ * `field-row.tsx`.
+ */
+export const EDITOR_RAIL_WIDTH = 352;
 
 /**
  * The app-level edit rail: one right-hand panel shared by every admin page.

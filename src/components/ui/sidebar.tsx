@@ -697,9 +697,10 @@ function SidebarMenuSkeleton({
  * rather than one continuous trunk — deliberate; set `gap-0` to butt them into
  * a single line.
  *
- * The list itself is *not* inset. Rows span the parent's full width so their
- * hover and active fills line up with the section button above them; the indent
- * is padding inside each row, and the tree is drawn in that padding.
+ * The tree is drawn in the strip to the left of the rows, and the rows start
+ * clear of it. Fills used to span the parent's full width — which lined them up
+ * with the section button above, but painted over the elbow they were meant to
+ * sit beside. A row's fill now begins where the row does, just past the leg.
  */
 function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
   return (
@@ -748,9 +749,11 @@ function SidebarMenuSubButton({
     props: mergeProps<"a">(
       {
         className: cn(
-          // `pl-8` clears the tree elbow drawn in `SidebarMenuSubItem`'s
-          // padding: the leg ends at 22px, the label starts at 32px.
-          "group/menu-button flex h-7 w-full min-w-0 items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] py-2 pr-2 pl-8 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-xs data-[size=sm]:text-xs data-active:bg-sidebar-active data-active:font-medium data-active:text-sidebar-accent-foreground [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+          // The row starts past the tree elbow rather than under it: the leg
+          // ends at 22px, the row at 24px (`ml-6`), the label still at 32px
+          // (`pl-2`). Widening back to `w-full` puts the hover fill over the
+          // tree again — that is the bug this shape fixes.
+          "group/menu-button flex h-7 w-[calc(100%-1.5rem)] min-w-0 items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] py-2 pr-2 pl-2 ml-6 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-xs data-[size=sm]:text-xs data-active:bg-sidebar-active data-active:font-medium data-active:text-sidebar-accent-foreground [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
           className,
         ),
       },

@@ -38,6 +38,12 @@ import type { UserCardUser } from "./UserCard";
  * which flips `data-collapsible` at once but animates width. A number wide
  * enough for the longest row ("Experience letter", plus the `variant="inset"`
  * gutter) has none of those failure modes. Widen it if a longer label lands.
+ *
+ * It is deliberately narrower than `EDITOR_RAIL_WIDTH`. Matching the two was
+ * tried and reverted: the editor rail holds two-column form fields and needs
+ * its width, while this one holds a list of short labels and only looked
+ * oversized at the same number. They are not peers — one is navigation, the
+ * other is the document being worked on.
  */
 const NAV_WIDTH = 224;
 

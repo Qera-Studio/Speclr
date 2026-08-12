@@ -15,10 +15,10 @@ jest.mock('@clerk/nextjs', () => ({
 
 const user = { name: 'Shivanshu Pareek', email: 'ops@qera.studio', imageUrl: undefined };
 
-function renderSidebar() {
+function renderSidebar({ open = true }: { open?: boolean } = {}) {
   return render(
     <NewDocumentProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={open}>
         <AdminSidebar user={user} />
       </SidebarProvider>
     </NewDocumentProvider>,
@@ -56,6 +56,52 @@ describe('AdminSidebar', () => {
     await u.click(screen.getByRole('button', { name: /^client/i }));
     expect(await screen.findByRole('link', { name: 'Invoice' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Contract' })).toHaveAttribute('href', '/docs/contract');
+  });
+
+  /**
+   * Collapsed, the sub-list is `display:none` — so the trigger has to lead
+   * somewhere else. It becomes a menu trigger, and the flyout carries the links.
+   */
+  it('turns the document sections into menu triggers when the rail is collapsed', () => {
+    renderSidebar({ open: false });
+    expect(screen.getByRole('button', { name: /^client/i })).toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
+    expect(screen.getByRole('button', { name: /^admin/i })).toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
+  });
+
+  /**
+   * Opened by keyboard, not pointer: Base UI's hover-open path needs real
+   * pointer events (see the account-card note below). The keyboard route mounts
+   * the same popup, which is what matters here — an earlier version of this test
+   * asserted only the trigger swap, and so never mounted the popup at all. It
+   * missed a `Menu.GroupLabel` rendered outside its `Menu.Group`, which throws
+   * on open. Hover *timing* is still a browser check; the contents are not.
+   */
+  it('carries the section’s document links in the collapsed flyout', async () => {
+    const u = userEvent.setup();
+    renderSidebar({ open: false });
+    screen.getByRole('button', { name: /^client/i }).focus();
+    await u.keyboard('{Enter}');
+
+    const items = await screen.findAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual(['Contract', 'Invoice', 'Receipt']);
+    expect(screen.getByRole('menuitem', { name: 'Invoice' })).toHaveAttribute(
+      'href',
+      '/docs/invoice',
+    );
+  });
+
+  it('keeps the sections collapsible while the rail is expanded', () => {
+    renderSidebar();
+    expect(screen.getByRole('button', { name: /^client/i })).not.toHaveAttribute(
+      'aria-haspopup',
+      'menu',
+    );
   });
 
   it('marks the active route with aria-current', () => {

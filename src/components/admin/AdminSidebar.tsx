@@ -10,6 +10,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -72,6 +80,23 @@ function HoverArrow() {
   );
 }
 
+/**
+ * The same hint inside a flyout item.
+ *
+ * A menu item highlights on pointer hover *and* on arrow-key navigation, and
+ * Base UI expresses both as real DOM focus — so one `group-focus` rule covers
+ * the mouse and the keyboard, where `group-hover` would leave the keyboard with
+ * no arrow at all.
+ */
+function ItemArrow() {
+  return (
+    <ChevronRight
+      aria-hidden="true"
+      className="ml-auto size-3.5 text-muted-foreground opacity-0 transition-opacity group-focus/dropdown-menu-item:opacity-100"
+    />
+  );
+}
+
 function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
   const Icon = item.icon;
   return (
@@ -92,13 +117,100 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
   );
 }
 
-function CollapsibleSection({
-  section,
-  pathname,
-}: {
+interface SectionProps {
   section: NavSection;
   pathname: string;
-}) {
+}
+
+/**
+ * A document section, in whichever form the rail can actually show.
+ *
+ * Expanded, it is a collapsible sub-tree. Collapsed, it cannot be: the sub-list
+ * carries `group-data-[collapsible=icon]:hidden`, so the trigger toggled state
+ * nobody could see and the seven document types were simply unreachable without
+ * expanding the rail first. A flyout gives the icon rail the same seven links.
+ *
+ * Split into two components rather than branched inside one, because the
+ * collapsible form owns hooks the flyout has no use for — and `state` flips at
+ * runtime every time the rail is toggled.
+ */
+function DocumentSection(props: SectionProps) {
+  const { state, isMobile } = useSidebar();
+  // Mobile uses the off-canvas sheet, which is never in icon mode.
+  return state === "collapsed" && !isMobile ? (
+    <FlyoutSection {...props} />
+  ) : (
+    <CollapsibleSection {...props} />
+  );
+}
+
+function FlyoutSection({ section, pathname }: SectionProps) {
+  const Icon = section.icon;
+  const hasActiveChild = section.children.some((c) =>
+    isActiveHref(pathname, c.href),
+  );
+
+  return (
+    <SidebarMenuItem>
+      <DropdownMenu>
+        {/*
+          No `tooltip` on the button here. `SidebarMenuButton` shows its tooltip
+          only when the rail is collapsed — which is exactly when this branch
+          renders, so the two would fire on the same hover and stack on top of
+          each other. The flyout's own label carries the section name instead.
+        */}
+        <DropdownMenuTrigger
+          openOnHover
+          // Long enough that sweeping the pointer down the rail to reach the
+          // footer doesn't flash two menus on the way past.
+          delay={150}
+          closeDelay={120}
+          render={
+            <SidebarMenuButton isActive={hasActiveChild} className="text-sm">
+              <Icon aria-hidden="true" />
+              <span>{section.label}</span>
+              <ChevronRight className="ml-auto" />
+            </SidebarMenuButton>
+          }
+        />
+        {/*
+          `w-48` overrides the default `w-(--anchor-width)`: anchored to a 32px
+          icon button, that would size the popup to 32px.
+        */}
+        <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
+          {/*
+            The group is not decoration: `DropdownMenuLabel` is Base UI's
+            `Menu.GroupLabel`, which throws outside a `Menu.Group`. It also
+            wires the label to the items as the group's accessible name.
+          */}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>{section.label}</DropdownMenuLabel>
+            {section.children.map((child) => {
+              const active = isActiveHref(pathname, child.href);
+              return (
+                <DropdownMenuItem
+                  key={child.href}
+                  className={active ? "font-medium text-accent-foreground" : undefined}
+                  render={
+                    <Link
+                      href={child.href}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <span>{child.label}</span>
+                      <ItemArrow />
+                    </Link>
+                  }
+                />
+              );
+            })}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
+  );
+}
+
+function CollapsibleSection({ section, pathname }: SectionProps) {
   const Icon = section.icon;
   // Open state is derived from the path, with the user's own toggle layered on
   // top and dropped at the next navigation. Seeding `useState` once (as this
@@ -246,7 +358,7 @@ export default function AdminSidebar({ user }: { user: UserCardUser }) {
           <SidebarGroupContent>
             <SidebarMenu>
               {DOCUMENT_SECTIONS.map((section) => (
-                <CollapsibleSection
+                <DocumentSection
                   key={section.label}
                   section={section}
                   pathname={pathname}

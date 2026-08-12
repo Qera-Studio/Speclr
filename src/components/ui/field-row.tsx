@@ -18,11 +18,13 @@ import { cn } from "@/lib/utils"
  * itself — an element cannot answer its own container query, and doing so
  * silently leaves every row stacked at one column.
  *
- * The breakpoint is `@2xs` (18rem/288px). The editor rail is 384px wide
- * (EDITOR_RAIL_WIDTH) and its padding leaves roughly 300px of content, so
- * anything larger — `@xs` is already 320px — never fires there and every row
- * silently stacks. Measured in a browser, not guessed. Below 288px, genuinely
- * cramped, stacking is the right answer anyway.
+ * The breakpoint is `@2xs` (18rem/288px). The editor rail is 352px wide
+ * (EDITOR_RAIL_WIDTH) and its padding leaves 304px of content, so anything
+ * larger — `@xs` is already 320px — never fires there and every row silently
+ * stacks. Below 288px, genuinely cramped, stacking is the right answer anyway.
+ *
+ * This is why the rail cannot narrow past 336px. The dependency runs both ways:
+ * `EDITOR_RAIL_WIDTH` documents the same arithmetic from its side.
  */
 function FieldRow({
   className,
