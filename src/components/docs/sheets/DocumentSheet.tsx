@@ -325,7 +325,7 @@ export default function DocumentSheet({
                   </div>
                 </dl>
               </section>
-              <div className="flex flex-col items-center gap-[4px] pt-[34px]">
+              <div className="flex flex-col items-center gap-[4px] pt-[44px]">
                 <Image
                   src="/assets/admin/scanToPay.png"
                   alt="UPI payment QR code"
