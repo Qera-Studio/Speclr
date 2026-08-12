@@ -38,7 +38,12 @@ describe('nav model', () => {
   });
 
   it('lists the tools, working ones first', () => {
-    expect(TOOL_LINKS.map((t) => t.href)).toEqual(['/tools/ctc', '/spec', '/kit']);
+    expect(TOOL_LINKS.map((t) => t.href)).toEqual([
+      '/tools/ctc',
+      '/tools/sitemap',
+      '/spec',
+      '/kit',
+    ]);
   });
 
   it('keeps Settings out of the nav — it belongs to the account menu', () => {
