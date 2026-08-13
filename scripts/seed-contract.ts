@@ -28,6 +28,7 @@ import { neon } from '@neondatabase/serverless';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../src/lib/domain/contract/seed/libraries';
 import { SERVICES } from '../src/lib/domain/contract/seed/services';
 import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/contract/service';
+import { MSA_CLAUSES, msaClauseSchema } from '../src/lib/domain/contract/msa';
 
 const APPLY = process.argv.includes('--apply');
 
@@ -56,9 +57,16 @@ async function main() {
       process.exit(1);
     }
   }
+  for (const clause of MSA_CLAUSES) {
+    const parsed = msaClauseSchema.safeParse(clause);
+    if (!parsed.success) {
+      console.error(`Clause ${clause.number} is invalid:`, parsed.error.issues);
+      process.exit(1);
+    }
+  }
 
   console.log(
-    `${SERVICES.length} services · ${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs`,
+    `${SERVICES.length} services · ${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs · ${MSA_CLAUSES.length} clauses`,
   );
 
   if (!APPLY) {
@@ -105,6 +113,18 @@ async function main() {
         `;
       }
     }
+  }
+
+  // Clauses. `number` is the key, and it is never reissued — see msa.ts. An
+  // upsert therefore only ever corrects the text of a clause that already means
+  // what it means, which is what makes reseeding after a drafting fix safe.
+  for (const clause of MSA_CLAUSES) {
+    await sql`
+      insert into clauses (number, heading, body, updated_at)
+      values (${clause.number}, ${clause.heading}, ${JSON.stringify(clause.body)}, now())
+      on conflict (number) do update set
+        heading = excluded.heading, body = excluded.body, updated_at = now()
+    `;
   }
 
   console.log('Written.');

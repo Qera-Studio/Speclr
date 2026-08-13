@@ -268,7 +268,15 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
+          // `overflow-hidden overscroll-x-none touch-pan-y` keeps a horizontal
+          // swipe over the rail from reaching the document, where the browser
+          // turns it into history back/forward — over the nav that gesture
+          // means "switch profile", and it kept navigating away instead.
+          // `overscroll-behavior` only applies to scroll containers, which is
+          // why `overflow-hidden` comes with it; the header and footer are
+          // fixed and the body scrolls inside `SidebarContent`, so nothing here
+          // overflowed anyway, and menus and tooltips portal out.
+          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
         >
           {children}
         </div>
@@ -509,7 +517,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
     <ul
       data-slot="sidebar-menu"
       data-sidebar="menu"
-      className={cn("flex w-full min-w-0 flex-col gap-px", className)}
+      className={cn("flex w-full min-w-0 flex-col gap-[8px]", className)}
       {...props}
     />
   );

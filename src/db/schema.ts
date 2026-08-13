@@ -171,6 +171,36 @@ export const exclusions = pgTable('exclusions', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * The Master Service Agreement's clauses, editable at `/client/clauses`.
+ *
+ * These lived in code (`domain/contract/msa.ts`) until the library was built,
+ * on the argument that they change ~never and need review as one package by a
+ * commercial lawyer. That argument still holds for the *text*; what changed is
+ * where it is edited. The code copy is now the seed and the fallback, and the
+ * library page warns that new and edited clauses are unreviewed.
+ *
+ * **`number` is the primary key, and it is load-bearing.** Clause bodies cite
+ * each other by number ('has the meaning given at clause 11.2'), so inserting a
+ * clause in the middle would silently break live cross-references in text
+ * nobody re-read. New clauses append at the next number; there is no reorder.
+ *
+ * Editing here changes the *next* contract only. A contract seeds its own copy
+ * of the clause list when its draft is created and freezes it at finalize
+ * (`materialiseContent`) — the same rule `seed/services.ts` states for
+ * Services, and CONTEXT.md §5b for document content generally.
+ */
+export const clauses = pgTable('clauses', {
+  number: integer('number').primaryKey(),
+  heading: text('heading').notNull(),
+  /** One entry per paragraph, each carrying its own sub-number ('8.4 Where…'). */
+  body: jsonb('body').notNull().$type<string[]>(),
+  /** Archived clauses leave new contracts but stay readable for audit. */
+  archived: boolean('archived').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** The client-input library. Same mechanics as `exclusions`, opposite purpose. */
 export const clientInputs = pgTable('client_inputs', {
   id: text('id').primaryKey(), // 'I01'–

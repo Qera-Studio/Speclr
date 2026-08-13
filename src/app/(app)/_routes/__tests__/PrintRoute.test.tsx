@@ -21,12 +21,13 @@ jest.mock('@/db/store', () => ({
   getStudioSettings: () => STUDIO_INFO,
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import PrintPage from '../page';
+import PrintPage from '../PrintRoute';
 
 const invoice = {
   type: 'INV', status: 'finalized', number: 'QS-INV-2627-001', issueDate: '2026-06-10',
@@ -42,7 +43,7 @@ beforeEach(() => {
 });
 
 async function renderPage() {
-  render(await PrintPage({ params: Promise.resolve({ id: 'doc-1' }) }));
+  render(await PrintPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' }));
 }
 
 describe('/docs/[id]/print', () => {
@@ -51,17 +52,17 @@ describe('/docs/[id]/print', () => {
     getDocument.mockResolvedValue(invoice);
     await renderPage();
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/docs/doc-1');
+    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/client/docs/doc-1');
   });
 
   it('redirects an unauthorized user', async () => {
     requireAuthorizedUser.mockRejectedValue(new Error('UNAUTHORIZED'));
-    await expect(PrintPage({ params: Promise.resolve({ id: 'doc-1' }) })).rejects.toThrow('REDIRECT:/no-access');
+    await expect(PrintPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' })).rejects.toThrow('REDIRECT:/no-access');
   });
 
   it('notFound when the document is missing', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
     getDocument.mockResolvedValue(null);
-    await expect(PrintPage({ params: Promise.resolve({ id: 'doc-1' }) })).rejects.toThrow('NOT_FOUND');
+    await expect(PrintPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' })).rejects.toThrow('NOT_FOUND');
   });
 });

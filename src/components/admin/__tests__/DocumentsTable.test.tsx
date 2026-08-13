@@ -9,6 +9,7 @@ jest.mock('@/server/actions/documents', () => ({
   deleteDraftAction: jest.fn(),
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
 }));
 
@@ -28,7 +29,7 @@ const invoice = {
 describe('DocumentsTable', () => {
   it('renders a row with number link, client, status', () => {
     render(<DocumentsTable documents={[invoice]} />);
-    expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toHaveAttribute('href', '/docs/doc-1');
+    expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toHaveAttribute('href', '/client/docs/doc-1');
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
     expect(screen.getByText('Finalized')).toBeInTheDocument();
   });
@@ -74,7 +75,7 @@ describe('DocumentsTable', () => {
     expect(screen.getByRole('link', { name: /print/i })).toHaveAttribute(
       'href',
       // `auto=1` prints on arrival — Print from a list row means print.
-      '/docs/doc-1/print?auto=1',
+      '/client/docs/doc-1/print?auto=1',
     );
     expect(screen.getByRole('button', { name: /duplicate as new draft/i })).toBeInTheDocument();
     // Finalized documents are immutable — there is no edit action by design.
@@ -83,7 +84,7 @@ describe('DocumentsTable', () => {
 
   it('offers edit and delete on a draft row', () => {
     render(<DocumentsTable documents={[{ ...invoice, status: 'draft', number: undefined }]} />);
-    expect(screen.getByRole('link', { name: /edit draft/i })).toHaveAttribute('href', '/docs/doc-1');
+    expect(screen.getByRole('link', { name: /edit draft/i })).toHaveAttribute('href', '/client/docs/doc-1');
     expect(screen.getByRole('button', { name: /delete draft/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /print/i })).not.toBeInTheDocument();
   });

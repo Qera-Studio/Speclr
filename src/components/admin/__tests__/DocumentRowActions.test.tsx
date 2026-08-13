@@ -12,13 +12,16 @@ jest.mock('@/server/actions/documents', () => ({
   duplicateDocument: (...a: unknown[]) => duplicateDocument(...a),
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   useRouter: () => ({ push, refresh }),
 }));
 
 import DocumentRowActions from '../DocumentRowActions';
 
-const draft = { id: 'doc-1', status: 'draft' } as unknown as AdminDocument;
-const finalized = { id: 'doc-2', status: 'finalized' } as unknown as AdminDocument;
+// `type` is not optional padding: the row's links are built from it, because a
+// document belongs to a profile whatever page it is being listed on.
+const draft = { id: 'doc-1', status: 'draft', type: 'INV' } as unknown as AdminDocument;
+const finalized = { id: 'doc-2', status: 'finalized', type: 'INV' } as unknown as AdminDocument;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -47,7 +50,7 @@ describe('DocumentRowActions', () => {
     await user.click(screen.getByRole('button', { name: /duplicate as new draft/i }));
 
     expect(duplicateDocument).toHaveBeenCalledWith('doc-2');
-    expect(push).toHaveBeenCalledWith('/docs/copy-1');
+    expect(push).toHaveBeenCalledWith('/client/docs/copy-1');
   });
 
   it('stays put when duplicating fails', async () => {

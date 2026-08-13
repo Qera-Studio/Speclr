@@ -158,6 +158,30 @@ Three constraints, all of which have bitten this project's neighbours already:
 - **The snapshot pattern still governs.** An employee editing their own address
   must never alter a slip already issued to them.
 
+### 8. The two open violations in `PRINCIPLES.md`
+
+Both are named in [`PRINCIPLES.md`](PRINCIPLES.md) §3 and tracked here so they are
+work items rather than standing prose.
+
+**Derive place of supply (rule 3).** `placeOfSupplyStateCode` is operator-picked
+per document when it is derivable from the recipient — `gstin.slice(0, 2)` for a
+registered client, `addressParts.state` through `GST_STATES` for an unregistered
+one. Two sources of truth for one fact is what produced a wrong invoice. Target:
+derived and read-only, with an explicit override that records *why* — the
+override is required, not optional, because CGST s.12(3) and bill-to/ship-to
+cases genuinely diverge from the recipient's state.
+
+**The jurisdiction seam (rule 5).** India is spelled inline across `money.ts`,
+`gstStates.ts`, `registry.ts`, `types.ts`, `docNumber.ts` and `DocumentSheet.tsx`.
+Target: `src/lib/domain/jurisdiction/` — one interface, one implementation in
+`in/`, and core stops naming GST. **One pack, one country.** No country selector,
+no second pack, no multi-currency invoices, no VAT, no e-invoicing (`PRINCIPLES.md`
+§4). Roughly 15% more work than continuing inline; it is what makes the rule-3 fix
+land in the right place rather than deeper into the wrong one.
+
+Do these in that order — deriving place of supply is small, and it is the one
+that already cost a real document.
+
 ---
 
 ## Deliberately deferred (YAGNI — noted, not built)

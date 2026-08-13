@@ -53,6 +53,22 @@ function TabsList({
   );
 }
 
+/**
+ * The raised surface behind the active tab.
+ *
+ * Exported because three things draw it — this file's `TabsIndicator` and
+ * `TabsTrigger`, plus the two hand-rolled pills (`SpecDetailsTabs`'s Motion one
+ * and the list/card toggle in `DocumentsBrowser`) — and they had already
+ * drifted apart.
+ *
+ * In dark mode the list sits on `bg-muted` (L .269) and the old `bg-input/30`
+ * resolved to roughly L .28, so the pill read as a bare outline with nothing
+ * inside it. The fill is now genuinely lighter than the trough and carries a
+ * real drop shadow: a border alone cannot say "this one is on".
+ */
+const tabPillSurface =
+  "bg-background shadow-sm dark:border dark:border-input dark:bg-input/65 dark:shadow-[0_1px_3px_oklch(0_0_0/0.55)]";
+
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
@@ -60,7 +76,9 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       className={cn(
         "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-[calc(--spacing(1.25))] hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
-        "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
+        // Same surface as `tabPillSurface`, spelled with `data-active:` since
+        // it paints on the trigger itself. Keep the two in step.
+        "data-active:bg-background data-active:shadow-sm data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/65 dark:data-active:text-foreground dark:data-active:shadow-[0_1px_3px_oklch(0_0_0/0.55)]",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -82,7 +100,8 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
     <TabsPrimitive.Indicator
       data-slot="tabs-indicator"
       className={cn(
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-background shadow-sm transition-[translate,width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border dark:border-input dark:bg-input/30",
+        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md transition-[translate,width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        tabPillSurface,
         className,
       )}
       {...props}
@@ -152,4 +171,5 @@ export {
   TabsPanels,
   TabsContent,
   tabsListVariants,
+  tabPillSurface,
 };

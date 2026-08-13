@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createDraft, updateDraft } from '@/server/actions/documents';
+import { useProfile } from '@/lib/useProfile';
 
 /**
  * How long the editor waits after the last change before writing.
@@ -82,6 +83,9 @@ export function useDraftAutosave({
   recipientId: string;
   payload: unknown;
 }): DraftAutosave {
+  // Only used to keep the URL right when a first save mints an id — the editor
+  // is always already on one profile's route.
+  const profile = useProfile();
   const [docId, setDocId] = useState<string | null>(initialDocId ?? null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [serverError, setServerError] = useState<string | null>(null);
@@ -147,7 +151,7 @@ export function useDraftAutosave({
       // the editor and take the half-typed document with it.
       docIdRef.current = result.id;
       setDocId(result.id);
-      window.history.replaceState(null, '', `/docs/${result.id}`);
+      window.history.replaceState(null, '', `/${profile}/docs/${result.id}`);
     }
     lastSaved.current = sending;
     return true;

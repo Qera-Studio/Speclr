@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { currentUser } from '@clerk/nextjs/server';
 import AdminShell from '@/components/admin/AdminShell';
 
@@ -23,5 +24,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     imageUrl: user.hasImage ? user.imageUrl : undefined,
   };
 
-  return <AdminShell user={cardUser}>{children}</AdminShell>;
+  // `SidebarProvider` has always *written* `sidebar_state`; nothing read it, so
+  // the rail sprang open again on every full load. Read it here so a collapsed
+  // rail is collapsed in the first paint — a client effect would flash.
+  const collapsed = (await cookies()).get('sidebar_state')?.value === 'false';
+
+  return (
+    <AdminShell user={cardUser} defaultOpen={!collapsed}>
+      {children}
+    </AdminShell>
+  );
 }

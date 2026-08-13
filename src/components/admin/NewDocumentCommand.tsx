@@ -4,9 +4,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Shortcut } from '@/components/ui/kbd';
+import { Kbd, KbdGroup, Shortcut } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
-import { DOCUMENT_SECTIONS, type NavLink } from './nav';
+import type { Profile } from '@/lib/profile';
+import { NAV_BY_PROFILE, type NavLink } from './nav';
 
 /**
  * ⌘D — start a new document.
@@ -16,13 +17,18 @@ import { DOCUMENT_SECTIONS, type NavLink } from './nav';
  * search: ⌘K finds a document that exists, ⌘D makes one that doesn't, and
  * merging them would make both vaguer.
  *
- * Nothing here writes to the database. Every row navigates to
- * `/docs/new/<slug>`, which renders a blank editor; `createDraft` still owns
- * row creation when the editor is saved, so no abandoned palette visit can
- * burn a document number.
+ * **Scoped to the current profile.** It offers the three client documents or
+ * the five admin ones, never both — the two halves of the app are otherwise
+ * sealed, and a palette that ignored that would be the one place a stipend slip
+ * turned up while you were invoicing.
  *
- * The type list is read from `DOCUMENT_SECTIONS` rather than the registry so
- * the palette's groups, labels, icons and order can never drift from the nav's.
+ * Nothing here writes to the database. Every row navigates to
+ * `/<profile>/docs/new/<slug>`, which renders a blank editor; `createDraft`
+ * still owns row creation when the editor is saved, so no abandoned palette
+ * visit can burn a document number.
+ *
+ * The type list is read from the nav rather than the registry so the palette's
+ * labels, icons and order can never drift from the nav's.
  */
 
 type NewDocumentContextValue = { open: () => void };
@@ -35,10 +41,12 @@ export function useNewDocument(): NewDocumentContextValue {
   return ctx;
 }
 
-/** The list page href (`/docs/invoice`) → the create href (`/docs/new/invoice`). */
+/**
+ * The list page href (`/client/docs/invoice`) → the create href
+ * (`/client/docs/new/invoice`). Matches on `/docs/`, so it carries whatever
+ * profile prefix the link already had.
+ */
 export const newDocumentHref = (href: string) => href.replace('/docs/', '/docs/new/');
-
-const ALL_LINKS: NavLink[] = DOCUMENT_SECTIONS.flatMap((section) => section.children);
 
 /**
  * Is the caret somewhere the user is composing text?
@@ -55,9 +63,16 @@ function isTypingInto(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
-export function NewDocumentProvider({ children }: { children: React.ReactNode }) {
+export function NewDocumentProvider({
+  profile,
+  children,
+}: {
+  profile: Profile;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const links = NAV_BY_PROFILE[profile].documents;
 
   const value = useMemo(() => ({ open: () => setOpen(true) }), []);
 
@@ -79,7 +94,10 @@ export function NewDocumentProvider({ children }: { children: React.ReactNode })
       if (!event.altKey || event.metaKey || event.ctrlKey) return;
       if (isTypingInto(event.target)) return;
 
-      const link = ALL_LINKS.find((item) => item.shortcut && event.code === `Key${item.shortcut}`);
+      // Only this profile's letters. ⌥P in the client profile does nothing
+      // rather than jumping across to a new pay slip — the shortcut belongs to
+      // the side it is listed on.
+      const link = links.find((item) => item.shortcut && event.code === `Key${item.shortcut}`);
       if (!link) return;
       event.preventDefault();
       setOpen(false);
@@ -88,12 +106,12 @@ export function NewDocumentProvider({ children }: { children: React.ReactNode })
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [router]);
+  }, [router, links]);
 
   return (
     <NewDocumentContext value={value}>
       {children}
-      <NewDocumentCommand open={open} onOpenChange={setOpen} />
+      <NewDocumentCommand open={open} onOpenChange={setOpen} links={links} />
     </NewDocumentContext>
   );
 }
@@ -101,29 +119,25 @@ export function NewDocumentProvider({ children }: { children: React.ReactNode })
 function NewDocumentCommand({
   open,
   onOpenChange,
+  links,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  links: NavLink[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
 
-  // Filtering is local — seven strings, no server round-trip, no debounce.
-  // Each row carries its index in the *flattened* list, so arrow keys can walk
-  // across group boundaries without the render pass counting as it goes.
-  const groups = useMemo(() => {
+  // Filtering is local — at most five strings, no server round-trip, no
+  // debounce. One flat list now that the palette shows a single profile: the
+  // group headings it used to carry said "Client" and "Admin", which is exactly
+  // what the switcher above already says.
+  const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    let position = 0;
-    return DOCUMENT_SECTIONS.map((section) => ({
-      heading: section.label,
-      rows: section.children
-        .filter((link) => !needle || link.label.toLowerCase().includes(needle))
-        .map((link) => ({ link, position: position++ })),
-    })).filter((group) => group.rows.length > 0);
-  }, [query]);
-
-  const matches = useMemo(() => groups.flatMap((group) => group.rows.map((row) => row.link)), [groups]);
+    if (!needle) return links;
+    return links.filter((link) => link.label.toLowerCase().includes(needle));
+  }, [query, links]);
 
   const go = useCallback(
     (link: NavLink) => {
@@ -196,12 +210,7 @@ function NewDocumentCommand({
             </p>
           ) : (
             <div id="new-document-list" role="listbox" aria-label="Document types">
-              {groups.map((group) => (
-                <div key={group.heading} role="group" aria-label={group.heading}>
-                  <p className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-                    {group.heading}
-                  </p>
-                  {group.rows.map(({ link, position }) => {
+              {matches.map((link, position) => {
                     const Icon = link.icon;
                     return (
                       <button
@@ -214,6 +223,11 @@ function NewDocumentCommand({
                         onClick={() => go(link)}
                         className={cn(
                           'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
+                          // Not full --foreground: several rows of pure white on
+                          // a dark popover glare, and the highlighted row has
+                          // nothing left to be brighter *than*. The active row
+                          // gets the full value; the rest sit a step back.
+                          'text-foreground/70',
                           position === active && 'bg-accent text-accent-foreground',
                         )}
                       >
@@ -224,17 +238,30 @@ function NewDocumentCommand({
                         ) : null}
                       </button>
                     );
-                  })}
-                </div>
-              ))}
+              })}
             </div>
           )}
         </div>
 
+        {/* The key is a keycap, the gloss is text. Run together as plain glyphs
+            ("↑↓ to move") the two read as one string and the arrows stop
+            looking pressable — `Kbd` is the same cap the rows already use. */}
         <div className="flex items-center gap-3 border-t px-3 py-2 text-[11px] text-muted-foreground">
-          <span>↑↓ to move</span>
-          <span>↵ to open</span>
-          <span>esc to close</span>
+          <span className="flex items-center gap-1">
+            <KbdGroup>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+            </KbdGroup>
+            to move
+          </span>
+          <span className="flex items-center gap-1">
+            <Kbd>↵</Kbd>
+            to open
+          </span>
+          <span className="flex items-center gap-1">
+            <Kbd>esc</Kbd>
+            to close
+          </span>
         </div>
       </DialogContent>
     </Dialog>

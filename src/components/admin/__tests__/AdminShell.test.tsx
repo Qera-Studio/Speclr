@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/',
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 jest.mock('@clerk/nextjs', () => ({
   SignOutButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,

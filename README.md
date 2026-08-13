@@ -321,6 +321,7 @@ Four files, four different jobs, deliberately not overlapping:
 | **README.md** | *What is this?* — you are here |
 | [**CONTEXT.md**](CONTEXT.md) | *Why is it shaped this way?* — the domain rules and the decisions already made, so they don't get re-litigated |
 | [**AGENTS.md**](AGENTS.md) | *How do I work in it?* — the standards, stack and coding rules |
+| [**PRINCIPLES.md**](PRINCIPLES.md) | *Where does this piece of data belong?* — the three layers, the five rules, and the current violations. Enforced, not advisory |
 | [**ROADMAP.md**](ROADMAP.md) | *What isn't built yet?* — the single home for unbuilt work, including everything deliberately deferred |
 
 Design specs and implementation plans live in [`docs/superpowers/`](docs/superpowers/). The migration runbook is at [`docs/MIGRATION_RUNBOOK.md`](docs/MIGRATION_RUNBOOK.md).

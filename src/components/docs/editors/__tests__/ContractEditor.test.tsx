@@ -10,6 +10,7 @@ const push = jest.fn();
 const createDraft = jest.fn();
 const updateDraft = jest.fn();
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }),
 }));
 jest.mock('@/server/actions/documents', () => ({
@@ -31,9 +32,20 @@ const clients = [
     createdAt: 0,
     updatedAt: 0,
   },
+  {
+    id: 'c2',
+    name: 'Borden Ltd.',
+    companyName: 'Borden Private Limited',
+    address: 'y',
+    email: 'b@b.com',
+    phone: '8',
+    gstin: '',
+    createdAt: 0,
+    updatedAt: 0,
+  },
 ] as ClientRecord[];
 
-function renderEditor() {
+function renderEditor(props: Partial<React.ComponentProps<typeof ContractEditor>> = {}) {
   return render(
     <ContractEditor
       clients={clients}
@@ -41,6 +53,7 @@ function renderEditor() {
       exclusions={EXCLUSIONS}
       clientInputs={CLIENT_INPUTS}
       title="New contract"
+      {...props}
     />,
   );
 }
@@ -442,7 +455,7 @@ describe('ContractEditor — not losing the draft', () => {
     expect(createDraft).toHaveBeenCalledTimes(1);
     expect(createDraft).toHaveBeenCalledWith('CON', 'c1', expect.anything());
     // Swapped in place — a navigation would remount and lose the contract.
-    expect(window.location.pathname).toBe('/docs/new-con');
+    expect(window.location.pathname).toBe('/client/docs/new-con');
   });
 
   /**
@@ -518,5 +531,77 @@ describe('ContractEditor — not losing the draft', () => {
 
     await u.click(screen.getByRole('link', { name: 'Clients' }));
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The clause library reaches a contract exactly once: when its draft is
+ * created. After that the contract owns its copy, and editing the library at
+ * `/client/clauses` cannot reach back into it.
+ *
+ * That is the same rule `studioSnapshot` enforces for the studio's details and
+ * `materialiseContent` for the rest of the wording (CONTEXT.md §5, §5b). If
+ * these fail, editing a clause silently rewrites contracts that already exist —
+ * a compliance bug, not a regression in convenience.
+ */
+describe('ContractEditor — the clause library', () => {
+  const library = [
+    { number: 1, heading: 'Definitions', body: ['1.1 As newly drafted.'] },
+    { number: 2, heading: 'Structure', body: ['2.1 As newly drafted.'] },
+  ];
+
+  it('copies the library onto a new draft the first time it is written', async () => {
+    const u = userEvent.setup();
+    renderEditor({ clauseLibrary: library });
+
+    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await autosaved();
+
+    expect(lastWritePayload()).toMatchObject({ content: { clauses: library } });
+  });
+
+  /**
+   * An existing document is never handed the library — `DocumentRoute`
+   * deliberately does not pass it — but if it ever were, the document's own
+   * copy has to win. This is the assertion that would catch that mistake.
+   */
+  it('leaves an existing document’s own clauses alone', async () => {
+    const u = userEvent.setup();
+    const own = [{ number: 1, heading: 'As signed in June', body: ['The original wording.'] }];
+
+    renderEditor({
+      clauseLibrary: library,
+      doc: {
+        id: 'con-1',
+        type: 'CON',
+        status: 'draft',
+        clientId: 'c1',
+        clientSnapshot: { name: 'Acme Co.', address: 'x', email: 'a@b.com', phone: '9' },
+        issueDate: '2026-08-13',
+        contract: { parts: [], blanks: {}, library: {} },
+        content: { clauses: own },
+        createdAt: 0,
+        updatedAt: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    });
+
+    // The client is already set on this document, so choosing the same one
+    // writes nothing. Switch to the other — any edit is enough to make it save.
+    await selectComboboxOption(u, /^client$/i, 'Borden Ltd.');
+    await autosaved();
+
+    expect(lastWritePayload()).toMatchObject({ content: { clauses: own } });
+  });
+
+  /** No library passed — a fresh database still produces a complete contract. */
+  it('stores no clause override when there is no library to copy', async () => {
+    const u = userEvent.setup();
+    renderEditor();
+
+    await selectComboboxOption(u, /^client$/i, 'Acme Co.');
+    await autosaved();
+
+    expect(lastWritePayload()?.content?.clauses).toBeUndefined();
   });
 });

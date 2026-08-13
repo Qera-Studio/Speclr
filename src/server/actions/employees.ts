@@ -97,7 +97,7 @@ export async function createEmployee(data: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to save employee.' };
   }
 
-  revalidatePath('/employees');
+  revalidatePath('/admin/employees');
   return { success: true, id: employee.id };
 }
 
@@ -132,7 +132,7 @@ export async function updateEmployee(id: unknown, data: unknown): Promise<Action
     return { success: false, error: 'Failed to save employee.' };
   }
 
-  revalidatePath('/employees');
+  revalidatePath('/admin/employees');
   return { success: true, id };
 }
 
@@ -148,6 +148,6 @@ export async function deleteEmployeeAction(id: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to delete employee.' };
   }
 
-  revalidatePath('/employees');
+  revalidatePath('/admin/employees');
   return { success: true };
 }

@@ -12,7 +12,8 @@ const updateDraft = jest.fn();
 const listInvoicesForClient = jest.fn();
 const finalizeDocument = jest.fn();
 const deleteDraftAction = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }) }));
 jest.mock('@/server/actions/documents', () => ({
   createDraft: (...a: unknown[]) => createDraft(...a),
   updateDraft: (...a: unknown[]) => updateDraft(...a),
@@ -140,7 +141,7 @@ describe('DocumentEditor (new invoice)', () => {
     );
     // The URL becomes the draft's own without a navigation — a `router.push`
     // here would remount the editor and take the half-typed document with it.
-    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-doc');
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/client/docs/new-doc');
     expect(push).not.toHaveBeenCalled();
   });
 

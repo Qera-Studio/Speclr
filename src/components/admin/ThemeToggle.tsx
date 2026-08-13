@@ -5,12 +5,66 @@ import { useTheme } from 'next-themes';
 import { motion } from 'motion/react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const OPTIONS = [
   { value: 'light', label: 'Light', Icon: Sun },
   { value: 'dark', label: 'Dark', Icon: Moon },
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const;
+
+/**
+ * The same three options as a submenu, for the account menu at the foot of the
+ * rail — where the theme now lives, beside Settings and Sign out.
+ *
+ * A radio group rather than three plain items: the theme is one choice out of
+ * three with a current value, and a menu that does not say which one is on
+ * makes you change it to find out.
+ *
+ * The segmented control below is still exported and still tested; putting the
+ * theme back in `SidebarFooter` is one line in each place.
+ */
+export function ThemeMenuItems() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Unknown until mounted — the theme is client-only, and guessing here is a
+  // hydration mismatch. `undefined` simply checks nothing for one frame.
+  const current = mounted ? theme : undefined;
+  const ActiveIcon = OPTIONS.find((o) => o.value === current)?.Icon ?? Monitor;
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <ActiveIcon aria-hidden="true" />
+        Theme
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        {/* Wrapped rather than passed straight through: Base UI calls this with
+            `(value, eventDetails)`, and handing a second argument to a setter
+            that takes one is a footgun waiting for the day it takes two. */}
+        <DropdownMenuRadioGroup
+          value={current}
+          onValueChange={(value) => setTheme(String(value))}
+        >
+          {OPTIONS.map(({ value, label, Icon }) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              <Icon aria-hidden="true" />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
 
 /**
  * Theme switcher pinned at the bottom of the sidebar.

@@ -4,7 +4,8 @@ import { EditorPanelProvider, EditorPanelContent } from '../../EditorPanel';
 import ClientManager from '../ClientManager';
 import type { ClientRecord } from '@/lib/domain/types';
 
-jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh: jest.fn() }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useRouter: () => ({ refresh: jest.fn() }) }));
 jest.mock('@/server/actions/clients', () => ({
   createClient: jest.fn(),
   updateClient: jest.fn(),

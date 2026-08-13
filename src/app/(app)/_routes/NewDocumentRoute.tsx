@@ -1,22 +1,36 @@
-import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getStudioSettings, listClients, listEmployees, listClientInputs, listExclusions, listServices } from '@/db/store';
+import { profileOfDocType, type Profile } from '@/lib/profile';
+import {
+  getStudioSettings,
+  listClauses,
+  listClients,
+  listEmployees,
+  listClientInputs,
+  listExclusions,
+  listServices,
+} from '@/db/store';
+import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
 import { DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
 
-export const metadata: Metadata = {
-  title: 'New document — speclr',
-  robots: { index: false, follow: false },
-};
+/**
+ * `/<profile>/docs/new/<slug>` — a blank editor for one document type.
+ *
+ * Shared by both profiles' route files; see `DocumentRoute` for why there are
+ * two of those and one of this.
+ */
 
-// Session cookie + live lists must be read on every request.
-export const dynamic = 'force-dynamic';
-
-export default async function NewDocumentPage({ params }: { params: Promise<{ type: string }> }) {
+export default async function NewDocumentRoute({
+  params,
+  profile,
+}: {
+  params: Promise<{ type: string }>;
+  profile: Profile;
+}) {
   try {
     await requireAuthorizedUser();
   } catch (err) {
@@ -26,7 +40,10 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
 
   const { type } = await params;
   const spec = DOC_TYPE_BY_SLUG[type];
-  if (!spec) notFound();
+  // Unknown slug, or a type belonging to the other profile — `/client/docs/new/
+  // pay-slip` names nothing. Nothing has been written at this point, so there
+  // is no draft to forward to.
+  if (!spec || profileOfDocType(spec.code) !== profile) notFound();
 
   // The editors own the full-height workspace layout (preview card + edit
   // rail), so the route adds no wrapper or heading — the title goes into the
@@ -53,10 +70,11 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
   // ── Client-based documents ─────────────────────────────────────
   const clients = await listClients();
   if (spec.code === 'CON') {
-    const [services, exclusions, clientInputs] = await Promise.all([
+    const [services, exclusions, clientInputs, clauses] = await Promise.all([
       listServices(),
       listExclusions(),
       listClientInputs(),
+      listClauses(),
     ]);
     return (
       <ContractEditor
@@ -64,6 +82,15 @@ export default async function NewDocumentPage({ params }: { params: Promise<{ ty
         services={services}
         exclusions={exclusions}
         clientInputs={clientInputs}
+        // Passed here and *only* here. A new contract copies the library onto
+        // itself; `DocumentRoute` deliberately does not pass it, because an
+        // existing document already carries its own copy and handing it a fresh
+        // one would rewrite words that may already be relied upon.
+        //
+        // Falls back to the constant before the table has been seeded — same
+        // strategy as `getStudioSettings`, so a fresh database still produces a
+        // complete contract.
+        clauseLibrary={clauses.length > 0 ? clauses : MSA_CLAUSES}
         studio={studio}
         title={title}
       />

@@ -5,7 +5,7 @@ import { EditorPanelProvider, EditorPanelContent } from '../EditorPanel';
 import EditorSidebar from '../EditorSidebar';
 
 const push = jest.fn();
-let pathname = '/docs/new/exit-letter';
+let pathname = '/admin/docs/new/exit-letter';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
@@ -14,7 +14,7 @@ jest.mock('next/navigation', () => ({
 
 beforeEach(() => {
   push.mockClear();
-  pathname = '/docs/new/exit-letter';
+  pathname = '/admin/docs/new/exit-letter';
 });
 
 function renderRail(panel?: React.ReactNode) {
@@ -122,7 +122,7 @@ describe('the back arrow', () => {
     await openRail(user);
     await user.click(screen.getByRole('button', { name: 'Leave' }));
 
-    expect(push).toHaveBeenCalledWith('/docs/exit-letter');
+    expect(push).toHaveBeenCalledWith('/admin/docs/exit-letter');
   });
 
   /**

@@ -1,86 +1,112 @@
 import { breadcrumbForPath, parentHref } from '../breadcrumb';
 
+/**
+ * Every trail is rooted at its *profile's* home rather than a global one: the
+ * app is two applications sharing a shell, and a crumb offering to navigate up
+ * past the profile would be offering somewhere the profile cannot reach.
+ *
+ * The profile itself is never a crumb — the switcher above the breadcrumb
+ * already says which side you are on.
+ */
+
 describe('parentHref', () => {
   it('sends a create form back to its type list', () => {
-    expect(parentHref('/docs/new/exit-letter')).toBe('/docs/exit-letter');
-    expect(parentHref('/docs/new/invoice')).toBe('/docs/invoice');
+    expect(parentHref('/admin/docs/new/exit-letter')).toBe('/admin/docs/exit-letter');
+    expect(parentHref('/client/docs/new/invoice')).toBe('/client/docs/invoice');
   });
 
-  /** A section crumb is a grouping with no page of its own — skip it. */
-  it('skips the non-navigable section crumb', () => {
-    expect(parentHref('/docs/invoice')).toBe('/');
+  it('sends a document list up to its own profile home', () => {
+    expect(parentHref('/client/docs/invoice')).toBe('/client');
+    expect(parentHref('/admin/docs/pay-slip')).toBe('/admin');
   });
 
-  it('sends a single document up to the dashboard', () => {
-    expect(parentHref('/docs/2f9c1d84-0f2e-4a1b-9c3d-5e6f7a8b9c0d')).toBe('/');
+  it('sends a single document up to its own profile home', () => {
+    expect(parentHref('/client/docs/2f9c1d84-0f2e-4a1b-9c3d-5e6f7a8b9c0d')).toBe('/client');
   });
 
-  it('falls back to the dashboard from the dashboard itself', () => {
-    expect(parentHref('/')).toBe('/');
+  it('falls back to a home from a home itself', () => {
+    expect(parentHref('/client')).toBe('/client');
+    expect(parentHref('/admin')).toBe('/admin');
   });
 
-  it('sends a record page up to the dashboard', () => {
-    expect(parentHref('/employees')).toBe('/');
+  it('sends a record page up to its own profile home', () => {
+    expect(parentHref('/admin/employees')).toBe('/admin');
+    expect(parentHref('/client/clients')).toBe('/client');
   });
 });
 
 describe('breadcrumbForPath', () => {
-  it('maps the dashboard root to a single Dashboard crumb', () => {
-    expect(breadcrumbForPath('/')).toEqual([{ label: 'Dashboard', href: '/' }]);
+  it('maps a profile home to a single Dashboard crumb', () => {
+    expect(breadcrumbForPath('/client')).toEqual([{ label: 'Dashboard', href: '/client' }]);
+    expect(breadcrumbForPath('/admin')).toEqual([{ label: 'Dashboard', href: '/admin' }]);
   });
 
   it('maps a record link to Dashboard > label', () => {
-    expect(breadcrumbForPath('/clients')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Clients', href: '/clients' },
+    expect(breadcrumbForPath('/client/clients')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
     ]);
   });
 
-  it('maps the icon spec tool', () => {
-    expect(breadcrumbForPath('/spec')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Icon spec', href: '/spec' },
+  it('maps the icon spec tool, which lives on the admin side', () => {
+    expect(breadcrumbForPath('/admin/spec')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Icon spec', href: '/admin/spec' },
     ]);
   });
 
-  it('maps a document list through its section', () => {
-    expect(breadcrumbForPath('/docs/invoice')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Client', href: undefined },
-      { label: 'Invoice', href: '/docs/invoice' },
+  /**
+   * The "Client" / "Admin" section crumb is gone: those two sections *are* the
+   * profiles now, and repeating the switcher's own word on every page was one
+   * crumb of pure noise.
+   */
+  it('maps a document list straight under its home, with no section crumb', () => {
+    expect(breadcrumbForPath('/client/docs/invoice')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Invoice', href: '/client/docs/invoice' },
     ]);
   });
 
   it('trails a new-document route through its list, so the type stays navigable', () => {
-    expect(breadcrumbForPath('/docs/new/invoice')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Client', href: undefined },
-      { label: 'Invoice', href: '/docs/invoice' },
-      { label: 'New', href: '/docs/new/invoice' },
+    expect(breadcrumbForPath('/client/docs/new/invoice')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Invoice', href: '/client/docs/invoice' },
+      { label: 'New', href: '/client/docs/new/invoice' },
     ]);
   });
 
-  it('maps an HR new-document route through the Admin section', () => {
-    expect(breadcrumbForPath('/docs/new/stipend')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Admin', href: undefined },
-      { label: 'Stipend', href: '/docs/stipend' },
-      { label: 'New', href: '/docs/new/stipend' },
+  it('trails an HR new-document route through the admin home', () => {
+    expect(breadcrumbForPath('/admin/docs/new/stipend')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Stipend', href: '/admin/docs/stipend' },
+      { label: 'New', href: '/admin/docs/new/stipend' },
     ]);
   });
 
-  it('humanizes an unknown leaf segment as a fallback (e.g. an existing document id)', () => {
-    expect(breadcrumbForPath('/docs/abc123')).toEqual([
-      { label: 'Dashboard', href: '/' },
+  it('shows an unknown document leaf verbatim (an existing document id)', () => {
+    expect(breadcrumbForPath('/admin/docs/abc123')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
       { label: 'Documents', href: undefined },
-      { label: 'abc123', href: '/docs/abc123' },
+      { label: 'abc123', href: '/admin/docs/abc123' },
     ]);
   });
 
   it('strips query strings and trailing slashes', () => {
-    expect(breadcrumbForPath('/clients/')).toEqual([
-      { label: 'Dashboard', href: '/' },
-      { label: 'Clients', href: '/clients' },
+    expect(breadcrumbForPath('/client/clients/')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
     ]);
+    expect(breadcrumbForPath('/admin/spec?zoom=2')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Icon spec', href: '/admin/spec' },
+    ]);
+  });
+
+  /**
+   * `/` and the legacy redirect routes sit outside both profiles. They render
+   * nothing but a redirect, so this only has to not throw.
+   */
+  it('falls back to the client home for a path outside both profiles', () => {
+    expect(breadcrumbForPath('/')).toEqual([{ label: 'Dashboard', href: '/client' }]);
   });
 });

@@ -106,4 +106,7 @@ if (typeof window.PointerEvent === 'undefined') {
 Element.prototype.hasPointerCapture = jest.fn();
 Element.prototype.releasePointerCapture = jest.fn();
 Element.prototype.scrollIntoView = jest.fn();
+// jsdom has no layout, so it implements neither. Anything that scrolls a
+// carousel by hand (the services row, the Paginator) calls these.
+Element.prototype.scrollTo = jest.fn();
 }

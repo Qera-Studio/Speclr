@@ -30,6 +30,7 @@ import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/L
 import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import { workspaceTitle } from '../workspaceTitle';
+import { useProfile } from '@/lib/useProfile';
 
 type LetterType = 'OFR' | 'EXP' | 'EXIT';
 
@@ -126,6 +127,7 @@ export default function LetterEditor({
   title,
 }: LetterEditorProps) {
   const router = useRouter();
+  const profile = useProfile();
   const [employeeId, setEmployeeId] = useState(doc?.employeeId ?? '');
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
   /**
@@ -250,7 +252,7 @@ export default function LetterEditor({
         autosave.thaw();
         return;
       }
-      router.push(`/docs/${docId}/print`);
+      router.push(`/${profile}/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }

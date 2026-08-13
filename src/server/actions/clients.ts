@@ -30,7 +30,7 @@ export async function createClient(data: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to save client.' };
   }
 
-  revalidatePath('/clients');
+  revalidatePath('/client/clients');
   return { success: true, id: client.id };
 }
 
@@ -58,6 +58,6 @@ export async function updateClient(id: unknown, data: unknown): Promise<ActionRe
     return { success: false, error: 'Failed to save client.' };
   }
 
-  revalidatePath('/clients');
+  revalidatePath('/client/clients');
   return { success: true, id };
 }

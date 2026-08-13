@@ -1,5 +1,6 @@
 @AGENTS.md
 @CONTEXT.md
+@PRINCIPLES.md
 
 # speclr — Claude Context
 

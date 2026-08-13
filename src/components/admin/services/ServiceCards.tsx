@@ -25,7 +25,7 @@ import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
 import type { ContractService } from "@/lib/domain/contract/service";
 
 const Heading = () => (
-  <h2 className="shrink-0 text-lg font-semibold">Services</h2>
+  <h1 className="shrink-0 text-2xl font-semibold">Services</h1>
 );
 
 /**
@@ -58,17 +58,36 @@ export default function ServiceCards({
     {},
   );
 
+  /**
+   * Set while a click's own smooth scroll is still running.
+   *
+   * The tabs and the scroll-spy write the same piece of state, so without this
+   * they fight: clicking Audit from Setup set the pill to Audit, then the
+   * scroll swept past Build and Retainer and the spy dragged it backwards
+   * through both before it arrived. Four 500ms glides, three of them wrong.
+   */
+  const settling = useRef<number | null>(null);
+
   /** The row is `relative`, so a group's `offsetLeft` is its scroll position. */
   const jumpTo = (key: ScheduleKey) => {
     setActive(key);
     const group = groupRefs.current[key];
-    if (group) {
-      rowRef.current?.scrollTo({ left: group.offsetLeft, behavior: "smooth" });
-    }
+    if (!group) return;
+
+    // A timer rather than `scrollend`, which Safari only shipped recently and
+    // this has to hold in every browser the studio prints from. It is a
+    // ceiling, not a duration: the spy is only deaf until the scroll lands.
+    if (settling.current !== null) window.clearTimeout(settling.current);
+    settling.current = window.setTimeout(() => {
+      settling.current = null;
+    }, 700);
+
+    rowRef.current?.scrollTo({ left: group.offsetLeft, behavior: "smooth" });
   };
 
   // The last group whose start has passed the left edge is the one being read.
   const onScroll = () => {
+    if (settling.current !== null) return;
     const row = rowRef.current;
     if (!row) return;
     let reached = SCHEDULES[0].key;
@@ -152,7 +171,11 @@ export default function ServiceCards({
               {index > 0 ? (
                 <span
                   aria-hidden="true"
-                  className="mr-3 self-stretch border-l border-dashed border-border"
+                  // No margin of its own: the row's `gap-3` sits on its left and
+                  // the section's `gap-3` on its right, so the rule lands
+                  // centred between the two groups. `mr-3` doubled the right
+                  // side and pushed it against the card before it.
+                  className="self-stretch border-l border-dashed border-border"
                 />
               ) : null}
               <ul className="flex gap-3">

@@ -120,7 +120,7 @@ describe('useDraftAutosave', () => {
     await settle();
     expect(create).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('docid')).toHaveTextContent('new-doc');
-    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-doc');
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/client/docs/new-doc');
 
     await user.type(screen.getByLabelText('Text'), 'b');
     await settle();

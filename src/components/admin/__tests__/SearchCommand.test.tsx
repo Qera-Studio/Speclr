@@ -6,7 +6,8 @@ const searchAll = jest.fn<Promise<SearchHit[]>, [string]>();
 const push = jest.fn();
 
 jest.mock('@/server/actions/search', () => ({ searchAll: (q: string) => searchAll(q) }));
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useRouter: () => ({ push }) }));
 
 import SearchCommand from '../SearchCommand';
 

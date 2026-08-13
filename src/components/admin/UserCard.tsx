@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { SETTINGS_LINK } from './nav';
+import { ThemeMenuItems } from './ThemeToggle';
 
 export interface UserCardUser {
   name: string;
@@ -77,6 +78,10 @@ export default function UserCard({ user }: { user: UserCardUser }) {
               </div>
             </div>
             <DropdownMenuSeparator />
+            {/* Theme sits with Settings rather than in the rail: both configure
+                *you*, not a document surface, and the rail is for going places.
+                Shared chrome, so it reads the same from either profile. */}
+            <ThemeMenuItems />
             <DropdownMenuItem
               render={
                 <Link href={SETTINGS_LINK.href}>

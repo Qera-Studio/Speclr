@@ -268,17 +268,18 @@ describe('Postgres store (integration)', () => {
     expect(latest?.id).not.toBe(draftId);
 
     // Search: a client by name, and that client's documents by foreign key.
-    const byClient = await searchEverything('Payer');
+    // Scoped to a profile — the client side, which is where clients live.
+    const byClient = await searchEverything('Payer', 'client');
     expect(byClient.clients.map((c) => c.id)).toContain(clientId);
     expect(byClient.documents.some((d) => d.clientId === clientId)).toBe(true);
 
     // ...and a document by its number, case-insensitively.
     const numbered = (await getLatestFinalizedInvoice())!.number!;
-    const byNumber = await searchEverything(numbered.toLowerCase());
+    const byNumber = await searchEverything(numbered.toLowerCase(), 'client');
     expect(byNumber.documents.map((d) => d.number)).toContain(numbered);
 
     // A one-character query is not a search — it would match everything.
-    expect(await searchEverything('P')).toEqual({
+    expect(await searchEverything('P', 'client')).toEqual({
       documents: [], clients: [], employees: [], services: [],
     });
   });

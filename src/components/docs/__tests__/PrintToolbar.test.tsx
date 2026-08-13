@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const params = new URLSearchParams();
-jest.mock('next/navigation', () => ({ useSearchParams: () => params }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useSearchParams: () => params }));
 
 import PrintToolbar from '../PrintToolbar';
 

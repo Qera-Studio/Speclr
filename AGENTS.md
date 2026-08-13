@@ -13,7 +13,13 @@ This is **Next.js 16** (App Router, React 19, Turbopack). APIs and conventions m
 This project ships under Qera's **8 master checklists** in [`dev/`](dev/). They are not suggestions — they are the production standard, built on OWASP ASVS / Top-10 and multi-domain synthesis. Every task is held to them.
 
 **Precedence order (when two docs conflict, higher wins):**
-**Legal → Security → Accessibility → Backend → Performance → SEO → Design.**
+**Legal → Security → [`PRINCIPLES.md`](PRINCIPLES.md) → Accessibility → Backend → Performance → SEO → Design.**
+
+[`PRINCIPLES.md`](PRINCIPLES.md) is the **domain-modelling law**: the three layers
+(core / jurisdiction pack / presentation) and the five rules that decide where a
+piece of data lives. It is enforced the same way the checklists are — a request
+that breaks a rule gets the conflict named and a compliant path proposed before
+any code is written.
 
 | Checklist | Owns |
 |---|---|

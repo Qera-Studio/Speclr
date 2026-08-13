@@ -48,6 +48,7 @@ import { useDraftAutosave } from './useDraftAutosave';
 import { AutosaveStatus, UnsavedChangesDialog } from './draftStatus';
 import { workspaceTitle } from '../workspaceTitle';
 import { numericField } from '@/components/form/inputFilters';
+import { useProfile } from '@/lib/useProfile';
 
 /** DocumentEditor only handles financial docs; contracts use ContractEditor. */
 type FinancialDocument = InvoiceDocument | ReceiptDocument;
@@ -126,6 +127,7 @@ export default function DocumentEditor({
   title,
 }: DocumentEditorProps) {
   const router = useRouter();
+  const profile = useProfile();
   const spec = DOC_TYPES[typeCode];
   const { form, lineItems } = useDocumentForm(typeCode, doc);
   const { register, getValues, setValue, control } = form;
@@ -232,7 +234,7 @@ export default function DocumentEditor({
         autosave.thaw();
         return;
       }
-      router.push(`/docs/${docId}/print`);
+      router.push(`/${profile}/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }

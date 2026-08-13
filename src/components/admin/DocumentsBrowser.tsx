@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { tabsListVariants } from "@/components/ui/tabs";
+import { tabPillSurface, tabsListVariants } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyContent,
@@ -154,8 +154,8 @@ export default function DocumentsBrowser({
         aria-hidden="true"
         className={cn(
           "pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md",
-          "bg-background shadow-sm dark:border dark:border-input dark:bg-input/30",
-          "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          tabPillSurface,
+          "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           view === "cards" && "translate-x-full",
         )}
       />

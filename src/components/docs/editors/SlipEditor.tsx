@@ -58,6 +58,7 @@ import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { workspaceTitle } from "../workspaceTitle";
 import { numericField } from "@/components/form/inputFilters";
+import { useProfile } from '@/lib/useProfile';
 
 const EMPTY_SNAPSHOT: EmployeeSnapshot = {
   name: "",
@@ -226,6 +227,7 @@ export default function SlipEditor({
   const spec = DOC_TYPES[type];
   const isPay = type === "PAY";
   const router = useRouter();
+  const profile = useProfile();
   // Picking an employee seeds the line item, the rate and the period. The
   // pulse says which action did that.
   const [seeding, pulseSeeding] = usePulse();
@@ -546,7 +548,7 @@ export default function SlipEditor({
         autosave.thaw();
         return;
       }
-      router.push(`/docs/${docId}/print`);
+      router.push(`/${profile}/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }

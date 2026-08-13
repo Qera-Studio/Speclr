@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 
 jest.mock('next/navigation', () => ({
-  usePathname: () => '/spec',
+  usePathname: () => '/admin/spec',
   useRouter: () => ({ push: jest.fn() }),
 }));
 // The search field calls a Server Action, which imports the Neon client — stub
@@ -20,8 +20,8 @@ describe('AdminHeader', () => {
   it('renders a breadcrumb trail for the current route', () => {
     render(<AdminHeader />);
     expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toBeInTheDocument();
-    // /spec → Dashboard > Icon spec
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/');
+    // /admin/spec → Dashboard > Icon spec, rooted at the admin profile's home
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/admin');
     expect(screen.getByText('Icon spec')).toHaveAttribute('aria-current', 'page');
   });
 

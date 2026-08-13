@@ -2,7 +2,8 @@
 
 import { useId, useState } from 'react';
 import { motion } from 'motion/react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, tabPillSurface } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface DetailTab {
   id: string;
@@ -38,7 +39,7 @@ export default function SpecDetailsTabs({ tabs }: { tabs: DetailTab[] }) {
             {tab.id === active && (
               <motion.span
                 layoutId={`${layoutId}-pill`}
-                className="absolute inset-0 rounded-md bg-background shadow-sm dark:bg-input/30"
+                className={cn('absolute inset-0 rounded-md', tabPillSurface)}
                 transition={{ type: 'spring', stiffness: 380, damping: 34 }}
               />
             )}

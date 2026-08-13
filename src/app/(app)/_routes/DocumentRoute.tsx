@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
+import { profileOfDocType, type Profile } from '@/lib/profile';
 import {
   getDocument,
   getLatestFinalizedInvoice,
@@ -25,19 +25,25 @@ import DocumentTypeList from '@/components/admin/DocumentTypeList';
 import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
 import FinalizedActions from '@/components/docs/FinalizedActions';
 
-export const metadata: Metadata = {
-  title: 'Document — speclr',
-  robots: { index: false, follow: false },
-};
-
-// Session cookie + live document must be read on every request.
-export const dynamic = 'force-dynamic';
+/**
+ * `/<profile>/docs/<id>` — one document, or a document type's list.
+ *
+ * Shared by both profiles' route files, which differ only in the `profile` they
+ * pass. The two copies exist so the router can 404 a wrong-profile URL without
+ * a guard of our own; everything that actually renders lives here, once.
+ */
 
 function isLetter(doc: AdminDocument): doc is LetterDocument {
   return doc.type === 'OFR' || doc.type === 'EXP' || doc.type === 'EXIT';
 }
 
-export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentRoute({
+  params,
+  profile,
+}: {
+  params: Promise<{ id: string }>;
+  profile: Profile;
+}) {
   try {
     await requireAuthorizedUser();
   } catch (err) {
@@ -47,29 +53,36 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
 
   const { id } = await params;
 
-  // `/docs/invoice` is the invoice *list*; `/docs/<uuid>` is one document.
-  // Sharing the segment keeps both URLs clean, and they can never collide —
-  // document ids are UUIDs, and a doc-type slug is never one.
+  // `/client/docs/invoice` is the invoice *list*; `/client/docs/<uuid>` is one
+  // document. Sharing the segment keeps both URLs clean, and they can never
+  // collide — document ids are UUIDs, and a doc-type slug is never one.
   const listSpec = DOC_TYPE_BY_SLUG[id];
   if (listSpec) {
-    // The contract list hosts the services section, so it needs the templates.
-    const [documents, latestInvoice, services] = await Promise.all([
+    // A type belongs to exactly one profile, so `/client/docs/pay-slip` names
+    // nothing. 404 rather than redirect: unlike a document id, a slug under the
+    // wrong prefix is a typo or a stale link, not a thing that moved.
+    if (profileOfDocType(listSpec.code) !== profile) notFound();
+    const [documents, latestInvoice] = await Promise.all([
       listDocumentsByType(listSpec.code),
       listSpec.code === 'REC' ? getLatestFinalizedInvoice() : Promise.resolve(null),
-      listSpec.code === 'CON' ? listServices() : Promise.resolve(null),
     ]);
     return (
       <DocumentTypeList
         spec={listSpec}
         documents={documents}
         latestInvoice={latestInvoice}
-        services={services ?? undefined}
       />
     );
   }
 
   const doc = await getDocument(id);
   if (!doc) notFound();
+
+  // A real document asked for under the wrong prefix is forwarded, not 404'd.
+  // These links get emailed and bookmarked, and a dead link to an issued
+  // invoice is a worse answer than a redirect.
+  const docProfile = profileOfDocType(doc.type);
+  if (docProfile !== profile) redirect(`/${docProfile}/docs/${doc.id}`);
 
   const spec = DOC_TYPES[doc.type];
   const heading =

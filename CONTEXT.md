@@ -52,6 +52,16 @@ Two rules keep this safe. **Drafts store only what was edited** — sheets call 
 
 Clearing a content field to empty is an **override**, not a reset: the document prints nothing there. That is the honest reading of an empty input.
 
+### 5c. The MSA clauses live in the database now — and the seam is what keeps that safe
+
+The Master Agreement's clauses moved out of `domain/contract/msa.ts` into a `clauses` table, edited at `/client/clauses`. `MSA_CLAUSES` is now the **seed and the fallback**, not the live source. This was a deliberate, logged deviation (see `PRINCIPLES.md` §7): the text was code-resident *because* content §2 wants it reviewed as one package by an Indian commercial lawyer, and a UI that adds clauses is a way for unreviewed legal text to reach a contract. The library page says so on the page.
+
+Three things hold the line, and none may be quietly undone:
+
+- **A contract copies the library once, when its draft is created.** `NewDocumentRoute` passes `clauseLibrary` to `ContractEditor`, which seeds `content.clauses`. `DocumentRoute` deliberately does **not** pass it — an existing document already carries its own copy, and its test mocks `@/db/store` *without* `listClauses` so a future edit that reaches for the live library fails loudly.
+- **`contentOf` is unchanged and must stay pure.** Every sheet calls it per render; it never reads the database. Documents written before the library have no `clauses` override and keep resolving `MSA_CLAUSES` exactly as they always did.
+- **Numbers are identity.** Clause bodies cite each other ("has the meaning given at clause 11.2"), so a new clause appends at the next number — claimed server-side, counting past archived rows — and nothing is ever inserted, renumbered or deleted. Archiving is the only removal.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.
@@ -103,7 +113,44 @@ form → Zod validate → Server Action → Drizzle → Postgres
 - **`src/server/actions/`** — Server Actions (documents, clients, employees, services). Each verifies the Clerk session server-side.
 - **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Tailwind + `src/styles/print.css` for A4/print. Do not redesign.
 - **`src/components/`** — everything else, fresh shadcn (dashboard Table, forms, nav, editors, the Paginator).
-- **`src/app/(admin | spec | auth)/`** — route groups.
+- **`src/app/(app)/{client,admin}/`** — the two profiles (see below). `_routes/` holds the route bodies both profiles share; the page files under each profile are thin wrappers that say which one they are.
+- **`src/lib/profile.ts`** — which side a thing belongs to, and the one documented seam between them.
+
+---
+
+## The two profiles
+
+speclr is **two applications in one shell**: `/client/…` (contracts, invoices,
+receipts, the clients who receive them) and `/admin/…` (the slips and HR
+letters, the employees they are about, settings, and every tool). Only one is
+live at a time. A switcher under the wordmark moves between them, and so does a
+horizontal swipe over the rail. Each profile has its own home, its own nav, its
+own ⌘D palette and its own ⌘K search.
+
+**A profile is derived, never stored.** `profileOfDocType` is a rename of the
+existing `isHrDocType` — every document type already names either a client or an
+employee. So there is no `profile` column, no migration, and no way for a
+document to disagree with the side it is filed under (`PRINCIPLES.md` rule 3).
+
+Three things follow, and none of them should be quietly undone:
+
+- **`src/lib/profile.ts` is the backdoor.** The halves are otherwise sealed.
+  Anything that ever needs to cross routes through that file, so the seam is one
+  place to find rather than a rule scattered through the UI. `listDocuments()`
+  is deliberately left unscoped for the same reason; the homes call
+  `listDocumentsByProfile`.
+- **Wrong-profile URLs behave differently by kind.** `/client/docs/pay-slip`
+  404s — a slug under the wrong prefix names nothing and never did.
+  `/client/docs/<uuid-of-a-pay-slip>` *redirects* — that names something real
+  that merely moved, and these links get emailed and bookmarked.
+- **Every pre-split URL still works.** The static ones are declared in
+  `next.config.ts`; `/docs/<id>` and friends resolve through
+  `_routes/legacyDocs.ts` because only the database knows a document's type. A
+  dead link to an issued invoice is not an acceptable cost of a nav change.
+
+The profile you land on is remembered in a `speclr_profile` cookie, written by
+`AdminShell` from wherever you actually landed — not from the switcher's click,
+because the swipe, the Settings link and a pasted URL all move you too.
 
 ---
 
@@ -126,6 +173,7 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 - **Clerk, not a shared password** — email allowlist, all invited users full access, **no roles yet** (addable later without rewrite).
 - **Documents pixel-faithful; all other UI fresh shadcn** — the sheets are finished, approved, legal artifacts; only their styling system changed (SCSS → Tailwind + print.css). The chrome is where shadcn shines.
 - **Sheet styling = Tailwind + a small `print.css` layer** (not a PDF renderer yet).
+- **The app is split into two profiles, with the profile in the URL** — see *The two profiles* above. The alternative considered was deriving the profile from the route without changing any URL, which would have been a far smaller diff; carrying it in the path was chosen so a shared link states which side it belongs to.
 - **No data migration** — fresh Postgres. The old Upstash test data (incl. a test invoice `QS-INV-2627-001`) was **not** carried over. speclr's first real document starts a clean FY sequence.
 
 ## Deferred work → `ROADMAP.md`

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
+import { profileOfDocType, type Profile } from '@/lib/profile';
 import { getDocument, getStudioSettings } from '@/db/store';
 import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
@@ -11,13 +11,11 @@ import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import PrintToolbar from '@/components/docs/PrintToolbar';
 import '@/styles/print.css';
 
-export const metadata: Metadata = {
-  title: 'Print — speclr',
-  robots: { index: false, follow: false },
-};
-
-// Session cookie + live document must be read on every request.
-export const dynamic = 'force-dynamic';
+/**
+ * `/<profile>/docs/<id>/print` — the print view.
+ *
+ * Shared by both profiles' route files; see `DocumentRoute` for why.
+ */
 
 function isLetter(doc: AdminDocument): doc is LetterDocument {
   return doc.type === 'OFR' || doc.type === 'EXP' || doc.type === 'EXIT';
@@ -25,7 +23,13 @@ function isLetter(doc: AdminDocument): doc is LetterDocument {
 
 const slug = (s: string) => s.replace(/\s+/g, '-');
 
-export default async function DocumentPrintPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PrintRoute({
+  params,
+  profile,
+}: {
+  params: Promise<{ id: string }>;
+  profile: Profile;
+}) {
   try {
     await requireAuthorizedUser();
   } catch (err) {
@@ -36,6 +40,11 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const stored = await getDocument(id);
   if (!stored) notFound();
+
+  // Same forwarding rule as the document route — a print link that was mailed
+  // out keeps working after the split.
+  const docProfile = profileOfDocType(stored.type);
+  if (docProfile !== profile) redirect(`/${docProfile}/docs/${stored.id}/print`);
 
   // A finalized document prints the studio details frozen onto it; a draft has
   // none yet, so it prints the live settings — matching what the editor preview
@@ -53,7 +62,7 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
         Print view — {spec.label} {doc.number ?? 'draft'}
       </h1>
       <div data-print-hidden>
-        <PrintToolbar backHref={`/docs/${doc.id}`} fileName={fileName} />
+        <PrintToolbar backHref={`/${profile}/docs/${doc.id}`} fileName={fileName} />
       </div>
       <div className="doc-sheet-wrap">{sheet}</div>
     </main>

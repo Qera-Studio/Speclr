@@ -12,6 +12,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEV_UNLIMITED } from '@/lib/devMode';
+import { useProfile } from '@/lib/useProfile';
 
 /**
  * Action row for finalized (immutable) documents: print, or copy as a new draft.
@@ -31,6 +32,7 @@ export default function FinalizedActions({
   isSlip?: boolean;
 }) {
   const router = useRouter();
+  const profile = useProfile();
   const [error, setError] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -44,7 +46,7 @@ export default function FinalizedActions({
       setError(result.error ?? 'Something went wrong.');
       return;
     }
-    router.push(`/docs/${result.id}`);
+    router.push(`/${profile}/docs/${result.id}`);
   };
 
   // Pre-launch only: sample finalizes need clearing out. `DEV_UNLIMITED` is
@@ -56,7 +58,7 @@ export default function FinalizedActions({
       setError(result.error ?? 'Something went wrong.');
       return;
     }
-    router.push('/');
+    router.push(`/${profile}`);
   };
 
   const onDuplicate = async () => {
@@ -68,13 +70,13 @@ export default function FinalizedActions({
       setError(result.error ?? 'Something went wrong.');
       return;
     }
-    router.push(`/docs/${result.id}`);
+    router.push(`/${profile}/docs/${result.id}`);
   };
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/docs/${docId}/print`} className={buttonVariants({ variant: 'outline' })}>
+        <Link href={`/${profile}/docs/${docId}/print`} className={buttonVariants({ variant: 'outline' })}>
           Open print view
         </Link>
         {/* The primary action on a slip is next month's slip — correcting an

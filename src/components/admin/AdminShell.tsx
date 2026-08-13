@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
@@ -15,6 +17,8 @@ import { EditorPanelProvider } from "./EditorPanel";
 import EditorSidebar from "./EditorSidebar";
 import { NewDocumentProvider } from "./NewDocumentCommand";
 import type { UserCardUser } from "./UserCard";
+import { DEFAULT_PROFILE, profileFromPath, type Profile } from "@/lib/profile";
+import { rememberProfile } from "@/lib/useProfile";
 
 /**
  * The admin layout: nav on the left, one floating content card in the middle,
@@ -50,16 +54,43 @@ const NAV_WIDTH = 224;
 export default function AdminShell({
   user,
   children,
+  defaultOpen = true,
 }: {
   user: UserCardUser;
   children: React.ReactNode;
+  /** From the `sidebar_state` cookie, read in the layout. */
+  defaultOpen?: boolean;
 }) {
+  /**
+   * Which half of the app this page belongs to — it scopes the nav, ⌘D and ⌘K.
+   *
+   * Read from the path rather than passed down from the layout. The layout is a
+   * Server Component and has no pathname, so threading it would have meant a
+   * `layout.tsx` per profile — and two sibling layouts remount the whole shell
+   * on every switch. This is one deterministic call on both server and client,
+   * so it survives hydration and the shell stays mounted across a switch.
+   *
+   * `/` and the legacy redirect routes are outside both profiles; they render
+   * nothing but a redirect, so the default they fall back to is never seen.
+   */
+  const pathname = usePathname();
+  const onProfile = profileFromPath(pathname);
+  const profile: Profile = onProfile ?? DEFAULT_PROFILE;
+
+  // Record wherever you actually landed, so `/` reopens on that side. Guarded on
+  // `onProfile` so a path outside both — `/sign-in`, a legacy redirect passing
+  // through — never writes the fallback over a real choice.
+  useEffect(() => {
+    if (onProfile) rememberProfile(onProfile);
+  }, [onProfile]);
+
   return (
     <EditorPanelProvider>
       {/* Outside the sidebar so ⌘D and the ⌥ shortcuts work on every admin
           page, including from inside the editor rail. */}
-      <NewDocumentProvider>
+      <NewDocumentProvider profile={profile}>
         <SidebarProvider
+          defaultOpen={defaultOpen}
           // Lock the whole shell to the viewport height so the page body never
           // scrolls — the rails and the inset frame stay fixed; only the content
           // area inside the inset scrolls.
@@ -71,7 +102,7 @@ export default function AdminShell({
             } as React.CSSProperties
           }
         >
-          <AdminSidebar user={user} />
+          <AdminSidebar user={user} profile={profile} />
           {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
           <SidebarInset
             id="main-content"

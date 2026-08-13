@@ -6,7 +6,8 @@ const push = jest.fn();
 const duplicateDocument = jest.fn();
 const copySlipForNextMonth = jest.fn();
 const deleteDraftAction = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: (u: string) => push(u) }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useRouter: () => ({ push: (u: string) => push(u) }) }));
 jest.mock('@/server/actions/documents', () => ({
   duplicateDocument: (...a: unknown[]) => duplicateDocument(...a),
   copySlipForNextMonth: (...a: unknown[]) => copySlipForNextMonth(...a),
@@ -18,7 +19,7 @@ describe('FinalizedActions', () => {
 
   it('renders a print link and duplicate button', () => {
     render(<FinalizedActions docId="doc-1" />);
-    expect(screen.getByRole('link', { name: /print/i })).toHaveAttribute('href', '/docs/doc-1/print');
+    expect(screen.getByRole('link', { name: /print/i })).toHaveAttribute('href', '/client/docs/doc-1/print');
     expect(screen.getByRole('button', { name: /duplicate/i })).toBeInTheDocument();
   });
 
@@ -28,7 +29,7 @@ describe('FinalizedActions', () => {
     render(<FinalizedActions docId="doc-1" />);
     await u.click(screen.getByRole('button', { name: /duplicate/i }));
     expect(duplicateDocument).toHaveBeenCalledWith('doc-1');
-    expect(push).toHaveBeenCalledWith('/docs/new-draft');
+    expect(push).toHaveBeenCalledWith('/client/docs/new-draft');
   });
 
   it('shows an error when duplicate fails', async () => {
@@ -48,7 +49,7 @@ describe('FinalizedActions', () => {
     await u.click(screen.getByRole('button', { name: /delete \(dev only\)/i }));
     await u.click(screen.getByRole('button', { name: /^delete$/i }));
     expect(deleteDraftAction).toHaveBeenCalledWith('doc-1');
-    expect(push).toHaveBeenCalledWith('/');
+    expect(push).toHaveBeenCalledWith('/client');
   });
 
   /**
@@ -77,7 +78,7 @@ describe('FinalizedActions', () => {
 
       expect(copySlipForNextMonth).toHaveBeenCalledWith('slip-1');
       expect(duplicateDocument).not.toHaveBeenCalled();
-      expect(push).toHaveBeenCalledWith('/docs/july-slip');
+      expect(push).toHaveBeenCalledWith('/client/docs/july-slip');
     });
 
     it('reports a refusal instead of navigating', async () => {

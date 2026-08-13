@@ -1,24 +1,21 @@
-import { DASHBOARD_LINK, DOCUMENT_SECTIONS, RECORD_LINKS, SETTINGS_LINK, TOOL_LINKS } from './nav';
+import { DEFAULT_PROFILE, profileFromPath, type Profile } from '@/lib/profile';
+import { linksForProfile, NAV_BY_PROFILE, SETTINGS_LINK } from './nav';
 
 export interface Crumb {
   label: string;
-  /** Link target, or undefined for a non-navigable grouping crumb (e.g. a section). */
+  /** Link target, or undefined for a non-navigable grouping crumb. */
   href: string | undefined;
 }
 
-/** A flat href → label lookup for every leaf link in the nav. */
-const LEAF_LABELS: Record<string, string> = {
-  [DASHBOARD_LINK.href]: DASHBOARD_LINK.label,
-  ...Object.fromEntries(RECORD_LINKS.map((l) => [l.href, l.label])),
-  ...Object.fromEntries(TOOL_LINKS.map((l) => [l.href, l.label])),
-  [SETTINGS_LINK.href]: SETTINGS_LINK.label,
-  ...Object.fromEntries(DOCUMENT_SECTIONS.flatMap((s) => s.children.map((c) => [c.href, c.label]))),
-};
-
-/** For a document leaf href, the section it belongs to (e.g. /docs/new/invoice → "Client"). */
-const SECTION_FOR_HREF: Record<string, string> = Object.fromEntries(
-  DOCUMENT_SECTIONS.flatMap((s) => s.children.map((c) => [c.href, s.label])),
-);
+/** A flat href → label lookup for every leaf link in one profile's nav. */
+function leafLabels(profile: Profile): Record<string, string> {
+  return {
+    ...Object.fromEntries(linksForProfile(profile).map((l) => [l.href, l.label])),
+    // Settings is reachable from the account menu in either profile, so it is
+    // labelled here rather than in whichever nav happens to hold it.
+    [SETTINGS_LINK.href]: SETTINGS_LINK.label,
+  };
+}
 
 /** Turn a raw path segment into a human label ("exit-letter" → "Exit letter"). */
 function humanize(segment: string): string {
@@ -31,65 +28,60 @@ function humanize(segment: string): string {
  * ancestor, read off the breadcrumb trail.
  *
  * Derived rather than passed down per page, so back and the breadcrumb can
- * never disagree about the hierarchy — both read the nav definition. Section
- * crumbs are skipped because they are groupings with no page of their own, and
- * anything without an ancestor falls back to the dashboard.
+ * never disagree about the hierarchy — both read the nav definition. Grouping
+ * crumbs are skipped because they have no page of their own, and anything
+ * without an ancestor falls back to the profile's home.
  */
 export function parentHref(pathname: string): string {
+  const home = NAV_BY_PROFILE[profileFromPath(pathname) ?? DEFAULT_PROFILE].home.href;
   const ancestors = breadcrumbForPath(pathname)
     .slice(0, -1)
     .filter((c) => c.href);
-  return ancestors[ancestors.length - 1]?.href ?? DASHBOARD_LINK.href;
+  return ancestors[ancestors.length - 1]?.href ?? home;
 }
 
 /**
- * Derive the breadcrumb trail for a pathname from the nav definition — the single
- * source of truth for route labels. Always starts at Dashboard. Known routes use
- * their nav label (and their section, for documents); unknown leaves (e.g. a
- * document id under /docs/<id>) fall back to a "Documents" grouping + the raw id.
+ * Derive the breadcrumb trail for a pathname from the nav definition — the
+ * single source of truth for route labels.
+ *
+ * Always starts at the *profile's* home, not a global one: the app is two
+ * applications sharing a shell, and a trail that walked up past the profile
+ * would be offering to navigate somewhere the profile cannot reach. The profile
+ * itself is not a crumb — the switcher above already says which side you are
+ * on, and repeating it would be the same word twice on every page.
  */
 export function breadcrumbForPath(pathname: string): Crumb[] {
   const clean = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+  const profile = profileFromPath(clean) ?? DEFAULT_PROFILE;
+  const nav = NAV_BY_PROFILE[profile];
 
-  const root: Crumb = { label: DASHBOARD_LINK.label, href: DASHBOARD_LINK.href };
-  if (clean === '/') return [root];
+  const root: Crumb = { label: nav.home.label, href: nav.home.href };
+  if (clean === '/' || clean === nav.home.href) return [root];
 
-  const known = LEAF_LABELS[clean];
-  if (known) {
-    const section = SECTION_FOR_HREF[clean];
-    const trail: Crumb[] = [root];
-    if (section) trail.push({ label: section, href: undefined });
-    trail.push({ label: known, href: clean });
-    return trail;
-  }
+  const known = leafLabels(profile)[clean];
+  if (known) return [root, { label: known, href: clean }];
 
-  const segments = clean.split('/').filter(Boolean);
+  // Strip the profile so the rest of this reads the same as it did before the
+  // split: `['docs', 'new', 'invoice']`, `['docs', '<uuid>']`.
+  const segments = clean.split('/').filter(Boolean).slice(1);
   const leaf = segments[segments.length - 1];
+  if (!leaf) return [root];
 
-  // `/docs/new/<slug>` — the create form for a type whose list is `/docs/<slug>`.
-  // Trail through the list so the section and the type stay navigable.
+  // `…/docs/new/<slug>` — the create form for a type whose list is
+  // `…/docs/<slug>`. Trail through the list so the type stays navigable.
   if (segments[0] === 'docs' && segments[1] === 'new' && segments.length === 3) {
-    const listHref = `/docs/${leaf}`;
-    const label = LEAF_LABELS[listHref];
+    const listHref = `/${profile}/docs/${leaf}`;
+    const label = leafLabels(profile)[listHref];
     if (label) {
-      const section = SECTION_FOR_HREF[listHref];
-      const trail: Crumb[] = [root];
-      if (section) trail.push({ label: section, href: undefined });
-      trail.push({ label, href: listHref });
-      trail.push({ label: 'New', href: clean });
-      return trail;
+      return [root, { label, href: listHref }, { label: 'New', href: clean }];
     }
   }
 
   // Unknown route. Group document routes under a "Documents" crumb; otherwise
   // humanize the last segment as a best-effort leaf label.
-  const trail: Crumb[] = [root];
   if (segments[0] === 'docs') {
     // Under /docs, an unknown leaf is a document id — show it verbatim.
-    trail.push({ label: 'Documents', href: undefined });
-    trail.push({ label: leaf, href: clean });
-  } else {
-    trail.push({ label: humanize(leaf), href: clean });
+    return [root, { label: 'Documents', href: undefined }, { label: leaf, href: clean }];
   }
-  return trail;
+  return [root, { label: humanize(leaf), href: clean }];
 }

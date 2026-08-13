@@ -1,24 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, PanelLeft } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -36,34 +21,31 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { PROFILES, type Profile } from "@/lib/profile";
 import {
-  DASHBOARD_LINK,
-  DOCUMENT_SECTIONS,
-  RECORD_LINKS,
-  TOOL_LINKS,
+  NAV_BY_PROFILE,
   type NavLink,
-  type NavSection,
+  type ProfileNav,
+  type RailEntry,
 } from "./nav";
+import ProfileSwitcher, { useStepProfile } from "./ProfileSwitcher";
+import { useProfileDrag } from "./useProfileDrag";
 import UserCard, { type UserCardUser } from "./UserCard";
-import ThemeToggle from "./ThemeToggle";
 import NewDocumentButton from "./NewDocumentButton";
 
 /**
  * Is this link the page we are on?
  *
- * Prefix-matching, not equality: the document lists live at `/docs/invoice`
- * while the pages a user actually spends time on are `/docs/invoice/…` and
- * `/docs/new/invoice`. Exact matching left the nav with nothing highlighted on
- * exactly the screens where "where am I?" matters most.
+ * Prefix-matching, not equality: the document lists live at
+ * `/client/docs/invoice` while the pages a user actually spends time on are
+ * `/client/docs/invoice/…` and `/client/docs/new/invoice`. Exact matching left
+ * the nav with nothing highlighted on exactly the screens where "where am I?"
+ * matters most.
  */
 function isActiveHref(pathname: string, href: string): boolean {
   if (pathname === href) return true;
-  if (href === "/") return false; // would prefix-match every route
   return (
     pathname.startsWith(`${href}/`) ||
     pathname === href.replace("/docs/", "/docs/new/")
@@ -76,23 +58,6 @@ function HoverArrow() {
     <ChevronRight
       aria-hidden="true"
       className="ml-auto size-3.5! text-muted-foreground opacity-0 transition-opacity group-hover/menu-button:opacity-100 group-data-[collapsible=icon]:hidden"
-    />
-  );
-}
-
-/**
- * The same hint inside a flyout item.
- *
- * A menu item highlights on pointer hover *and* on arrow-key navigation, and
- * Base UI expresses both as real DOM focus — so one `group-focus` rule covers
- * the mouse and the keyboard, where `group-hover` would leave the keyboard with
- * no arrow at all.
- */
-function ItemArrow() {
-  return (
-    <ChevronRight
-      aria-hidden="true"
-      className="ml-auto size-3.5 text-muted-foreground opacity-0 transition-opacity group-focus/dropdown-menu-item:opacity-100"
     />
   );
 }
@@ -117,277 +82,312 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
   );
 }
 
-interface SectionProps {
-  section: NavSection;
-  pathname: string;
+/**
+ * Is a flattened rail row the page we are on?
+ *
+ * Home matches exactly — every admin URL starts with `/admin`, so the prefix
+ * rule would leave Dashboard permanently lit. Everything else matches by prefix
+ * *plus* the pages it stands in for, which is what keeps Tools lit on
+ * `/admin/spec` and `/admin/kit`: its index page sends you there, but neither
+ * URL sits under `/admin/tools`.
+ */
+function isRailActive(pathname: string, entry: RailEntry, homeHref: string): boolean {
+  if (entry.link.href === homeHref) return pathname === homeHref;
+  return (
+    isActiveHref(pathname, entry.link.href) ||
+    entry.covers.some((covered) => isActiveHref(pathname, covered.href))
+  );
 }
 
 /**
- * A document section, in whichever form the rail can actually show.
+ * One profile's nav body — everything between the header and the footer.
  *
- * Expanded, it is a collapsible sub-tree. Collapsed, it cannot be: the sub-list
- * carries `group-data-[collapsible=icon]:hidden`, so the trigger toggled state
- * nobody could see and the seven document types were simply unreachable without
- * expanding the rail first. A flyout gives the icon rail the same seven links.
+ * Split out because the rail renders *both* profiles' bodies side by side in a
+ * track that the drag gesture slides. Only one is ever reachable: the other is
+ * `inert` and `aria-hidden`, or the nav landmark would hold two Dashboards and
+ * two of every document link.
  *
- * Split into two components rather than branched inside one, because the
- * collapsible form owns hooks the flyout has no use for — and `state` flips at
- * runtime every time the rail is toggled.
+ * **Two shapes.** A profile carrying a `rail` renders that flat — no headings,
+ * no create button — and a profile without one renders the grouped body below,
+ * unchanged. Today that is admin and client respectively; see `rail` in
+ * `nav.ts` for why, and for the fact that deleting that one field undoes it.
  */
-function DocumentSection(props: SectionProps) {
-  const { state, isMobile } = useSidebar();
-  // Mobile uses the off-canvas sheet, which is never in icon mode.
-  return state === "collapsed" && !isMobile ? (
-    <FlyoutSection {...props} />
-  ) : (
-    <CollapsibleSection {...props} />
-  );
-}
-
-function FlyoutSection({ section, pathname }: SectionProps) {
-  const Icon = section.icon;
-  const hasActiveChild = section.children.some((c) =>
-    isActiveHref(pathname, c.href),
-  );
-
+function ProfileNavBody({
+  nav,
+  pathname,
+  live,
+}: {
+  nav: ProfileNav;
+  pathname: string;
+  /** False for the off-screen copy. */
+  live: boolean;
+}) {
   return (
-    <SidebarMenuItem>
-      <DropdownMenu>
-        {/*
-          No `tooltip` on the button here. `SidebarMenuButton` shows its tooltip
-          only when the rail is collapsed — which is exactly when this branch
-          renders, so the two would fire on the same hover and stack on top of
-          each other. The flyout's own label carries the section name instead.
-        */}
-        <DropdownMenuTrigger
-          openOnHover
-          // Long enough that sweeping the pointer down the rail to reach the
-          // footer doesn't flash two menus on the way past.
-          delay={150}
-          closeDelay={120}
-          render={
-            <SidebarMenuButton isActive={hasActiveChild} className="text-sm">
-              <Icon aria-hidden="true" />
-              <span>{section.label}</span>
-              <ChevronRight className="ml-auto" />
-            </SidebarMenuButton>
-          }
-        />
-        {/*
-          `w-48` overrides the default `w-(--anchor-width)`: anchored to a 32px
-          icon button, that would size the popup to 32px.
-        */}
-        <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-48">
-          {/*
-            The group is not decoration: `DropdownMenuLabel` is Base UI's
-            `Menu.GroupLabel`, which throws outside a `Menu.Group`. It also
-            wires the label to the items as the group's accessible name.
-          */}
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>{section.label}</DropdownMenuLabel>
-            {section.children.map((child) => {
-              const active = isActiveHref(pathname, child.href);
-              return (
-                <DropdownMenuItem
-                  key={child.href}
-                  className={active ? "font-medium text-accent-foreground" : undefined}
-                  render={
-                    <Link
-                      href={child.href}
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <span>{child.label}</span>
-                      <ItemArrow />
-                    </Link>
-                  }
-                />
-              );
-            })}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </SidebarMenuItem>
-  );
-}
-
-function CollapsibleSection({ section, pathname }: SectionProps) {
-  const Icon = section.icon;
-  // Open state is derived from the path, with the user's own toggle layered on
-  // top and dropped at the next navigation. Seeding `useState` once (as this
-  // did) meant a section only ever opened if the app *first loaded* on one of
-  // its children — navigating to a document from anywhere else left its own
-  // section shut.
-  const [manual, setManual] = useState<boolean | null>(null);
-  useEffect(() => setManual(null), [pathname]);
-  const hasActiveChild = section.children.some((c) =>
-    isActiveHref(pathname, c.href),
-  );
-  const open = manual ?? hasActiveChild;
-
-  return (
-    <Collapsible
-      open={open}
-      onOpenChange={setManual}
-      className="group/collapsible"
+    // A landmark, because this is the app's primary navigation and previously
+    // had none. Only the live one is exposed — the other is `aria-hidden`, so a
+    // screen reader is never offered two.
+    <nav
+      aria-label={`${nav.label} navigation`}
+      // `inert` removes it from the tab order, the a11y tree and hit-testing in
+      // one attribute — cheaper and more complete than juggling tabIndex.
+      inert={!live}
+      aria-hidden={!live || undefined}
+      // Half of the `w-[200%]` track, which is one rail. `w-full` here meant
+      // 100% *of the track* — two rails each — so the second body began two
+      // rails along while the track only ever slides one, and the admin nav
+      // rendered entirely off-screen.
+      className="flex w-1/2 shrink-0 flex-col gap-3"
     >
-      <SidebarMenuItem>
-        <CollapsibleTrigger
-          render={
-            <SidebarMenuButton className="text-sm" tooltip={section.label}>
-              <Icon aria-hidden="true" />
-              <span>{section.label}</span>
-              <ChevronRight className="ml-auto transition-transform duration-200 group-data-[open]/collapsible:rotate-90" />
-            </SidebarMenuButton>
-          }
-        />
-        <CollapsibleContent>
-          <SidebarMenuSub>
-            {section.children.map((child) => {
-              const active = isActiveHref(pathname, child.href);
-              return (
-                <SidebarMenuSubItem key={child.href}>
-                  <SidebarMenuSubButton
-                    isActive={active}
-                    className="text-sm"
-                    render={
-                      <Link
-                        href={child.href}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        <span>{child.label}</span>
-                        <HoverArrow />
-                      </Link>
-                    }
-                  />
-                </SidebarMenuSubItem>
-              );
-            })}
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </SidebarMenuItem>
-    </Collapsible>
+      {nav.rail ? (
+        <FlatNavBody nav={nav} pathname={pathname} />
+      ) : (
+        <GroupedNavBody nav={nav} pathname={pathname} />
+      )}
+    </nav>
   );
 }
 
-export default function AdminSidebar({ user }: { user: UserCardUser }) {
+/**
+ * The flattened rail — one row per section, each leading to an index page that
+ * holds what the section used to list inline.
+ */
+function FlatNavBody({ nav, pathname }: { nav: ProfileNav; pathname: string }) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {nav.rail?.map((entry) => (
+            <MenuLink
+              key={entry.link.href}
+              item={entry.link}
+              active={isRailActive(pathname, entry, nav.home.href)}
+            />
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+/** The grouped rail: home and a create button, then labelled sections. */
+function GroupedNavBody({ nav, pathname }: { nav: ProfileNav; pathname: string }) {
+  return (
+    <>
+      {/* Dashboard, then the app's one job — alone at the top */}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <MenuLink item={nav.home} active={pathname === nav.home.href} />
+          </SidebarMenu>
+          {/* Same rounding collapsed as expanded, and the same
+              `--radius-sm`-based squircle the icon rows use. A radius that
+              changes with the rail animates on its own clock — the button
+              went pill-shaped a beat before the sidebar had moved. */}
+          <NewDocumentButton
+            variant="ghost"
+            // `--sidebar-primary`, not `--primary`: the dark theme puts
+            // primary at L .424, which on the near-black rail reads as a
+            // disabled link. The sidebar's own blue is L .623 — the token
+            // exists for exactly this surface.
+            className="mt-1 h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-sidebar-primary hover:text-sidebar-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          >
+            <span className="group-data-[collapsible=icon]:hidden">
+              New document
+            </span>
+            {/* Grey keycaps beside blue text read as disabled. Tinted with
+                the button's own accent so they belong to it. */}
+            <Shortcut
+              className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-sidebar-primary/10 [&_[data-slot=kbd]]:text-sidebar-primary/70"
+              keys={["mod", "D"]}
+            />
+          </NewDocumentButton>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      {/* Records — a short list of *who* the documents are about, read before
+          the list of document kinds. */}
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-sm">Records</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {nav.records.map((item) => (
+              <MenuLink
+                key={item.href}
+                item={item}
+                active={isActiveHref(pathname, item.href)}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      {/* Document types — this profile's, flat */}
+      <SidebarGroup>
+        <SidebarGroupLabel className="text-sm">Documents</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {nav.documents.map((item) => (
+              <MenuLink
+                key={item.href}
+                item={item}
+                active={isActiveHref(pathname, item.href)}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      {/* Client's Library, Admin's Tools. An empty list renders nothing on its
+          own, so there is no per-profile special case here. */}
+      {nav.groups.map((group) => (
+        <SidebarGroup key={group.label}>
+          <SidebarGroupLabel className="text-sm">
+            {group.label}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {group.links.map((item) => (
+                <MenuLink
+                  key={item.href}
+                  item={item}
+                  active={isActiveHref(pathname, item.href)}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The nav for one profile.
+ *
+ * The document types used to be a two-level tree — a "Client" and an "Admin"
+ * section, each collapsible, with a hover flyout standing in for the sub-list
+ * when the rail was collapsed. Both of those disappeared with the split: those
+ * two sections *are* the two profiles now, so each rail shows one flat list of
+ * three or five links, which the icon rail can render directly.
+ */
+export default function AdminSidebar({
+  user,
+  profile,
+}: {
+  user: UserCardUser;
+  profile: Profile;
+}) {
   const pathname = usePathname();
   const { toggleSidebar } = useSidebar();
+  const index = PROFILES.indexOf(profile);
+
+  // The Arc-style gesture: a horizontal drag anywhere over the rail slides
+  // between profiles. `ProfileSwitcher` is the control this accelerates.
+  const step = useStepProfile(profile);
+  const { offset, dragging, committed } = useProfileDrag(
+    step,
+    // Clamped, not wrapped: there is nothing to the left of the leftmost
+    // profile, so pulling that way should feel like a wall rather than
+    // rubber-banding towards a page that will never open.
+    (direction) => PROFILES[index + direction] !== undefined,
+    // What the commit ultimately changes. The hook holds the committed offset
+    // until this differs, so the track stays on the profile you swiped to while
+    // the route loads instead of springing back and sliding across again.
+    profile,
+  );
+
+  /**
+   * The profile actually *on screen*, which is not `profile` while a committed
+   * gesture waits for its navigation: the track has already slid to the next
+   * one, and `profile` still names the one that scrolled away.
+   *
+   * Getting this wrong is worse than it sounds. `live` decides `inert`, so for
+   * the whole second or so the route takes, the nav you are looking at was
+   * unclickable and hidden from screen readers — visibly there, functionally
+   * dead. Reading it from the latch instead makes the new nav usable the moment
+   * it arrives, before the page behind it has loaded.
+   */
+  const shown = PROFILES[index + committed] ?? profile;
 
   return (
     <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="flex-row items-center justify-between px-3 py-2">
-        <span className="text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
-          speclr
-        </span>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={toggleSidebar}
-                aria-label="Toggle sidebar"
-                className="text-muted-foreground"
-              >
-                <PanelLeft className="size-4" />
-              </Button>
-            }
-          />
-          <TooltipContent side="right">
-            Toggle sidebar
-            <Shortcut keys={["mod", "B"]} />
-          </TooltipContent>
-        </Tooltip>
+      {/* `px-2` once collapsed, matching `SidebarGroup`'s own padding: at
+          `px-3` every icon in this header sat 4px right of every icon in the
+          rail below it. Expanded the wordmark keeps its wider inset. */}
+      <SidebarHeader className="gap-2 px-3 py-2 group-data-[collapsible=icon]:px-2">
+        <div className="flex flex-row items-center justify-between">
+          <span className="text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
+            speclr
+          </span>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  aria-label="Toggle sidebar"
+                  // `size-icon` is 28px; a nav row collapsed is 32px. Matching
+                  // it is what puts this icon on the rail's centre line.
+                  className="text-muted-foreground group-data-[collapsible=icon]:size-8"
+                >
+                  <PanelLeft className="size-4" />
+                </Button>
+              }
+            />
+            <TooltipContent side="right">
+              Toggle sidebar
+              <Shortcut keys={["mod", "B"]} />
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <ProfileSwitcher profile={profile} offset={offset} dragging={dragging} />
       </SidebarHeader>
 
-      {/* Groups sit further apart than shadcn's default: Records above the
-          seven-row Documents block only reads as a separate list if there is
-          real air between them. */}
-      <SidebarContent className="gap-3">
-        {/* Dashboard, then the app's one job — alone at the top */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <MenuLink
-                item={DASHBOARD_LINK}
-                active={pathname === DASHBOARD_LINK.href}
-              />
-            </SidebarMenu>
-            {/* Same rounding collapsed as expanded, and the same
-                  `--radius-sm`-based squircle the icon rows use. A radius that
-                  changes with the rail animates on its own clock — the button
-                  went pill-shaped a beat before the sidebar had moved. */}
-            <NewDocumentButton
-              variant="ghost"
-              className="mt-1 h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-primary hover:text-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-            >
-              <span className="group-data-[collapsible=icon]:hidden">
-                New document
-              </span>
-              {/* Grey keycaps beside blue text read as disabled. Tinted with
-                    the button's own accent so they belong to it. */}
-              <Shortcut
-                className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-primary/10 [&_[data-slot=kbd]]:text-primary/70"
-                keys={["mod", "D"]}
-              />
-            </NewDocumentButton>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      {/*
+        Both profiles' navs, side by side in a track the drag slides.
 
-        {/* Records — plain links. Above Documents: a short list of *who* the
-              documents are about, read before the long list of document kinds. */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Records</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {RECORD_LINKS.map((item) => (
-                <MenuLink
-                  key={item.href}
-                  item={item}
-                  active={isActiveHref(pathname, item.href)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        The track is the reason the gesture reads as a swipe rather than a page
+        load: the content follows the fingers and only commits on release. Both
+        navs are already known client-side from `NAV_BY_PROFILE`, so rendering
+        the second costs no fetch — and the off-screen one is `inert`.
 
-        {/* Document sections — collapsible, file-tree sub-lists */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Documents</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {DOCUMENT_SECTIONS.map((section) => (
-                <DocumentSection
-                  key={section.label}
-                  section={section}
-                  pathname={pathname}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Tools */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Tools</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {TOOL_LINKS.map((item) => (
-                <MenuLink
-                  key={item.href}
-                  item={item}
-                  active={isActiveHref(pathname, item.href)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        `overflow-hidden` on the viewport, not the track: the visible column is
+        one rail wide and the other must be clipped, not scrollable.
+      */}
+      {/* `overscroll-x-none` so a horizontal wheel that reaches the end of this
+          scroller stops here instead of chaining out to the document, where the
+          browser turns it into history back/forward. The hook cancels the event
+          too; this is the backstop for the opening frame, before any listener
+          has seen enough of the gesture to judge it. */}
+      <SidebarContent className="overflow-x-hidden overscroll-x-none">
+        <div
+          className="flex w-[200%] flex-1"
+          style={{
+            transform: `translateX(${(-index - offset) * 50}%)`,
+            // Gated on `dragging`, not `offset === 0`: a committed gesture holds
+            // a non-zero offset while its navigation loads, and that is exactly
+            // the moment the movement has to animate. During a drag the offset
+            // is already updated per frame, and a transition on top of that lags
+            // the fingers.
+            transition: dragging ? undefined : 'transform 300ms ease-out',
+          }}
+        >
+          {PROFILES.map((value) => (
+            <ProfileNavBody
+              key={value}
+              nav={NAV_BY_PROFILE[value]}
+              pathname={pathname}
+              live={value === shown}
+            />
+          ))}
+        </div>
       </SidebarContent>
-
+      {/* Theme moved into the account card's menu — it configures you, not a
+          document surface, and the rail is for going places. `ThemeToggle`'s
+          segmented control is still exported if it ever comes back here. */}
       <SidebarFooter className="gap-3">
-        <ThemeToggle />
-        <Separator />
         <UserCard user={user} />
       </SidebarFooter>
     </Sidebar>

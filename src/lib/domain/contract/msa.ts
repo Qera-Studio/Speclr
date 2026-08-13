@@ -14,14 +14,28 @@
  * defaults written between the brackets are the drafter's proposal, not a
  * settled position.
  *
- * Lives in code rather than the database because it changes ~never and, per
- * content §2, needs review as one package with the four Schedules by an Indian
- * commercial lawyer. A contract freezes its resolved copy at finalize
- * (`materialiseContent`), so revising this text can never rewrite an agreement
- * already signed.
+ * **This is now the seed and the fallback, not the live source.** The clauses
+ * live in the `clauses` table and are edited at `/client/clauses`; this array
+ * seeds that table and still resolves for documents written before the library
+ * existed (`contentOf`). It was code-resident because, per content §2, the text
+ * needs review as one package with the four Schedules by an Indian commercial
+ * lawyer — that is still true of the *text*, and it is why the library page
+ * says out loud that new and edited clauses are unreviewed. What moved is where
+ * the editing happens, not the standard the words are held to.
+ *
+ * A contract seeds its own copy of the list when its draft is created and
+ * freezes it at finalize (`materialiseContent`), so revising a clause here or
+ * in the library can never rewrite an agreement already signed.
+ *
+ * **Numbers are identity.** Clause bodies cite each other by number ('has the
+ * meaning given at clause 11.2'), so nothing may be inserted in the middle:
+ * renumbering would break live cross-references in text nobody re-read. New
+ * clauses append at the end.
  *
  * Client-safe: no server imports.
  */
+
+import { z } from 'zod';
 
 export interface MsaClause {
   number: number;
@@ -33,6 +47,27 @@ export interface MsaClause {
    */
   body: string[];
 }
+
+/**
+ * Validates a clause on the way into the database and onto a document.
+ *
+ * The limits are generous because clause 1's definitions run long — they are
+ * there to stop a malformed payload, not to police drafting. An empty `body` is
+ * refused: a numbered clause with no text prints as a bare heading in a signed
+ * agreement, which reads as something having gone missing.
+ */
+export const msaClauseSchema = z.object({
+  number: z.number().int().min(1).max(999),
+  heading: z.string().trim().min(1).max(200),
+  body: z.array(z.string().trim().min(1).max(8000)).min(1).max(60),
+});
+
+/** A clause as the library edits it, plus the archive flag the table carries. */
+export const clauseInputSchema = msaClauseSchema.extend({
+  archived: z.boolean(),
+});
+
+export type ClauseInput = z.infer<typeof clauseInputSchema>;
 
 /** Cover-page intro paragraph. */
 export const CONTRACT_INTRO =

@@ -14,6 +14,7 @@ import type { EmployeeRecord } from '@/lib/domain/employee';
 const push = jest.fn();
 const createDraft = jest.fn();
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/admin',
   useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }),
 }));
 jest.mock('@/server/actions/documents', () => ({

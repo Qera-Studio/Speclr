@@ -5,6 +5,7 @@ const requireAuthorizedUser = jest.fn();
 const listClients = jest.fn(() => Promise.resolve([]));
 const listEmployees = jest.fn(() => Promise.resolve([]));
 const listServices = jest.fn(() => Promise.resolve([]));
+const listClauses = jest.fn(() => Promise.resolve([] as { number: number; heading: string; body: string[] }[]));
 const redirect = jest.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`);
 });
@@ -22,8 +23,12 @@ jest.mock('@/db/store', () => ({
   listClients: () => listClients(),
   listEmployees: () => listEmployees(),
   listServices: () => listServices(),
+  listClauses: () => listClauses(),
+  listExclusions: () => Promise.resolve([]),
+  listClientInputs: () => Promise.resolve([]),
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
@@ -36,7 +41,7 @@ jest.mock('@/server/actions/documents', () => ({
   deleteDraftAction: jest.fn(),
 }));
 
-import NewDocumentPage from '../page';
+import NewDocumentPage from '../NewDocumentRoute';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -46,7 +51,7 @@ beforeEach(() => {
 describe('/docs/new/[type]', () => {
   it('renders the document editor for a valid slug', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
-    render(await NewDocumentPage({ params: Promise.resolve({ type: 'invoice' }) }));
+    render(await NewDocumentPage({ params: Promise.resolve({ type: 'invoice' }), profile: 'client' }));
     expect(screen.getByRole('heading', { name: /new invoice/i })).toBeInTheDocument();
     // The client picker, not a save button — the draft writes itself, so there
     // is no button here until the first autosave gives it a row to act on.
@@ -55,11 +60,32 @@ describe('/docs/new/[type]', () => {
 
   it('notFound for an unknown slug', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
-    await expect(NewDocumentPage({ params: Promise.resolve({ type: 'nonsense' }) })).rejects.toThrow('NOT_FOUND');
+    await expect(NewDocumentPage({ params: Promise.resolve({ type: 'nonsense' }), profile: 'client' })).rejects.toThrow('NOT_FOUND');
   });
 
   it('redirects an unauthorized user', async () => {
     requireAuthorizedUser.mockRejectedValue(new Error('UNAUTHORIZED'));
-    await expect(NewDocumentPage({ params: Promise.resolve({ type: 'invoice' }) })).rejects.toThrow('REDIRECT:/no-access');
+    await expect(NewDocumentPage({ params: Promise.resolve({ type: 'invoice' }), profile: 'client' })).rejects.toThrow('REDIRECT:/no-access');
+  });
+
+  /**
+   * This is the *only* route that reads the clause library — a new contract
+   * copies it onto itself, and from then on carries its own. `DocumentRoute`
+   * deliberately does not, which its own tests assert.
+   */
+  it('reads the clause library for a new contract', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    await NewDocumentPage({ params: Promise.resolve({ type: 'contract' }), profile: 'client' });
+    expect(listClauses).toHaveBeenCalled();
+  });
+
+  /** No clause reading anywhere else, however cheap it would be to add. */
+  it('does not read the clause library for any other type', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    for (const type of ['invoice', 'receipt', 'pay-slip', 'offer-letter']) {
+      const profile = type === 'invoice' || type === 'receipt' ? 'client' : 'admin';
+      await NewDocumentPage({ params: Promise.resolve({ type }), profile });
+    }
+    expect(listClauses).not.toHaveBeenCalled();
   });
 });

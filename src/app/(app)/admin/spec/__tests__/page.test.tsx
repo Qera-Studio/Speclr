@@ -9,6 +9,7 @@ jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: (...args: unknown[]) => requireAuthorizedUser(...args),
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   redirect: (url: string) => redirect(url),
 }));
 

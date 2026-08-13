@@ -6,7 +6,8 @@ import type { EmployeeRecord } from '@/lib/domain/employee';
 
 const push = jest.fn();
 const createDraft = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/admin', useRouter: () => ({ push: (u: string) => push(u), refresh: jest.fn() }) }));
 jest.mock('@/server/actions/documents', () => ({
   createDraft: (...a: unknown[]) => createDraft(...a),
   updateDraft: jest.fn(),
@@ -193,7 +194,7 @@ describe('SlipEditor (new)', () => {
     );
     // The URL becomes the draft's own without a navigation, so the half-filled
     // slip is not remounted out from under the user.
-    expect(replaceState).toHaveBeenCalledWith(null, '', '/docs/new-stp');
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/admin/docs/new-stp');
     expect(push).not.toHaveBeenCalled();
   });
 

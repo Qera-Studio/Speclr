@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { motion } from "motion/react"
 import { Plus } from "lucide-react"
 
@@ -57,23 +58,30 @@ function AddButton({
  * Same treatment for a create action that navigates instead of opening a panel
  * (the dashboard's "New invoice"). Kept separate rather than polymorphic — two
  * small components beat one with an `as` prop.
+ *
+ * A Next `Link`, not a bare `<a>`: every href it is given is internal, and a
+ * plain anchor made "New contract" a full document load. That tore the whole
+ * admin shell down and back up, which is how a collapsed sidebar came back
+ * expanded.
  */
+const MotionLink = motion.create(Link)
+
 function AddLink({
   className,
   children,
   variant = "default",
   ...props
-}: Omit<React.ComponentProps<"a">, "children"> & {
+}: Omit<React.ComponentProps<typeof Link>, "children"> & {
   children: React.ReactNode
   variant?: VariantProps<typeof buttonVariants>["variant"]
 }) {
   return (
-    <motion.a
+    <MotionLink
       initial="rest"
       animate="rest"
       whileHover="hover"
       className={cn(buttonVariants({ variant }), className)}
-      {...(props as React.ComponentProps<typeof motion.a>)}
+      {...(props as React.ComponentProps<typeof MotionLink>)}
     >
       <motion.span
         className="inline-flex"
@@ -83,7 +91,7 @@ function AddLink({
         <Plus aria-hidden="true" />
       </motion.span>
       {children}
-    </motion.a>
+    </MotionLink>
   )
 }
 

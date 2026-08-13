@@ -15,6 +15,7 @@ import {
 } from '@/server/actions/documents';
 import { isSlip } from '@/lib/domain/registry';
 import { DEV_UNLIMITED } from '@/lib/devMode';
+import { docHref } from '@/lib/profile';
 import type { AdminDocument } from '@/lib/domain/types';
 
 /**
@@ -37,7 +38,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
     setBusy(true);
     const result = await duplicateDocument(doc.id);
     setBusy(false);
-    if (result.success && result.id) router.push(`/docs/${result.id}`);
+    if (result.success && result.id) router.push(docHref({ ...doc, id: result.id }));
   };
 
   // Slips only, and deliberately separate from Duplicate above: this one moves
@@ -47,7 +48,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
     setBusy(true);
     const result = await copySlipForNextMonth(doc.id);
     setBusy(false);
-    if (result.success && result.id) router.push(`/docs/${result.id}`);
+    if (result.success && result.id) router.push(docHref({ ...doc, id: result.id }));
   };
 
   // Refreshed either way: if the delete was refused, the row stays — which is
@@ -84,12 +85,12 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
   return (
     <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
       {isDraft ? (
-        iconLink(`/docs/${doc.id}`, 'Edit draft', 'Edit', Pencil)
+        iconLink(docHref(doc), 'Edit draft', 'Edit', Pencil)
       ) : (
         <>
           {/* `auto=1` prints on arrival — from a list row, Print means print.
               The document number in the first column is the way to preview. */}
-          {iconLink(`/docs/${doc.id}/print?auto=1`, 'Print', 'Print', Printer)}
+          {iconLink(docHref(doc, '/print?auto=1'), 'Print', 'Print', Printer)}
           {isSlip(doc) ? (
             <Tooltip>
               <TooltipTrigger

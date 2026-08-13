@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Shortcut } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
+import { DEFAULT_PROFILE, profileFromPath } from '@/lib/profile';
 import { searchAll, type SearchHit } from '@/server/actions/search';
 
 /**
- * The header search: documents, clients, employees and services in one list.
+ * The header search, scoped to the current profile: the client side finds
+ * clients, services and client documents; the admin side finds employees and HR
+ * documents.
  *
  * A plain input with a listbox anchored under it, rather than a Popover — a
  * popover moves focus, and this must never take the caret out of the field
@@ -26,6 +29,9 @@ const MIN_QUERY = 2;
 
 export default function SearchCommand() {
   const router = useRouter();
+  // Same derivation as `AdminShell` — the search belongs to the half of the app
+  // it is sitting in, and the path is what says which that is.
+  const profile = profileFromPath(usePathname()) ?? DEFAULT_PROFILE;
   const inputId = useId();
   const listId = `${inputId}-results`;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +55,7 @@ export default function SearchCommand() {
 
     const timer = setTimeout(async () => {
       try {
-        const results = await searchAll(trimmed);
+        const results = await searchAll(trimmed, profile);
         if (cancelled) return;
         setHits(results);
         setActive(0);
@@ -64,7 +70,7 @@ export default function SearchCommand() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, profile]);
 
   // ⌘K / Ctrl-K from anywhere puts the caret in the field.
   useEffect(() => {

@@ -3,6 +3,7 @@ import 'server-only';
 import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { db } from './index';
 import {
+  clauses,
   clientInputs,
   clients,
   documents,
@@ -13,10 +14,12 @@ import {
 } from './schema';
 import { fromRow, toRow, type DocumentRow } from './mappers';
 import { DEV_UNLIMITED } from '@/lib/devMode';
+import { docTypesForProfile, type Profile } from '@/lib/profile';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
 import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/types';
 import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
+import type { MsaClause } from '@/lib/domain/contract/msa';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 /**
@@ -242,6 +245,70 @@ export async function archiveService(code: string): Promise<void> {
     .where(eq(services.code, code));
 }
 
+// ─── MSA clauses ──────────────────────────────────────────────────────────────
+
+/**
+ * The Master Agreement's clauses, in numbered order.
+ *
+ * Ordering is the store's job, not a caller's: the numbers are the clause's
+ * identity and the text cross-references them, so any list that showed 11 after
+ * 12 would be misreading the document.
+ */
+export async function listClauses(includeArchived = false): Promise<MsaClause[]> {
+  const rows = await db
+    .select()
+    .from(clauses)
+    .where(includeArchived ? undefined : eq(clauses.archived, false))
+    .orderBy(clauses.number);
+  return rows.map((r) => ({ number: r.number, heading: r.heading, body: r.body }));
+}
+
+/**
+ * Upsert one clause by its number.
+ *
+ * Callers must have validated with `clauseInputSchema` first — this writes what
+ * it is given. Editing here changes the *next* contract only; drafts carry
+ * their own copy from creation and finalized contracts froze theirs.
+ */
+export async function saveClause(clause: MsaClause & { archived: boolean }): Promise<void> {
+  const row = {
+    number: clause.number,
+    heading: clause.heading,
+    body: clause.body,
+    archived: clause.archived,
+    updatedAt: new Date(),
+  };
+  await db.insert(clauses).values(row).onConflictDoUpdate({ target: clauses.number, set: row });
+}
+
+/**
+ * The number a new clause would take: one past the highest that exists,
+ * archived rows included.
+ *
+ * Counting only live rows would reissue an archived clause's number, and the
+ * agreements that cite it by number are already signed.
+ */
+export async function nextClauseNumber(): Promise<number> {
+  const rows = await db
+    .select({ number: clauses.number })
+    .from(clauses)
+    .orderBy(desc(clauses.number))
+    .limit(1);
+  return (rows[0]?.number ?? 0) + 1;
+}
+
+/**
+ * Archives rather than deletes, for the same reason services do — and one
+ * more: the number must stay taken, or a later clause would inherit a number
+ * that signed agreements use to mean something else.
+ */
+export async function archiveClause(number: number): Promise<void> {
+  await db
+    .update(clauses)
+    .set({ archived: true, updatedAt: new Date() })
+    .where(eq(clauses.number, number));
+}
+
 function libraryFromRow(r: { id: string; text: string; category: string; archived: boolean }) {
   return { id: r.id, text: r.text, category: r.category, archived: r.archived };
 }
@@ -299,8 +366,33 @@ export async function getDocument(id: string): Promise<AdminDocument | null> {
   return rows[0] ? fromRow(rows[0] as DocumentRow) : null;
 }
 
+/**
+ * Every document, both profiles, newest first.
+ *
+ * Deliberately left unscoped now that the app is split in two: this is the
+ * cross-profile backdoor `src/lib/profile.ts` describes. The profile homes call
+ * `listDocumentsByProfile`; anything that genuinely needs both sides at once
+ * calls this and says why.
+ */
 export async function listDocuments(): Promise<AdminDocument[]> {
   const rows = await db.select().from(documents).orderBy(desc(documents.createdAt));
+  return rows.map((r) => fromRow(r as DocumentRow));
+}
+
+/**
+ * One profile's documents, newest first — what each profile home shows.
+ *
+ * Filtered on `type` rather than on `client_id is null`: the type is what
+ * *decides* the profile (`profileOfDocType`), while the two id columns merely
+ * follow from it, and a draft can be saved before either is set. Uses
+ * `documents_type_idx`.
+ */
+export async function listDocumentsByProfile(profile: Profile): Promise<AdminDocument[]> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(inArray(documents.type, docTypesForProfile(profile)))
+    .orderBy(desc(documents.createdAt));
   return rows.map((r) => fromRow(r as DocumentRow));
 }
 
@@ -400,36 +492,50 @@ const EMPTY_SEARCH: SearchResults = { documents: [], clients: [], employees: [],
  * matching clients/employees are resolved first and their documents pulled by
  * foreign key — the indexed path, and it keeps snapshot shape out of SQL.
  */
-export async function searchEverything(query: string): Promise<SearchResults> {
+export async function searchEverything(
+  query: string,
+  profile: Profile,
+): Promise<SearchResults> {
   const q = query.trim();
   if (q.length < 2) return EMPTY_SEARCH;
   const pattern = `%${q}%`;
 
+  // Scoped in SQL, not filtered afterwards. `SEARCH_LIMIT` is applied by the
+  // database, so a post-hoc filter would let five pay slips fill the window and
+  // hide the invoice that was actually being looked for.
+  const isClient = profile === 'client';
+
   const [clientHits, employeeHits, serviceHits] = await Promise.all([
-    db
-      .select()
-      .from(clients)
-      .where(
-        or(
-          ilike(clients.name, pattern),
-          ilike(clients.companyName, pattern),
-          ilike(clients.email, pattern),
-        ),
-      )
-      .orderBy(clients.name)
-      .limit(SEARCH_LIMIT),
-    db
-      .select()
-      .from(employees)
-      .where(or(ilike(employees.name, pattern), ilike(employees.email, pattern)))
-      .orderBy(employees.name)
-      .limit(SEARCH_LIMIT),
-    db
-      .select()
-      .from(services)
-      .where(and(eq(services.archived, false), ilike(services.name, pattern)))
-      .orderBy(services.sortOrder)
-      .limit(SEARCH_LIMIT),
+    isClient
+      ? db
+          .select()
+          .from(clients)
+          .where(
+            or(
+              ilike(clients.name, pattern),
+              ilike(clients.companyName, pattern),
+              ilike(clients.email, pattern),
+            ),
+          )
+          .orderBy(clients.name)
+          .limit(SEARCH_LIMIT)
+      : [],
+    isClient
+      ? []
+      : db
+          .select()
+          .from(employees)
+          .where(or(ilike(employees.name, pattern), ilike(employees.email, pattern)))
+          .orderBy(employees.name)
+          .limit(SEARCH_LIMIT),
+    isClient
+      ? db
+          .select()
+          .from(services)
+          .where(and(eq(services.archived, false), ilike(services.name, pattern)))
+          .orderBy(services.sortOrder)
+          .limit(SEARCH_LIMIT)
+      : [],
   ]);
 
   const clientIds = clientHits.map((c) => c.id);
@@ -444,7 +550,15 @@ export async function searchEverything(query: string): Promise<SearchResults> {
   const documentHits = await db
     .select()
     .from(documents)
-    .where(or(...documentMatch))
+    .where(
+      and(
+        // Without this, a search for "2627" in the client profile returns
+        // `QS-PAY-2627-001` — the number match doesn't care which side a
+        // document is on, and the party joins can't exclude it.
+        inArray(documents.type, docTypesForProfile(profile)),
+        or(...documentMatch),
+      ),
+    )
     .orderBy(desc(documents.createdAt))
     .limit(SEARCH_LIMIT);
 

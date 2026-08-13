@@ -36,6 +36,7 @@ import DocumentRowActions from './DocumentRowActions';
 import { formatDisplayDate } from '@/lib/domain/dates';
 import { computeTotals, formatINR } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
+import { docHref } from '@/lib/profile';
 import { partyName } from '@/lib/domain/party';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -169,7 +170,7 @@ export default function DocumentsTable({
             <TableRow key={doc.id} className="group/row relative cursor-pointer">
               <TableCell>
                 <Link
-                  href={`/docs/${doc.id}`}
+                  href={docHref(doc)}
                   className="underline underline-offset-4 after:absolute after:inset-0 after:content-['']"
                 >
                   {doc.number ?? 'Draft'}

@@ -256,7 +256,10 @@ export async function createDraft(
     return { success: false, error: 'Failed to save draft.' };
   }
 
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true, id: doc.id };
 }
 
@@ -313,7 +316,10 @@ export async function updateDraft(
     return { success: false, error: 'Failed to save draft.' };
   }
 
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true, id };
 }
 
@@ -459,7 +465,10 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     number,
     actor: actor.userId,
   });
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true, id };
 }
 
@@ -511,7 +520,10 @@ export async function duplicateDocument(id: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to duplicate.' };
   }
 
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true, id: copy.id };
 }
 
@@ -591,7 +603,10 @@ export async function copySlipForNextMonth(id: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to copy.' };
   }
 
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true, id: copy.id };
 }
 
@@ -649,7 +664,10 @@ export async function deleteDraftAction(id: unknown): Promise<ActionResult> {
     return { success: false, error: 'Failed to delete draft.' };
   }
 
-  revalidatePath('/');
+  // Sledgehammer, and the right size of one: a document write can change both
+  // profile homes, its type's list page and the document page itself, and after
+  // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
+  revalidatePath('/', 'layout');
   return { success: true };
 }
 

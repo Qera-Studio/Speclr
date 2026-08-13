@@ -13,7 +13,7 @@ import {
   type BlankValues,
 } from "@/lib/domain/contract/blanks";
 import { contractScopes } from "@/lib/domain/contract/completeness";
-import { MSA_CLAUSES } from "@/lib/domain/contract/msa";
+import type { MsaClause } from "@/lib/domain/contract/msa";
 import type {
   ContractService,
   LibraryLine,
@@ -73,6 +73,7 @@ import { useDraftAutosave } from "./useDraftAutosave";
 import { UnsavedChangesDialog } from "./draftStatus";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { workspaceTitle } from "../workspaceTitle";
+import { useProfile } from '@/lib/useProfile';
 
 const EMPTY_SNAPSHOT: ClientSnapshot = {
   name: "",
@@ -91,6 +92,19 @@ interface ContractEditorProps {
   services: ContractService[];
   exclusions: LibraryLine[];
   clientInputs: LibraryLine[];
+  /**
+   * The live clause library, for a *new* contract only.
+   *
+   * A new draft copies this onto itself the moment it exists, exactly as it
+   * copies a Part from `services`. From then on the contract carries its own
+   * clauses and editing the library cannot reach it — which is the same rule
+   * `studioSnapshot` enforces for the studio's details and `materialiseContent`
+   * for the rest of the wording (CONTEXT.md §5, §5b).
+   *
+   * Omitted when opening an existing document: it already has its copy, and
+   * handing it a fresh one would be the compliance bug this seeds to avoid.
+   */
+  clauseLibrary?: MsaClause[];
   doc?: ContractDocument | null;
   /** Live studio details, for a draft's preview. See the note in DocumentEditor. */
   studio?: StudioInfo;
@@ -117,18 +131,29 @@ export default function ContractEditor({
   services,
   exclusions,
   clientInputs,
+  clauseLibrary,
   doc,
   studio,
   title,
 }: ContractEditorProps) {
   const router = useRouter();
+  const profile = useProfile();
   const [clientId, setClientId] = useState(doc?.clientId ?? "");
   const [issueDate, setIssueDate] = useState(doc?.issueDate ?? todayISO());
   const [contract, setContract] = useState<ContractData>(
     doc?.contract ?? EMPTY_CONTRACT,
   );
-  /** Text overrides — see the note in `DocumentEditor`. */
-  const [content, setContent] = useState<DocContent>(doc?.content ?? {});
+  /**
+   * Text overrides — see the note in `DocumentEditor`.
+   *
+   * A new contract starts with the clause library already copied in, so the
+   * words it prints are the ones stored today rather than whatever
+   * `MSA_CLAUSES` happens to say when it is finalized. An existing document is
+   * left exactly as it was saved.
+   */
+  const [content, setContent] = useState<DocContent>(
+    doc?.content ?? (clauseLibrary ? { clauses: clauseLibrary } : {}),
+  );
   const [serviceQuery, setServiceQuery] = useState("");
   /** Which Service the dialog is showing, by code. */
   const [openCode, setOpenCode] = useState<string | null>(null);
@@ -274,7 +299,7 @@ export default function ContractEditor({
         autosave.thaw();
         return;
       }
-      router.push(`/docs/${docId}/print`);
+      router.push(`/${profile}/docs/${docId}/print`);
     } finally {
       setIsSubmitting(false);
     }
@@ -537,7 +562,9 @@ export default function ContractEditor({
 
               <PartCard
                 title="Clauses"
-                subtitle={`${MSA_CLAUSES.length} clauses of the Master Agreement`}
+                // This contract's own count, not the constant's: it may carry a
+                // clause the library has since added, or predate one.
+                subtitle={`${resolved.clauses.length} clauses of the Master Agreement`}
                 onOpen={() => setClausesOpen(true)}
               />
 

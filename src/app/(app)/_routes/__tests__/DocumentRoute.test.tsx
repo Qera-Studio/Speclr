@@ -19,6 +19,10 @@ const notFound = jest.fn(() => {
 jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: (...a: unknown[]) => requireAuthorizedUser(...a),
 }));
+// `listClauses` is deliberately absent: this route must never fetch the clause
+// library, because an existing contract already carries its own copy. If a
+// future edit adds the call, these tests fail loudly rather than quietly
+// rewriting words in documents that may already be relied upon.
 jest.mock('@/db/store', () => ({
   getDocument: (...a: unknown[]) => getDocument(...a),
   // The routes read the studio's live details for a draft's preview; the real
@@ -34,6 +38,7 @@ jest.mock('@/db/store', () => ({
   getLatestFinalizedInvoice: () => getLatestFinalizedInvoice(),
 }));
 jest.mock('next/navigation', () => ({
+  usePathname: () => '/client',
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
@@ -48,7 +53,7 @@ jest.mock('@/server/actions/documents', () => ({
   deleteDraftAction: jest.fn(),
   createReceiptForInvoice: jest.fn(),
 }));
-import DocumentPage from '../page';
+import DocumentPage from '../DocumentRoute';
 
 const draftInvoice = {
   id: 'doc-1', type: 'INV', status: 'draft', issueDate: '2026-06-10', gstRatePercent: 18,
@@ -66,7 +71,7 @@ beforeEach(() => {
 });
 
 async function renderPage() {
-  render(await DocumentPage({ params: Promise.resolve({ id: 'doc-1' }) }));
+  render(await DocumentPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' }));
 }
 
 describe('/docs/[id]', () => {
@@ -93,12 +98,12 @@ describe('/docs/[id]', () => {
 
   it('renders the type list — not a document — for a doc-type slug', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
-    render(await DocumentPage({ params: Promise.resolve({ id: 'invoice' }) }));
+    render(await DocumentPage({ params: Promise.resolve({ id: 'invoice' }), profile: 'client' }));
 
     expect(screen.getByRole('heading', { name: 'Invoices' })).toBeInTheDocument();
     // Two of them while the list is empty: the header CTA and the empty state.
     for (const link of screen.getAllByRole('link', { name: /new invoice/i })) {
-      expect(link).toHaveAttribute('href', '/docs/new/invoice');
+      expect(link).toHaveAttribute('href', '/client/docs/new/invoice');
     }
     expect(listDocumentsByType).toHaveBeenCalledWith('INV');
     // A slug must never be looked up as a document id.
@@ -112,7 +117,7 @@ describe('/docs/[id]', () => {
       number: 'QS-INV-2627-001',
     } as never);
 
-    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }) }));
+    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }), profile: 'client' }));
 
     expect(screen.getByRole('button', { name: /receipt for QS-INV-2627-001/i })).toBeInTheDocument();
   });
@@ -121,19 +126,90 @@ describe('/docs/[id]', () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
     getLatestFinalizedInvoice.mockResolvedValue(null);
 
-    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }) }));
+    render(await DocumentPage({ params: Promise.resolve({ id: 'receipt' }), profile: 'client' }));
 
     expect(screen.queryByRole('button', { name: /receipt for/i })).not.toBeInTheDocument();
   });
 
   it('redirects an unauthorized user', async () => {
     requireAuthorizedUser.mockRejectedValue(new Error('UNAUTHORIZED'));
-    await expect(DocumentPage({ params: Promise.resolve({ id: 'doc-1' }) })).rejects.toThrow('REDIRECT:/no-access');
+    await expect(DocumentPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' })).rejects.toThrow('REDIRECT:/no-access');
   });
 
   it('notFound when the document is missing', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
     getDocument.mockResolvedValue(null);
-    await expect(DocumentPage({ params: Promise.resolve({ id: 'doc-1' }) })).rejects.toThrow('NOT_FOUND');
+    await expect(DocumentPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' })).rejects.toThrow('NOT_FOUND');
+  });
+
+  /**
+   * The profile guards. A slug and a document id are treated differently on
+   * purpose: a slug under the wrong prefix names nothing and never did, while a
+   * document id names something real that merely moved — and these links get
+   * emailed and bookmarked.
+   */
+  describe('wrong profile', () => {
+    beforeEach(() => requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' }));
+
+    it('404s a document type belonging to the other profile', async () => {
+      await expect(
+        DocumentPage({ params: Promise.resolve({ id: 'pay-slip' }), profile: 'client' }),
+      ).rejects.toThrow('NOT_FOUND');
+      expect(listDocumentsByType).not.toHaveBeenCalled();
+    });
+
+    it('still serves a type belonging to this profile', async () => {
+      render(await DocumentPage({ params: Promise.resolve({ id: 'invoice' }), profile: 'client' }));
+      expect(listDocumentsByType).toHaveBeenCalledWith('INV');
+    });
+
+    it('forwards a real document asked for under the wrong prefix', async () => {
+      getDocument.mockResolvedValue({ ...draftInvoice, id: 'doc-9' });
+      await expect(
+        DocumentPage({ params: Promise.resolve({ id: 'doc-9' }), profile: 'admin' }),
+      ).rejects.toThrow('REDIRECT:/client/docs/doc-9');
+    });
+
+    it('forwards an HR document out of the client profile', async () => {
+      getDocument.mockResolvedValue({ ...draftInvoice, id: 'slip-3', type: 'PAY' });
+      await expect(
+        DocumentPage({ params: Promise.resolve({ id: 'slip-3' }), profile: 'client' }),
+      ).rejects.toThrow('REDIRECT:/admin/docs/slip-3');
+    });
+  });
+});
+
+/**
+ * A contract already in the database carries its own clauses. Editing the
+ * library at `/client/clauses` must not reach it — the same rule
+ * `studioSnapshot` enforces for the studio's details (CONTEXT.md §5).
+ *
+ * The `@/db/store` mock above has no `listClauses`, so calling it would throw.
+ * That is the assertion: opening an existing contract does not read the live
+ * library at all.
+ */
+describe('DocumentRoute and the clause library', () => {
+  it('opens an existing contract without reading the live library', async () => {
+    requireAuthorizedUser.mockResolvedValue({});
+    getDocument.mockResolvedValue({
+      id: 'con-1',
+      type: 'CON',
+      status: 'draft',
+      issueDate: '2026-06-10',
+      clientId: 'c1',
+      clientSnapshot: { name: 'Acme', address: 'x', email: 'a@b.com', phone: '9' },
+      contract: { parts: [], blanks: {}, library: {} },
+      content: { clauses: [{ number: 1, heading: 'As signed', body: ['Original wording.'] }] },
+      createdAt: 0,
+      updatedAt: 0,
+    } as unknown as AdminDocument);
+
+    // Rendering at all is the assertion: `listClauses` is not in the mock, so
+    // a route that reached for the live library would throw here.
+    render(
+      await DocumentPage({ params: Promise.resolve({ id: 'con-1' }), profile: 'client' }),
+    );
+
+    expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
   });
 });

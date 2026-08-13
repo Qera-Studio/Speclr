@@ -6,6 +6,7 @@ import { ReceiptIndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createReceiptForInvoice } from '@/server/actions/documents';
+import { useProfile } from '@/lib/useProfile';
 
 /**
  * One click from the last invoice issued to a receipt that settles it.
@@ -22,6 +23,7 @@ export default function ReceiptForInvoiceButton({
   invoiceNumber: string;
 }) {
   const router = useRouter();
+  const profile = useProfile();
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -34,7 +36,7 @@ export default function ReceiptForInvoiceButton({
       setError(result.error ?? 'Something went wrong.');
       return;
     }
-    router.push(`/docs/${result.id}`);
+    router.push(`/${profile}/docs/${result.id}`);
   };
 
   return (

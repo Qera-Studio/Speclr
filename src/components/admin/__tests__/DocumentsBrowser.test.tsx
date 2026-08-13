@@ -6,7 +6,8 @@ jest.mock('@/server/actions/documents', () => ({
   deleteDraftAction: jest.fn(),
   duplicateDocument: jest.fn(),
 }));
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/client', useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }) }));
 
 import DocumentsBrowser from '../DocumentsBrowser';
 
