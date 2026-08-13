@@ -9,7 +9,8 @@
   --color-foreground: var(--foreground);
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-heading:
+    "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -148,5 +149,23 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+    One icon weight, in screen pixels, at every size.
+
+    `non-scaling-stroke` is what makes this number mean *screen* pixels. Lucide's
+    default 2 is measured in the icon's 24-unit viewBox, so it draws at 1.33px on
+    a 16px icon and 1.67px on a 20px one — the weight drifts with the size, which
+    is the thing this is here to settle. Same trick as Lucide's own
+    `absoluteStrokeWidth`, applied once instead of per icon.
+
+    It also flattens the three deliberate exceptions — `blue-check`'s 3 on a 10px
+    tick, `tray-arrow-icon`, `SitemapChart`. The tick was thickened on purpose
+    and wants a look if this weight settles.
+  */
+  .lucide {
+    stroke-width: 1.75;
+    vector-effect: non-scaling-stroke;
   }
 }
