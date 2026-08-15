@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AddressFields from '@/components/form/AddressFields';
-import FieldInfo, { InfoTip, LegendInfo } from '@/components/form/FieldInfo';
+import { InfoTip, LegendInfo } from '@/components/form/FieldInfo';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';
@@ -29,52 +29,64 @@ import { createEmployee, updateEmployee } from '@/server/actions/employees';
 import { formatINR, rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
 import { splitGrossMonthly } from '@/lib/domain/salaryStructure';
 import { composeAddress, emptyAddressParts, addressPartsSchema } from '@/lib/domain/address';
+import { isISODate } from '@/lib/domain/dates';
 import { isIfsc } from '@/lib/domain/bank';
-import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
+import { CURRENCIES, CURRENCY_CODES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
+import { PAN_RE, panSurnameMismatch, type EmployeeRecord } from '@/lib/domain/employee';
 import {
-  PAN_RE,
-  panHolderTypeError,
-  panSurnameMismatch,
-  type EmployeeRecord,
-} from '@/lib/domain/employee';
+  emailSchema,
+  ifscSchema,
+  panSchema,
+  phoneSchema,
+  upiSchema,
+} from '@/lib/domain/fields';
+import { codeSchema, orgNameSchema, personNameSchema, textSchema } from '@/lib/domain/text';
+import { EmailField, PanField } from '@/components/form/fields';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 
 const formSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required.'),
+  // A person, so the strict name rule: letters, marks and the punctuation real
+  // names carry. No digits, no markup. This is the name on a wage slip.
+  name: personNameSchema(200, { required: 'Name is required.' }),
   addressParts: addressPartsSchema,
-  email: z.string().trim().email('Enter a valid email.'),
-  // Strict per-country validation runs separately, in the resolver below —
-  // see the note in ClientForm for why it can't live in a shared schema.
-  phone: z.string().trim().min(1, 'Phone is required.'),
-  role: z.string().trim().min(1, 'Role is required.'),
+  email: emailSchema({ required: 'Email is required.' }),
+  phone: phoneSchema({ required: 'Phone is required.' }),
+  // Free text, not the name rule: "Designer II" and "L3 Engineer" are real
+  // titles and carry digits.
+  role: textSchema(200, { required: 'Role is required.' }),
   engagementType: z.enum(['intern', 'employee']),
   pronoun: z.enum(['he', 'she', 'they']),
-  joiningDate: z.string().trim().min(1, 'Joining date is required.'),
-  endDate: z.string(),
-  payRupees: z.string().trim().min(1, 'Pay is required.'),  // annual for an employee, monthly for an intern
-  payCurrency: z.string().trim().min(1),
-  bankName: z.string(),
-  accountNo: z.string(),
-  // Optional — bank details can be filled in later — but wrong is not allowed.
-  ifsc: z.string().refine((v) => v === '' || isIfsc(v), 'Enter a valid IFSC, e.g. KKBK0000677.'),
-  branch: z.string(),
-  upiId: z.string(),
-  upiQrDataUrl: z.string(),
-  employeeCode: z.string(),
-  // Optional like the IFSC — filled in later — but wrong is not allowed, since
-  // this prints on a statutory wage slip.
-  pan: z
+  // Presence was the only check on all three of these. A date that is merely
+  // non-empty, a pay figure that is merely non-empty and a currency that is
+  // merely non-empty are three ways for the wrong thing to reach a wage slip.
+  joiningDate: z
     .string()
-    .refine((v) => v === '' || PAN_RE.test(v.toUpperCase()), 'Enter a valid PAN, e.g. ABCDE1234F.')
-    // The 4th character says what kind of holder the PAN belongs to. A company
-    // or firm PAN on a person is the wrong document, not a typo.
-    .refine(
-      (v) => v === '' || !PAN_RE.test(v.toUpperCase()) || !panHolderTypeError(v),
-      'This PAN does not belong to an individual.',
-    ),
-  uan: z.string(),
-  pfNumber: z.string(),
-  esicNumber: z.string(),
+    .min(1, 'Joining date is required.')
+    .refine(isISODate, "Expected a date in 'YYYY-MM-DD' format."),
+  endDate: z.string().refine((v) => v === '' || isISODate(v), "Expected 'YYYY-MM-DD'."),
+  // Annual for an employee, monthly for an intern. Digits and at most two
+  // decimal places, matching `rupeesToPaise`, which reads this next.
+  payRupees: z
+    .string()
+    .min(1, 'Pay is required.')
+    .refine((v) => /^\d+(\.\d{1,2})?$/.test(v.trim()), 'Enter an amount like 45000 or 45000.50.'),
+  payCurrency: z.enum(CURRENCY_CODES),
+  bankName: orgNameSchema(120),
+  accountNo: codeSchema(40),
+  // Optional — bank details can be filled in later — but wrong is not allowed.
+  ifsc: ifscSchema(),
+  branch: textSchema(120),
+  upiId: upiSchema(60),
+  upiQrDataUrl: z.string(),
+  employeeCode: codeSchema(40),
+  // Optional like the IFSC — filled in later — but wrong is not allowed, since
+  // this prints on a statutory wage slip. The holder-type check (the 4th
+  // character must be P) rides along in the shared rule: a company or firm PAN
+  // on a person is the wrong document, not a typo.
+  pan: panSchema(),
+  uan: codeSchema(40),
+  pfNumber: codeSchema(40),
+  esicNumber: codeSchema(40),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -286,11 +298,7 @@ export default function EmployeeForm({
           <FieldError errors={[errors.name]} />
         </Field>
 
-        <Field>
-          <FieldLabel htmlFor="employee-email">Email</FieldLabel>
-          <Input id="employee-email" size="form" type="email" {...register('email')} />
-          <FieldError errors={[errors.email]} />
-        </Field>
+        <EmailField control={control} name="email" id="employee-email" />
 
         <PhoneField control={control} name="phone" id="employee-phone" />
 
@@ -573,24 +581,21 @@ export default function EmployeeForm({
               <FieldError errors={[errors.employeeCode]} />
             </Field>
 
-            <Field>
-              <FieldInfo
-                htmlFor="employee-pan"
-                label="PAN"
-                infoLabel="About the PAN check"
-                info={
-                  panSurnameHint
-                    ? `The 5th letter of a PAN is the surname's initial — this one reads “${panValue.toUpperCase()[4]}”. Worth a check; it is not always wrong.`
-                    : 'Ten characters, e.g. ABCPR1234F. The 4th says what kind of holder it belongs to and must be P, an individual; the 5th is the surname’s initial.'
-                }
-              />
-              <Input
-                id="employee-pan"
-                size="form"
-                placeholder="ABCDE1234F"
-                {...uppercaseField(register('pan'))}
-              />
-              <FieldError errors={[errors.pan]} />
+            <PanField
+              control={control}
+              name="pan"
+              id="employee-pan"
+              placeholder="ABCDE1234F"
+              infoLabel="About the PAN check"
+              /* The only caller with something more specific to say than the
+                 field's default: an employee's PAN is a person's, so the 5th
+                 letter can be compared against the name on the same form. */
+              info={
+                panSurnameHint
+                  ? `The 5th letter of a PAN is the surname's initial, and this one reads “${panValue.toUpperCase()[4]}”. Worth a check; it is not always wrong.`
+                  : 'Ten characters, e.g. ABCPR1234F. The 4th says what kind of holder it belongs to and must be P, an individual; the 5th is the surname’s initial.'
+              }
+            >
               {/*
                 A tooltip is never announced, and the surname hint is *news* —
                 it appears as a consequence of what was just typed. The visible
@@ -601,7 +606,7 @@ export default function EmployeeForm({
                   ? "This PAN's 5th letter does not match the surname."
                   : ''}
               </span>
-            </Field>
+            </PanField>
           </FieldRow>
 
           <FieldRow>

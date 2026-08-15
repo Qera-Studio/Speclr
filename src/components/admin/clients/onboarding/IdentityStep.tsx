@@ -5,18 +5,20 @@ import { useMemo, useState } from 'react';
 import { useController, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
-import { Field, FieldError, FieldLabel, FieldSeparator, FieldSet } from '@/components/ui/field';
+import { Field, FieldError, FieldSeparator, FieldSet } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import AddressFields from '@/components/form/AddressFields';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
+import { EmailField } from '@/components/form/fields';
 import { clientInputSchema } from '@/lib/domain/registry';
 import { composeAddress, emptyAddressParts } from '@/lib/domain/address';
 import { entityTypesForCountry } from '@/lib/domain/entityType';
 import { createClient, updateClient } from '@/server/actions/clients';
 import type { ClientRecord } from '@/lib/domain/types';
+import { clearDraft, draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, type StepProps } from './stepKit';
 
 type FormValues = z.infer<typeof clientInputSchema>;
@@ -70,6 +72,8 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
   const {
     register,
     control,
+    watch,
+    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -110,6 +114,15 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
     [country],
   );
 
+  // Restores what was typed but not saved, so a refresh or a hop to the other
+  // profile comes back to the same half-filled form. Cleared on save.
+  //
+  // In create mode the key is `new:identity`, because there is no record yet.
+  // That is exactly the case that needed this most: everywhere else an
+  // interrupted step still has a row to fall back on, and this one does not.
+  const key = draftKey(client?.id, 'identity');
+  useFormDraft(key, watch, reset);
+
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     const result = client
@@ -121,6 +134,7 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
       return;
     }
 
+    clearDraft(key);
     const now = Date.now();
     onSaved({
       ...(client ?? { createdAt: now }),
@@ -193,17 +207,12 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
       </FieldRow>
 
       <FieldRow>
-        <Field>
-          <FieldLabel htmlFor="client-email">Email</FieldLabel>
-          <Input
-            id="client-email"
-            size="form"
-            type="email"
-            placeholder="example@gmail.com"
-            {...register('email')}
-          />
-          <FieldError errors={[errors.email]} />
-        </Field>
+        <EmailField
+          control={control}
+          name="email"
+          id="client-email"
+          placeholder="example@gmail.com"
+        />
 
         <PhoneField control={control} name="phone" id="client-phone" />
       </FieldRow>

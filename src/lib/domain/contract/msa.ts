@@ -36,6 +36,7 @@
  */
 
 import { z } from 'zod';
+import { multilineSchema, textSchema } from '../text';
 
 export interface MsaClause {
   number: number;
@@ -58,8 +59,11 @@ export interface MsaClause {
  */
 export const msaClauseSchema = z.object({
   number: z.number().int().min(1).max(999),
-  heading: z.string().trim().min(1).max(200),
-  body: z.array(z.string().trim().min(1).max(8000)).min(1).max(60),
+  heading: textSchema(200, { required: 'A heading is required.' }),
+  body: z
+    .array(multilineSchema(8000, { required: 'This paragraph is empty.' }))
+    .min(1)
+    .max(60),
 });
 
 /** A clause as the library edits it, plus the archive flag the table carries. */

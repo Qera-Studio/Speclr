@@ -217,9 +217,42 @@ describe('clientInputSchema', () => {
   });
 
   it('accepts an optional gstin', () => {
+    // `...1Z2`, not the `...1Z5` this fixture used to carry. This column was
+    // `z.string().max(20)` and took any string; it now runs the same mod-36
+    // check as `tax.gstin`, and the old value's check character was invented.
+    expect(
+      clientInputSchema.safeParse({ ...validClient, gstin: '09AAACQ1234A1Z2' }).success,
+    ).toBe(true);
+  });
+
+  it('refuses a gstin whose check character does not match', () => {
     expect(
       clientInputSchema.safeParse({ ...validClient, gstin: '09AAACQ1234A1Z5' }).success,
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  describe('clientInputSchema — content rules, not just length', () => {
+    const no = (patch: object) =>
+      expect(clientInputSchema.safeParse({ ...validClient, ...patch }).success).toBe(false);
+
+    it('refuses markup in the legal name that documents print', () => {
+      no({ companyName: 'Acme <b>Ltd</b>' });
+    });
+
+    it('refuses a phone that is not a real number', () => {
+      no({ phone: 'call me' });
+    });
+
+    it('strips a bidi override rather than storing it', () => {
+      // Trojan Source: this reorders how the rest of the line renders, so a
+      // printed invoice can show a different payee than the one recorded.
+      const parsed = clientInputSchema.safeParse({
+        ...validClient,
+        companyName: 'Clayora\u202E Private Limited',
+      });
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.companyName).toBe('Clayora Private Limited');
+    });
   });
 });
 

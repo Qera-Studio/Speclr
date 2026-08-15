@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { addressPartsSchema, type AddressParts } from './address';
-import { IFSC_RE } from './bank';
+import { cinSchema, emailSchema, gstinSchema, ifscSchema, phoneSchema, upiSchema } from './fields';
+import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
 
 /**
  * The "from:" block, bank details, GST identity, and footer line printed on
@@ -98,23 +99,33 @@ export function studioOf(doc: { studioSnapshot?: StudioInfo }): StudioInfo {
  * the two can never disagree.
  */
 export const studioInputSchema = z.object({
-  brandMark: z.string().trim().min(1).max(80),
-  legalName: z.string().trim().min(1).max(200),
-  address: z.string().trim().min(1).max(500),
+  brandMark: textSchema(80, { required: 'A brand mark is required.' }),
+  legalName: orgNameSchema(200, { required: 'A legal name is required.' }),
+  address: multilineSchema(500, { required: 'An address is required.' }),
   addressParts: addressPartsSchema.optional(),
-  phone: z.string().trim().min(1).max(30),
-  email: z.string().trim().email().max(200),
-  thanksLine: z.string().trim().min(1).max(200),
-  gstin: z.string().trim().min(1).max(20),
-  cin: z.string().trim().min(1).max(30),
-  queryEmailHr: z.string().trim().email().max(200),
+  phone: phoneSchema({ required: 'A phone number is required.' }),
+  email: emailSchema({ required: 'An email is required.' }),
+  thanksLine: textSchema(200, { required: 'A thanks line is required.' }),
+  /*
+    Checked, at last, and by the same rules a *client's* are.
+
+    These two were `z.string().min(1)`, presence and nothing else, while a
+    client's GSTIN was held to its mod-36 check character and a client's CIN to
+    the MCA ownership triple. That is backwards: this is the supplier's own
+    registration, it is frozen onto every invoice by `studioSnapshot`, and CGST
+    s.36 requires that copy to be retained unaltered for 72 months. A mistyped
+    character here is wrong on every document issued until someone notices.
+  */
+  gstin: gstinSchema({ required: 'A GSTIN is required.' }),
+  cin: cinSchema({ required: 'A CIN is required.' }),
+  queryEmailHr: emailSchema({ required: 'An HR email is required.' }),
   stateCode: z.string().regex(/^\d{2}$/, { message: 'Expected a 2-digit GST state code.' }),
   bank: z.object({
-    bankName: z.string().trim().min(1).max(120),
-    accountNo: z.string().trim().min(1).max(40),
-    ifsc: z.string().trim().regex(IFSC_RE, { message: 'Expected an IFSC like KKBK0000677.' }),
+    bankName: orgNameSchema(120, { required: 'A bank name is required.' }),
+    accountNo: codeSchema(40, { required: 'An account number is required.' }),
+    ifsc: ifscSchema({ required: 'An IFSC is required.' }),
     /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
-    branch: z.string().trim().max(120).optional(),
-    upiId: z.string().trim().min(1).max(120),
+    branch: textSchema(120).optional(),
+    upiId: upiSchema(120, { required: 'A UPI ID is required.' }),
   }),
 });

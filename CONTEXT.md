@@ -71,9 +71,24 @@ terms, services & term, attachments, and delivery & access.
 
 **One form per step, and step 1 creates the row.** Every later step is an
 ordinary update through one action (`saveClientSection`), so an interrupted
-onboarding needs no draft column, no localStorage cache and no "resume" concept
-— whatever was saved is simply on the client already. The active step is in the
-URL, because this is a task people get pulled away from.
+onboarding needs no draft column and no "resume" concept: whatever was saved is
+simply on the client already. The active step is in the URL, because this is a
+task people get pulled away from.
+
+**What is typed but not yet saved lives in `sessionStorage`, and the storage
+choice is a rule, not a preference** (`src/lib/draft.ts`). A refresh used to
+empty the step. It now restores, keyed on the step rather than the section
+because Commercial and Services both write `commercial` and would otherwise
+share one draft. The draft is cleared the moment its step saves, or the record
+would be overwritten by a stale copy of itself the next time the step opened.
+
+`localStorage` was refused for this. These forms hold a third party's PAN,
+GSTIN, CIN, registered address and their staff's names, emails and phone
+numbers. `localStorage` writes that to disk in plain text, keeps it after
+sign-out and on a shared machine, keeps it after `deleteClient` performs the
+DPDP Act 2023 erasure, and hands it to any XSS that ever reaches this origin.
+`sessionStorage` survives a refresh, the back button and a profile switch,
+which is all that was asked for, and dies with the tab. **Do not "upgrade" it.**
 
 **What actually derives from it** — this is the payoff, and the reason the
 record exists at all:
@@ -161,7 +176,7 @@ classes, no hex literals. Its sibling `design-system.test.ts` polices **which
 primitive was reached for**, and exists because the failure that actually
 happened was not a stray hex code: `ui/date-picker.tsx` says in its own
 docstring that it replaces the browser's native date input, and an onboarding
-step used `type="date"` anyway. Three rules today, all of them ones that were
+step used `type="date"` anyway. Five rules today, all of them ones that were
 broken:
 
 | Banned outside `ui/` | Use instead |
@@ -169,6 +184,8 @@ broken:
 | `<FieldDescription>` | `FieldInfo` / `InfoTip`, or a placeholder |
 | a native date input | `DatePicker` |
 | a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
+| `register('pan' / 'gstin' / 'tan' / 'cin')` | the matching component in `form/fields.tsx` |
+| `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
 
 Both walk the tree through `src/__tests__/policedSource.ts`, so their exemption
 lists cannot drift apart. **When a primitive becomes the house answer for
@@ -188,6 +205,128 @@ container* — the user cannot scroll it but the browser can, and focusing
 anything inside triggers a scroll-into-view that walks up every ancestor scroll
 box. That pushed the header off the top of the shell with no way to bring it
 back. `clip` creates no scroll container at all. Don't change it back.
+
+### 5f. A field is declared twice, and only twice
+
+The last two rows of the table above are the same lesson as the first three,
+learned on validation instead of layout. The *validators* were already shared:
+`PAN_RE`, `gstinError`, `cinError` and `tanError` each existed in exactly one
+place. Everything wrapped around them was not, and it had drifted.
+
+**The pair.** `src/lib/domain/fields.ts` holds the rule (`panSchema`,
+`gstinSchema`, `tanSchema`, `cinSchema`, `emailSchema`); `src/components/form/fields.tsx`
+holds the input, named to match. Rules run on both sides of the wire, so they
+stay framework-free next to the validators they call; the inputs are client-only
+and own the label, placeholder, length cap, upper-casing, tick and error slot.
+Every schema in the app imports the first, every form the second. `IfscField`
+and `PhoneField` were already built this way; this is the pattern reaching the
+identifiers.
+
+**What the drift had already cost**, in the order it matters:
+
+- **Qera's own GSTIN and CIN were not validated at all.** `studioInputSchema`
+  had `z.string().min(1).max(20)` while a *client's* GSTIN was held to its
+  mod-36 check character. Ours is the one `studioSnapshot` freezes onto every
+  invoice and CGST s.36 keeps unaltered for 72 months, so a transposed pair of
+  characters would have been wrong on every document issued until someone
+  noticed. Both now run the shared rule.
+- PAN's rule was written three times, two different messages, one length cap
+  between them.
+- Email was written seven times, three different messages.
+
+**Three deliberate shapes, so they are not mistaken for oversights.**
+
+- **Blank-tolerant by default; `required` is passed by the form.** Onboarding
+  saves one step at a time against a row that already exists, so a half-filled
+  client is a normal state. Required-ness is a property of the form, which can
+  explain it, not of the identifier, which would strand rows.
+- **`superRefine`, not `.refine`.** The old schemas collapsed every failure into
+  one generic line, discarding the specific finding the validator had already
+  made. A reader told "the check character does not match" fixes a character; a
+  reader told "this GSTIN is not valid" retypes the same fifteen.
+- **Cross-record checks stay out.** A PAN's holder type needs the entity type, a
+  GSTIN needs the address state and the PAN. Those are on the record, not in the
+  field, so they stay in `clientTaxCrossErrors` where the whole client is in
+  hand. A client passes `panSchema({ holder: [] })` and that empty array is the
+  deliberate half of the split, not an omission.
+
+**What is deliberately *not* a component.** A "Name" or "Notes" input has no
+rule to share, and wrapping it would be an abstraction with one behaviour and
+one caller. The line is whether the field knows something the caller would
+otherwise have to remember.
+
+### 5g. Every text field has a rule now, and the rule is not what stops XSS
+
+§5f closed the *identifiers*. This closed everything else: roughly ninety
+fields that were `z.string().trim().max(n)`, which is length and presence and
+nothing about content. `src/lib/domain/text.ts` holds the replacements
+(`textSchema`, `multilineSchema`, `personNameSchema`, `orgNameSchema`,
+`codeSchema`, `httpsUrlSchema`), and `fields.ts` gained the three rules that
+were still missing (`phoneSchema`, `ifscSchema`, `upiSchema`).
+
+**Start with what this is not, because the inverse belief is dangerous.**
+Neither SQL injection nor XSS is prevented by any of it. Both are already
+structurally impossible: Drizzle parameterises every query, and React escapes
+every interpolation. A `<script>` typed into a field is stored as those
+characters and printed as those characters. **Validation is the second lock.**
+If it were the first, the architecture would already be wrong, and a session
+that starts "tighten validation so nobody can inject SQL" has the model
+backwards and should be told so.
+
+**Invisible is stripped, visible is refused.** That split is the whole design.
+A right-to-left override (U+202E) reorders how a line *renders* while leaving
+the bytes alone, so an invoice can display one payee and hold another (Trojan
+Source, CVE-2021-42574); a zero-width space makes one client into two; a soft
+hyphen copied out of a PDF breaks the GSTIN it lands in. None of those are
+visible in an input, so none can be found by whoever has to fix them, and they
+are removed rather than rejected. A digit in a person's name or a bracket in a
+company's *is* visible, so it is refused, with the offending character named.
+**U+200C and U+200D are deliberately kept** — ZWNJ and ZWJ are load-bearing in
+Devanagari, and stripping them would corrupt a name written in Hindi.
+
+`textSchema` and `multilineSchema` keep every visible character including `<`,
+because they back notes and terms clauses where "amounts < ₹5,000" is ordinary,
+and React escapes it anyway. Narrow the set where the field has a known shape;
+leave prose alone.
+
+**Three gaps this closed that were real, not theoretical:**
+
+- **`phone` was validated only in `PhoneField`.** Every schema behind it was
+  `z.string().max(30)`, so a number reaching a Server Action any other way was
+  never checked, and it prints on an invoice. The old note called a strict rule
+  impossible because it would strand legacy rows; that was wrong on the facts.
+  These schemas run on **write, never on read**, so a bad value surfaces an
+  error on the field and the save proceeds once it is fixed.
+- **`vendorPortalUrl` accepted `javascript:`.** `z.url()` does. Nothing renders
+  it as a link *today*, which is the only reason it was not live.
+  `httpsUrlSchema` means the obvious next change cannot introduce it.
+- **The studio's UPI ID had no rule.** It is the handle a client pays into.
+
+**Autofill is off unless a field asks for it,** defaulted in `ui/input.tsx` and
+`ui/textarea.tsx`. Left unset a browser guesses from the field name and offers
+the **operator's own** saved profile, and almost every form here describes
+somebody else. The exception is `/admin/settings`, which really is Qera's own
+organization and passes real tokens. `AddressFields` and `PhoneField` say `off`
+explicitly, because a reader would otherwise expect `address-line1` there.
+
+**Headers exist now, and they did not before** (`next.config.ts`): CSP, HSTS,
+`nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, COOP/CORP,
+and `poweredByHeader: false`. **The CSP has no nonce, and that was measured
+rather than assumed.** A nonce policy with `'strict-dynamic'` was built and
+tested against a real server: Clerk's script tag carries no nonce (Clerk emits
+it, not Next), and `'strict-dynamic'` makes browsers *ignore* the host
+allowlist, so enforcing it blocks Clerk and breaks sign-in. `next-themes` emits
+a second un-nonced inline script. A nonce also cannot coexist with
+`'unsafe-inline'`. So `script-src` allows inline, which gives up a primitive
+nothing in this app can reach, and keeps the ones that matter: a host allowlist,
+`connect-src` (exfiltration has nowhere to go), and `base-uri 'self'`.
+
+**Enforced by tests, the same mechanism as §5e.** `design-system.test.ts` gained
+two rules — a hand-written `z.string().trim()` outside `text.ts`/`fields.ts`, and
+a hand-written phone rule — and the walker now polices `.ts` as well as `.tsx`.
+`security-headers.test.ts` reads the real config, and `ui/__tests__/autofill.test.tsx`
+pins the default. Both were confirmed to fail when the thing they guard is
+removed; a rule that matches nothing is a test that passes forever.
 
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
@@ -275,9 +414,24 @@ Three things follow, and none of them should be quietly undone:
   `_routes/legacyDocs.ts` because only the database knows a document's type. A
   dead link to an issued invoice is not an acceptable cost of a nav change.
 
-The profile you land on is remembered in a `speclr_profile` cookie, written by
-`AdminShell` from wherever you actually landed — not from the switcher's click,
-because the swipe, the Settings link and a pasted URL all move you too.
+The profile you land on is remembered in a `speclr_profile` cookie, and so is
+the **exact page** on each side, in `speclr_last_client` / `speclr_last_admin`.
+Switching sides and coming back resumes rather than resetting to the dashboard,
+search string included, because that is where onboarding keeps its active step.
+
+Three things about that memory:
+
+- **One writer, `RememberLocation`**, from wherever you actually landed. Not the
+  switcher's click: the swipe, the Settings link, a legacy redirect and a pasted
+  URL all move you too. It is its own component only because it needs
+  `useSearchParams`, which must sit under a Suspense boundary.
+- **The path is validated on the way in and again on the way out**
+  (`isProfilePath`). A cookie is client-writable and `/` feeds this value
+  straight to `redirect()`, so without the check it is an open redirect. The
+  boundary-character test is the load-bearing half: `/clientele.evil.com`
+  passes a naive `startsWith('/client')`.
+- **The side you are already on still links to its own home.** That is the
+  ordinary "back to the top" affordance; only the side you are not on resumes.
 
 ---
 

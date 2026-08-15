@@ -22,8 +22,23 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import { entityTypeSpec, ENTITY_TYPE_VALUES } from './entityType';
-import { cinError, gstinError, panHolderTypeError, PAN_RE, panKindOfEntityType, tanError } from './taxIds/india';
+import { gstinError, panHolderTypeError, PAN_RE, panKindOfEntityType } from './taxIds/india';
 import { TAX_ID_TYPE_CODES, taxIdError } from './taxIds/foreign';
+import {
+  cinSchema,
+  emailSchema,
+  gstinSchema,
+  panSchema,
+  phoneSchema,
+  tanSchema,
+} from './fields';
+import {
+  codeSchema,
+  httpsUrlSchema,
+  multilineSchema,
+  personNameSchema,
+  textSchema,
+} from './text';
 
 // ─── Tax & registration ───────────────────────────────────────────────────────
 
@@ -74,38 +89,19 @@ export interface ClientTax {
  */
 export const clientTaxSchema = z.object({
   gstRegistered: z.boolean().optional(),
-  gstin: z
-    .string()
-    .trim()
-    .max(20)
-    .refine((v) => !gstinError(v), { message: 'This GSTIN is not valid.' })
-    .optional(),
-  pan: z
-    .string()
-    .trim()
-    .max(10)
-    .refine((v) => v === '' || PAN_RE.test(v.toUpperCase()), {
-      message: 'Expected a PAN like AABCQ2864Q.',
-    })
-    .optional(),
+  gstin: gstinSchema().optional(),
+  // Structure only. The holder type depends on the entity type, which is on the
+  // record rather than in this section, so it is checked in
+  // `clientTaxCrossErrors` below where the whole client is in hand.
+  pan: panSchema({ holder: [] }).optional(),
   sez: z.boolean().optional(),
   tdsApplicable: z.boolean().optional(),
-  tdsSection: z.string().trim().max(20).optional(),
+  tdsSection: codeSchema(20).optional(),
   tdsRatePercent: z.number().min(0).max(100).optional(),
-  tan: z
-    .string()
-    .trim()
-    .max(10)
-    .refine((v) => !tanError(v), { message: 'Expected a TAN like DELQ12345F.' })
-    .optional(),
-  cin: z
-    .string()
-    .trim()
-    .max(21)
-    .refine((v) => !cinError(v), { message: 'This CIN is not valid.' })
-    .optional(),
+  tan: tanSchema().optional(),
+  cin: cinSchema().optional(),
   taxIdType: z.enum(TAX_ID_TYPE_CODES as [string, ...string[]]).optional(),
-  taxId: z.string().trim().max(40).optional(),
+  taxId: codeSchema(40).optional(),
   reverseCharge: z.boolean().optional(),
   requiresTaxResidencyCertificate: z.boolean().optional(),
   requiresW8BenE: z.boolean().optional(),
@@ -233,17 +229,10 @@ export function resolveContact(
 }
 
 const contactSchema = z.object({
-  name: z.string().trim().max(200).optional(),
-  designation: z.string().trim().max(200).optional(),
-  email: z
-    .string()
-    .trim()
-    .max(200)
-    .refine((v) => v === '' || z.string().email().safeParse(v).success, {
-      message: 'Enter a valid email.',
-    })
-    .optional(),
-  phone: z.string().trim().max(30).optional(),
+  name: personNameSchema(200).optional(),
+  designation: textSchema(200).optional(),
+  email: emailSchema().optional(),
+  phone: phoneSchema().optional(),
 });
 
 export const clientContactsSchema = z.object({
@@ -251,14 +240,7 @@ export const clientContactsSchema = z.object({
   billing: contactSchema.optional(),
   signing: contactSchema.optional(),
   escalation: contactSchema.optional(),
-  invoiceEmail: z
-    .string()
-    .trim()
-    .max(200)
-    .refine((v) => v === '' || z.string().email().safeParse(v).success, {
-      message: 'Enter a valid email.',
-    })
-    .optional(),
+  invoiceEmail: emailSchema().optional(),
   sameAsPrimary: z.array(z.enum(MIRRORABLE_CONTACTS)).optional(),
 });
 
@@ -306,19 +288,12 @@ export const clientCommercialSchema = z.object({
   billingDay: z.number().int().min(1).max(31).optional(),
   lateFeePercentPerMonth: z.number().min(0).max(100).optional(),
   poRequired: z.boolean().optional(),
-  poNumber: z.string().trim().max(60).optional(),
-  vendorPortalUrl: z
-    .string()
-    .trim()
-    .max(300)
-    .refine((v) => v === '' || z.string().url().safeParse(v).success, {
-      message: 'Enter a full URL, including https://.',
-    })
-    .optional(),
+  poNumber: codeSchema(60).optional(),
+  vendorPortalUrl: httpsUrlSchema(300).optional(),
   services: z
     .array(
       z.object({
-        code: z.string().trim().min(1).max(20),
+        code: codeSchema(20, { required: 'A service code is required.' }),
         ratePaise: z.number().int().min(0).max(1e13).optional(),
       }),
     )
@@ -370,12 +345,12 @@ export interface ClientAttachment {
 }
 
 export const clientAttachmentSchema = z.object({
-  id: z.string().trim().min(1).max(100),
+  id: textSchema(100, { required: 'An id is required.' }),
   kind: z.enum(ATTACHMENT_KINDS),
-  filename: z.string().trim().min(1).max(300),
+  filename: textSchema(300, { required: 'A filename is required.' }),
   mime: z.enum(ATTACHMENT_MIME_TYPES),
   size: z.number().int().min(0).max(MAX_ATTACHMENT_BYTES),
-  key: z.string().trim().min(1).max(500),
+  key: textSchema(500, { required: 'A key is required.' }),
   uploadedAt: z.number().int(),
 });
 
@@ -418,11 +393,11 @@ export interface ClientAccessRef {
 export const clientAccessSchema = z
   .array(
     z.object({
-      id: z.string().trim().min(1).max(100),
+      id: textSchema(100, { required: 'An id is required.' }),
       kind: z.enum(ACCESS_KINDS),
-      label: z.string().trim().min(1).max(200),
-      location: z.string().trim().min(1).max(300),
-      notes: z.string().trim().max(1000).optional(),
+      label: textSchema(200, { required: 'A label is required.' }),
+      location: textSchema(300, { required: 'Say where it lives.' }),
+      notes: multilineSchema(1000).optional(),
     }),
   )
   .max(100);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { multilineSchema, personNameSchema, textSchema } from './text';
 import { flattenAddress } from './address';
 import { exitMasthead, payslipTerms, stipendTerms } from './hrContent';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_CLAUSES, type MsaClause } from './contract/msa';
@@ -31,14 +32,14 @@ export interface TermItem {
 }
 
 const termSchema = z.object({
-  title: z.string().trim().max(200),
-  body: z.string().trim().max(4000),
+  title: textSchema(200),
+  body: multilineSchema(4000),
 });
 
 const clauseSchema = z.object({
   number: z.number().int().min(0).max(999),
-  heading: z.string().trim().max(200),
-  body: z.array(z.string().trim().max(8000)).max(20),
+  heading: textSchema(200),
+  body: z.array(multilineSchema(8000)).max(20),
 });
 
 /**
@@ -46,34 +47,34 @@ const clauseSchema = z.object({
  * draft and complete on a finalized document.
  */
 export const docContentSchema = z.object({
-  masthead: z.string().trim().max(120).optional(),
+  masthead: textSchema(120).optional(),
   /**
    * @deprecated The green "PAID" banner these fed was removed from the receipt
    * and both slips. Kept in the schema, and only here, so documents written
    * while it existed still parse rather than failing validation on a key
    * nothing reads any more.
    */
-  badgeText: z.string().trim().max(60).optional(),
+  badgeText: textSchema(60).optional(),
   /** @deprecated See `badgeText`. */
-  badgeNote: z.string().trim().max(1000).optional(),
+  badgeNote: multilineSchema(1000).optional(),
   terms: z.array(termSchema).max(20).optional(),
-  qrCaption: z.string().trim().max(60).optional(),
-  thanksLine: z.string().trim().max(200).optional(),
+  qrCaption: textSchema(60).optional(),
+  thanksLine: textSchema(200).optional(),
 
   // HR letters
-  subject: z.string().trim().max(300).optional(),
-  subheading: z.string().trim().max(200).optional(),
-  closingLine: z.string().trim().max(500).optional(),
-  acknowledgement: z.string().trim().max(2000).optional(),
-  signatoryName: z.string().trim().max(120).optional(),
-  signatoryTitle: z.string().trim().max(200).optional(),
-  signatoryQualifier: z.string().trim().max(200).optional(),
-  registeredOffice: z.string().trim().max(400).optional(),
-  website: z.string().trim().max(200).optional(),
+  subject: textSchema(300).optional(),
+  subheading: textSchema(200).optional(),
+  closingLine: textSchema(500).optional(),
+  acknowledgement: multilineSchema(2000).optional(),
+  signatoryName: personNameSchema(120).optional(),
+  signatoryTitle: textSchema(200).optional(),
+  signatoryQualifier: textSchema(200).optional(),
+  registeredOffice: multilineSchema(400).optional(),
+  website: textSchema(200).optional(),
 
   // Contract
-  intro: z.string().trim().max(4000).optional(),
-  preamble: z.string().trim().max(2000).optional(),
+  intro: multilineSchema(4000).optional(),
+  preamble: multilineSchema(2000).optional(),
   clauses: z.array(clauseSchema).max(60).optional(),
 });
 

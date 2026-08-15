@@ -144,6 +144,25 @@ export function isValidPhone(national: string, iso2: CountryCode): boolean {
 }
 
 /**
+ * Is this a *stored* phone value? The server-side half of `isValidPhone`.
+ *
+ * `PhoneField` writes `toE164(...) ?? national`, so an acceptable value is
+ * always full E.164 and a rejected one is the bare digits it fell back to.
+ * Checking the stored form is therefore the same check the field makes, done
+ * where it counts: the schema behind it was `z.string().max(30)`, so anything
+ * that reached a Server Action directly was never validated at all.
+ *
+ * Applies the same India-specific narrowing as `toE164` — libphonenumber
+ * accepts landline and service ranges that we do not want on a document.
+ */
+export function isStoredPhone(value: string): boolean {
+  const parsed = parsePhoneNumberFromString((value ?? '').trim());
+  if (!parsed?.isValid()) return false;
+  if (parsed.country === 'IN') return INDIAN_MOBILE_RE.test(parsed.nationalNumber);
+  return true;
+}
+
+/**
  * '+919876543210' → '+91 98765 43210', for tables and form summaries.
  *
  * NOT for document sheets — those print the stored string verbatim so a

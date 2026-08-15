@@ -23,6 +23,7 @@
  */
 
 import { z } from 'zod';
+import { codeSchema, multilineSchema, textSchema } from '../text';
 import type { ScheduleKey } from './schedules';
 
 /** A row in a Limits or Fee table: a label and a value, the value usually a blank. */
@@ -82,10 +83,10 @@ export interface ContractService extends ServiceContent {
   archived: boolean;
 }
 
-const line = z.string().trim().max(1000);
-const para = z.string().trim().max(4000);
-const row = z.object({ label: z.string().trim().max(200), value: z.string().trim().max(500) });
-const refId = z.string().trim().max(10);
+const line = multilineSchema(1000);
+const para = multilineSchema(4000);
+const row = z.object({ label: textSchema(200), value: textSchema(500) });
+const refId = codeSchema(10);
 
 export const serviceContentSchema = z.object({
   dependencies: z.array(refId).max(22),
@@ -105,8 +106,8 @@ export const serviceContentSchema = z.object({
 });
 
 export const serviceInputSchema = serviceContentSchema.extend({
-  code: z.string().trim().regex(/^\d{2}$/, 'A service code is two digits.'),
-  name: z.string().trim().min(1).max(200),
+  code: codeSchema(2).pipe(z.string().regex(/^\d{2}$/, 'A service code is two digits.')),
+  name: textSchema(200, { required: 'A service name is required.' }),
   scheduleKey: z.enum(['build', 'retainer', 'setup', 'audit']),
   sortOrder: z.number().int().min(0).max(99),
   archived: z.boolean(),
@@ -123,8 +124,8 @@ export interface LibraryLine {
 }
 
 export const libraryLineSchema = z.object({
-  id: z.string().trim().max(10),
-  text: z.string().trim().min(1).max(500),
-  category: z.string().trim().min(1).max(40),
+  id: codeSchema(10),
+  text: textSchema(500, { required: 'This cannot be empty.' }),
+  category: textSchema(40, { required: 'A category is required.' }),
   archived: z.boolean(),
 });

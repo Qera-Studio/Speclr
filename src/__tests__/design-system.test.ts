@@ -1,4 +1,9 @@
-import { policedFiles, violations, UI_PRIMITIVES } from './policedSource';
+import {
+  policedFiles,
+  violations,
+  SCHEMA_PRIMITIVES,
+  UI_PRIMITIVES,
+} from './policedSource';
 
 /**
  * The other half of the enforcement layer.
@@ -50,6 +55,56 @@ const NATIVE_DATE_INPUT = /type=["']date["']/g;
 const FILE_INPUT_TAG = /<input\b[^>]*type=["']file["'][^>]*>/g;
 const isHidden = (tag: string) => /className=["'][^"']*\bsr-only\b/.test(tag);
 
+/**
+ * An identifier input built by hand.
+ *
+ * `form/fields.tsx` exports one component per identifier, each owning its
+ * label, placeholder, length cap, upper-casing, tick and error slot, against
+ * the matching rule in `lib/domain/fields.ts`. Registering one of these names
+ * directly means rebuilding that from primitives, which is exactly how the
+ * employee PAN ended up without a length cap and the studio GSTIN with no
+ * validation at all.
+ *
+ * The names are matched with an optional dotted prefix so a nested path
+ * (`billing.pan`) is caught too.
+ */
+const HAND_ROLLED_IDENTIFIER = /register\(\s*[`'"](?:[\w.]+\.)?(?:pan|gstin|tan|cin)[`'"]/gi;
+
+/**
+ * An email rule written in a component.
+ *
+ * The rule is `emailSchema()` in `lib/domain/fields.ts`, so the browser and the
+ * Server Action cannot disagree about what an address is. Seven copies of it
+ * carried three different messages before this.
+ */
+const INLINE_EMAIL_RULE = /\.email\(/g;
+
+/**
+ * A text field's rule written by hand instead of taken from `domain/text.ts`.
+ *
+ * `z.string().trim().max(n)` is length and presence and nothing else. It was on
+ * roughly ninety fields, which is how a person's name came to accept a digit,
+ * a `<script>` tag and a right-to-left override that reorders a printed
+ * invoice. The replacements say what the field *is* — `personNameSchema`,
+ * `orgNameSchema`, `textSchema`, `multilineSchema`, `codeSchema` — and every
+ * one of them sanitises on the way in.
+ *
+ * Matches `.trim()` on a zod string specifically, because that is the tell: the
+ * primitives trim internally, so a caller writing it by hand is building a rule
+ * that already exists.
+ */
+const HAND_ROLLED_TEXT_RULE = /z\s*\.string\(\)\s*\.trim\(\)/g;
+
+/**
+ * A phone rule that is not the shared one.
+ *
+ * This is the one that had actually gone wrong: `isValidPhone` lived in
+ * `PhoneField` and nowhere else, so every schema behind it was
+ * `z.string().max(30)` and a number reaching a Server Action any other way was
+ * never checked at all. It prints on an invoice.
+ */
+const HAND_ROLLED_PHONE_RULE = /(?:phone|mobile)\s*:\s*z\s*\.string\(\)/gi;
+
 describe('design system', () => {
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
@@ -68,5 +123,27 @@ describe('design system', () => {
       (found) => !isHidden(found),
     );
     expect(visible).toEqual([]);
+  });
+
+  it('builds every identifier input from form/fields.tsx', () => {
+    expect(violations(HAND_ROLLED_IDENTIFIER, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('never writes an email rule in a component', () => {
+    expect(violations(INLINE_EMAIL_RULE, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('takes every text field rule from domain/text.ts', () => {
+    expect(violations(HAND_ROLLED_TEXT_RULE, SCHEMA_PRIMITIVES, /\.tsx?$/)).toEqual([]);
+  });
+
+  it('takes every phone rule from domain/fields.ts', () => {
+    expect(violations(HAND_ROLLED_PHONE_RULE, SCHEMA_PRIMITIVES, /\.tsx?$/)).toEqual([]);
+  });
+
+  it('polices .ts as well as .tsx (the schemas are not .tsx)', () => {
+    const all = policedFiles([], /\.tsx?$/);
+    expect(all).toContain('src/lib/domain/registry.ts');
+    expect(all.length).toBeGreaterThan(policedFiles().length);
   });
 });

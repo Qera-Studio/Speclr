@@ -31,11 +31,160 @@ const LEGACY_REDIRECTS = [
   { source: "/services", destination: "/client/services" },
 ];
 
+/** The origins Clerk serves from. Dev keys resolve to `*.clerk.accounts.dev`;
+ *  a production instance is a subdomain of our own domain, which `'self'` does
+ *  not cover. */
+const CLERK = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.speclr.qera.studio";
+
+/**
+ * Content-Security-Policy.
+ *
+ * ## Why there is no nonce, which is the interesting part
+ *
+ * The textbook policy for Next is `script-src 'nonce-{x}' 'strict-dynamic'`,
+ * built in the proxy because a nonce is per-request. That was built, deployed
+ * locally and measured. It does not work on this stack, for two reasons found
+ * in the served HTML rather than guessed at:
+ *
+ * 1. **Clerk's script tag carries no nonce.** It is emitted by Clerk, not by
+ *    Next's renderer, so Next never stamps it. Under `'strict-dynamic'` a host
+ *    allowlist is *ignored by specification*, so `https://*.clerk.accounts.dev`
+ *    would not save it: the script is blocked and authentication is gone.
+ * 2. **`next-themes` emits an un-nonced inline script** to set the theme class
+ *    before paint. Same outcome, plus a flash of the wrong theme.
+ *
+ * A nonce also cannot coexist with `'unsafe-inline'`: when a browser sees a
+ * nonce it ignores `'unsafe-inline'` entirely. So it is one or the other, and
+ * the nonce is the one that breaks sign-in.
+ *
+ * ## What this policy is worth, stated honestly
+ *
+ * `'unsafe-inline'` on `script-src` means this does not stop injected inline
+ * script. **Nothing in this app can inject one** — React escapes every
+ * interpolation and no raw-HTML escape hatch is used anywhere in `src/` — so
+ * the primitive this gives up is one that is already unreachable. What it does
+ * buy is real and is the part worth having:
+ *
+ * - **A host allowlist for script.** A payload that did somehow land cannot
+ *   pull its second stage from an attacker's domain.
+ * - **`connect-src`** — and this is the one that matters most here. Exfiltration
+ *   needs somewhere to send the data. A client's PAN, GSTIN and registered
+ *   address cannot be POSTed anywhere but us and Clerk.
+ * - **`base-uri 'self'`** — an injected `<base>` silently repoints every
+ *   relative URL on the page, form posts included. Most often omitted, and it
+ *   is what turns a small injection into a credential redirect.
+ * - **`form-action`**, **`frame-ancestors 'none'`**, **`object-src 'none'`**.
+ *
+ * `style-src` keeps `'unsafe-inline'` because the Paginator sets measured A4
+ * page geometry as inline style attributes, which no nonce can cover.
+ *
+ * **Verify in a browser after changing this.** jsdom cannot see a blocked
+ * script. The pass is: sign in, open a document editor, print preview, the icon
+ * tool, and an attachment download, with the console open.
+ */
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' ${CLERK}`,
+  "style-src 'self' 'unsafe-inline'",
+  // `data:` for the icon tool's generated previews and the employee UPI QR,
+  // `blob:` for the object URLs that tool creates before a download.
+  "img-src 'self' data: blob: https://img.clerk.com",
+  "font-src 'self' data:",
+  `connect-src 'self' ${CLERK}`,
+  // Clerk's bot-protection challenge renders in a Turnstile frame.
+  `frame-src 'self' ${CLERK} https://challenges.cloudflare.com`,
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "media-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+  `form-action 'self' ${CLERK}`,
+  "upgrade-insecure-requests",
+].join("; ");
+
+/**
+ * Security headers, on every response.
+ *
+ * speclr had none of these. It is an invite-only internal tool, which lowers
+ * the odds of an attack but not the cost of one: the pages behind this header
+ * hold a third party's PAN, GSTIN and registered address, and the documents are
+ * retained 72 months under CGST s.36.
+ */
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: CSP },
+  /**
+   * Clickjacking. `frame-ancestors 'none'` in the CSP is the modern equivalent
+   * and is also set; this is the fallback for anything that does not honour it.
+   * Nothing here is ever legitimately framed.
+   */
+  { key: "X-Frame-Options", value: "DENY" },
+  /**
+   * Stops the browser second-guessing a Content-Type. Load-bearing for
+   * `/api/clients/[id]/files/[fileId]`, which streams a third party's identity
+   * documents: the type there is sniffed from the bytes server-side, and this
+   * keeps the browser from overriding that with a guess of its own.
+   */
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  /**
+   * A document URL contains its id. Send the full path to ourselves, the origin
+   * only to anyone else, and nothing at all over plaintext.
+   */
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  /**
+   * Deny the hardware and ambient APIs outright. speclr uses none of them, and
+   * an unused permission is only ever a liability.
+   */
+  {
+    key: "Permissions-Policy",
+    value: [
+      "accelerometer=()",
+      "autoplay=()",
+      "camera=()",
+      "display-capture=()",
+      "encrypted-media=()",
+      "geolocation=()",
+      "gyroscope=()",
+      "magnetometer=()",
+      "microphone=()",
+      "midi=()",
+      "payment=()",
+      "usb=()",
+      "xr-spatial-tracking=()",
+      // Chrome ships FLoC/Topics on by default. This is an internal tool; its
+      // page visits are not advertising signal.
+      "browsing-topics=()",
+      "interest-cohort=()",
+    ].join(", "),
+  },
+  /**
+   * Two years, subdomains included, preload-eligible. Vercel terminates TLS, so
+   * this only ever hardens what is already HTTPS. Harmless on localhost, where
+   * browsers ignore HSTS from a plaintext origin.
+   */
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  /**
+   * Isolate the browsing context. `same-origin` on the opener kills
+   * `window.opener` reach-back; `require-corp` is deliberately NOT set, because
+   * it would break Clerk's cross-origin resources for no gain here.
+   */
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+];
+
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
+  // The version banner is free reconnaissance. Nothing reads it.
+  poweredByHeader: false,
   async redirects() {
     return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: false }));
+  },
+  async headers() {
+    return [{ source: "/(.*)", headers: SECURITY_HEADERS }];
   },
 };
 

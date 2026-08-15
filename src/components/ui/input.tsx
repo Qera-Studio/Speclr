@@ -50,10 +50,26 @@ const inputVariants = cva(
   }
 )
 
+/**
+ * Autofill is **off unless a field asks for it**, and the default is the whole
+ * point rather than a detail.
+ *
+ * Left unset, a browser guesses a field's meaning from its name and offers the
+ * operator's own saved profile. Almost every form in speclr describes somebody
+ * else: a client's registered address, an employee's phone, a contact's email.
+ * A suggestion there is not merely unhelpful, it is the wrong person's data one
+ * click from a document that gets issued. Absence of an opinion was producing
+ * the risky behaviour, so absence now means off.
+ *
+ * The exception is the studio settings page, which really is the operator's own
+ * organization and passes the proper tokens (`organization`, `street-address`,
+ * `tel`, `email`) explicitly. Passing `autoComplete` always wins over this.
+ */
 function Input({
   className,
   type,
   size,
+  autoComplete = "off",
   ...props
 }: Omit<React.ComponentProps<"input">, "size"> &
   VariantProps<typeof inputVariants>) {
@@ -62,6 +78,7 @@ function Input({
       type={type}
       data-slot="input"
       data-size={size ?? "default"}
+      autoComplete={autoComplete}
       className={cn(inputVariants({ size }), className)}
       {...props}
     />

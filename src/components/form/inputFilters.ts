@@ -49,6 +49,19 @@ export function numericField(
 }
 
 /**
+ * Upper-cased and unspaced: the canonical written form of an identifier.
+ *
+ * Exported so the controlled inputs in `form/fields.tsx` normalise identically
+ * to the registered ones below. Two copies of this one line is how a PAN typed
+ * into one form differs from the same PAN typed into another.
+ */
+export function upperNoSpace(value: string | undefined): string {
+  return String(value ?? '')
+    .toUpperCase()
+    .replace(/\s+/g, '');
+}
+
+/**
  * Makes a registered field hold upper-case, unspaced text.
  *
  * For identifiers that have exactly one canonical written form — a PAN, a PF
@@ -74,9 +87,7 @@ export function uppercaseField(
     autoCorrect: 'off',
     spellCheck: false,
     onChange: (event: { target: { value?: string } }) => {
-      event.target.value = String(event.target.value ?? '')
-        .toUpperCase()
-        .replace(/\s+/g, '');
+      event.target.value = upperNoSpace(event.target.value);
       return registration.onChange(event);
     },
   };

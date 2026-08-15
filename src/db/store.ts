@@ -529,13 +529,34 @@ const EMPTY_SEARCH: SearchResults = { documents: [], clients: [], employees: [],
  * matching clients/employees are resolved first and their documents pulled by
  * foreign key — the indexed path, and it keeps snapshot shape out of SQL.
  */
+/**
+ * The longest search worth running. Nobody types a hundred characters into a
+ * palette; a request that does is either a paste accident or someone probing,
+ * and either way Postgres should not be asked to scan for it.
+ */
+const MAX_SEARCH_LENGTH = 100;
+
+/**
+ * `%` and `_` are wildcards inside a LIKE pattern, so a literal one has to be
+ * escaped or the user's search means something other than what they typed.
+ *
+ * Not an injection — Drizzle parameterises the value, so it can never become
+ * SQL. It is a correctness and cost problem: a bare `%` matches every row, and
+ * a query of nothing but wildcards makes the database scan all four tables to
+ * return the whole set. The backslash goes first, or it would escape the
+ * escapes added after it.
+ */
+function likeLiteral(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 export async function searchEverything(
   query: string,
   profile: Profile,
 ): Promise<SearchResults> {
-  const q = query.trim();
+  const q = query.trim().slice(0, MAX_SEARCH_LENGTH);
   if (q.length < 2) return EMPTY_SEARCH;
-  const pattern = `%${q}%`;
+  const pattern = `%${likeLiteral(q)}%`;
 
   // Scoped in SQL, not filtered afterwards. `SEARCH_LIMIT` is applied by the
   // database, so a post-hoc filter would let five pay slips fill the window and

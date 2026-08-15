@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
 import { CLIENT_ENTITY_TYPES } from './client';
+import { emailSchema, gstinSchema, phoneSchema } from './fields';
+import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
 import { contractComplete } from './contract/completeness';
 import { serviceInputSchema } from './contract/service';
 import { docContentSchema, type DocContent, type TermItem } from './docContent';
@@ -33,43 +35,57 @@ const qtySchema = z
   });
 
 export const lineItemSchema = z.object({
-  description: z.string().trim().min(1).max(300),
-  detail: z.string().trim().max(300).optional(),
+  description: textSchema(300, { required: 'A description is required.' }),
+  detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
   qty: qtySchema.refine((q) => q > 0, { message: 'Quantity must be positive.' }),
 });
 
 /** Draft line items may be half-filled — only shape/limits are enforced. */
 export const draftLineItemSchema = z.object({
-  description: z.string().trim().max(300),
-  detail: z.string().trim().max(300).optional(),
+  description: textSchema(300),
+  detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
   qty: qtySchema.refine((q) => q >= 0, { message: 'Quantity cannot be negative.' }),
 });
 
 export const clientInputSchema = z.object({
   /** Short reference name — lists, dropdowns, the editor heading. */
-  name: z.string().trim().min(1).max(200),
+  name: orgNameSchema(200, { required: 'A name is required.' }),
   /**
    * The legal name documents print. Required: an invoice addressed to a pet
    * name is not a valid tax document. `ClientRecord.companyName` stays optional
    * so the rows written before this existed still load — but they cannot be
    * saved again until one is supplied.
    */
-  companyName: z.string().trim().min(1).max(200),
+  companyName: orgNameSchema(200, { required: 'A legal name is required.' }),
   /** The flat printable address; composed from `addressParts` when present. */
-  address: z.string().trim().min(1).max(500),
+  address: multilineSchema(500, { required: 'An address is required.' }),
   addressParts: addressPartsSchema.optional(),
-  email: z.string().trim().email().max(200),
+  email: emailSchema({ required: 'An email is required.' }),
   /**
-   * Intentionally lenient — a length check, not an E.164 regex. This schema
-   * re-validates the whole record on every edit, and clients created before
-   * phones were structured hold arbitrary text. A strict rule here would make
-   * those rows permanently un-editable. Strict per-country validation lives in
-   * the form layer (see lib/domain/phone.ts).
+   * Validated, where it used to be a bare length check.
+   *
+   * The old note here said a strict rule would make pre-structured rows
+   * "permanently un-editable", and deferred to `PhoneField`. Two things were
+   * wrong with that. The rule ran **only in the browser**, so a phone that
+   * reached this action any other way was never checked at all, and this is the
+   * number printed on an invoice. And the cost was overstated: this schema runs
+   * on write, never on read, so a legacy value does not strand a row — it
+   * surfaces an error on the field, next to the number, and the save proceeds
+   * once it is fixed. That is the correct behaviour for a required field.
    */
-  phone: z.string().trim().min(1).max(30),
-  gstin: z.string().trim().max(20).optional(),
+  phone: phoneSchema({ required: 'A phone number is required.' }),
+  /**
+   * Legacy, and now validated rather than merely tolerated.
+   *
+   * The real GSTIN is `tax.gstin` on the client record, which every form writes
+   * and every cross-check reads. This column predates that group and nothing
+   * renders it, so two places can hold one fact — the shape that produced the
+   * place-of-supply bug. It wants deleting, which is a migration; until then it
+   * is at least held to the same rule as its replacement.
+   */
+  gstin: gstinSchema().optional(),
   /**
    * Optional here even though onboarding's first step requires it: clients
    * created before entity types existed have none, and a required field would
@@ -91,11 +107,11 @@ export type PaymentMethodOption = (typeof PAYMENT_METHODS)[number];
 const paymentSchema = z.object({
   date: isoDate,
   method: z.enum(PAYMENT_METHODS),
-  reference: z.string().trim().max(100).optional(),
+  reference: codeSchema(100).optional(),
   /** What prints on the receipt. Authoritative. */
-  againstInvoiceNumber: z.string().trim().max(40).optional(),
+  againstInvoiceNumber: codeSchema(40).optional(),
   /** Id of that same invoice — see ReceiptDocument['payment'] in types.ts. */
-  againstInvoiceId: z.string().trim().max(64).optional(),
+  againstInvoiceId: textSchema(64).optional(),
 });
 
 // ── Document field schemas (shared base + per-type extensions) ───────────────
@@ -103,7 +119,7 @@ const paymentSchema = z.object({
 const baseFieldsShape = {
   issueDate: isoDate,
   gstRatePercent: z.number().min(0).max(28),
-  gstLabel: z.string().trim().max(120).optional(),
+  gstLabel: textSchema(120).optional(),
   placeOfSupplyStateCode: z
     .string()
     .regex(/^\d{2}$/, { message: 'Expected a 2-digit GST state code.' })
@@ -113,11 +129,11 @@ const baseFieldsShape = {
    * the document's JSONB rather than a column: nothing queries it, and it is
    * meaningful only alongside the code it explains.
    */
-  placeOfSupplyOverrideReason: z.string().trim().max(300).optional(),
-  notes: z.string().trim().max(2000).optional(),
+  placeOfSupplyOverrideReason: textSchema(300).optional(),
+  notes: multilineSchema(2000).optional(),
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
-  terms: z.string().trim().max(4000).optional(),
+  terms: multilineSchema(4000).optional(),
   content: docContentSchema.optional(),
 };
 
@@ -174,14 +190,14 @@ export const receiptDraftSchema = baseDraftSchema.extend({
  * A blank value. Empty is representable and meaningful — clearing a blank is an
  * override, and it is what `contractComplete` then refuses at finalize.
  */
-const blankValuesSchema = z.record(z.string().max(80), z.string().trim().max(500));
+const blankValuesSchema = z.record(z.string().max(80), textSchema(500));
 
 const contractBaseShape = {
   issueDate: isoDate,
   contract: z.object({
     parts: z.array(serviceInputSchema).max(22),
     blanks: blankValuesSchema,
-    library: z.record(z.string().max(10), z.string().trim().max(500)),
+    library: z.record(z.string().max(10), textSchema(500)),
   }),
   content: docContentSchema.optional(),
 };
@@ -202,7 +218,7 @@ export const contractFinalizeSchema = z
     contract: z.object({
       parts: z.array(serviceInputSchema).min(1).max(22),
       blanks: blankValuesSchema,
-      library: z.record(z.string().max(10), z.string().trim().max(500)),
+      library: z.record(z.string().max(10), textSchema(500)),
     }),
   })
   .refine((doc) => contractComplete(doc.contract).length === 0, {
@@ -225,14 +241,14 @@ const slipBaseShape = {
   /** Paid-in currency. Absent on slips written before currencies existed. */
   currency: z.enum(CURRENCY_CODES).optional(),
   /** Legacy free-text period ('12th – 31st May'); superseded by the ISO pair. */
-  stipendPeriod: z.string().trim().max(120).optional(),
+  stipendPeriod: textSchema(120).optional(),
   stipendPeriodStart: isoDate.optional(),
   stipendPeriodEnd: isoDate.optional(),
   /** 'YYYY-MM'. Older slips hold free text ('May 2026'), so this stays a string. */
-  stipendMonth: z.string().trim().max(60),
-  paymentMethod: z.string().trim().max(60),
-  paymentReference: z.string().trim().max(100).optional(),
-  deductionsNote: z.string().trim().max(500),
+  stipendMonth: textSchema(60),
+  paymentMethod: textSchema(60),
+  paymentReference: codeSchema(100).optional(),
+  deductionsNote: multilineSchema(500),
   content: docContentSchema.optional(),
 };
 export const stipendDraftSchema = z.object({
@@ -286,13 +302,13 @@ export const payslipFinalizeSchema = z
   });
 
 const bulletSectionSchema = z.object({
-  heading: z.string().trim().max(200),
-  items: z.array(z.string().trim().max(1000)).max(30),
+  heading: textSchema(200),
+  items: z.array(multilineSchema(1000)).max(30),
 });
 const letterBaseShape = {
   issueDate: isoDate,
   employeeId: z.string().min(1),
-  bodyParagraphs: z.array(z.string().trim().max(4000)).max(40),
+  bodyParagraphs: z.array(multilineSchema(4000)).max(40),
   bulletSections: z.array(bulletSectionSchema).max(10),
   payAmountPaise: z.number().int().min(0).max(1e13).optional(),
   content: docContentSchema.optional(),
@@ -300,7 +316,10 @@ const letterBaseShape = {
 export const letterDraftSchema = z.object(letterBaseShape);
 export const letterFinalizeSchema = z.object({
   ...letterBaseShape,
-  bodyParagraphs: z.array(z.string().trim().min(1).max(4000)).min(1).max(40),
+  bodyParagraphs: z
+    .array(multilineSchema(4000, { required: 'This paragraph is empty.' }))
+    .min(1)
+    .max(40),
 });
 
 /**

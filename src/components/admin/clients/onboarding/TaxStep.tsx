@@ -2,7 +2,7 @@
 
 import '@/lib/zod-config';
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
-import { Info, TriangleAlert } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Field,
@@ -20,10 +20,11 @@ import { Combobox } from '@/components/ui/combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import FieldCheck from '@/components/form/FieldCheck';
+import { CinField, GstinField, PanField, TanField } from '@/components/form/fields';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import { clientTaxCrossErrors, clientTaxSchema, TDS_SECTIONS, type ClientTax } from '@/lib/domain/client';
 import { TAX_ID_TYPES, taxIdType, taxIdTypeForCountry } from '@/lib/domain/taxIds/foreign';
-import { cinStateHint } from '@/lib/domain/taxIds/india';
+import { draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } from './stepKit';
 
 type FormValues = ClientTax;
@@ -80,6 +81,8 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
   const {
     register,
     control,
+    watch,
+    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -110,10 +113,12 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
   const gstRegistered = useWatch({ control, name: 'gstRegistered' });
   const tdsApplicable = useWatch({ control, name: 'tdsApplicable' });
   const selectedTaxIdType = useWatch({ control, name: 'taxIdType' });
-  const cin = useWatch({ control, name: 'cin' });
+
+  // Restores what was typed but not saved, so a refresh or a hop to the other
+  // profile comes back to the same half-filled form. Cleared on save.
+  useFormDraft(draftKey(client?.id, 'tax'), watch, reset);
 
   const { serverError, save } = useStepSave<FormValues>(client, 'tax', onSaved, pruneEmpty);
-  const cinHint = cin ? cinStateHint(cin, addressState) : null;
 
   return (
     <StepForm
@@ -143,46 +148,17 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
             // Revealed by the switch above, so it arrives rather than appears:
             // a field that pops into a form the eye has already measured reads
             // as a redraw, and the same field sliding down reads as a response.
-            <Field className="animate-in fade-in slide-in-from-top-2 duration-300">
-              <FieldInfo
-                htmlFor="client-gstin"
-                label="GSTIN"
-                info="The first two digits are the state of registration, and they become the place of supply on every invoice. They are checked against the address so the two can never disagree."
-                infoLabel="Why does the GSTIN matter?"
-              />
-              <div className="relative">
-                <Input
-                  id="client-gstin"
-                  size="form"
-                  className="pr-8"
-                  placeholder="09AABCQ2864Q1ZQ"
-                  {...uppercaseField(register('gstin'))}
-                />
-                <FieldCheck control={control} name="gstin" />
-              </div>
-              <FieldError errors={[errors.gstin]} />
-            </Field>
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <GstinField control={control} name="gstin" id="client-gstin" />
+            </div>
           ) : null}
 
-          <Field>
-            <FieldInfo
-              htmlFor="client-pan"
-              label="PAN"
-              info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step — a Private Limited's PAN is a C, an individual's a P."
-              infoLabel="What is checked about the PAN?"
-            />
-            <div className="relative">
-              <Input
-                id="client-pan"
-                size="form"
-                className="pr-8"
-                placeholder="AABCQ2864Q"
-                {...uppercaseField(register('pan'))}
-              />
-              <FieldCheck control={control} name="pan" />
-            </div>
-            <FieldError errors={[errors.pan]} />
-          </Field>
+          <PanField
+            control={control}
+            name="pan"
+            id="client-pan"
+            info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step: a Private Limited's PAN is a C, an individual's a P."
+          />
 
           <Field orientation="horizontal">
             <FieldInfo
@@ -264,122 +240,20 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
                   </Field>
                 </FieldRow>
 
-                <Field>
-                  <FieldInfo
-                    htmlFor="client-tan"
-                    label="TAN"
-                    info="The account number the deduction is filed against. Anyone deducting TDS is required to hold one."
-                    infoLabel="What is a TAN?"
-                  />
-                  <div className="relative">
-                    <Input
-                      id="client-tan"
-                      size="form"
-                      className="pr-8"
-                      placeholder="DELQ12345F"
-                      {...uppercaseField(register('tan'))}
-                    />
-                    <FieldCheck control={control} name="tan" />
-                  </div>
-                  <FieldError errors={[errors.tan]} />
-                </Field>
+                <TanField control={control} name="tan" id="client-tan" />
               </div>
             ) : null}
           </FieldSet>
 
           <FieldSeparator />
 
-          {/*
-            `isolate` so the two z-indexes below are compared against each
-            other and nothing else. Without it they are settled in whatever
-            stacking context the page happens to provide, which is how the
-            notice ended up painting over the field it is supposed to hide
-            behind.
-          */}
-          <Field className="isolate">
-            <FieldInfo
-              htmlFor="client-cin"
-              label="CIN (optional)"
-              info="The Corporate Identity Number from the certificate of incorporation. 21 characters, and only companies have one — some contracts ask for it."
-              infoLabel="What is a CIN?"
-            />
-            {/*
-              Lifted above the notice, and opaque in its own right.
-
-              The wrapper carries the background rather than leaning on the
-              input's: the autofill rule in globals.css sets
-              `background-clip: text` on an autofilled field, which is exactly
-              what stops Chrome painting its blue, and it would just as happily
-              stop the field painting the white that hides the notice's top
-              half. One class here and "behind" no longer depends on the input
-              being opaque.
-            */}
-            <div className="relative z-10 rounded-md bg-background">
-              <Input
-                id="client-cin"
-                size="form"
-                className="pr-8"
-                placeholder="U62099UP2026PTC254312"
-                {...uppercaseField(register('cin'))}
-              />
-              <FieldCheck control={control} name="cin" />
-            </div>
-            {cinHint ? (
-              <>
-                {/*
-                  A warning box, not red text: nothing is blocked and nothing is
-                  refused. The registrar pair is a *hint*, since the published
-                  ROC codes are not exhaustive, so a real CIN can disagree with
-                  this and still be correct.
-
-                  It hangs out from behind the field rather than sitting in the
-                  flow below it. Five classes make that work and they are
-                  interlocking, so none of them is arbitrary:
-
-                    `z-0`       behind the input, explicitly. The `Alert`
-                                primitive is itself `relative`, so leaving this
-                                to source order put a later sibling in front of
-                                an earlier `z-10` one. Zero rather than a
-                                negative: Tailwind emits `-z-10` as
-                                `z-index: calc(10 * -1)`, and a *negative* layer
-                                is the one case engines disagree on once the
-                                drop animation's transform has promoted this
-                                box to its own compositing layer. 0 against 10
-                                is the boring comparison every engine agrees
-                                about.
-                    `max-w`     80% of the field, so it reads as hanging *from*
-                                the field rather than as the form's next row.
-                                A max-width, not a width: `Field` is
-                                `flex-col *:w-full`, and that variant sorts
-                                after plain `w-*` in the sheet, so it wins any
-                                straight fight over `width`. `max-width` has no
-                                such competitor.
-                    `mx-auto`   centred. An auto cross-axis margin also turns
-                                off the flex container's default `stretch`,
-                                which is the other half of why `w-auto` alone
-                                did nothing.
-                    `-mt-6`     24px up, against the 8px `Field` gap: 16px of
-                                the box ends up behind the input.
-                    `pt-4`      the same 16px, so the text clears the input's
-                                bottom edge exactly and none of it is hidden.
-
-                  The fall itself is `drop-in` in globals.css.
-                */}
-                <Alert
-                  variant="warning"
-                  className="animate-drop-in z-0 mx-auto -mt-6 max-w-[80%] pt-4"
-                >
-                  <TriangleAlert aria-hidden />
-                  <AlertDescription>{cinHint}</AlertDescription>
-                </Alert>
-                {/* Colour is not announced; this is. */}
-                <span role="status" className="sr-only">
-                  {cinHint}
-                </span>
-              </>
-            ) : null}
-            <FieldError errors={[errors.cin]} />
-          </Field>
+          <CinField
+            control={control}
+            name="cin"
+            id="client-cin"
+            label="CIN (optional)"
+            addressState={addressState}
+          />
         </>
       ) : (
         <>
@@ -427,6 +301,19 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
                 <FieldError errors={[errors.taxIdType]} />
               </Field>
 
+              {/*
+                Built inline rather than in `form/fields.tsx`, and that is a
+                decision rather than the one that got missed. Its label,
+                placeholder and rule all change with the registration type
+                chosen beside it, and this is its only caller anywhere. A
+                component with one call site and no shared rule is an
+                abstraction with nothing to share. It joins the others the day
+                a second form asks for a foreign registration.
+
+                These carry real check digits too: UK VAT is mod-97, an ABN
+                mod-89. Same claim as the Indian identifiers, and the same
+                limit on it.
+              */}
               <Field>
                 <FieldLabel htmlFor="client-tax-id">Number</FieldLabel>
                 <div className="relative">
@@ -437,9 +324,6 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
                     placeholder={taxIdType(selectedTaxIdType)?.placeholder ?? 'Registration number'}
                     {...uppercaseField(register('taxId'))}
                   />
-                  {/* These carry real check digits too: UK VAT is mod-97, an
-                      ABN mod-89. Same claim as the Indian identifiers, and the
-                      same limit on it. */}
                   <FieldCheck control={control} name="taxId" />
                 </div>
                 <FieldError errors={[errors.taxId]} />

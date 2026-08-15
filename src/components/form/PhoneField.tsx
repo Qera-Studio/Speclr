@@ -181,7 +181,7 @@ export default function PhoneField<T extends FieldValues>({
             size={size}
             type="tel"
             inputMode="tel"
-            autoComplete="tel-national"
+            autoComplete="off"
             aria-invalid={fieldState.error ? true : undefined}
             className={PREFIX_PADDING[dialCode.length] ?? 'pl-13'}
             value={formatNationalDigits(national, iso2)}

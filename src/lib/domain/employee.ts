@@ -10,7 +10,6 @@
 import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema, type AddressParts } from './address';
-import { IFSC_RE } from './bank';
 import { CURRENCY_CODES, DEFAULT_CURRENCY, type CurrencyCode } from './currency';
 import type { EngagementType, PayrollIds, PronounKey } from './types';
 
@@ -96,9 +95,8 @@ const isoDate = z.string().refine(isISODate, { message: "Expected 'YYYY-MM-DD'."
  */
 export { PAN_RE, panHolderTypeError, panSurnameMismatch } from './taxIds/india';
 
-// Imported as well as re-exported: `export … from` does not bind the names
-// locally, and `payrollIdsSchema` below needs them.
-import { PAN_RE, panHolderTypeError } from './taxIds/india';
+import { emailSchema, ifscSchema, panSchema, phoneSchema, upiSchema } from './fields';
+import { codeSchema, multilineSchema, orgNameSchema, personNameSchema, textSchema } from './text';
 
 /**
  * Statutory identifiers. Every field optional and blank-tolerant: these are
@@ -108,27 +106,21 @@ import { PAN_RE, panHolderTypeError } from './taxIds/india';
  * prints on a statutory wage slip.
  */
 export const payrollIdsSchema = z.object({
-  employeeCode: z.string().trim().max(40).optional(),
-  pan: z
-    .string()
-    .trim()
-    .refine((v) => v === '' || PAN_RE.test(v.toUpperCase()), {
-      message: 'Expected a PAN like ABCDE1234F.',
-    })
-    .refine((v) => v === '' || !PAN_RE.test(v.toUpperCase()) || !panHolderTypeError(v), {
-      message: 'This PAN does not belong to an individual.',
-    })
-    .optional(),
-  uan: z.string().trim().max(20).optional(),
-  pfNumber: z.string().trim().max(40).optional(),
-  esicNumber: z.string().trim().max(20).optional(),
+  employeeCode: codeSchema(40).optional(),
+  // `holder` defaults to `['P']`, an individual: an employee's PAN is a
+  // person's, and a company's on that record is the wrong document rather than
+  // a typo.
+  pan: panSchema().optional(),
+  uan: codeSchema(20).optional(),
+  pfNumber: codeSchema(40).optional(),
+  esicNumber: codeSchema(20).optional(),
 });
 
 export const employeeInputSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  address: z.string().trim().min(1).max(500),
+  name: personNameSchema(200, { required: 'A name is required.' }),
+  address: multilineSchema(500, { required: 'An address is required.' }),
   addressParts: addressPartsSchema.optional(),
-  email: z.string().trim().email().max(200),
+  email: emailSchema({ required: 'An email is required.' }),
   /**
    * Intentionally lenient — a length check, not an E.164 regex. This schema
    * re-validates the whole record on every edit, and records written before
@@ -136,8 +128,8 @@ export const employeeInputSchema = z.object({
    * those rows permanently un-editable. Strict per-country validation lives in
    * the form layer (see lib/domain/phone.ts), where it can be corrected.
    */
-  phone: z.string().trim().min(1).max(30),
-  role: z.string().trim().min(1).max(200),
+  phone: phoneSchema({ required: 'A phone number is required.' }),
+  role: textSchema(200, { required: 'A role is required.' }),
   engagementType: z.enum(['intern', 'employee']),
   pronoun: z.enum(['he', 'she', 'they']),
   joiningDate: isoDate,
@@ -149,26 +141,23 @@ export const employeeInputSchema = z.object({
   annualSalaryPaise: z.number().int().min(0).max(1e13).optional(),
   payCurrency: z.enum(CURRENCY_CODES).default(DEFAULT_CURRENCY),
   bank: z.object({
-    bankName: z.string().trim().max(120),
-    accountNo: z.string().trim().max(40),
+    bankName: orgNameSchema(120),
+    accountNo: codeSchema(40),
     /**
      * Optional (an employee record can be saved before bank details are known),
      * but if given it must be a real IFSC. Unlike `phone` above, a malformed
      * IFSC is never a legacy-formatting quirk — it is simply wrong, and it is
      * what a stipend gets paid against.
      */
-    ifsc: z
-      .string()
-      .trim()
-      .refine((v) => v === '' || IFSC_RE.test(v), { message: 'Expected an IFSC like KKBK0000677.' }),
+    ifsc: ifscSchema(),
     /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
-    branch: z.string().trim().max(120).optional(),
-    upiId: z.string().trim().max(60).optional(),
+    branch: textSchema(120).optional(),
+    upiId: upiSchema(60).optional(),
     upiQrDataUrl: z
       .string()
       .max(MAX_UPI_QR_BYTES)
-      .refine((v) => v === '' || v.startsWith('data:image/'), {
-        message: 'Expected an image data URL.',
+      .refine((v) => v === '' || /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(v), {
+        message: 'Expected a PNG, JPEG or WebP data URL.',
       })
       .optional(),
   }),

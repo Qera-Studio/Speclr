@@ -39,6 +39,22 @@ interface AddressFieldsProps<T extends FieldValues> {
   size?: 'default' | 'form';
 }
 
+/**
+ * `autoComplete="off"` on every field here, and it is a correctness choice
+ * rather than a missing feature.
+ *
+ * The browser's saved profile is **the operator's own** address. This component
+ * is only ever used for a *third party* — a client or an employee — so every
+ * suggestion it could offer is the wrong entity, one click from putting Qera's
+ * registered address on a client record that then prints as the recipient on an
+ * invoice. Autofill belongs where the data is the operator's, which here means
+ * the studio settings page and nowhere else.
+ *
+ * The pincode lookup is this form's autofill, and it fills from the postal
+ * database rather than from whoever last used the browser.
+ */
+const NO_PROFILE_AUTOFILL = 'off';
+
 export default function AddressFields<T extends FieldValues>({
   control,
   name,
@@ -155,7 +171,7 @@ export default function AddressFields<T extends FieldValues>({
           <Input
             id={`${idPrefix}-line1`}
             size={size}
-            autoComplete="address-line1"
+            autoComplete={NO_PROFILE_AUTOFILL}
             {...line1.field}
             value={String(line1.field.value ?? '')}
           />
@@ -167,7 +183,7 @@ export default function AddressFields<T extends FieldValues>({
           <Input
             id={`${idPrefix}-line2`}
             size={size}
-            autoComplete="address-line2"
+            autoComplete={NO_PROFILE_AUTOFILL}
             {...line2.field}
             value={String(line2.field.value ?? '')}
           />
@@ -197,7 +213,7 @@ export default function AddressFields<T extends FieldValues>({
               size={size}
               placeholder="000000"
               inputMode="numeric"
-              autoComplete="postal-code"
+              autoComplete={NO_PROFILE_AUTOFILL}
               aria-describedby={`${idPrefix}-pincode-hint`}
               className={busy ? 'pr-8' : undefined}
               {...pincode.field}
@@ -221,7 +237,7 @@ export default function AddressFields<T extends FieldValues>({
           <Input
             id={`${idPrefix}-city`}
             size={size}
-            autoComplete="address-level2"
+            autoComplete={NO_PROFILE_AUTOFILL}
             // Locked, but not greyed: a muted value reads as placeholder text,
             // and this one is real data the record will be saved with. The
             // lock is said in the tooltip and the live region instead.
@@ -246,7 +262,7 @@ export default function AddressFields<T extends FieldValues>({
           <Input
             id={`${idPrefix}-state`}
             size={size}
-            autoComplete="address-level1"
+            autoComplete={NO_PROFILE_AUTOFILL}
             className={autofilled.state ? 'animate-fill-flash' : undefined}
             readOnly={autofilled.state}
             aria-readonly={autofilled.state || undefined}

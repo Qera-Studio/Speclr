@@ -42,36 +42,55 @@ export const EXEMPT = [
 export const UI_PRIMITIVES = [
   'src/components/ui/',
   'src/components/form/UploadDropzone.tsx',
+  // The identifier inputs. Same standing as the two above: they are allowed to
+  // know how a PAN input is built, because they are the one place it is built.
+  'src/components/form/fields.tsx',
 ];
+
+/**
+ * The schema rules (`domain/text.ts`, `domain/fields.ts`) are the same idea one
+ * layer down: they are the one place a field's rule is written, so they are the
+ * one place allowed to write `z.string()` by hand.
+ */
+export const SCHEMA_PRIMITIVES = ['src/lib/domain/text.ts', 'src/lib/domain/fields.ts'];
 
 const ROOT = join(__dirname, '..', '..');
 
-function sourceFiles(dir: string, acc: string[] = []): string[] {
+function sourceFiles(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules') continue;
-      sourceFiles(full, acc);
-    } else if (/\.tsx$/.test(entry.name)) {
+      sourceFiles(full, pattern, acc);
+    } else if (pattern.test(entry.name)) {
       acc.push(full);
     }
   }
   return acc;
 }
 
-/** Every `.tsx` under src/, minus the documented exemptions. */
-export function policedFiles(extraExempt: string[] = []): string[] {
+/**
+ * Every source file under src/, minus the documented exemptions.
+ *
+ * `.tsx` by default, which is what the two design rules want. The schema rule
+ * passes `/\.tsx?$/` because a zod schema lives in a `.ts`.
+ */
+export function policedFiles(extraExempt: string[] = [], ext = /\.tsx$/): string[] {
   const exempt = [...EXEMPT, ...extraExempt];
-  return sourceFiles(join(ROOT, 'src'))
+  return sourceFiles(join(ROOT, 'src'), ext)
     .map((f) => relative(ROOT, f))
     .filter((f) => !exempt.some((ex) => f.includes(ex)))
     .sort();
 }
 
 /** `[file, offendingToken]` pairs for every match of `pattern`. */
-export function violations(pattern: RegExp, extraExempt: string[] = []): string[] {
+export function violations(
+  pattern: RegExp,
+  extraExempt: string[] = [],
+  ext?: RegExp,
+): string[] {
   const found: string[] = [];
-  for (const file of policedFiles(extraExempt)) {
+  for (const file of policedFiles(extraExempt, ext)) {
     const source = readFileSync(join(ROOT, file), 'utf8');
     for (const match of source.matchAll(pattern)) {
       found.push(`${file}: ${match[0]}`);

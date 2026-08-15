@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import IfscField from '@/components/form/IfscField';
+import { CinField, EmailField, GstinField } from '@/components/form/fields';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import { studioInputSchema, type StudioInfo } from '@/lib/domain/studio';
 import { updateStudioSettings } from '@/server/actions/studio';
@@ -87,7 +88,12 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
           <FieldRow>
             <Field>
               <FieldLabel htmlFor="studio-legal-name">Legal name</FieldLabel>
-              <Input id="studio-legal-name" size="form" {...register('legalName')} />
+              <Input
+                id="studio-legal-name"
+                size="form"
+                autoComplete="organization"
+                {...register('legalName')}
+              />
               <FieldError errors={[errors.legalName]} />
             </Field>
             <Field>
@@ -97,7 +103,13 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
                 info="The wordmark that prints beside the logo, which is not always the legal name."
                 infoLabel="What is the brand mark?"
               />
-              <Input id="studio-brand-mark" size="form" placeholder="Qera Studio" {...register('brandMark')} />
+              <Input
+                id="studio-brand-mark"
+                size="form"
+                placeholder="Qera Studio"
+                autoComplete="off"
+                {...register('brandMark')}
+              />
               <FieldError errors={[errors.brandMark]} />
             </Field>
           </FieldRow>
@@ -118,6 +130,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               id="studio-address"
               rows={4}
               placeholder={'B-12, Sector 62\nNoida, Uttar Pradesh 201309\nIndia'}
+              autoComplete="street-address"
               {...register('address')}
             />
             <FieldError errors={[errors.address]} />
@@ -125,14 +138,10 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
           <FieldRow>
             <Field>
               <FieldLabel htmlFor="studio-phone">Phone</FieldLabel>
-              <Input id="studio-phone" size="form" {...register('phone')} />
+              <Input id="studio-phone" size="form" autoComplete="tel" {...register('phone')} />
               <FieldError errors={[errors.phone]} />
             </Field>
-            <Field>
-              <FieldLabel htmlFor="studio-email">Email</FieldLabel>
-              <Input id="studio-email" size="form" type="email" {...register('email')} />
-              <FieldError errors={[errors.email]} />
-            </Field>
+            <EmailField control={control} name="email" id="studio-email" />
           </FieldRow>
         </FieldSet>
 
@@ -143,16 +152,16 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
           {/* A row each: GSTIN is 15 characters and CIN is 21, and neither is
               readable in half a 384px rail. Anything longer than about sixteen
               gets its own row. */}
-          <Field>
-            <FieldLabel htmlFor="studio-gstin">GSTIN</FieldLabel>
-            <Input id="studio-gstin" size="form" {...register('gstin')} />
-            <FieldError errors={[errors.gstin]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="studio-cin">CIN</FieldLabel>
-            <Input id="studio-cin" size="form" {...register('cin')} />
-            <FieldError errors={[errors.cin]} />
-          </Field>
+          {/* These were plain text inputs with no validation at all, while a
+              *client's* GSTIN was held to its mod-36 check character. Ours is
+              the one frozen onto every invoice we issue. */}
+          <GstinField
+            control={control}
+            name="gstin"
+            id="studio-gstin"
+            info="Qera's own registration. Its first two digits are the studio's state, which decides CGST + SGST against IGST on every invoice."
+          />
+          <CinField control={control} name="cin" id="studio-cin" />
           <Field>
             <FieldInfo
               htmlFor="studio-state-code"
@@ -199,7 +208,12 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             />
             <Field>
               <FieldLabel htmlFor="studio-bank-account">Account number</FieldLabel>
-              <Input id="studio-bank-account" size="form" {...numericField(register('bank.accountNo'))} />
+              <Input
+                id="studio-bank-account"
+                size="form"
+                autoComplete="off"
+                {...numericField(register('bank.accountNo'))}
+              />
               <FieldError errors={[errors.bank?.accountNo]} />
             </Field>
           </FieldRow>
@@ -212,6 +226,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
                 id="studio-bank-name"
                 size="form"
                 placeholder="Enter an IFSC to fill this in"
+                autoComplete="off"
                 {...register('bank.bankName')}
               />
               <FieldError errors={[errors.bank?.bankName]} />
@@ -222,6 +237,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
                 id="studio-bank-branch"
                 size="form"
                 placeholder="Enter an IFSC to fill this in"
+                autoComplete="off"
                 {...register('bank.branch')}
               />
               <FieldError errors={[errors.bank?.branch]} />
@@ -229,7 +245,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
           </FieldRow>
           <Field>
             <FieldLabel htmlFor="studio-bank-upi">UPI ID</FieldLabel>
-            <Input id="studio-bank-upi" size="form" {...register('bank.upiId')} />
+            <Input id="studio-bank-upi" size="form" autoComplete="off" {...register('bank.upiId')} />
             <FieldError errors={[errors.bank?.upiId]} />
           </Field>
         </FieldSet>
@@ -249,6 +265,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               id="studio-thanks-line"
               size="form"
               placeholder="Thank you for your business."
+              autoComplete="off"
               {...register('thanksLine')}
             />
             <FieldError errors={[errors.thanksLine]} />
@@ -265,6 +282,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               size="form"
               type="email"
               placeholder="hr@qera.studio"
+              autoComplete="email"
               {...register('queryEmailHr')}
             />
             <FieldError errors={[errors.queryEmailHr]} />

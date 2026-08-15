@@ -20,9 +20,11 @@ const textareaVariants = cva(
   }
 )
 
+/** `autoComplete` defaults to off for the reason given in `Input`. */
 function Textarea({
   className,
   size,
+  autoComplete = "off",
   ...props
 }: Omit<React.ComponentProps<"textarea">, "size"> &
   VariantProps<typeof textareaVariants>) {
@@ -30,6 +32,7 @@ function Textarea({
     <textarea
       data-slot="textarea"
       data-size={size ?? "default"}
+      autoComplete={autoComplete}
       className={cn(textareaVariants({ size }), className)}
       {...props}
     />

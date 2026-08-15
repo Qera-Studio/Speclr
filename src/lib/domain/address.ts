@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { countryName } from './countries';
+import { sanitizeText, textSchema } from './text';
 
 /**
  * Structured address parts.
@@ -38,12 +39,28 @@ export interface AddressParts {
  * use `emptyAddressParts` for defaults instead.
  */
 export const addressPartsSchema = z.object({
-  line1: z.string().trim().max(200),
-  line2: z.string().trim().max(200).optional(),
-  city: z.string().trim().max(120),
-  state: z.string().trim().max(120),
-  pincode: z.string().trim().max(20),
-  country: z.string().trim().max(2),
+  line1: textSchema(200),
+  line2: textSchema(200).optional(),
+  // Free text, not the strict name rule. A house number belongs in `line1`, but
+  // a numbered district or region is a real thing in enough countries that
+  // blocking a digit here would refuse a legitimate foreign address.
+  city: textSchema(120),
+  state: textSchema(120),
+  // Digits and the space or hyphen a foreign postcode uses. Not `textSchema`:
+  // this one prints on a tax invoice and feeds the pincode lookup.
+  pincode: z
+    .string()
+    .transform((v) => sanitizeText(v).toUpperCase())
+    .pipe(
+      z
+        .string()
+        .max(20)
+        .regex(/^[A-Z0-9 -]*$/, 'A postcode is letters, digits, spaces and hyphens.'),
+    ),
+  country: z
+    .string()
+    .transform((v) => sanitizeText(v).toUpperCase())
+    .pipe(z.string().max(2).regex(/^[A-Z]*$/, 'Expected a 2-letter country code.')),
 });
 
 export const emptyAddressParts: AddressParts = {

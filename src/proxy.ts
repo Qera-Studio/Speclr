@@ -11,6 +11,12 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
  * Server Action enforces authorization at the resource, server-side, via
  * `requireAuthorizedUser()` (valid Clerk session AND allowlisted email).
  * The proxy is plumbing; the resource is the boundary.
+ *
+ * **The Content-Security-Policy is deliberately not here.** A nonce-based
+ * policy would have to be, because a nonce is per-request; that was tried and
+ * does not work on this stack. See the note above `CSP` in `next.config.ts`
+ * for the measurements. The policy is static, so it lives with the other
+ * static headers.
  */
 export default clerkMiddleware();
 

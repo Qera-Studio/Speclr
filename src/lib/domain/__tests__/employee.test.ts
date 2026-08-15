@@ -149,3 +149,37 @@ describe('panSurnameMismatch', () => {
     expect(panSurnameMismatch('ABCPR1234F', '')).toBe(false);
   });
 });
+
+/**
+ * These fields were length-capped and nothing else. `phone` was validated only
+ * inside `PhoneField`, so anything reaching the Server Action another way was
+ * never checked; `name` accepted digits and markup; `ifsc` and `upiId` are what
+ * a stipend is actually paid against.
+ */
+describe('employeeInputSchema — content rules, not just length', () => {
+  const no = (patch: object) =>
+    expect(employeeInputSchema.safeParse({ ...valid, ...patch }).success).toBe(false);
+
+  it('refuses a phone that is not a real number', () => {
+    no({ phone: '12345' });
+    no({ phone: 'call me' });
+  });
+
+  it('refuses an Indian landline, which cannot receive an OTP or a UPI request', () => {
+    no({ phone: '+91 1234567890' });
+  });
+
+  it('refuses digits and markup in a person’s name', () => {
+    no({ name: 'Abhyudit 2' });
+    no({ name: '<script>alert(1)</script>' });
+  });
+
+  it('refuses a malformed IFSC or UPI ID', () => {
+    no({ bank: { ...valid.bank, ifsc: 'NOPE' } });
+    no({ bank: { ...valid.bank, upiId: 'nope' } });
+  });
+
+  it('still accepts the real ones', () => {
+    expect(employeeInputSchema.safeParse(valid).success).toBe(true);
+  });
+});

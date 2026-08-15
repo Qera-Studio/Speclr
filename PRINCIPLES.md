@@ -111,7 +111,29 @@ row changes.
 | Thing | Where it lives | Verdict |
 |---|---|---|
 | `money`, `dates`, `amountInWords`, `address`, `phone`, `party` | `src/lib/domain/` | Compliant |
+| Identifier rules (PAN, GSTIN, TAN, CIN, email, phone, IFSC, UPI) | `src/lib/domain/fields.ts` | Compliant, 15 August 2026 |
+| Text rules (name, org, prose, code, URL) | `src/lib/domain/text.ts` | Compliant, 15 August 2026 |
 | **Service** | `src/lib/domain/contract/service.ts` | **Pre-triggered** |
+
+The field rules were the rule fired late rather than broken: the *validators*
+were shared from the start, but the zod fragment, message, length cap and
+blank-tolerance around each were re-typed per schema, and Qera's own GSTIN was
+the one that ended up with none of them. Rule 1 covers the whole rule, not the
+predicate at the centre of it. See `CONTEXT.md` §5f.
+
+The second pass found the same shape one layer out, and worse, because here
+there was no shared predicate to begin with. Roughly ninety fields were
+`z.string().trim().max(n)` — length and presence, nothing about content — so a
+person's name accepted a digit, a `<script>` tag and a bidi override that
+reorders a printed invoice. Three rules were missing outright rather than
+duplicated: **phone** existed only inside `PhoneField`, so every schema behind
+it accepted any thirty characters and the number on an invoice was never
+checked server-side; **IFSC** had its wrapper written twice with different
+blank-tolerance; **UPI** had none at all, on the handle a client pays into.
+
+Both files are now policed by `design-system.test.ts`, which is the §5e
+mechanism applied to schemas: writing the rule by hand fails the build. See
+`CONTEXT.md` §5g, which also records why none of this is what stops XSS.
 
 A Service is namespaced under `contract/` because contracts are its only
 consumer today, so rule 1 has not fired yet. **It fires the moment a quote, an
