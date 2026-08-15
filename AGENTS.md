@@ -63,6 +63,19 @@ These checklists travel to every Qera project. When one's floor changes, update 
 
 ---
 
+## Writing rules
+
+- **Never use an em dash (`—`).** Not in chat, not in code comments, not in
+  documentation, not in UI copy, not in commit messages, not in a document's
+  printed wording. Use a comma, a colon, parentheses, or two sentences. If a
+  sentence only works with an em dash, it wants rewriting.
+- The same goes for the en dash (`–`) as a punctuation mark. It stays only in
+  numeric ranges where it is the correct character (`April–March`, `2026–27`).
+- Existing files are full of em dashes from before this rule. Do not sweep them
+  out wholesale; fix the ones in any block you are already editing.
+
+---
+
 ## Database rules (Drizzle + Neon)
 
 - Schema lives in `src/db/schema.ts`. Changes go through **migrations** (`drizzle-kit`) — never edit the DB by hand.
