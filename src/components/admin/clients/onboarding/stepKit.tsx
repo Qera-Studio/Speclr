@@ -5,6 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
+import { clearDraft, draftKey } from '@/lib/draft';
 import { saveClientSection } from '@/server/actions/clients';
 import type { ClientSection } from '@/lib/domain/client';
 import type { ClientRecord } from '@/lib/domain/types';
@@ -42,6 +43,13 @@ export function useStepSave<T>(
   onSaved: (client: ClientRecord) => void,
   /** What lands on the record. Defaults to the submitted values. */
   toPayload: (values: T) => unknown = (v) => v,
+  /**
+   * Which step's draft this save retires. Separate from `section` because the
+   * two are not one-to-one: Commercial and Services both write `commercial`,
+   * and keying the draft on the section would have them share one, so saving
+   * either would wipe the other's unsaved work.
+   */
+  step: string = section,
 ) {
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -60,9 +68,13 @@ export function useStepSave<T>(
         return;
       }
 
+      // The record is now the truth for this section. A surviving draft would
+      // restore itself over the top of it next time the step is opened, which
+      // is worse than having no draft at all.
+      clearDraft(draftKey(client.id, step));
       onSaved({ ...client, [section]: payload, updatedAt: Date.now() } as ClientRecord);
     },
-    [client, onSaved, section, toPayload],
+    [client, onSaved, section, step, toPayload],
   );
 
   return { serverError, setServerError, save };

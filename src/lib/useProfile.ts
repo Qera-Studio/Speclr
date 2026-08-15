@@ -1,7 +1,16 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { DEFAULT_PROFILE, PROFILE_COOKIE, profileFromPath, type Profile } from './profile';
+import {
+  DEFAULT_PROFILE,
+  PROFILE_COOKIE,
+  PROFILES,
+  isProfilePath,
+  profileFromPath,
+  profilePathCookie,
+  type Profile,
+} from './profile';
 
 /**
  * Which profile the current page belongs to.
@@ -37,4 +46,62 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
  */
 export function rememberProfile(profile: Profile) {
   document.cookie = `${PROFILE_COOKIE}=${profile}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
+}
+
+/**
+ * Remember the exact page, not just the side.
+ *
+ * A profile is a place you are in the middle of something, and the middle of
+ * something is usually a specific record on a specific step. Sending you back
+ * to the dashboard on return threw that away and made switching sides
+ * expensive enough to avoid, which defeats having two sides at all.
+ *
+ * The search string is included deliberately: onboarding keeps its active step
+ * there, so `?step=tax` is the difference between resuming and starting over.
+ *
+ * Validated on the way in as well as on the way out. A cookie that only ever
+ * held a good value is easier to trust than one checked at the last moment.
+ */
+export function rememberProfilePath(profile: Profile, path: string) {
+  if (!isProfilePath(profile, path)) return;
+  const value = encodeURIComponent(path);
+  document.cookie = `${profilePathCookie(profile)}=${value}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
+}
+
+function readCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where each profile should reopen: the last page seen there, or its home.
+ *
+ * Read in an effect rather than during render. `document.cookie` does not exist
+ * on the server, so using it in the render pass would either crash or mismatch
+ * hydration. The first paint therefore links to the home and the link corrects
+ * itself immediately after, which keeps the markup stable and keeps the switcher
+ * a real `<Link>` (cmd-click, middle-click, the status bar preview).
+ *
+ * Re-read on every navigation, because moving around one side changes where the
+ * *other* side's link should point the moment you come back.
+ */
+export function useProfileEntries(): Partial<Record<Profile, string>> {
+  const pathname = usePathname();
+  const [entries, setEntries] = useState<Partial<Record<Profile, string>>>({});
+
+  useEffect(() => {
+    const next: Partial<Record<Profile, string>> = {};
+    for (const profile of PROFILES) {
+      const saved = readCookie(profilePathCookie(profile));
+      if (isProfilePath(profile, saved)) next[profile] = saved;
+    }
+    setEntries(next);
+  }, [pathname]);
+
+  return entries;
 }

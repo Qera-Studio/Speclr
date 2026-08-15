@@ -6,7 +6,13 @@ import ProfileSwitcher, { otherProfile, useStepProfile } from '../ProfileSwitche
 
 const push = jest.fn();
 const prefetch = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push, prefetch }) }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => pathname,
+  useRouter: () => ({ push, prefetch }),
+}));
+
+/** Where the switcher believes it is. `useProfileEntries` re-reads on a move. */
+let pathname = '/client';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -124,5 +130,85 @@ describe('useStepProfile', () => {
     renderHook(() => useStepProfile('client'));
     expect(prefetch).toHaveBeenCalledWith('/admin');
     expect(prefetch).not.toHaveBeenCalledWith('/client');
+  });
+});
+
+/**
+ * Coming back to a profile means coming back to the page, not the dashboard.
+ *
+ * A profile is somewhere you are in the middle of something, and the middle of
+ * something is a specific record on a specific step. Resetting to the home on
+ * every switch made crossing the seam expensive enough to avoid, which defeats
+ * having two sides.
+ */
+describe('reopening where you left off', () => {
+  const remember = (profile: string, path: string) => {
+    document.cookie = `speclr_last_${profile}=${encodeURIComponent(path)}; path=/`;
+  };
+  const forget = (profile: string) => {
+    document.cookie = `speclr_last_${profile}=; path=/; max-age=0`;
+  };
+
+  beforeEach(() => {
+    forget('client');
+    forget('admin');
+  });
+
+  it('sends the other profile to its last page', () => {
+    remember('admin', '/admin/employees');
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute(
+      'href',
+      '/admin/employees',
+    );
+  });
+
+  it('keeps the search string, which is where the onboarding step lives', () => {
+    remember('admin', '/admin/employees?step=tax');
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute(
+      'href',
+      '/admin/employees?step=tax',
+    );
+  });
+
+  it('falls back to the home when nothing was recorded', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+  });
+
+  /**
+   * The side you are already on is the ordinary "back to the top" affordance.
+   * Only the side you are not on resumes.
+   */
+  it('leaves the current profile pointing at its own home', () => {
+    remember('client', '/client/clients/abc?step=tax');
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Client' })).toHaveAttribute('href', '/client');
+  });
+
+  it('resumes from the swipe too, so both controls agree', () => {
+    remember('admin', '/admin/docs');
+    const { result } = renderHook(() => useStepProfile('client'), {
+      wrapper: ({ children }) => <SidebarProvider open>{children}</SidebarProvider>,
+    });
+    result.current(1);
+    expect(push).toHaveBeenCalledWith('/admin/docs');
+  });
+
+  /**
+   * The cookie is client-writable and its value ends up in `redirect()` on `/`,
+   * so a path that escapes the profile is refused rather than followed.
+   */
+  it('refuses a path that is not inside the profile', () => {
+    remember('admin', 'https://evil.test/admin');
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+  });
+
+  it('refuses a path that merely starts with the profile name', () => {
+    remember('admin', '/administrator-evil');
+    renderIn(<ProfileSwitcher profile="client" />);
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
   });
 });

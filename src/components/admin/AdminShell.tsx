@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AdminSidebar from "./AdminSidebar";
@@ -18,7 +18,7 @@ import EditorSidebar from "./EditorSidebar";
 import { NewDocumentProvider } from "./NewDocumentCommand";
 import type { UserCardUser } from "./UserCard";
 import { DEFAULT_PROFILE, profileFromPath, type Profile } from "@/lib/profile";
-import { rememberProfile } from "@/lib/useProfile";
+import RememberLocation from "./RememberLocation";
 
 /**
  * The admin layout: nav on the left, one floating content card in the middle,
@@ -77,15 +77,13 @@ export default function AdminShell({
   const onProfile = profileFromPath(pathname);
   const profile: Profile = onProfile ?? DEFAULT_PROFILE;
 
-  // Record wherever you actually landed, so `/` reopens on that side. Guarded on
-  // `onProfile` so a path outside both — `/sign-in`, a legacy redirect passing
-  // through — never writes the fallback over a real choice.
-  useEffect(() => {
-    if (onProfile) rememberProfile(onProfile);
-  }, [onProfile]);
-
   return (
     <EditorPanelProvider>
+      {/* Records the profile *and* the page, so each side reopens where it was
+          left. Suspense because it reads the search params: see the component. */}
+      <Suspense fallback={null}>
+        <RememberLocation />
+      </Suspense>
       {/* Outside the sidebar so ⌘D and the ⌥ shortcuts work on every admin
           page, including from inside the editor rail. */}
       <NewDocumentProvider profile={profile}>

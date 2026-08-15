@@ -22,6 +22,7 @@ import {
   type ClientContacts,
   type MirroredContactKey,
 } from '@/lib/domain/client';
+import { draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, pruneEmpty, useStepSave, type StepProps } from './stepKit';
 
 type FormValues = ClientContacts;
@@ -58,6 +59,8 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
     register,
     control,
     setValue,
+    watch,
+    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -94,6 +97,10 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
     const pruned = pruneEmpty(cleaned);
     return mirrored.length ? { ...pruned, sameAsPrimary: mirrored } : pruned;
   };
+
+  // Restores what was typed but not saved, so a refresh or a hop to the other
+  // profile comes back to the same half-filled form. Cleared on save.
+  useFormDraft(draftKey(client?.id, 'contacts'), watch, reset);
 
   const { serverError, save } = useStepSave<FormValues>(client, 'contacts', onSaved, toPayload);
 

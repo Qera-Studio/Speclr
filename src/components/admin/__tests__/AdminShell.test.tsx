@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/',
+  // `RememberLocation` reads them to record the exact page, step included.
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 jest.mock('@clerk/nextjs', () => ({

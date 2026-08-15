@@ -25,6 +25,7 @@ import {
   type ClientCommercial,
 } from '@/lib/domain/client';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
+import { draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } from './stepKit';
 
 /** Only the fields this step owns; the term and services belong to the next one. */
@@ -68,6 +69,8 @@ export default function CommercialStep({ client, onSaved, submitLabel }: StepPro
   const {
     register,
     control,
+    watch,
+    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -104,6 +107,10 @@ export default function CommercialStep({ client, onSaved, submitLabel }: StepPro
     (values: FormValues) => ({ ...client?.commercial, ...pruneEmpty(values) }),
     [client?.commercial],
   );
+  // Restores what was typed but not saved, so a refresh or a hop to the other
+  // profile comes back to the same half-filled form. Cleared on save.
+  useFormDraft(draftKey(client?.id, 'commercial'), watch, reset);
+
   const { serverError, save } = useStepSave<FormValues>(client, 'commercial', onSaved, toPayload);
 
   return (

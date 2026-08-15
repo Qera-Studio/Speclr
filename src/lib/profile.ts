@@ -41,6 +41,40 @@ export const DEFAULT_PROFILE: Profile = 'client';
 /** Cookie holding the last profile used, so `/` reopens where you left off. */
 export const PROFILE_COOKIE = 'speclr_profile';
 
+/**
+ * Cookie holding the last *page* visited on a profile.
+ *
+ * One per profile rather than one shared cookie, because the two are written
+ * and read independently: you are only ever on one side, and the other side's
+ * memory must survive untouched while you are away. That is the whole feature.
+ *
+ * A cookie rather than `sessionStorage` so `/` can use it too. The server
+ * already reads `PROFILE_COOKIE` there to choose a side; reading one more
+ * makes it choose the page as well, for free.
+ */
+export function profilePathCookie(profile: Profile): string {
+  return `speclr_last_${profile}`;
+}
+
+/**
+ * Is this somewhere we are willing to send a person?
+ *
+ * A cookie is client-writable, and its value is fed to `redirect()`, so this is
+ * an open-redirect guard and not a formality. The path must be same-origin,
+ * absolute, and inside the profile it was filed under.
+ *
+ * The trailing-character check is the part that is easy to get wrong:
+ * `/clientele.evil.com` passes a naive `startsWith('/client')`. So the
+ * character after the prefix has to be a boundary, not more name.
+ */
+export function isProfilePath(profile: Profile, value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 512) return false;
+  const prefix = `/${profile}`;
+  if (!value.startsWith(prefix)) return false;
+  const next = value.charAt(prefix.length);
+  return next === '' || next === '/' || next === '?';
+}
+
 export function isProfile(value: unknown): value is Profile {
   return value === 'client' || value === 'admin';
 }

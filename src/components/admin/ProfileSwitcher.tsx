@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSidebar } from '@/components/ui/sidebar';
 import { PROFILES, type Profile } from '@/lib/profile';
+import { useProfileEntries } from '@/lib/useProfile';
 import { NAV_BY_PROFILE } from './nav';
 
 /**
@@ -49,6 +50,7 @@ import { NAV_BY_PROFILE } from './nav';
  */
 export function useStepProfile(current: Profile) {
   const router = useRouter();
+  const entries = useProfileEntries();
 
   /**
    * Warm the other profile's home before it is asked for.
@@ -64,18 +66,29 @@ export function useStepProfile(current: Profile) {
    */
   useEffect(() => {
     for (const profile of PROFILES) {
-      if (profile !== current) router.prefetch(NAV_BY_PROFILE[profile].home.href);
+      if (profile !== current) router.prefetch(entryHref(profile, entries));
     }
-  }, [current, router]);
+  }, [current, entries, router]);
 
   return useCallback(
     (direction: -1 | 1) => {
       const next = PROFILES[PROFILES.indexOf(current) + direction];
       if (!next) return;
-      router.push(NAV_BY_PROFILE[next].home.href);
+      router.push(entryHref(next, entries));
     },
-    [current, router],
+    [current, entries, router],
   );
+}
+
+/**
+ * Where a profile reopens: the last page seen there, else its home.
+ *
+ * Shared by the swipe, the collapsed square and the expanded pair so all three
+ * land in the same place. A switch that resumed from one control and reset from
+ * another would be worse than one that always reset.
+ */
+function entryHref(profile: Profile, entries: Partial<Record<Profile, string>>): string {
+  return entries[profile] ?? NAV_BY_PROFILE[profile].home.href;
 }
 
 /** The other one. With two profiles this is total — no fallback to reason about. */
@@ -100,6 +113,7 @@ export default function ProfileSwitcher({
 }) {
   const { state, isMobile } = useSidebar();
   const collapsed = state === 'collapsed' && !isMobile;
+  const entries = useProfileEntries();
 
   const other = otherProfile(profile);
   const otherNav = NAV_BY_PROFILE[other];
@@ -115,7 +129,7 @@ export default function ProfileSwitcher({
         <TooltipTrigger
           render={
             <Link
-              href={otherNav.home.href}
+              href={entryHref(other, entries)}
               aria-label={`Profile: ${currentNav.label}. Switch to ${otherNav.label}`}
               // Not `self-center`: the rows below start at the header's left
               // padding, so centring this one in the rail put it a few pixels
@@ -168,7 +182,10 @@ export default function ProfileSwitcher({
         return (
           <Link
             key={value}
-            href={nav.home.href}
+            // The side you are on links to its home, which is the ordinary
+            // "take me back to the top" affordance. The side you are not on
+            // links to where you left it.
+            href={active ? nav.home.href : entryHref(value, entries)}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'relative z-10 flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors',

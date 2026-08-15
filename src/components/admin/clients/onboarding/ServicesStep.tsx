@@ -22,6 +22,7 @@ import { numericField } from '@/components/form/inputFilters';
 import { clientCommercialSchema, type ClientCommercial } from '@/lib/domain/client';
 import { normalizeRupeeInput, paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import type { ContractService } from '@/lib/domain/contract/service';
+import { draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } from './stepKit';
 
 type FormValues = Pick<ClientCommercial, 'startDate' | 'termMonths' | 'autoRenew' | 'noticeDays'>;
@@ -62,6 +63,8 @@ export default function ServicesStep({
   const {
     register,
     control,
+    watch,
+    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -106,7 +109,11 @@ export default function ServicesStep({
     [client?.commercial, selected],
   );
 
-  const { serverError, save } = useStepSave<FormValues>(client, 'commercial', onSaved, toPayload);
+  // Restores what was typed but not saved, so a refresh or a hop to the other
+  // profile comes back to the same half-filled form. Cleared on save.
+  useFormDraft(draftKey(client?.id, 'services'), watch, reset);
+
+  const { serverError, save } = useStepSave<FormValues>(client, 'commercial', onSaved, toPayload, 'services');
 
   const onSubmit = handleSubmit(async (values) => {
     // A rate that will not parse must stop the save rather than round to zero:

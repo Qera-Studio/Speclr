@@ -13,6 +13,7 @@ import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ACCESS_KINDS, type ClientAccessRef } from '@/lib/domain/client';
+import { draftKey, useDraft } from '@/lib/draft';
 import { StepForm, useStepSave, type StepProps } from './stepKit';
 
 const KIND_LABELS: Record<string, string> = {
@@ -54,6 +55,13 @@ export default function AccessStep({ client, onSaved, submitLabel }: StepProps) 
     [rows],
   );
   const { serverError, save } = useStepSave<void>(client, 'access', onSaved, toPayload);
+
+  // Same draft as every other step, minus react-hook-form: this one keeps its
+  // rows in plain state. Note what is *not* stored, and must never be: these
+  // rows say where a credential lives, never the credential itself, so the
+  // draft inherits that guarantee from the shape of the data rather than from
+  // a filter that could be forgotten.
+  useDraft(draftKey(client?.id, 'access'), rows, setRows);
 
   const update = (id: string, patch: Partial<ClientAccessRef>) =>
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
