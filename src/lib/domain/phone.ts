@@ -1,7 +1,9 @@
 import {
+  AsYouType,
   getCountryCallingCode,
   isValidPhoneNumber,
   parsePhoneNumberFromString,
+  validatePhoneNumberLength,
   type CountryCode,
 } from 'libphonenumber-js/min';
 import { COUNTRY_SEED } from './countries';
@@ -85,22 +87,52 @@ export function parsePhone(value: string): { iso2: CountryCode; national: string
 }
 
 /**
- * The longest national number that could still be valid, for capping input.
+ * Trim what was typed to the most national digits that country could hold.
  *
  * India is exact — 10, because every number typed into this tool is a mobile,
- * which is the same tighter line `INDIAN_MOBILE_RE` holds. Everywhere else this
- * is E.164's own ceiling: a whole international number is at most 15 digits
- * including the country code, so the national part can never exceed the
- * remainder. A bound rather than the country's true maximum, which the `/min`
- * metadata build does not expose — but it is a real one, and it stops a field
- * silently accepting a number no telephone network could route.
+ * which is the same tighter line `INDIAN_MOBILE_RE` holds. Everywhere else the
+ * cap is the country's own possible lengths, inside E.164's absolute ceiling of
+ * 15 digits including the country code.
+ *
+ * It takes the digits rather than returning a number on purpose: possible
+ * lengths differ by number type, so a country's maximum depends on what is
+ * actually being typed. Probing a synthetic '999…' would answer for whichever
+ * type that pattern happens to match, which is not necessarily this one.
  *
  * `isValidPhone` is still what decides validity; this only stops the keystroke
  * that could not possibly help.
  */
-export function maxNationalDigits(iso2: CountryCode): number {
-  if (iso2 === 'IN') return 10;
-  return 15 - getCountryCallingCode(iso2).length;
+export function capNationalDigits(value: string, iso2: CountryCode): string {
+  let digits = (value ?? '').replace(/\D/g, '').slice(0, 15 - getCountryCallingCode(iso2).length);
+  if (iso2 === 'IN') return digits.slice(0, 10);
+  while (digits.length > 1 && validatePhoneNumberLength(digits, iso2) === 'TOO_LONG') {
+    digits = digits.slice(0, -1);
+  }
+  return digits;
+}
+
+/**
+ * Group national digits the way that country writes them, as they are typed —
+ * '9876543210' → '98765 43210' for India, '561235678' → '56 123 5678' for the
+ * UAE. Display only; the stored value stays E.164.
+ *
+ * Formatted through a `+<dial code>` prefix that is then sliced off, because
+ * `AsYouType` only applies a country's grouping once it knows which country it
+ * is in — fed bare national digits it hands most of them straight back.
+ *
+ * The digits are re-checked after formatting: this feeds a controlled input
+ * whose `onChange` strips the separators again, so a grouping that dropped or
+ * invented a digit would quietly rewrite the number. Falls back to the raw
+ * digits if that ever happens.
+ */
+export function formatNationalDigits(value: string, iso2: CountryCode): string {
+  const digits = (value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  const prefix = `+${getCountryCallingCode(iso2)}`;
+  const formatted = new AsYouType(iso2).input(`${prefix}${digits}`);
+  if (!formatted.startsWith(prefix)) return digits;
+  const national = formatted.slice(prefix.length).trimStart();
+  return national.replace(/\D/g, '') === digits ? national : digits;
 }
 
 /** Is this national number valid for that country? Drives the form error. */

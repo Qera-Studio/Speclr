@@ -119,3 +119,88 @@ describe('DocumentSheet editable content', () => {
     expect(screen.queryByText(/Overdue balances accrue interest/)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The onboarding fields, and the condition they were added on.
+ *
+ * `ClientSnapshot` was widened with six optional fields so a client's PAN, CIN,
+ * overseas registration and TDS position could print. The condition was that
+ * nothing already issued changes: every one of them is optional, so a snapshot
+ * frozen before they existed must render exactly what it always did.
+ *
+ * The negative test is the important one. `baseInvoice` is a pre-onboarding
+ * snapshot, and it is what every document in the database currently looks like.
+ */
+describe('the client fields onboarding added', () => {
+  it('prints nothing new for a snapshot frozen before they existed', () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+
+    expect(screen.queryByText(/^PAN:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^CIN:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/TRN|VAT number|EIN|ABN/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/deductible by recipient/i)).not.toBeInTheDocument();
+  });
+
+  it('prints the recipient’s PAN and CIN when the snapshot carries them', () => {
+    const doc = {
+      ...baseInvoice,
+      clientSnapshot: {
+        ...baseInvoice.clientSnapshot,
+        pan: 'AABCQ2864Q',
+        cin: 'U62099UP2026PTC254312',
+      },
+    } as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText('PAN: AABCQ2864Q')).toBeInTheDocument();
+    expect(screen.getByText('CIN: U62099UP2026PTC254312')).toBeInTheDocument();
+  });
+
+  it('names an overseas registration by what it actually is', () => {
+    const doc = {
+      ...baseInvoice,
+      clientSnapshot: {
+        ...baseInvoice.clientSnapshot,
+        taxIdType: 'AE_TRN',
+        taxId: '100123456700003',
+      },
+    } as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    // "TRN (UAE)", not a generic "Tax ID" — it is their document too.
+    expect(screen.getByText(/TRN \(UAE\): 100123456700003/)).toBeInTheDocument();
+  });
+
+  /**
+   * The load-bearing assertion about TDS: it is a memo. The invoice still bills
+   * the gross, because the taxable value on a GST document is the full
+   * consideration and netting it off would understate the GST return.
+   */
+  it('states TDS without changing the amount billed', () => {
+    const doc = {
+      ...baseInvoice,
+      clientSnapshot: {
+        ...baseInvoice.clientSnapshot,
+        tds: { section: '194J', ratePercent: 10 },
+      },
+    } as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    // Subtotal ₹2,000 + 18% = ₹2,360 due. TDS is 10% of the taxable value
+    // (₹200, not 10% of the GST-inclusive total), so ₹2,160 lands in the bank.
+    expect(screen.getByText('₹ 2,360.00')).toBeInTheDocument();
+    expect(
+      screen.getByText(/TDS @10% u\/s 194J deductible by recipient — net payable ₹ 2,160\.00/),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing about TDS when only half the position is recorded', () => {
+    const doc = {
+      ...baseInvoice,
+      clientSnapshot: { ...baseInvoice.clientSnapshot, tds: { section: '194J' } },
+    } as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.queryByText(/deductible by recipient/i)).not.toBeInTheDocument();
+  });
+});

@@ -78,6 +78,18 @@ export default function AddressFields<T extends FieldValues>({
     city: String(city.field.value ?? ''),
     state: String(state.field.value ?? ''),
   };
+  /**
+   * What the last lookup wrote. A field is ours to overwrite while it still
+   * holds exactly that; the moment someone edits it, it stops matching and
+   * becomes theirs.
+   *
+   * Without this, a *corrected* pincode never took effect: after the first
+   * lookup city and state are non-empty, and "only fill what is empty" then
+   * declines every subsequent answer — leaving a Chennai pincode sitting next
+   * to Ghaziabad, which is precisely the disagreement this record exists to
+   * prevent.
+   */
+  const filled = useRef({ city: '', state: '' });
   const setCity = city.field.onChange;
   const setState = state.field.onChange;
 
@@ -105,13 +117,21 @@ export default function AddressFields<T extends FieldValues>({
         const result = data as { ok?: boolean; city?: string; state?: string };
         if (!result?.ok) return;
 
-        // Only fill what's empty. Someone who has typed a city meant it, and a
-        // postal database shouldn't overrule them.
-        const filledCity = Boolean(result.city) && !latest.current.city.trim();
-        const filledState = Boolean(result.state) && !latest.current.state.trim();
+        // Fill what is empty, and replace what this lookup put there last
+        // time. Someone who has typed a city meant it, and a postal database
+        // shouldn't overrule them — but its own previous answer is fair game.
+        const ours = (current: string, mine: string) => !current.trim() || current === mine;
+        const filledCity =
+          Boolean(result.city) && ours(latest.current.city, filled.current.city);
+        const filledState =
+          Boolean(result.state) && ours(latest.current.state, filled.current.state);
         if (filledCity) setCity(result.city);
         if (filledState) setState(result.state);
         if (filledCity || filledState) {
+          filled.current = {
+            city: filledCity ? result.city! : '',
+            state: filledState ? result.state! : '',
+          };
           setAutofilled({ city: filledCity, state: filledState });
         }
       } catch {
@@ -129,31 +149,39 @@ export default function AddressFields<T extends FieldValues>({
 
   return (
     <>
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-line1`}>Building / flat</FieldLabel>
-        <Input
-          id={`${idPrefix}-line1`}
-          size={size}
-          autoComplete="address-line1"
-          {...line1.field}
-          value={String(line1.field.value ?? '')}
-        />
-        <FieldError errors={[line1.fieldState.error]} />
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-line2`}>Street / area</FieldLabel>
-        <Input
-          id={`${idPrefix}-line2`}
-          size={size}
-          autoComplete="address-line2"
-          {...line2.field}
-          value={String(line2.field.value ?? '')}
-        />
-        <FieldError errors={[line2.fieldState.error]} />
-      </Field>
-
       <FieldRow>
+        <Field>
+          <FieldLabel htmlFor={`${idPrefix}-line1`}>Building / flat</FieldLabel>
+          <Input
+            id={`${idPrefix}-line1`}
+            size={size}
+            autoComplete="address-line1"
+            {...line1.field}
+            value={String(line1.field.value ?? '')}
+          />
+          <FieldError errors={[line1.fieldState.error]} />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor={`${idPrefix}-line2`}>Street / area</FieldLabel>
+          <Input
+            id={`${idPrefix}-line2`}
+            size={size}
+            autoComplete="address-line2"
+            {...line2.field}
+            value={String(line2.field.value ?? '')}
+          />
+          <FieldError errors={[line2.fieldState.error]} />
+        </Field>
+      </FieldRow>
+
+      {/*
+        Four short values on one line. A pincode, a state and a city are each a
+        few characters wide, and giving them half a row apiece bought nothing
+        but scroll. In postal order — pincode, city, state, country — which is
+        also the order the lookup fills them in.
+      */}
+      <FieldRow columns={4}>
         <Field>
           {/* The lock is also announced through the live region below — a
               tooltip is not read out, and this is news when it happens. */}
@@ -167,6 +195,7 @@ export default function AddressFields<T extends FieldValues>({
             <Input
               id={`${idPrefix}-pincode`}
               size={size}
+              placeholder="000000"
               inputMode="numeric"
               autoComplete="postal-code"
               aria-describedby={`${idPrefix}-pincode-hint`}
@@ -193,26 +222,34 @@ export default function AddressFields<T extends FieldValues>({
             id={`${idPrefix}-city`}
             size={size}
             autoComplete="address-level2"
+            // Locked, but not greyed: a muted value reads as placeholder text,
+            // and this one is real data the record will be saved with. The
+            // lock is said in the tooltip and the live region instead.
+            //
+            // The flash is the visible half of the same news. A value that
+            // appears in a box nobody is looking at is a value nobody checks,
+            // and this one came from a third party that can be wrong. It needs
+            // no state of its own: the effect clears `autofilled` before every
+            // lookup, so the class is genuinely removed and re-added on each
+            // answer, which is what makes a *corrected* pincode flash again.
+            className={autofilled.city ? 'animate-fill-flash' : undefined}
             readOnly={autofilled.city}
             aria-readonly={autofilled.city || undefined}
-            className={autofilled.city ? 'text-muted-foreground' : undefined}
             {...city.field}
             value={String(city.field.value ?? '')}
           />
           <FieldError errors={[city.fieldState.error]} />
         </Field>
-      </FieldRow>
 
-      <FieldRow>
         <Field>
           <FieldLabel htmlFor={`${idPrefix}-state`}>State</FieldLabel>
           <Input
             id={`${idPrefix}-state`}
             size={size}
             autoComplete="address-level1"
+            className={autofilled.state ? 'animate-fill-flash' : undefined}
             readOnly={autofilled.state}
             aria-readonly={autofilled.state || undefined}
-            className={autofilled.state ? 'text-muted-foreground' : undefined}
             {...state.field}
             value={String(state.field.value ?? '')}
           />
@@ -227,7 +264,7 @@ export default function AddressFields<T extends FieldValues>({
             options={COUNTRY_OPTIONS}
             value={countryValue}
             onValueChange={country.field.onChange}
-            placeholder="Select a country…"
+            placeholder="Select…"
           />
           <FieldError errors={[country.fieldState.error]} />
         </Field>

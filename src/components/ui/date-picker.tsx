@@ -58,7 +58,7 @@ function DatePicker({
         data-size={size}
         data-empty={!selected}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-input/20 text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-7 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9 data-[size=form]:px-3 data-[size=form]:text-sm dark:bg-input/30 dark:hover:bg-input/50",
+          "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-7 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
           className
         )}
         {...aria}

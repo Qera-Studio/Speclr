@@ -125,6 +125,35 @@ describe('contractBlocks', () => {
     expect(screen.getByText('B2. Fees and Payment')).toBeInTheDocument();
   });
 
+  /**
+   * The client's half of the execution block printed two blank rules until the
+   * client record had anywhere to say who signs. Filling it completes the block
+   * rather than redesigning it — and a contract signed before the field existed
+   * still prints the rules, which is what the second case here guards.
+   */
+  it('prints the client’s signing authority from the snapshot', () => {
+    const doc = contractDoc();
+    renderContract({
+      ...doc,
+      clientSnapshot: {
+        ...doc.clientSnapshot,
+        signatory: { name: 'Ananya Rao', designation: 'Director' },
+      },
+    } as ContractDocument);
+
+    const execution = screen.getByLabelText('Execution');
+    expect(within(execution).getByText('Name: Ananya Rao')).toBeInTheDocument();
+    expect(within(execution).getByText('Designation: Director')).toBeInTheDocument();
+  });
+
+  it('still prints blank rules for a contract frozen before signatories existed', () => {
+    renderContract(contractDoc());
+    const execution = screen.getByLabelText('Execution');
+    // Two blanks: the client's name and designation. The studio's half is
+    // filled from the document's own content.
+    expect(within(execution).getAllByText(/________________/)).toHaveLength(2);
+  });
+
   it('renders both execution blocks from the record', () => {
     renderContract(contractDoc());
     const execution = screen.getByLabelText('Execution');

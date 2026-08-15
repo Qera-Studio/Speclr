@@ -3,7 +3,8 @@
 import { ChevronRight } from 'lucide-react';
 import type { DocContent, ResolvedContent, TermItem } from '@/lib/domain/docContent';
 import type { MsaClause } from '@/lib/domain/contract/msa';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
+import FieldInfo from '@/components/form/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,10 @@ export function ContentText({
 }) {
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      {/* One label component either way: `FieldInfo` renders no icon when
+          there is nothing to explain, so callers pass a description or don't
+          and this needs no branch. */}
+      <FieldInfo htmlFor={id} label={label} info={description} />
       {rows ? (
         <Textarea
           id={id}
@@ -57,7 +61,6 @@ export function ContentText({
       ) : (
         <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
-      {description ? <FieldDescription>{description}</FieldDescription> : null}
     </Field>
   );
 }
@@ -206,7 +209,12 @@ export function ClauseFields({
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor={`clause-body-${index}`}>Body</FieldLabel>
+                <FieldInfo
+                  htmlFor={`clause-body-${index}`}
+                  label="Body"
+                  info="One blank line starts a new paragraph."
+                  infoLabel="How are paragraphs separated?"
+                />
                 <Textarea
                   id={`clause-body-${index}`}
                   rows={8}
@@ -214,7 +222,6 @@ export function ClauseFields({
                   value={clause.body.join('\n\n')}
                   onChange={(e) => update(index, { body: splitParagraphs(e.target.value) })}
                 />
-                <FieldDescription>One blank line starts a new paragraph.</FieldDescription>
               </Field>
             </div>
           </CollapsibleContent>

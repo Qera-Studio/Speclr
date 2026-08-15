@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useController, type Control, type FieldValues, type Path } from 'react-hook-form';
 import type { CountryCode } from 'libphonenumber-js/min';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
@@ -11,8 +11,9 @@ import {
   COUNTRIES,
   DEFAULT_COUNTRY,
   countryByIso2,
+  capNationalDigits,
+  formatNationalDigits,
   isValidPhone,
-  maxNationalDigits,
   parsePhone,
   phoneHintFor,
   toE164,
@@ -30,10 +31,26 @@ import {
  * legacy value can be corrected in place rather than silently discarded.
  */
 
+/**
+ * Flag and name on the left, dial code in its own right-hand column — the codes
+ * then line up down the list instead of trailing each name at a different
+ * offset. Once chosen, the field shows the flag alone: the dial code belongs in
+ * front of the digits it is part of, and showing it here as well printed the
+ * same `+91` twice, side by side.
+ */
 const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
   value: c.iso2,
-  label: `${c.flag} ${c.name} +${c.dialCode}`,
+  label: `${c.flag} ${c.name}`,
+  trailing: `+${c.dialCode}`,
+  selectedLabel: c.flag,
 }));
+
+/**
+ * Room for the dial code sitting in front of the number. Sized per code length
+ * rather than fixed, because a fixed inset that clears `+91` runs straight
+ * through `+971`.
+ */
+const PREFIX_PADDING: Record<number, string> = { 1: 'pl-9', 2: 'pl-11', 3: 'pl-13' };
 
 /**
  * The strict phone check, for a form's resolver to call.
@@ -85,12 +102,25 @@ export default function PhoneField<T extends FieldValues>({
   const [iso2, setIso2] = useState<CountryCode>(() => parsePhone(stored).iso2);
   const [national, setNational] = useState(() => parsePhone(stored).national);
 
-  // Re-seed when the form is reset or a different record is loaded, but not
-  // while the user is mid-edit (the stored value already matches what we sent).
+  const dialCode =
+    countryByIso2(iso2)?.dialCode ?? countryByIso2(DEFAULT_COUNTRY)!.dialCode;
+
+  /**
+   * The last value this field wrote, so the effect below can tell an outside
+   * change from its own write coming back.
+   *
+   * This is what kept the country from sticking. A half-typed number has no
+   * E.164 form, so we store the bare digits — and re-parsing bare digits falls
+   * back to India by design (see `parsePhone`). The effect therefore reset the
+   * country to India on the first keystroke after choosing any other one:
+   * pick the UAE, type a digit, and you were back in India.
+   */
+  const pushed = useRef<string | null>(null);
+
+  // Re-seed when the form is reset or a different record is loaded, but never
+  // from our own write — that value came from this state in the first place.
   useEffect(() => {
-    const composed = toE164(national, iso2);
-    if (composed === stored) return;
-    if (!stored && !national) return;
+    if (stored === pushed.current) return;
     const parsed = parsePhone(stored);
     setIso2(parsed.iso2);
     setNational(parsed.national);
@@ -99,13 +129,12 @@ export default function PhoneField<T extends FieldValues>({
   }, [stored]);
 
   const push = (nextNational: string, nextIso2: CountryCode) => {
-    const composed = toE164(nextNational, nextIso2);
     // Keep the raw digits when they don't yet form a valid number, so the
     // validator can explain what's wrong instead of the field looking empty.
-    field.onChange(composed ?? nextNational);
+    const composed = toE164(nextNational, nextIso2) ?? nextNational;
+    pushed.current = composed;
+    field.onChange(composed);
   };
-
-  const dialCode = countryByIso2(iso2)?.dialCode ?? countryByIso2(DEFAULT_COUNTRY)?.dialCode;
 
   return (
     <Field>
@@ -114,7 +143,7 @@ export default function PhoneField<T extends FieldValues>({
         <Combobox
           id={`${id}-country`}
           size={size}
-          className="w-[9.5rem] shrink-0"
+          className="w-[4.25rem] shrink-0"
           options={COUNTRY_OPTIONS}
           value={iso2}
           onValueChange={(next) => {
@@ -122,7 +151,7 @@ export default function PhoneField<T extends FieldValues>({
             // The cap is per country, so switching to a shorter one has to
             // trim what is already there — otherwise the field keeps a number
             // the new country could never hold.
-            const trimmed = national.slice(0, maxNationalDigits(nextIso2));
+            const trimmed = capNationalDigits(national, nextIso2);
             setIso2(nextIso2);
             setNational(trimmed);
             push(trimmed, nextIso2);
@@ -130,11 +159,18 @@ export default function PhoneField<T extends FieldValues>({
           placeholder="Country"
           aria-label="Phone country"
         />
+        {/*
+          The dial code sits in front of the digits, in the same ink as them,
+          because together they are one number. Muted, it read as placeholder
+          text in an empty field. It is `aria-hidden` and outside the input:
+          the stored value already carries the code, so a screen reader would
+          otherwise hear it twice, and it must not be selectable or deletable.
+        */}
         <div className="relative flex-1">
           <span
             aria-hidden="true"
             className={cn(
-              'pointer-events-none absolute inset-y-0 left-0 flex items-center text-muted-foreground',
+              'pointer-events-none absolute inset-y-0 left-0 flex items-center select-none',
               size === 'form' ? 'pl-3 text-sm' : 'pl-2 text-xs/relaxed',
             )}
           >
@@ -147,17 +183,16 @@ export default function PhoneField<T extends FieldValues>({
             inputMode="tel"
             autoComplete="tel-national"
             aria-invalid={fieldState.error ? true : undefined}
-            className={size === 'form' ? 'pl-13' : 'pl-10'}
-            value={national}
+            className={PREFIX_PADDING[dialCode.length] ?? 'pl-13'}
+            value={formatNationalDigits(national, iso2)}
             onBlur={field.onBlur}
             onChange={(event) => {
               // Digits only, and never more than the country could hold — an
               // 11th digit on an Indian number is not a number being typed, it
               // is a mistake, and letting it in only to report it afterwards
               // lets someone tab away from a field that already looks filled.
-              const digits = event.target.value
-                .replace(/\D/g, '')
-                .slice(0, maxNationalDigits(iso2));
+              // The state holds bare digits; grouping is put back on render.
+              const digits = capNationalDigits(event.target.value, iso2);
               setNational(digits);
               push(digits, iso2);
             }}

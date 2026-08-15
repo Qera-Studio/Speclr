@@ -28,6 +28,17 @@ export interface EditorFormValues {
   gstRatePercent: string;
   gstLabel: string;
   placeOfSupplyStateCode: string;
+  /**
+   * Why the place of supply is not the one derived from the client.
+   *
+   * Place of supply is derived from the recipient (`placeOfSupply.ts`), but the
+   * derivation has lawful exceptions — CGST s.12(3) puts it where immovable
+   * property is, and bill-to/ship-to cases diverge too. `PRINCIPLES.md` rule 3
+   * allows the override on one condition: it is explicit and *recorded*. An
+   * override with no trace of why is the same bug wearing a different hat, so
+   * this is required whenever the picked code differs from the derived one.
+   */
+  placeOfSupplyOverrideReason: string;
   notes: string;
   paymentDate: string;
   paymentMethod: PaymentMethod;
@@ -61,6 +72,7 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
       gstRatePercent: String(doc.gstRatePercent),
       gstLabel: doc.gstLabel ?? '',
       placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? '',
+      placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason ?? '',
       notes: doc.notes ?? '',
       paymentDate: doc.type === 'REC' ? doc.payment.date : '',
       paymentMethod: doc.type === 'REC' ? doc.payment.method : 'Bank Transfer',
@@ -79,6 +91,7 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
     gstRatePercent: String(fields.gstRatePercent),
     gstLabel: fields.gstLabel ?? '',
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode ?? '',
+    placeOfSupplyOverrideReason: '',
     notes: fields.notes ?? '',
     paymentDate: fields.payment?.date ?? '',
     paymentMethod: fields.payment?.method ?? 'Bank Transfer',
@@ -106,6 +119,7 @@ export function toPayload(
     gstRatePercent: Number(values.gstRatePercent) || 0,
     gstLabel: values.gstLabel || undefined,
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
+    placeOfSupplyOverrideReason: values.placeOfSupplyOverrideReason || undefined,
     notes: values.notes || undefined,
     content,
   };

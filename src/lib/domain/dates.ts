@@ -77,6 +77,26 @@ export function localDateToISO(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * 'YYYY-MM-DD' plus a number of days → 'YYYY-MM-DD'.
+ *
+ * How an invoice's due date is derived from its issue date and the client's
+ * payment terms, instead of being typed. Returns '' for input this module
+ * cannot parse, so a malformed issue date leaves the due date blank rather than
+ * inventing one — a wrong due date on an issued invoice is worse than none.
+ *
+ * Goes through the local-calendar helpers deliberately, and `setDate` handles
+ * month and year rollover including leap years. UTC arithmetic would shift the
+ * day for anyone west of Greenwich, which is the same class of bug
+ * `isoToLocalDate` documents.
+ */
+export function addDays(isoDate: string, days: number): string {
+  const date = isoToLocalDate(isoDate);
+  if (!date || !Number.isFinite(days)) return '';
+  date.setDate(date.getDate() + Math.trunc(days));
+  return localDateToISO(date);
+}
+
 /** '2026-07-21' → '21 Jul 2026'. Throws on malformed input (caller bug). */
 export function formatDisplayDate(isoDate: string): string {
   const match = ISO_DATE_RE.exec(isoDate);

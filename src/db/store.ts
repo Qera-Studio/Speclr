@@ -48,6 +48,15 @@ export async function saveClient(client: ClientRecord): Promise<void> {
     email: client.email,
     phone: client.phone,
     gstin: client.gstin ?? null,
+    // Same rule as `addressParts` above, and it matters more here: clearing a
+    // whole section must null the column, not leave the previous section's JSON
+    // behind for a sheet or a derivation to read.
+    entityType: client.entityType ?? null,
+    tax: client.tax ?? null,
+    contacts: client.contacts ?? null,
+    commercial: client.commercial ?? null,
+    attachments: client.attachments ?? null,
+    access: client.access ?? null,
     createdAt: new Date(client.createdAt),
     updatedAt: new Date(client.updatedAt),
   };
@@ -67,6 +76,12 @@ function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
     email: r.email,
     phone: r.phone,
     gstin: r.gstin ?? undefined,
+    entityType: r.entityType ?? undefined,
+    tax: r.tax ?? undefined,
+    contacts: r.contacts ?? undefined,
+    commercial: r.commercial ?? undefined,
+    attachments: r.attachments ?? undefined,
+    access: r.access ?? undefined,
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
   };
@@ -80,6 +95,28 @@ export async function getClient(id: string): Promise<ClientRecord | null> {
 export async function listClients(): Promise<ClientRecord[]> {
   const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
   return rows.map(clientFromRow);
+}
+
+/**
+ * Whether any document — draft or finalized — names this client.
+ *
+ * `documents.client_id` is a real foreign key, so deleting a referenced client
+ * fails at the database anyway. This exists so the refusal reads as a sentence
+ * instead of a Postgres constraint violation, and it deliberately counts
+ * drafts too: a draft resolves its client live, so removing the row underneath
+ * one leaves a document that cannot render.
+ */
+export async function clientHasDocuments(id: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(eq(documents.clientId, id))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  await db.delete(clients).where(eq(clients.id, id));
 }
 
 // ─── Studio settings ──────────────────────────────────────────────────────────

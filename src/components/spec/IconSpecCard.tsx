@@ -14,7 +14,8 @@ import { useImageValidation } from '@/lib/spec/useImageValidation';
 import { computePassed } from '@/lib/spec/computePassed';
 import { applicableCriteria } from '@/lib/spec/applicableCriteria';
 import { loadImageStore, saveSlotImage, removeSlotImage } from '@/lib/spec/imageStore';
-import UploadDropzone from './UploadDropzone';
+import UploadDropzone from '@/components/form/UploadDropzone';
+import { ACCEPT_BY_FORMAT } from '@/lib/spec/accept';
 import UploadedAttachment from './UploadedAttachment';
 import SpecDetailsTabs from './SpecDetailsTabs';
 import ReviewedItem from './ReviewedItem';
@@ -288,9 +289,9 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
 
         <div className={cn('flex flex-col gap-4 pt-2', !showCenterPreview && 'mt-auto')}>
           <UploadDropzone
-            id={spec.id}
-            format={spec.format}
-            fileName={fileMeta?.name ?? null}
+            id={`upload-${spec.id}`}
+            accept={ACCEPT_BY_FORMAT[spec.format]}
+            hasFile={Boolean(fileMeta?.name)}
             onFileSelected={handleFileSelected}
             attachment={
               fileMeta && result ? (

@@ -48,6 +48,32 @@ describe('breadcrumbForPath', () => {
     ]);
   });
 
+  /**
+   * A client id is not a reference anyone quotes — unlike a document number —
+   * so humanizing the last segment printed thirty-six characters of hex across
+   * the top of the onboarding page. The trail cannot name the client (it has
+   * only the path; the record is in the database), so it says what kind of
+   * thing this is and keeps the list navigable.
+   */
+  it('names the kind rather than printing a client’s uuid', () => {
+    expect(breadcrumbForPath('/client/clients/95d22130-5aae-4944-893c-3e4029017cc3')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+      {
+        label: 'Client',
+        href: '/client/clients/95d22130-5aae-4944-893c-3e4029017cc3',
+      },
+    ]);
+  });
+
+  it('labels the create route as a new client', () => {
+    expect(breadcrumbForPath('/client/clients/new')).toEqual([
+      { label: 'Dashboard', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+      { label: 'New client', href: '/client/clients/new' },
+    ]);
+  });
+
   it('maps the icon spec tool, which lives on the admin side', () => {
     expect(breadcrumbForPath('/admin/spec')).toEqual([
       { label: 'Dashboard', href: '/admin' },

@@ -1,0 +1,176 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import IdentityStep from '../IdentityStep';
+import type { ClientRecord } from '@/lib/domain/types';
+
+/**
+ * The step that creates the record.
+ *
+ * Every case here was inherited from `ClientForm.test.tsx`, deleted when the
+ * rail form was replaced: address composition, E.164 phone, the legacy client
+ * with no company name, and the server error. They still describe real
+ * behaviour, so they moved rather than went.
+ *
+ * New to this step: entity type, which is required here and optional on the
+ * record.
+ */
+
+const createClient = jest.fn();
+const updateClient = jest.fn();
+
+jest.mock('@/server/actions/clients', () => ({
+  createClient: (...a: unknown[]) => createClient(...a),
+  updateClient: (...a: unknown[]) => updateClient(...a),
+}));
+
+const onSaved = jest.fn();
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  createClient.mockResolvedValue({ success: true, id: 'new-id' });
+  updateClient.mockResolvedValue({ success: true, id: 'c1' });
+  // `AddressFields` looks a pincode up on type; without this it throws.
+  global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: false }) });
+});
+
+/**
+ * Exact label strings where a regex would be ambiguous: the phone field
+ * contributes both "Phone" and "Phone country", and `AddressFields` a "Country"
+ * of its own.
+ */
+async function fillIdentity(
+  user: ReturnType<typeof userEvent.setup>,
+  { entityType = true } = {},
+) {
+  await user.type(screen.getByLabelText(/^name$/i), 'Clayora');
+  await user.type(screen.getByLabelText(/legal entity name/i), 'Clayora Private Limited');
+  await user.type(screen.getByLabelText(/^email$/i), 'accounts@clayora.test');
+  await user.type(screen.getByLabelText('Phone'), '9876543210');
+  await user.type(screen.getByLabelText(/building/i), 'C-204');
+  await user.type(screen.getByLabelText('Pincode'), '201017');
+  await user.type(screen.getByLabelText('City'), 'Ghaziabad');
+  await user.type(screen.getByLabelText('State'), 'Uttar Pradesh');
+  if (entityType) {
+    await pickEntityType(user, /^private limited company$/i);
+  }
+}
+
+/** The entity type is a combobox: open it, then choose the row. */
+async function pickEntityType(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+  await user.click(screen.getByLabelText('Entity type'));
+  await user.click(await screen.findByRole('option', { name }));
+}
+
+describe('IdentityStep', () => {
+  it('composes the printable address from the parts and stores E.164', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyName: 'Clayora Private Limited',
+        phone: '+919876543210',
+        entityType: 'pvt_ltd',
+        address: expect.stringContaining('Ghaziabad'),
+      }),
+    );
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  it('refuses a phone that is not a valid Indian mobile', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.type(screen.getByLabelText('Phone'), '1234567890');
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(await screen.findByText(/10-digit mobile/i)).toBeInTheDocument();
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it('will not create a client without an entity type', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user, { entityType: false });
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(await screen.findByText(/choose the entity type/i)).toBeInTheDocument();
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it('offers overseas legal forms when the address is outside India', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    // Named on a form only India has: 'private limited' is not decisive, since
+    // Singapore's is spelled out too now that the acronyms are gone.
+    await user.click(screen.getByLabelText('Entity type'));
+    expect(
+      await screen.findByRole('option', { name: /hindu undivided family/i }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    // `/country/i` alone is ambiguous — the phone field has one too.
+    await user.click(screen.getByLabelText('Country'));
+    await user.click(await screen.findByRole('option', { name: /united arab emirates/i }));
+
+    await user.click(screen.getByLabelText('Entity type'));
+    expect(await screen.findByRole('option', { name: /free zone entity/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /hindu undivided family/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refuses an Indian legal form once the address has moved abroad', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(screen.getByLabelText('Country'));
+    await user.click(await screen.findByRole('option', { name: /united arab emirates/i }));
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    // The field looks empty — the chosen form is not in the list any more — but
+    // the value is still on the form, and saving it would file a UAE client as
+    // a company under the Companies Act.
+    expect(await screen.findByText(/choose the entity type/i)).toBeInTheDocument();
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
+  it('loads a client written before entity types and company names existed', () => {
+    const legacy = {
+      id: 'c1',
+      name: 'Old Client',
+      address: '5 Old Road\nDelhi',
+      email: 'old@example.test',
+      phone: '9876543210',
+      createdAt: 0,
+      updatedAt: 0,
+    } as ClientRecord;
+
+    render(<IdentityStep client={legacy} onSaved={onSaved} submitLabel="Tax" />);
+
+    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Old Client');
+    // Blank and required, so saving forces it to be filled in.
+    expect(screen.getByLabelText(/legal entity name/i)).toHaveValue('');
+    expect(screen.getByLabelText('Entity type')).toHaveValue('');
+  });
+
+  it('surfaces a server failure instead of pretending it saved', async () => {
+    createClient.mockResolvedValue({ success: false, error: 'Failed to save client.' });
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(await screen.findByText('Failed to save client.')).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+});

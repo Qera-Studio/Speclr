@@ -1,15 +1,29 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditorPanelProvider, EditorPanelContent } from '../../EditorPanel';
 import ClientManager from '../ClientManager';
 import type { ClientRecord } from '@/lib/domain/types';
 
-jest.mock('next/navigation', () => ({
-  usePathname: () => '/client', useRouter: () => ({ refresh: jest.fn() }) }));
+const refresh = jest.fn();
+jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
+
+const deleteClientAction = jest.fn();
 jest.mock('@/server/actions/clients', () => ({
-  createClient: jest.fn(),
-  updateClient: jest.fn(),
+  deleteClientAction: (...args: unknown[]) => deleteClientAction(...args),
 }));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  deleteClientAction.mockResolvedValue({ success: true });
+});
+
+/**
+ * The clients list, after onboarding moved to its own route.
+ *
+ * The rail is gone here: adding and editing both navigate to
+ * `/client/clients/[id]`. The rail's own regressions (the discard guard, the
+ * remount on switching records) moved to `EmployeeManager.test.tsx`, which is
+ * where `useRecordPanel` still lives.
+ */
 
 const clients: ClientRecord[] = [
   {
@@ -28,22 +42,13 @@ const clients: ClientRecord[] = [
   },
 ] as ClientRecord[];
 
-function setup() {
-  return render(
-    <EditorPanelProvider>
-      <ClientManager clients={clients} />
-    </EditorPanelProvider>,
-  );
-}
-
 describe('ClientManager', () => {
-  it('opens an empty form from Add client', async () => {
-    const user = userEvent.setup();
-    setup();
-    expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /add client/i }));
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('');
+  it('sends Add client to the onboarding route', () => {
+    render(<ClientManager clients={clients} />);
+    expect(screen.getByRole('link', { name: /add client/i })).toHaveAttribute(
+      'href',
+      '/client/clients/new',
+    );
   });
 
   /**
@@ -51,86 +56,59 @@ describe('ClientManager', () => {
    * header otherwise, so it moved the moment you added your first client. One
    * fixed home, both states.
    */
-  it('keeps the create button in the header when there are no clients', () => {
-    render(
-      <EditorPanelProvider>
-        <ClientManager clients={[]} />
-      </EditorPanelProvider>,
-    );
+  it('keeps the create link in the header when there are no clients', () => {
+    render(<ClientManager clients={[]} />);
     expect(screen.getByText(/no clients yet/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /add client/i })).toHaveLength(1);
+    expect(screen.getAllByRole('link', { name: /add client/i })).toHaveLength(1);
   });
 
   /**
-   * Regression: the rail's open state is shared app-wide, so deriving this
-   * manager's visibility straight from it made the form appear whenever
-   * anything else expanded the rail — landing on Clients popped an empty "Add
-   * client" form nobody asked for. Only an explicit action opens ours.
+   * No form mounts on this page any more. A second surface writing the same row
+   * is how a section silently goes missing — a quick edit that doesn't know
+   * about tax registration saves the record without it.
    */
-  it('stays closed when the rail is opened by something else', () => {
-    render(
-      <EditorPanelProvider>
-        {/* Another page's panel holds the rail open. */}
-        <EditorPanelContent autoOpen>
-          <p>Someone else&rsquo;s form</p>
-        </EditorPanelContent>
-        <ClientManager clients={clients} />
-      </EditorPanelProvider>,
+  it('mounts no editing form', () => {
+    render(<ClientManager clients={clients} />);
+    expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument();
+  });
+
+  it('links each row to that client', () => {
+    render(<ClientManager clients={clients} />);
+    expect(screen.getByRole('link', { name: /edit beta ltd/i })).toHaveAttribute(
+      'href',
+      '/client/clients/c2',
     );
-    expect(screen.queryByLabelText(/name/i)).not.toBeInTheDocument();
-    // Exactly one "Add client" — the trigger. A second would be the form's
-    // submit button, i.e. the form wrongly mounted.
-    expect(screen.getAllByRole('button', { name: /add client/i })).toHaveLength(1);
+  });
+
+  async function deleteFirstClient(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /delete acme co\./i }));
+    await user.click(screen.getByRole('button', { name: /^remove$/i }));
+  }
+
+  it('refreshes the list once a client is gone', async () => {
+    const user = userEvent.setup();
+    render(<ClientManager clients={clients} />);
+
+    await deleteFirstClient(user);
+    expect(deleteClientAction).toHaveBeenCalledWith('c1');
+    expect(refresh).toHaveBeenCalled();
   });
 
   /**
-   * Regression guard for the `key={editing?.id ?? 'new'}` remount.
-   *
-   * react-hook-form reads `defaultValues` only on mount, so without the key the
-   * form keeps the first record's values when you switch to a second one — you
-   * would be editing Beta while looking at Acme's details. The rail is
-   * non-blocking, so switching straight from one row to another is now a normal
-   * gesture rather than an edge case, which makes this the likeliest way to
-   * write wrong data into a real client record.
+   * The half that matters. A client that has been on a document is refused
+   * server-side — the list cannot know that, so the answer arrives after the
+   * confirmation and has to be shown rather than swallowed.
    */
-  it('reloads field values when switching from one record to another', async () => {
+  it('shows the server’s refusal instead of pretending it worked', async () => {
     const user = userEvent.setup();
-    setup();
+    deleteClientAction.mockResolvedValue({
+      success: false,
+      error: 'Acme Co. has documents and cannot be deleted.',
+    });
+    render(<ClientManager clients={clients} />);
 
-    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co.');
-
-    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Beta Ltd');
-  });
-
-  it('warns before discarding unsaved edits when switching records', async () => {
-    const user = userEvent.setup();
-    setup();
-
-    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    await user.type(screen.getByLabelText(/^name$/i), ' edited');
-
-    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
-
-    // The switch is held back until the user decides.
-    expect(screen.getByRole('alertdialog', { name: /discard unsaved changes/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co. edited');
-
-    await user.click(screen.getByRole('button', { name: /discard changes/i }));
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Beta Ltd');
-  });
-
-  it('keeps the current record when the discard is cancelled', async () => {
-    const user = userEvent.setup();
-    setup();
-
-    await user.click(screen.getByRole('button', { name: /edit acme co\./i }));
-    await user.type(screen.getByLabelText(/^name$/i), ' edited');
-
-    await user.click(screen.getByRole('button', { name: /edit beta ltd/i }));
-    await user.click(screen.getByRole('button', { name: /keep editing/i }));
-
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Co. edited');
+    await deleteFirstClient(user);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/has documents and cannot be deleted/i);
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

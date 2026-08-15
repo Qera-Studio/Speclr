@@ -3,11 +3,19 @@
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 import { clientInputSchema } from '@/lib/domain/registry';
+import {
+  CLIENT_SECTION_SCHEMAS,
+  clientTaxCrossErrors,
+  isClientSection,
+  type ClientTax,
+} from '@/lib/domain/client';
 import type { ActionResult, ClientRecord } from '@/lib/domain/types';
 import { authorized } from './authGate';
-import { getClient, saveClient } from '@/db/store';
+import { del } from '@vercel/blob';
+import { clientHasDocuments, deleteClient, getClient, saveClient } from '@/db/store';
 import { logger } from '@/lib/logger';
 import { withComposedAddress } from './address';
+import { invalidInput } from './validation';
 
 export async function createClient(data: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
@@ -56,6 +64,127 @@ export async function updateClient(id: unknown, data: unknown): Promise<ActionRe
   } catch (err) {
     logger.error({ action: 'updateClient', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to save client.' };
+  }
+
+  revalidatePath('/client/clients');
+  return { success: true, id };
+}
+
+/**
+ * Save one section of a client — the onboarding wizard's write path.
+ *
+ * One action rather than five, because the five differ only in which schema
+ * validates them and which key they land on. `CLIENT_SECTION_SCHEMAS` pairs the
+ * name with the schema in one place, so a new section cannot be added to the
+ * form without a schema to check it.
+ *
+ * **Read-merge-write, not patch.** `saveClient` is a whole-row upsert, so the
+ * existing record is spread first — otherwise saving the tax step would blank
+ * the contacts saved a minute earlier, and `createdAt` with them.
+ *
+ * The cross-section tax rules are re-checked here and not only in the browser.
+ * `clientTaxCrossErrors` needs the address and the entity type, which live on
+ * the record rather than in the submitted section — so the server reads them
+ * from the row it already fetched. A client that validated in the form and
+ * fails here has had something changed underneath it, and the honest answer is
+ * to refuse.
+ */
+export async function saveClientSection(
+  id: unknown,
+  section: unknown,
+  data: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0) {
+    return { success: false, error: 'Invalid input.' };
+  }
+  if (!isClientSection(section)) {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const parsed = CLIENT_SECTION_SCHEMAS[section].safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: invalidInput(parsed.error) };
+  }
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  if (section === 'tax') {
+    const cross = clientTaxCrossErrors(parsed.data as ClientTax, {
+      addressState: existing.addressParts?.state,
+      entityType: existing.entityType,
+    });
+    const first = cross.gstin ?? cross.pan;
+    if (first) return { success: false, error: first };
+  }
+
+  try {
+    await saveClient({ ...existing, [section]: parsed.data, updatedAt: Date.now() });
+  } catch (err) {
+    logger.error({ action: 'saveClientSection', event: 'save_failed', section, error: err });
+    return { success: false, error: 'Failed to save client.' };
+  }
+
+  revalidatePath('/client/clients');
+  revalidatePath(`/client/clients/${id}`);
+  return { success: true, id };
+}
+
+/**
+ * Delete a client — only one that has never been on a document.
+ *
+ * The refusal is the interesting half. `documents.client_id` is a foreign key,
+ * so a referenced client cannot be removed anyway; checking first turns a
+ * Postgres constraint violation into a sentence that says what to do instead.
+ * And the rule is right on its own terms: a *draft* resolves its client live,
+ * so deleting the row underneath one leaves a document that cannot render, and
+ * a *finalized* document is a record retained for 72 months (CGST s.36) whose
+ * client row is what a correction would duplicate from.
+ *
+ * The snapshot pattern means an issued document survives the client's deletion
+ * intact — but "survives" is not a reason to sever the link while the studio
+ * still has a lawful reason to hold it.
+ *
+ * **The attachments go with it, blobs and all.** They are a third party's
+ * identity documents (CONTEXT §5d); leaving scans of someone's PAN card in
+ * storage after deleting the record that points at them is exactly the state
+ * DPDP Act 2023 erasure exists to prevent. Blobs first, then the row — the
+ * other order can orphan a file with nothing left pointing at it.
+ */
+export async function deleteClientAction(id: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0) {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  if (await clientHasDocuments(id)) {
+    return {
+      success: false,
+      error: `${existing.name} has documents and cannot be deleted. Delete its drafts first; finalized documents are permanent.`,
+    };
+  }
+
+  const keys = (existing.attachments ?? []).map((a) => a.key);
+  if (keys.length > 0) {
+    try {
+      await del(keys);
+    } catch (err) {
+      logger.error({ action: 'deleteClient', event: 'del_failed', error: err });
+      return { success: false, error: 'Failed to delete the client’s files.' };
+    }
+  }
+
+  try {
+    await deleteClient(id);
+  } catch (err) {
+    logger.error({ action: 'deleteClient', event: 'delete_failed', error: err });
+    return { success: false, error: 'Failed to delete client.' };
   }
 
   revalidatePath('/client/clients');

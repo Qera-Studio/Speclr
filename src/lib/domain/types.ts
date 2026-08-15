@@ -5,6 +5,16 @@
 
 import type { AddressParts } from './address';
 import type { StudioInfo } from './studio';
+import type {
+  ClientAccessRef,
+  ClientAttachment,
+  ClientCommercial,
+  ClientContacts,
+  ClientTax,
+} from './client';
+// A value import, not a type: the snapshot resolves the signing contact through
+// it rather than reading the group.
+import { resolveContact } from './client';
 import type { BlankValues } from './contract/blanks';
 import type { ContractPart } from './contract/assembly';
 import type { CurrencyCode } from './currency';
@@ -44,7 +54,28 @@ export interface ClientRecord {
   email: string;
   /** E.164, e.g. '+919876543210'. Legacy rows may hold arbitrary text. */
   phone: string;
+  /**
+   * Kept as a top-level field even though `tax.gstin` now exists, because every
+   * document has printed from here since the first invoice and `ClientSnapshot`
+   * picks it by name. The onboarding form writes both; `tax.gstin` is where it
+   * is *validated*, this is where it is *read*.
+   */
   gstin?: string;
+  /**
+   * What kind of legal entity this is — see `entityType.ts`. Optional: rows
+   * written before onboarding existed have none.
+   */
+  entityType?: string;
+  /** Tax registration. See `client.ts`. */
+  tax?: ClientTax;
+  /** The people. See `client.ts`. */
+  contacts?: ClientContacts;
+  /** Payment terms, engagement, and what was engaged. See `client.ts`. */
+  commercial?: ClientCommercial;
+  /** Uploaded documents — metadata only; the bytes live in blob storage. */
+  attachments?: ClientAttachment[];
+  /** Where credentials live. Never a credential. See `client.ts`. */
+  access?: ClientAccessRef[];
   createdAt: number;
   updatedAt: number;
 }
@@ -78,7 +109,34 @@ export type DocStatus = 'draft' | 'finalized';
 export type ClientSnapshot = Pick<
   ClientRecord,
   'name' | 'companyName' | 'address' | 'email' | 'phone' | 'gstin'
->;
+> & {
+  /**
+   * The six fields onboarding added, **flattened and every one optional.**
+   *
+   * Flattened rather than carrying `tax` and `contacts` wholesale, because the
+   * `Pick` above is the guarantee that a field cannot reach an issued document
+   * by accident — freezing a whole group would hand every future field on it a
+   * free ride onto every invoice. These six were each chosen because a sheet
+   * prints them.
+   *
+   * Optional is what makes this safe to add. Every snapshot already stored has
+   * none of them, so every new sheet line is conditional and renders nothing at
+   * all for a document issued before today. Deliberately **not** here:
+   * attachments and access references — a document has no business freezing a
+   * link to a scan of someone's PAN card — and the commercial terms, whose only
+   * printed consequence, the due date, is already materialised onto the
+   * document itself.
+   */
+  pan?: string;
+  cin?: string;
+  /** Whose name and designation go in a contract's signature block. */
+  signatory?: { name?: string; designation?: string };
+  /** For a recipient outside India — printed as their registration. */
+  taxIdType?: string;
+  taxId?: string;
+  /** What the recipient deducts, printed as a memo. Never changes the total. */
+  tds?: { section?: string; ratePercent?: number };
+};
 
 /**
  * The one place a client is copied into a snapshot.
@@ -89,6 +147,20 @@ export type ClientSnapshot = Pick<
  * here, beside the type, means adding a snapshot field is a single edit.
  */
 export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
+  const tds =
+    client.tax?.tdsApplicable && client.tax.tdsSection
+      ? { section: client.tax.tdsSection, ratePercent: client.tax.tdsRatePercent }
+      : undefined;
+
+  // Through `resolveContact`, never `contacts.signing` — a client who ticked
+  // "same as primary" has nothing stored under `signing`, and reading the group
+  // directly would freeze a blank signatory onto the contract.
+  const signing = resolveContact(client.contacts, 'signing');
+  const signatory =
+    signing?.name || signing?.designation
+      ? { name: signing.name, designation: signing.designation }
+      : undefined;
+
   return {
     name: client.name,
     companyName: client.companyName,
@@ -96,6 +168,15 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
     email: client.email,
     phone: client.phone,
     gstin: client.gstin,
+    // Each of the six is `undefined` unless there is something to say, so a
+    // client with no tax section produces a snapshot byte-identical to the ones
+    // written before these existed.
+    pan: client.tax?.pan,
+    cin: client.tax?.cin,
+    signatory,
+    taxIdType: client.tax?.taxIdType,
+    taxId: client.tax?.taxId,
+    tds,
   };
 }
 
@@ -160,6 +241,17 @@ export interface BaseDocument {
    * finalize whenever gstRatePercent > 0.
    */
   placeOfSupplyStateCode?: string;
+  /**
+   * Why the place of supply differs from the one derived from the recipient.
+   *
+   * Place of supply is derived from the client (`placeOfSupply.ts`); this is
+   * the record of a deliberate departure from it — CGST s.12(3) and
+   * bill-to/ship-to cases genuinely diverge. Required at finalize whenever the
+   * stored code is not the derived one, because `PRINCIPLES.md` rule 3 permits
+   * an override only when it is explicit *and recorded*. Frozen with the
+   * document like everything else on it.
+   */
+  placeOfSupplyOverrideReason?: string;
   /** Free text shown when gstRatePercent is 0, e.g. 'not applicable - registration in process'. */
   gstLabel?: string;
   notes?: string;

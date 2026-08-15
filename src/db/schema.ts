@@ -31,6 +31,13 @@ import type { ScheduleKey } from '@/lib/domain/contract/schedules';
 import type { ServiceContent } from '@/lib/domain/contract/service';
 import type { CurrencyCode } from '@/lib/domain/currency';
 import type { DocContent } from '@/lib/domain/docContent';
+import type {
+  ClientAccessRef,
+  ClientAttachment,
+  ClientCommercial,
+  ClientContacts,
+  ClientTax,
+} from '@/lib/domain/client';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { StudioInfo } from '@/lib/domain/studio';
 import type {
@@ -65,6 +72,35 @@ export const clients = pgTable('clients', {
   /** E.164 for new writes; legacy rows may hold arbitrary text. */
   phone: text('phone').notNull(),
   gstin: text('gstin'),
+  /**
+   * What kind of legal entity this is — see `lib/domain/entityType.ts`.
+   *
+   * A real column rather than part of `tax`: it is identity, not tax
+   * (`PRINCIPLES.md` rule 2), and it is the one identity fact that validates
+   * another — an Indian entity's PAN encodes its own kind in the 4th character.
+   * Nullable, like every column added after the first invoice.
+   */
+  entityType: text('entity_type'),
+  /**
+   * The four groups onboarding added, and the reason they are groups rather
+   * than thirty columns: nothing queries them, and a group keeps the next field
+   * migration-free. The same call `bank` and `payroll` make on `employees`.
+   *
+   * Each is Zod-validated on write by its schema in `lib/domain/client.ts` —
+   * `saveClientSection` refuses a payload that does not parse, so what lands in
+   * these columns is never merely "whatever the browser sent".
+   */
+  tax: jsonb('tax').$type<ClientTax>(),
+  contacts: jsonb('contacts').$type<ClientContacts>(),
+  commercial: jsonb('commercial').$type<ClientCommercial>(),
+  /**
+   * File *metadata* only. The bytes live in blob storage and are read back
+   * through an authenticated route — these are a third party's identity
+   * documents, so there is no public URL anywhere in this column.
+   */
+  attachments: jsonb('attachments').$type<ClientAttachment[]>(),
+  /** Where credentials live. Never a credential — see `client.ts`. */
+  access: jsonb('access').$type<ClientAccessRef[]>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -252,6 +288,8 @@ export interface DocumentData {
    */
   content?: DocContent;
   gstLabel?: string;
+  /** Why place of supply departs from the client-derived one. */
+  placeOfSupplyOverrideReason?: string;
   notes?: string;
   terms?: string;
   dueDate?: string; // INV

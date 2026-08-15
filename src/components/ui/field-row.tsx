@@ -26,19 +26,26 @@ import { cn } from "@/lib/utils"
  * This is why the rail cannot narrow past 336px. The dependency runs both ways:
  * `EDITOR_RAIL_WIDTH` documents the same arithmetic from its side.
  */
+const COLUMNS = {
+  2: "@2xs/field-group:grid-cols-2",
+  3: "@2xs/field-group:grid-cols-3",
+  // Four short fields — a pincode, a state, a city — earn a second breakpoint:
+  // quartering 288px leaves 60px a piece, which is narrower than the values.
+  // Pairs first, then all four once there is 512px to split.
+  4: "@2xs/field-group:grid-cols-2 @lg/field-group:grid-cols-4",
+} as const
+
 function FieldRow({
   className,
   columns = 2,
   ...props
-}: React.ComponentProps<"div"> & { columns?: 2 | 3 }) {
+}: React.ComponentProps<"div"> & { columns?: 2 | 3 | 4 }) {
   return (
     <div
       data-slot="field-row"
       className={cn(
         "grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
-        columns === 2
-          ? "@2xs/field-group:grid-cols-2"
-          : "@2xs/field-group:grid-cols-3",
+        COLUMNS[columns],
         className
       )}
       {...props}

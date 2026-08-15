@@ -538,7 +538,18 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
             name: text.signatoryName,
             designation: text.signatoryTitle,
           },
-          { party: clientName || "—", name: "", designation: "" },
+          {
+            /*
+              The client's signing authority, from the frozen snapshot. This
+              printed two blank rules until the client record had anywhere to
+              record who signs — so filling it completes the block rather than
+              redesigning it, and a contract signed before the field existed
+              still prints the same two rules.
+            */
+            party: clientName || "—",
+            name: doc.clientSnapshot.signatory?.name ?? "",
+            designation: doc.clientSnapshot.signatory?.designation ?? "",
+          },
         ].map((block, i) => (
           <div key={i} className="[break-inside:avoid]">
             <p className="text-black/70 text-[12px] font-normal mb-[2px]">

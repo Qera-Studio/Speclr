@@ -62,6 +62,133 @@ Three things hold the line, and none may be quietly undone:
 - **`contentOf` is unchanged and must stay pure.** Every sheet calls it per render; it never reads the database. Documents written before the library have no `clauses` override and keep resolving `MSA_CLAUSES` exactly as they always did.
 - **Numbers are identity.** Clause bodies cite each other ("has the meaning given at clause 11.2"), so a new clause appends at the next number — claimed server-side, counting past archived rows — and nothing is ever inserted, renumbered or deleted. Archiving is the only removal.
 
+### 5d. The client record is the source of truth, and documents derive from it
+
+A client is onboarded once, through seven steps at `/client/clients/new`, and
+every document then reads from that record instead of asking the operator to
+remember. The steps are identity, tax & registration, contacts, commercial
+terms, services & term, attachments, and delivery & access.
+
+**One form per step, and step 1 creates the row.** Every later step is an
+ordinary update through one action (`saveClientSection`), so an interrupted
+onboarding needs no draft column, no localStorage cache and no "resume" concept
+— whatever was saved is simply on the client already. The active step is in the
+URL, because this is a task people get pulled away from.
+
+**What actually derives from it** — this is the payoff, and the reason the
+record exists at all:
+
+| Derived | From | Was |
+|---|---|---|
+| Place of supply | GSTIN's first two digits, else the address state | Typed per document |
+| Invoice due date | `commercial.paymentTermsDays` + issue date | Hand-picked |
+| Zero-rating label | SEZ flag, or a recipient outside India | Typed, or forgotten |
+| Contract signatory | `contacts.signing` | Printed as a blank rule |
+
+**The identifiers are checked properly, not shape-checked.** `taxIds/india.ts`
+verifies the GSTIN's mod-36 check character, agrees its state prefix with the
+client's address, agrees its embedded PAN with the PAN on the record, and
+matches the PAN's holder-type character against the entity type (a Private
+Limited's PAN is a `C`; an individual's on that record is as wrong as a
+company's on a person). `taxIds/foreign.ts` does the same for UK VAT (mod-97),
+ABN (mod-89) and EIN prefixes. The GSTIN↔address agreement is the load-bearing
+one: it is what makes deriving place of supply from a GSTIN safe.
+
+**Three things that are deliberately *not* how they look:**
+
+- **`entityType` is a real column; the four groups are JSONB.** Entity type is
+  identity (rule 2) and it validates the PAN. `tax`, `contacts`, `commercial`
+  and the two lists follow the `payroll` precedent — nothing queries them, and a
+  group keeps the next field migration-free.
+- **There is no `country` column and no `onboardingStep` column.**
+  `addressParts.country` already says where a client is, and completeness is
+  derived from which groups are present (rule 3, both times).
+- **The snapshot widened by exactly six optional fields** — `pan`, `cin`,
+  `signatory`, `taxIdType`, `taxId`, `tds` — each because a sheet prints it.
+  `ClientSnapshot` stays an explicit list rather than freezing whole groups, so
+  a future field on `tax` cannot get a free ride onto every invoice. Attachments
+  and access references are **not** snapshotted: a document has no business
+  freezing a link to a scan of someone's PAN card.
+
+**TDS prints as a memo and never changes the amount billed.** The taxable value
+on a GST document is the full consideration; netting the deduction off would
+understate the GST return. The memo exists so the smaller payment that arrives
+reconciles against the invoice instead of looking short.
+
+**Attachments are a third party's identity documents, and that governs.** Blobs
+are stored **private** in Vercel Blob, read back only through
+`/api/clients/[id]/files/[fileId]` behind `requireAuthorizedUser`, and the URL
+names an attachment id rather than a path — so there is nothing to traverse and
+an attachment only resolves for the client it belongs to. The type is **sniffed
+from the bytes**, never taken from the browser's claim. Deleting one deletes the
+blob, not just the row (DPDP Act 2023 erasure). **Never make these public URLs.**
+
+**A client is deletable only until it has been on a document.** The list offers
+delete on every row and the server refuses any client `documents.client_id`
+points at — a foreign key already forbids it, so the check exists to turn a
+constraint violation into a sentence. It is also right on its own terms: a draft
+resolves its client live, and a finalized document is a record retained 72
+months (CGST s.36) that a correction duplicates from. The snapshot means an
+issued document would *survive* the deletion, but surviving is not a reason to
+sever the link. **The attachments go with the row, blobs first** — same erasure
+rule as above, and the other order orphans a file nothing points at.
+
+**Delivery & access records where a credential lives, never the credential.**
+speclr has no secret storage, no envelope encryption and no rotation. A password
+typed into that step would sit in plain text in Postgres and in every backup. If
+a field there ever starts holding secrets, that is an incident, not a feature.
+
+**The rail form is gone.** `ClientForm` was deleted and both adding and editing
+go to the route. Two surfaces writing the same row is how a section quietly goes
+missing — a short form that doesn't know about tax registration saves the record
+without it. (The rail's own regressions moved to `EmployeeManager.test.tsx`,
+which is where `useRecordPanel` still lives.)
+
+**"Same as primary" stores a flag, never a copy.** At most clients one person is
+the day-to-day contact, the one who signs and the one accounts payable chases.
+`contacts.sameAsPrimary` is a list of the roles the primary contact also fills,
+and `resolveContact(contacts, key)` performs the mirror on read — rule 3 again,
+because the details are derivable. **Every reader must go through it**, and the
+one that matters is `clientSnapshotOf`: it used to read `contacts.signing`
+directly, which is empty for a mirrored client, so the contract would have
+frozen the blank signature rule this record exists to fix. Tested in
+`ContactsStep.test.tsx`.
+
+### 5e. The design system is enforced by tests, not by convention
+
+`src/__tests__/design-tokens.test.ts` polices colour — no raw Tailwind palette
+classes, no hex literals. Its sibling `design-system.test.ts` polices **which
+primitive was reached for**, and exists because the failure that actually
+happened was not a stray hex code: `ui/date-picker.tsx` says in its own
+docstring that it replaces the browser's native date input, and an onboarding
+step used `type="date"` anyway. Three rules today, all of them ones that were
+broken:
+
+| Banned outside `ui/` | Use instead |
+|---|---|
+| `<FieldDescription>` | `FieldInfo` / `InfoTip`, or a placeholder |
+| a native date input | `DatePicker` |
+| a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
+
+Both walk the tree through `src/__tests__/policedSource.ts`, so their exemption
+lists cannot drift apart. **When a primitive becomes the house answer for
+something, ban the thing it replaced in the same commit** — that is the whole
+mechanism, and it is cheap.
+
+The same pass consolidated the two hand-rolled drop zones (the icon tool's and
+the UPI QR upload's, whose comment said it "mirrors the icon tool's
+UploadDropzone") into one shared `form/UploadDropzone`, which now also serves
+client attachments. Its `<input type="file">` is `sr-only` rather than absent:
+the styled box is a `role="button"`, but the input is what carries the accept
+filter, the file dialog and the change event.
+
+**One layout note that is a real bug fix, not a preference.** `AdminShell` uses
+`overflow-clip`, not `overflow-hidden`. A hidden box is still a *scroll
+container* — the user cannot scroll it but the browser can, and focusing
+anything inside triggers a scroll-into-view that walks up every ancestor scroll
+box. That pushed the header off the top of the shell with no way to bring it
+back. `clip` creates no scroll container at all. Don't change it back.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.

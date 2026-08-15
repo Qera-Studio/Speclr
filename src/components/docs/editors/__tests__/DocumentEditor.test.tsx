@@ -23,8 +23,31 @@ jest.mock('@/server/actions/documents', () => ({
 }));
 
 const clients = [
-  { id: 'c1', name: 'Acme Co.', address: 'Road', email: 'a@b.com', phone: '9', gstin: '', createdAt: 0, updatedAt: 0 },
+  {
+    id: 'c1',
+    name: 'Acme Co.',
+    address: 'Road',
+    email: 'a@b.com',
+    phone: '9',
+    gstin: '',
+    // Unregistered: the place of supply falls back to the address state.
+    addressParts: { line1: 'Road', city: 'Ghaziabad', state: 'Uttar Pradesh', pincode: '201017', country: 'IN' },
+    createdAt: 0,
+    updatedAt: 0,
+  },
   { id: 'c2', name: 'Beta Ltd.', address: 'Lane', email: 'b@b.com', phone: '9', gstin: '', createdAt: 0, updatedAt: 0 },
+  {
+    id: 'c3',
+    name: 'Tamil Client',
+    address: 'Chennai',
+    email: 'c@b.com',
+    phone: '9',
+    // Registered: the GSTIN's first two digits win over anything else.
+    gstin: '33AABCQ2864Q1ZZ',
+    addressParts: { line1: 'Anna Salai', city: 'Chennai', state: 'Tamil Nadu', pincode: '600002', country: 'IN' },
+    createdAt: 0,
+    updatedAt: 0,
+  },
 ] as ClientRecord[];
 
 const invoice: InvoiceOption = {
@@ -79,13 +102,50 @@ describe('DocumentEditor (new invoice)', () => {
    * stay exactly "Place of supply", since anything rendered inside a `<label>`
    * joins the input's accessible name.
    */
-  it('states the place-of-supply requirement without crowding the label', () => {
+  it('explains where place of supply comes from, without crowding the label', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     expect(screen.getByLabelText('Place of supply')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /why is place of supply required/i }),
+      screen.getByRole('button', { name: /where does place of supply come from/i }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Place of supply is derived from the recipient, not typed — `PRINCIPLES.md`
+   * rule 3, and the violation that produced a wrong invoice. The field is
+   * read-only until someone deliberately overrides it.
+   */
+  it('derives place of supply from the picked client and shows it read-only', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await selectComboboxOption(u, 'Client', 'Tamil Client');
+
+    const field = screen.getByLabelText('Place of supply');
+    expect(field).toHaveValue('33 — Tamil Nadu');
+    expect(field).toHaveAttribute('readonly');
+  });
+
+  it('takes the state from an unregistered client’s address instead', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await selectComboboxOption(u, 'Client', 'Acme Co.');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
+  });
+
+  it('opens the picker only once the override is switched on, and asks why', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await selectComboboxOption(u, 'Client', 'Acme Co.');
+    expect(screen.queryByLabelText('Why')).not.toBeInTheDocument();
+
+    await u.click(screen.getByRole('switch', { name: /override place of supply/i }));
+
+    expect(screen.getByLabelText('Why')).toBeInTheDocument();
+    await selectComboboxOption(u, 'Place of supply', '29 — Karnataka');
   });
 
   /**
@@ -100,7 +160,8 @@ describe('DocumentEditor (new invoice)', () => {
 
     await u.clear(screen.getByLabelText(/gst rate/i));
     await u.type(screen.getByLabelText(/gst rate/i), '18');
-    await selectComboboxOption(u, 'Place of supply', '09 — Uttar Pradesh');
+    await selectComboboxOption(u, 'Client', 'Acme Co.');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
 
     await u.click(screen.getByRole('switch', { name: /gst applies/i }));
 
@@ -112,7 +173,9 @@ describe('DocumentEditor (new invoice)', () => {
     // And the preview is charging nothing — the values were cleared, not hidden.
     await u.click(screen.getByRole('switch', { name: /gst applies/i }));
     expect(screen.getByLabelText(/gst rate/i)).toHaveValue('0');
-    expect(screen.getByLabelText('Place of supply')).toHaveValue('');
+    // Re-derived from the client that is still picked, rather than left blank:
+    // the code is a fact about the recipient, not something the switch owns.
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
   });
 
   it('no longer offers a notes field', () => {

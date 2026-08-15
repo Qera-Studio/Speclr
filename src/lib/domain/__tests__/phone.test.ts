@@ -2,9 +2,10 @@ import {
   COUNTRIES,
   DEFAULT_COUNTRY,
   countryByIso2,
+  capNationalDigits,
+  formatNationalDigits,
   formatPhoneForDisplay,
   isValidPhone,
-  maxNationalDigits,
   parsePhone,
   phoneHintFor,
   toE164,
@@ -114,24 +115,69 @@ describe('formatPhoneForDisplay', () => {
 /**
  * The cap that stops an 11th digit being typed into an Indian number. It is an
  * upper bound, not a validity test — `isValidPhone` still decides that — so
- * what matters is that it never cuts a number that could have been valid.
+ * what matters most is that it never cuts a number that could have been valid.
  */
-describe('maxNationalDigits', () => {
-  it('is exactly the Indian mobile length', () => {
-    expect(maxNationalDigits('IN')).toBe(10);
+describe('capNationalDigits', () => {
+  it('holds the Indian mobile length exactly', () => {
+    expect(capNationalDigits('98765432100', 'IN')).toBe('9876543210');
   });
 
-  it("never cuts short a country's own valid number", () => {
-    // E.164 allows 15 digits including the country code, so the national part
-    // can be at most 15 minus that code — one digit fewer for +91 than for +1.
-    expect(maxNationalDigits('US')).toBe(14);
-    expect(maxNationalDigits('GB')).toBe(13);
+  it("uses the country's own maximum, not one global number", () => {
+    // A US number is 10 digits and an 11th is refused, where the old flat
+    // E.164 bound would have let four more through.
+    expect(capNationalDigits('20155501234', 'US')).toBe('2015550123');
+    expect(capNationalDigits('79111234567', 'GB')).toBe('7911123456');
+    expect(capNationalDigits('5612356789012', 'AE')).toBe('561235678901');
   });
 
-  it('leaves room for every real number in the list', () => {
-    for (const country of COUNTRIES) {
-      expect(maxNationalDigits(country.iso2)).toBeGreaterThanOrEqual(4);
+  it('leaves every valid number in the list untouched', () => {
+    for (const [national, iso2] of [
+      ['9876543210', 'IN'],
+      ['2015550123', 'US'],
+      ['7911123456', 'GB'],
+      ['561235678', 'AE'],
+    ] as const) {
+      expect(capNationalDigits(national, iso2)).toBe(national);
     }
+  });
+
+  it('strips punctuation on the way through', () => {
+    expect(capNationalDigits('98765 43210', 'IN')).toBe('9876543210');
+  });
+
+  it('never exceeds E.164 for any country in the list', () => {
+    for (const country of COUNTRIES) {
+      const capped = capNationalDigits('9'.repeat(20), country.iso2);
+      expect(capped.length).toBeLessThanOrEqual(15 - country.dialCode.length);
+    }
+  });
+});
+
+/**
+ * Grouping as the number is typed. Cosmetic — but it feeds a controlled input
+ * whose onChange strips the separators again, so it must be exactly reversible.
+ */
+describe('formatNationalDigits', () => {
+  it('groups the way each country writes its numbers', () => {
+    expect(formatNationalDigits('9876543210', 'IN')).toBe('98765 43210');
+    expect(formatNationalDigits('561235678', 'AE')).toBe('56 123 5678');
+    expect(formatNationalDigits('7911123456', 'GB')).toBe('7911 123456');
+  });
+
+  it('groups a half-typed number too', () => {
+    expect(formatNationalDigits('98765', 'IN')).toBe('98765');
+    expect(formatNationalDigits('5612', 'AE')).toBe('56 12');
+  });
+
+  it('round-trips back to the digits it was given, for every country', () => {
+    for (const country of COUNTRIES) {
+      const digits = capNationalDigits('9876543210', country.iso2);
+      expect(formatNationalDigits(digits, country.iso2).replace(/\D/g, '')).toBe(digits);
+    }
+  });
+
+  it('has nothing to say about an empty field', () => {
+    expect(formatNationalDigits('', 'IN')).toBe('');
   });
 });
 

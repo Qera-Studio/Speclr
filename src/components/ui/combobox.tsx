@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import { ChevronDownIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -22,6 +22,17 @@ export interface ComboboxOption {
   label: string
   /** Optional second line, e.g. an invoice's date and amount. */
   hint?: string
+  /**
+   * Right-aligned column in the list row, e.g. a phone dial code. Fixed width
+   * and left-aligned inside it, so the values line up down the list rather than
+   * ragging off the right edge.
+   */
+  trailing?: string
+  /**
+   * What the input shows once this option is chosen, when the row's own label
+   * is too long to sit in a narrow field. Filtering still searches `label`.
+   */
+  selectedLabel?: string
 }
 
 interface ComboboxProps {
@@ -64,7 +75,17 @@ function Combobox({
       items={options}
       value={selected}
       onValueChange={(next) => onValueChange(next?.value ?? "")}
-      itemToStringLabel={(item) => item.label}
+      itemToStringLabel={(item) => item.selectedLabel ?? item.label}
+      // `itemToStringLabel` is what the default filter searches, so an option
+      // that shows something shorter when selected would otherwise become
+      // unfindable by its own name. Search every part of the row instead.
+      filter={(item, query) => {
+        const q = query.trim().toLowerCase()
+        if (!q) return true
+        return `${item.label} ${item.trailing ?? ""} ${item.hint ?? ""}`
+          .toLowerCase()
+          .includes(q)
+      }}
       isItemEqualToValue={(item, v) => item.value === v.value}
       disabled={disabled}
       name={name}
@@ -73,7 +94,7 @@ function Combobox({
         data-slot="combobox"
         data-size={size}
         className={cn(
-          "group/combobox relative flex w-full items-center rounded-md border border-input bg-input/20 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=form]:h-9 group-data-[size=form]/field-group:h-9 dark:bg-input/30",
+          "group/combobox relative flex w-full items-center rounded-md border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=form]:h-9.5 group-data-[size=form]/field-group:h-9.5",
           className
         )}
       >
@@ -125,7 +146,16 @@ function Combobox({
                 <ComboboxPrimitive.Item
                   key={item.value}
                   value={item}
-                  className="relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 pr-7 text-xs/relaxed outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:pr-8 group-data-[size=form]/combobox-content:text-sm"
+                  /*
+                    The selected row is marked by a faint block behind it, not
+                    by a tick in a reserved gutter — the tick cost every row
+                    seven pixels of right padding to say what one row's own
+                    highlight already says, and that gutter is where a trailing
+                    value wants to sit. The stacked variant is deliberate: two
+                    data attributes outrank one, so hovering the selected row
+                    still reads as hover.
+                  */
+                  className="relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:data-selected:bg-accent group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm"
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
                     {/* No truncate — the popup sizes to its content instead. */}
@@ -136,13 +166,11 @@ function Combobox({
                       </span>
                     ) : null}
                   </span>
-                  <ComboboxPrimitive.ItemIndicator
-                    render={
-                      <span className="pointer-events-none absolute right-2 flex items-center justify-center" />
-                    }
-                  >
-                    <CheckIcon className="pointer-events-none size-3.5" />
-                  </ComboboxPrimitive.ItemIndicator>
+                  {item.trailing ? (
+                    <span className="ms-6 w-12 shrink-0 text-left tabular-nums text-muted-foreground">
+                      {item.trailing}
+                    </span>
+                  ) : null}
                 </ComboboxPrimitive.Item>
               )}
             </ComboboxPrimitive.List>

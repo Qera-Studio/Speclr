@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AddressFields from '@/components/form/AddressFields';
-import FieldInfo, { InfoTip } from '@/components/form/FieldInfo';
+import FieldInfo, { InfoTip, LegendInfo } from '@/components/form/FieldInfo';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';
@@ -543,13 +543,12 @@ export default function EmployeeForm({
           was already typed the moment someone flipped that select.
         */}
         <FieldSet>
-          <div className="flex items-center gap-1.5">
-            <FieldLegend variant="label">Payroll identifiers</FieldLegend>
-            <InfoTip
-              label="About payroll identifiers"
-              info="Printed on a pay slip. Interns have none of these — leave them blank."
-            />
-          </div>
+          <LegendInfo
+            label="About payroll identifiers"
+            info="Printed on a pay slip. Interns have none of these — leave them blank."
+          >
+            Payroll identifiers
+          </LegendInfo>
 
           <FieldRow>
             <Field>

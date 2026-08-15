@@ -1,4 +1,5 @@
 import {
+  addDays,
   financialYearCode,
   financialYearCodeOfISODate,
   financialYearStart,
@@ -177,5 +178,45 @@ describe('month helpers', () => {
   it('returns null for a month it cannot parse', () => {
     expect(firstDayOfMonth('nope')).toBeNull();
     expect(lastDayOfMonth('2026-13')).toBeNull();
+  });
+});
+
+/**
+ * `addDays` is how an invoice's due date is derived from its issue date and the
+ * client's payment terms, instead of being typed. A wrong due date on an issued
+ * invoice is a real-world dispute, so the edge cases matter more than the
+ * happy path.
+ */
+describe('addDays', () => {
+  it('adds days within a month', () => {
+    expect(addDays('2026-06-10', 15)).toBe('2026-06-25');
+  });
+
+  it('rolls over a month boundary', () => {
+    expect(addDays('2026-06-20', 15)).toBe('2026-07-05');
+  });
+
+  it('rolls over a year boundary', () => {
+    expect(addDays('2026-12-20', 30)).toBe('2027-01-19');
+  });
+
+  it('handles a leap year', () => {
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDays('2027-02-28', 1)).toBe('2027-03-01');
+  });
+
+  it('treats zero days as the same day', () => {
+    expect(addDays('2026-06-10', 0)).toBe('2026-06-10');
+  });
+
+  it('goes backwards for a negative offset', () => {
+    expect(addDays('2026-06-10', -10)).toBe('2026-05-31');
+  });
+
+  /** Blank beats invented: no due date is safer than a wrong one. */
+  it('returns empty rather than guessing from unparseable input', () => {
+    expect(addDays('', 30)).toBe('');
+    expect(addDays('2026-02-31', 30)).toBe('');
+    expect(addDays('2026-06-10', Number.NaN)).toBe('');
   });
 });

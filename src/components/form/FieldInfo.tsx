@@ -1,7 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Info } from 'lucide-react';
-import { FieldLabel } from '@/components/ui/field';
+import { FieldLabel, FieldLegend } from '@/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -38,6 +39,33 @@ export default function FieldInfo({
     <div className="flex items-center gap-1.5">
       <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
       <InfoTip info={info} label={infoLabel ?? `About ${label}`} />
+    </div>
+  );
+}
+
+/**
+ * The same thing for a `FieldSet` legend, which names a section rather than a
+ * control.
+ *
+ * It exists because six callers were hand-rolling the same row, and every one
+ * of them had the icon sitting low — `FieldLegend` carried a bottom margin and
+ * flex centres the *margin* box, so the text rode four pixels above the icon.
+ * The margin is gone from the legend itself; this is here so the next section
+ * heading does not rebuild the row a seventh time.
+ */
+export function LegendInfo({
+  children,
+  info,
+  label,
+}: {
+  children: ReactNode;
+  info?: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <FieldLegend variant="label">{children}</FieldLegend>
+      <InfoTip info={info} label={label} />
     </div>
   );
 }

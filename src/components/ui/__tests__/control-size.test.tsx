@@ -24,7 +24,7 @@ describe('control sizing defaults', () => {
     // control, so a bare substring check would give a false positive.
     const classes = input.className.split(/\s+/);
     expect(classes).toContain('h-7');
-    expect(classes).not.toContain('h-9');
+    expect(classes).not.toContain('h-9.5');
     expect(input).toHaveAttribute('data-size', 'default');
   });
 
@@ -36,12 +36,12 @@ describe('control sizing defaults', () => {
     expect(area).toHaveAttribute('data-size', 'default');
   });
 
-  it('opts Input into the roomy 36px size only when asked', () => {
+  it('opts Input into the roomy 38px size only when asked', () => {
     render(<Input aria-label="roomy" size="form" />);
     const input = screen.getByLabelText('roomy');
 
     const classes = input.className.split(/\s+/);
-    expect(classes).toContain('h-9');
+    expect(classes).toContain('h-9.5');
     expect(classes).not.toContain('h-7');
     expect(input).toHaveAttribute('data-size', 'form');
   });
@@ -83,7 +83,7 @@ describe('control sizing defaults', () => {
     );
 
     const classes = screen.getByLabelText('Label').className.split(/\s+/);
-    expect(classes).toContain('group-data-[size=form]/field-group:h-9');
+    expect(classes).toContain('group-data-[size=form]/field-group:h-9.5');
     // The standalone default is untouched — only the inherited value differs.
     expect(classes).toContain('h-7');
   });
@@ -114,14 +114,14 @@ describe('Button sizing', () => {
   it('matches the roomy control height on size="form"', () => {
     render(<Button size="form">Add schedule</Button>);
     const classes = screen.getByRole('button').className.split(/\s+/);
-    expect(classes).toContain('h-9');
+    expect(classes).toContain('h-9.5');
   });
 
   it('still defaults to the compact height', () => {
     render(<Button>Compact</Button>);
     const classes = screen.getByRole('button').className.split(/\s+/);
     expect(classes).toContain('h-7');
-    expect(classes).not.toContain('h-9');
+    expect(classes).not.toContain('h-9.5');
   });
 });
 

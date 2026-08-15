@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
 import { deleteDraftAction, finalizeDocument } from '@/server/actions/documents';
 import { computeTotals } from '@/lib/domain/money';
 import { contentOf, type DocContent } from '@/lib/domain/docContent';
 import { DOC_TYPES } from '@/lib/domain/registry';
-import { GST_STATES } from '@/lib/domain/gstStates';
+import { GST_PLACES, gstStateName } from '@/lib/domain/gstStates';
+import { placeOfSupplyOf, zeroRatingLabel } from '@/lib/domain/placeOfSupply';
+import { addDays } from '@/lib/domain/dates';
 import {
   clientSnapshotOf,
   type ClientRecord,
@@ -15,14 +17,14 @@ import {
   type InvoiceDocument,
   type ReceiptDocument,
 } from '@/lib/domain/types';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { Switch } from '@/components/ui/switch';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo, { InfoTip } from '@/components/form/FieldInfo';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
@@ -190,6 +192,85 @@ export default function DocumentEditor({
    * so nothing here is ever actually absent.
    */
   const values = useWatch({ control }) as EditorFormValues;
+
+  /**
+   * Place of supply, derived from the client rather than typed.
+   *
+   * This is `PRINCIPLES.md` rule 3's live violation closed: the code was a
+   * picker the operator filled from memory when the answer was on the client
+   * record all along — their GSTIN begins with their state code. Two sources of
+   * truth for one fact is what produced a wrong invoice, and a constrained
+   * picker only made the wrong answer look validated.
+   */
+  const selectedClient = clients.find((c) => c.id === values.clientId);
+  const derivedPlaceOfSupply = placeOfSupplyOf(selectedClient ?? {});
+
+  /**
+   * Whether the operator has taken the wheel. Derived from the document, not
+   * stored twice: a saved reason means someone overrode it, and a code that
+   * disagrees with the derivation means the same. A separate boolean could
+   * disagree with both.
+   */
+  const [placeOfSupplyOverridden, setPlaceOfSupplyOverridden] = useState(
+    Boolean(doc?.placeOfSupplyOverrideReason),
+  );
+
+  /**
+   * Keep the stored code equal to the derived one while it is not overridden.
+   *
+   * The field is read-only in that state, so nothing else writes it — and a
+   * document must carry the code, not recompute it at print time: the client's
+   * GSTIN can be corrected next year and an issued invoice may not move.
+   */
+  /**
+   * Picking a client seeds what the client record already knows: the due date
+   * from their payment terms, and — for an SEZ unit or an overseas recipient —
+   * a zero rate with the legal reason it is zero.
+   *
+   * Seeds, not locks. Everything stays editable, and nothing is touched on a
+   * finalized document or once the operator has typed something of their own.
+   * Both are zero-rated supplies under IGST Act s.16 made under an LUT, which
+   * is a different statement from "no GST" and is what `gstLabel` prints.
+   */
+  const seededClientId = useRef<string | null>(doc ? (doc.clientId ?? null) : null);
+  useEffect(() => {
+    if (!selectedClient || seededClientId.current === selectedClient.id) return;
+    seededClientId.current = selectedClient.id;
+
+    const terms = selectedClient.commercial?.paymentTermsDays;
+    if (spec.hasDueDate && terms !== undefined && !values.dueDate) {
+      setValue('dueDate', addDays(values.issueDate, terms), { shouldDirty: true });
+    }
+
+    const zeroRated = zeroRatingLabel({
+      addressParts: selectedClient.addressParts,
+      sez: selectedClient.tax?.sez,
+    });
+    if (zeroRated) {
+      setGstAppliesState(false);
+      setValue('gstRatePercent', '0', { shouldDirty: true });
+      setValue('gstLabel', zeroRated, { shouldDirty: true });
+    }
+  }, [selectedClient, setValue, spec.hasDueDate, values.dueDate, values.issueDate]);
+
+  useEffect(() => {
+    if (placeOfSupplyOverridden || !gstApplies) return;
+    const next = derivedPlaceOfSupply.code ?? '';
+    if (values.placeOfSupplyStateCode !== next) {
+      setValue('placeOfSupplyStateCode', next, { shouldDirty: true });
+    }
+    if (values.placeOfSupplyOverrideReason) {
+      setValue('placeOfSupplyOverrideReason', '', { shouldDirty: true });
+    }
+  }, [
+    derivedPlaceOfSupply.code,
+    gstApplies,
+    placeOfSupplyOverridden,
+    setValue,
+    values.placeOfSupplyOverrideReason,
+    values.placeOfSupplyStateCode,
+  ]);
+
   const previewDoc = buildPreviewDoc(typeCode, values, clients, doc, studio, content);
   // What the sheet will print — the source for every content input's value.
   const resolved = contentOf(previewDoc, spec);
@@ -391,29 +472,85 @@ export default function DocumentEditor({
                 <FieldInfo
                   htmlFor="doc-place-of-supply"
                   label="Place of supply"
-                  info="Required when GST applies — it decides the CGST/SGST versus IGST split."
-                  infoLabel="Why is place of supply required?"
+                  /* The general rule, then where *this* document's answer came
+                     from — the reason used to sit under the field as standing
+                     text, but it explains the value rather than announcing
+                     anything, so it belongs with the explanation. */
+                  info={`Derived from the client — their GSTIN's first two digits, or the state on their address. It decides the CGST/SGST versus IGST split, so it is not typed by hand any more. Override it only where the law puts the supply somewhere else, and say why.${
+                    derivedPlaceOfSupply.reason ? ` — ${derivedPlaceOfSupply.reason}` : ''
+                  }`}
+                  infoLabel="Where does place of supply come from?"
                 />
-                <Controller
-                  control={control}
-                  name="placeOfSupplyStateCode"
-                  render={({ field }) => (
-                    <Combobox
-                      id="doc-place-of-supply"
-                      size="form"
-                      options={GST_STATES.map((state) => ({
-                        value: state.code,
-                        label: `${state.code} — ${state.name}`,
-                      }))}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Select a state…"
-                      emptyMessage="No matching states."
-                    />
-                  )}
-                />
+                {placeOfSupplyOverridden ? (
+                  <Controller
+                    control={control}
+                    name="placeOfSupplyStateCode"
+                    render={({ field }) => (
+                      <Combobox
+                        id="doc-place-of-supply"
+                        size="form"
+                        options={GST_PLACES.map((state) => ({
+                          value: state.code,
+                          label: `${state.code} — ${state.name}`,
+                        }))}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select a state…"
+                        emptyMessage="No matching states."
+                      />
+                    )}
+                  />
+                ) : (
+                  <Input
+                    id="doc-place-of-supply"
+                    size="form"
+                    readOnly
+                    value={
+                      derivedPlaceOfSupply.code
+                        ? `${derivedPlaceOfSupply.code} — ${gstStateName(derivedPlaceOfSupply.code) ?? ''}`
+                        : ''
+                    }
+                    placeholder="Pick a client first"
+                  />
+                )}
               </Field>
             </FieldRow>
+          ) : null}
+
+          {gstApplies ? (
+            <>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="doc-pos-override">Override place of supply</FieldLabel>
+                <Switch
+                  id="doc-pos-override"
+                  checked={placeOfSupplyOverridden}
+                  onCheckedChange={setPlaceOfSupplyOverridden}
+                />
+              </Field>
+
+              {placeOfSupplyOverridden ? (
+                <Field>
+                  {/*
+                    `PRINCIPLES.md` rule 3 permits this override on one
+                    condition: that it is recorded. An override leaving no trace
+                    of why is the same bug wearing a different hat, so finalize
+                    refuses one without a reason.
+                  */}
+                  <FieldInfo
+                    htmlFor="doc-pos-reason"
+                    label="Why"
+                    info="Recorded on the document and frozen with it. Finalizing is refused without it — an override that leaves no trace of why is the same mistake as typing the wrong state."
+                    infoLabel="Why is a reason required?"
+                  />
+                  <Input
+                    id="doc-pos-reason"
+                    size="form"
+                    placeholder="e.g. services relate to immovable property in Karnataka (CGST s.12(3))"
+                    {...register('placeOfSupplyOverrideReason')}
+                  />
+                </Field>
+              ) : null}
+            </>
           ) : (
             <Field>
               <FieldLabel htmlFor="doc-gst-label">GST note</FieldLabel>
@@ -426,18 +563,21 @@ export default function DocumentEditor({
             <EditorSection title="Payment" description="What was received, and against what" defaultOpen>
 
               <Field>
-                <FieldLabel htmlFor="doc-against-invoice-picker">
-                  Against invoice {seeding ? <Spinner className="size-3.5" /> : null}
-                </FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="doc-against-invoice-picker">
+                    Against invoice {seeding ? <Spinner className="size-3.5" /> : null}
+                  </FieldLabel>
+                  <InfoTip
+                    info="Fills in the line items and GST from that invoice. You can still edit them."
+                    label="What does picking an invoice do?"
+                  />
+                </div>
                 <InvoicePicker
                   id="doc-against-invoice-picker"
                   clientId={values.clientId}
                   value={values.againstInvoiceId}
                   onSelect={applyInvoice}
                 />
-                <FieldDescription>
-                  Fills in the line items and GST from that invoice. You can still edit them.
-                </FieldDescription>
               </Field>
 
               <Field>

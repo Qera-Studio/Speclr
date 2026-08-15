@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
+import { CLIENT_ENTITY_TYPES } from './client';
 import { contractComplete } from './contract/completeness';
 import { serviceInputSchema } from './contract/service';
 import { docContentSchema, type DocContent, type TermItem } from './docContent';
@@ -69,6 +70,14 @@ export const clientInputSchema = z.object({
    */
   phone: z.string().trim().min(1).max(30),
   gstin: z.string().trim().max(20).optional(),
+  /**
+   * Optional here even though onboarding's first step requires it: clients
+   * created before entity types existed have none, and a required field would
+   * make those rows permanently un-editable — the same reasoning as `phone`
+   * above. The step form is where it is required, because that is where it can
+   * be explained.
+   */
+  entityType: z.enum(CLIENT_ENTITY_TYPES as [string, ...string[]]).optional(),
 });
 
 /**
@@ -99,6 +108,12 @@ const baseFieldsShape = {
     .string()
     .regex(/^\d{2}$/, { message: 'Expected a 2-digit GST state code.' })
     .optional(),
+  /**
+   * Why the place of supply is not the one derived from the client. Stored in
+   * the document's JSONB rather than a column: nothing queries it, and it is
+   * meaningful only alongside the code it explains.
+   */
+  placeOfSupplyOverrideReason: z.string().trim().max(300).optional(),
   notes: z.string().trim().max(2000).optional(),
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
@@ -309,6 +324,7 @@ export interface DocFields {
   gstRatePercent: number;
   gstLabel?: string;
   placeOfSupplyStateCode?: string;
+  placeOfSupplyOverrideReason?: string;
   notes?: string;
   /** Legacy — terms are fixed per doc type now; kept so old drafts round-trip. */
   terms?: string;

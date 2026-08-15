@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
-import type { z } from 'zod';
+import { invalidInput } from './validation';
 import {
   financialYearCodeOfISODate,
   financialYearStart,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/domain/dates';
 import { DOC_TYPES, isHrDocType, isSlip, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
+import { placeOfSupplyOf } from '@/lib/domain/placeOfSupply';
 import { materialiseContent } from '@/lib/domain/docContent';
 import {
   clientSnapshotOf,
@@ -148,6 +149,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     gstRatePercent: fields.gstRatePercent,
     gstLabel: fields.gstLabel,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
+    placeOfSupplyOverrideReason: fields.placeOfSupplyOverrideReason,
     notes: fields.notes,
     terms: fields.terms,
     content: fields.content,
@@ -178,20 +180,6 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     payAmountPaise: fields.payAmountPaise,
     content: fields.content,
   };
-}
-
-/**
- * Name the offending field instead of returning a bare "Invalid input."
- *
- * A payload that silently fails `safeParse` used to be undiagnosable from the
- * UI — a missing `employeeId` looked identical to a malformed date. The message
- * stays terse and leaks no values, only the field path.
- */
-function invalidInput(error: z.ZodError): string {
-  const issue = error.issues[0];
-  if (!issue) return 'Invalid input.';
-  const path = issue.path.join('.');
-  return path ? `Invalid input: ${path} — ${issue.message}` : `Invalid input: ${issue.message}`;
 }
 
 export async function createDraft(
@@ -372,6 +360,44 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     const clientId = (existing as InvoiceDocument | ReceiptDocument | ContractDocument).clientId;
     const client = await getClient(clientId);
     if (!client) return { success: false, error: 'Client not found.' };
+
+    /**
+     * An overridden place of supply has to say why.
+     *
+     * Place of supply is derived from the recipient (`placeOfSupply.ts`), and
+     * `PRINCIPLES.md` rule 3 permits departing from a derived value on one
+     * condition: the override is explicit *and recorded*. CGST s.12(3) and
+     * bill-to/ship-to cases genuinely diverge, so the override stays — but an
+     * override leaving no trace of why is the same bug the derivation replaced,
+     * wearing a different hat. Enforced here rather than in the Zod schema
+     * because the derived answer comes from the client record, which the
+     * payload cannot see.
+     */
+    if (existing.gstRatePercent > 0) {
+      const derived = placeOfSupplyOf(client);
+      const stored = existing.placeOfSupplyStateCode;
+      if (stored && derived.code && stored !== derived.code && !existing.placeOfSupplyOverrideReason) {
+        return {
+          success: false,
+          error: `This document's place of supply (${stored}) is not the one derived from ${client.name} (${derived.code}). Record why before finalizing.`,
+        };
+      }
+    }
+
+    /**
+     * Some clients will not process an invoice that arrives without a PO
+     * number, so one issued without it is simply an invoice that waits. Refused
+     * rather than warned: the number is claimed at finalize and a finalized
+     * document is immutable, so the correction is a fresh document and a burnt
+     * number, not an edit.
+     */
+    if (existing.type === 'INV' && client.commercial?.poRequired && !client.commercial.poNumber) {
+      return {
+        success: false,
+        error: `${client.name} requires a PO number before invoicing, and none is recorded on their client record.`,
+      };
+    }
+
     clientSnapshot = clientSnapshotOf(client);
   }
 

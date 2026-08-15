@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -16,6 +15,7 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
+import FieldInfo from '@/components/form/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -91,9 +91,13 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               <FieldError errors={[errors.legalName]} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="studio-brand-mark">Brand mark</FieldLabel>
-              <Input id="studio-brand-mark" size="form" {...register('brandMark')} />
-              <FieldDescription>The wordmark beside the logo.</FieldDescription>
+              <FieldInfo
+                htmlFor="studio-brand-mark"
+                label="Brand mark"
+                info="The wordmark that prints beside the logo, which is not always the legal name."
+                infoLabel="What is the brand mark?"
+              />
+              <Input id="studio-brand-mark" size="form" placeholder="Qera Studio" {...register('brandMark')} />
               <FieldError errors={[errors.brandMark]} />
             </Field>
           </FieldRow>
@@ -104,11 +108,18 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         <FieldSet>
           <FieldLegend variant="label">Address</FieldLegend>
           <Field>
-            <FieldLabel htmlFor="studio-address">Registered address</FieldLabel>
-            <Textarea id="studio-address" rows={4} {...register('address')} />
-            <FieldDescription>
-              One line per line, exactly as it should print. Ends with the country.
-            </FieldDescription>
+            <FieldInfo
+              htmlFor="studio-address"
+              label="Registered address"
+              info="One line per line, exactly as it should print. Ends with the country."
+              infoLabel="How should the address be laid out?"
+            />
+            <Textarea
+              id="studio-address"
+              rows={4}
+              placeholder={'B-12, Sector 62\nNoida, Uttar Pradesh 201309\nIndia'}
+              {...register('address')}
+            />
             <FieldError errors={[errors.address]} />
           </Field>
           <FieldRow>
@@ -143,7 +154,12 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             <FieldError errors={[errors.cin]} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="studio-state-code">Registered state</FieldLabel>
+            <FieldInfo
+              htmlFor="studio-state-code"
+              label="Registered state"
+              info="Decides the CGST + SGST vs IGST split on every invoice — a client in this state is intra-state."
+              infoLabel="What does the registered state decide?"
+            />
             <Controller
               control={control}
               name="stateCode"
@@ -162,10 +178,6 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
                 />
               )}
             />
-            <FieldDescription>
-              Decides the CGST + SGST vs IGST split on every invoice — a client in
-              this state is intra-state.
-            </FieldDescription>
             <FieldError errors={[errors.stateCode]} />
           </Field>
         </FieldSet>
@@ -227,15 +239,34 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         <FieldSet>
           <FieldLegend variant="label">Footer lines</FieldLegend>
           <Field>
-            <FieldLabel htmlFor="studio-thanks-line">Thanks line</FieldLabel>
-            <Input id="studio-thanks-line" size="form" {...register('thanksLine')} />
-            <FieldDescription>Printed at the foot of invoices and receipts.</FieldDescription>
+            <FieldInfo
+              htmlFor="studio-thanks-line"
+              label="Thanks line"
+              info="Printed at the foot of invoices and receipts."
+              infoLabel="Where does the thanks line appear?"
+            />
+            <Input
+              id="studio-thanks-line"
+              size="form"
+              placeholder="Thank you for your business."
+              {...register('thanksLine')}
+            />
             <FieldError errors={[errors.thanksLine]} />
           </Field>
           <Field>
-            <FieldLabel htmlFor="studio-hr-email">HR query email</FieldLabel>
-            <Input id="studio-hr-email" size="form" type="email" {...register('queryEmailHr')} />
-            <FieldDescription>Printed on stipend slips and HR letters.</FieldDescription>
+            <FieldInfo
+              htmlFor="studio-hr-email"
+              label="HR query email"
+              info="Printed on stipend slips, pay slips and HR letters, so an employee has somewhere to write."
+              infoLabel="Where does the HR email appear?"
+            />
+            <Input
+              id="studio-hr-email"
+              size="form"
+              type="email"
+              placeholder="hr@qera.studio"
+              {...register('queryEmailHr')}
+            />
             <FieldError errors={[errors.queryEmailHr]} />
           </Field>
         </FieldSet>

@@ -46,7 +46,8 @@ describe('EmployeeForm', () => {
 
   it('offers a QR upload alongside the UPI ID', () => {
     render(<EmployeeForm onDone={() => {}} />);
-    expect(screen.getByRole('button', { name: /upload qr image/i })).toBeInTheDocument();
+    // The action names the <input>, not the styled box around it — see UploadDropzone.
+    expect(screen.getByLabelText(/upload qr image/i)).toBeInTheDocument();
   });
 
   it('maps rupees to paise, composes the address, and nests bank on submit', async () => {
@@ -88,14 +89,18 @@ describe('EmployeeForm', () => {
     await fillEmployee(user);
     await user.click(screen.getByLabelText(/joining date/i));
 
-    // Pick the 15th of whichever month the calendar opened on (today's), so
-    // this doesn't depend on the date the suite happens to run.
+    // A day in the month the calendar opened on (today's), so this doesn't
+    // depend on the date the suite happens to run — and never *today*, because
+    // the form defaults the joining date to today and clicking the selected day
+    // in react-day-picker deselects it. Picking the 15th failed exactly once a
+    // month.
+    const today = new Date();
+    const day = today.getDate() === 15 ? 16 : 15;
     const grid = await screen.findByRole('grid');
-    await user.click(within(grid).getByRole('button', { name: /\b15th\b/ }));
+    await user.click(within(grid).getByRole('button', { name: new RegExp(`\\b${day}th\\b`) }));
     await user.click(screen.getByRole('button', { name: /add employee/i }));
 
-    const today = new Date();
-    const expected = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-15`;
+    const expected = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${day}`;
     expect(createEmployee).toHaveBeenCalledWith(
       expect.objectContaining({ joiningDate: expected }),
     );

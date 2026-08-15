@@ -84,65 +84,21 @@ export const MAX_UPI_QR_BYTES = 120_000;
 
 const isoDate = z.string().refine(isISODate, { message: "Expected 'YYYY-MM-DD'." });
 
-/** Five characters, four digits, one check letter — e.g. ABCDE1234F. */
-export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-
 /**
- * A PAN is not an opaque string — its 4th character encodes what kind of holder
- * it belongs to, and its 5th is the first letter of the holder's surname (or of
- * a company's name). That is enough structure to catch a real mistyping without
- * calling anything.
+ * PAN moved to `taxIds/india.ts` when clients gained one — it is a tax
+ * identifier before it is an employment one, and a client's PAN needs the same
+ * three helpers with a different expected holder type.
  *
- * We deliberately do not verify against the Income Tax Department. Official
- * verification is restricted to eligible entity categories a design studio is
- * not in, resellers need business KYC onboarding and per-call billing, and none
- * of them return an address anyway. Sending an employee's identity to a third
- * party to check a field used four times a year is not a trade worth making.
+ * Re-exported rather than relocated at the call sites: every import of
+ * `PAN_RE` / `panHolderTypeError` / `panSurnameMismatch` from here keeps
+ * working, and `panHolderTypeError`'s new second argument defaults to `['P']`,
+ * so the meaning of each existing call is unchanged.
  */
-const PAN_HOLDER_TYPES: Record<string, string> = {
-  P: 'an individual',
-  C: 'a company',
-  H: 'a Hindu Undivided Family',
-  F: 'a firm or LLP',
-  A: 'an association of persons',
-  T: 'a trust',
-  B: 'a body of individuals',
-  L: 'a local authority',
-  J: 'an artificial juridical person',
-  G: 'a government body',
-};
+export { PAN_RE, panHolderTypeError, panSurnameMismatch } from './taxIds/india';
 
-/**
- * Why this PAN cannot belong to this employee, or null if it might.
- *
- * Blocking, because both failures are unambiguous: a company's PAN on a person
- * is the wrong document entirely, and an unknown holder-type character is not a
- * PAN at all. Assumes `PAN_RE` has already passed.
- */
-export function panHolderTypeError(pan: string): string | null {
-  const kind = pan.toUpperCase()[3];
-  if (kind === 'P') return null;
-  const held = PAN_HOLDER_TYPES[kind];
-  return held
-    ? `This PAN belongs to ${held}, not an individual.`
-    : 'This is not a recognisable PAN.';
-}
-
-/**
- * True when the PAN's 5th character does not match the surname's initial.
- *
- * A *hint*, never a block. The 5th character is the first letter of the surname
- * as recorded with the Income Tax Department, and there are too many honest
- * reasons for it to differ from what is typed here — a name recorded
- * surname-first, a married name, a single-word name, a transliteration. Worth
- * pointing at; never worth refusing.
- */
-export function panSurnameMismatch(pan: string, name: string): boolean {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const surname = words.at(-1);
-  if (!surname || words.length < 2) return false;
-  return pan.toUpperCase()[4] !== surname[0].toUpperCase();
-}
+// Imported as well as re-exported: `export … from` does not bind the names
+// locally, and `payrollIdsSchema` below needs them.
+import { PAN_RE, panHolderTypeError } from './taxIds/india';
 
 /**
  * Statutory identifiers. Every field optional and blank-tolerant: these are

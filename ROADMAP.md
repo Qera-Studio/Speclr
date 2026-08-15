@@ -158,29 +158,36 @@ Three constraints, all of which have bitten this project's neighbours already:
 - **The snapshot pattern still governs.** An employee editing their own address
   must never alter a slip already issued to them.
 
-### 8. The two open violations in `PRINCIPLES.md`
+### 8. The jurisdiction seam (`PRINCIPLES.md` rule 5)
 
-Both are named in [`PRINCIPLES.md`](PRINCIPLES.md) §3 and tracked here so they are
-work items rather than standing prose.
+~~**Derive place of supply (rule 3).**~~ **Done, 14 August 2026.** Derived from
+the recipient by `placeOfSupplyOf`, read-only in the editor, override behind a
+switch that requires a recorded reason and is refused at finalize without one.
+Shipped with client onboarding; see `CONTEXT.md` §5d.
 
-**Derive place of supply (rule 3).** `placeOfSupplyStateCode` is operator-picked
-per document when it is derivable from the recipient — `gstin.slice(0, 2)` for a
-registered client, `addressParts.state` through `GST_STATES` for an unregistered
-one. Two sources of truth for one fact is what produced a wrong invoice. Target:
-derived and read-only, with an explicit override that records *why* — the
-override is required, not optional, because CGST s.12(3) and bill-to/ship-to
-cases genuinely diverge from the recipient's state.
+**The jurisdiction seam (rule 5) — still open, and now with more inside it.**
+India is spelled inline across `money.ts`, `gstStates.ts`, `registry.ts`,
+`types.ts`, `docNumber.ts` and `DocumentSheet.tsx`. Target:
+`src/lib/domain/jurisdiction/` — one interface, one implementation in `in/`, and
+core stops naming GST.
 
-**The jurisdiction seam (rule 5).** India is spelled inline across `money.ts`,
-`gstStates.ts`, `registry.ts`, `types.ts`, `docNumber.ts` and `DocumentSheet.tsx`.
-Target: `src/lib/domain/jurisdiction/` — one interface, one implementation in
-`in/`, and core stops naming GST. **One pack, one country.** No country selector,
-no second pack, no multi-currency invoices, no VAT, no e-invoicing (`PRINCIPLES.md`
-§4). Roughly 15% more work than continuing inline; it is what makes the rule-3 fix
-land in the right place rather than deeper into the wrong one.
+Two things changed the shape of this item:
 
-Do these in that order — deriving place of supply is small, and it is the one
-that already cost a real document.
+- **A second jurisdiction now sits inline on the client record**, as a logged
+  deviation (`PRINCIPLES.md` §7, 14 August 2026). Foreign tax identifiers are
+  collected, validated with real check digits, snapshotted and printed — but
+  nothing computes from them. `taxIds/india.ts` and `taxIds/foreign.ts` are
+  already partitioned by country, which is the shape a pack wants, so this is
+  groundwork rather than debt.
+- **What is still missing is the computing half**: a foreign-denominated
+  invoice with a parallel INR tax line, and any tax regime other than GST. That
+  is the piece that touches the money core and the sheets, which is why it was
+  deliberately left out.
+
+The §4 bounds still hold and were not waived: **one interface, one
+implementation.** No VAT computation, no e-invoicing. What §4's "no country
+selector" meant in practice is now recorded honestly as a deviation rather than
+pretended away.
 
 ---
 

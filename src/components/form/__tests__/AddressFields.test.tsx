@@ -114,6 +114,64 @@ describe('AddressFields', () => {
     expect(screen.getByLabelText(/^state$/i)).toHaveValue('Uttar Pradesh');
   });
 
+  /**
+   * The regression this file exists for.
+   *
+   * "Only fill what is empty" was correct for the first lookup and wrong for
+   * every one after it: city and state are no longer empty, so a *corrected*
+   * pincode unlocked the fields and then declined to update them — leaving a
+   * Chennai pincode sitting beside Ghaziabad. Two places saying where a client
+   * is, disagreeing, which is the whole failure the client record exists to
+   * prevent.
+   */
+  it('refills city and state when the pincode is corrected', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, city: 'Chennai', state: 'Tamil Nadu' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' }) });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const pincode = screen.getByLabelText(/pincode/i);
+    await user.type(pincode, '600042');
+    await settleDebounce();
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toHaveValue('Chennai'));
+
+    await user.clear(pincode);
+    await user.type(pincode, '201017');
+    await settleDebounce();
+
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toHaveValue('Ghaziabad'));
+    expect(screen.getByLabelText(/^state$/i)).toHaveValue('Uttar Pradesh');
+  });
+
+  /**
+   * The other half of the same rule: replacing our own answer is fair game,
+   * replacing someone's correction is not. Editing an autofilled city makes it
+   * theirs, and the next lookup must leave it alone.
+   */
+  it('stops refilling a city once it has been corrected by hand', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ ok: true, city: 'Chennai', state: 'Tamil Nadu' }) });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const pincode = screen.getByLabelText(/pincode/i);
+    await user.type(pincode, '600042');
+    await settleDebounce();
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toHaveValue('Chennai'));
+
+    // Editing the pincode unlocks the fields; the city is then corrected.
+    await user.clear(pincode);
+    await user.clear(screen.getByLabelText(/^city$/i));
+    await user.type(screen.getByLabelText(/^city$/i), 'Tambaram');
+    await user.type(pincode, '600045');
+    await settleDebounce();
+
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Tambaram');
+  });
+
   it('waits for a complete pincode before looking anything up', async () => {
     mockLookup({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' });
     const user = userEvent.setup();

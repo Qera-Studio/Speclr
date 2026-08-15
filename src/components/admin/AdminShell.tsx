@@ -94,7 +94,14 @@ export default function AdminShell({
           // Lock the whole shell to the viewport height so the page body never
           // scrolls — the rails and the inset frame stay fixed; only the content
           // area inside the inset scrolls.
-          className="h-svh min-h-svh overflow-hidden"
+          //
+          // `overflow-clip`, not `overflow-hidden`. A hidden box is still a
+          // *scroll container*: the user cannot scroll it, but the browser can,
+          // and it does — focusing anything inside triggers a scroll-into-view
+          // that walks up every ancestor scroll box. That pushed the header off
+          // the top of the shell with no way to bring it back. `clip` creates no
+          // scroll container at all, so there is nothing left to shift.
+          className="h-svh min-h-svh overflow-clip"
           style={
             {
               "--sidebar-width": `${NAV_WIDTH}px`,
@@ -107,7 +114,10 @@ export default function AdminShell({
           <SidebarInset
             id="main-content"
             insetRight
-            className="min-h-0 overflow-hidden"
+            // `overflow-clip` for the same reason as the shell above: this only
+            // ever needed to clip the inset's rounded corners, and being a
+            // scroll container was an accident the browser could exploit.
+            className="min-h-0 overflow-clip"
           >
             <AdminHeader />
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

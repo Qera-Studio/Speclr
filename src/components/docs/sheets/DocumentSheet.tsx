@@ -2,6 +2,7 @@ import Image from "next/image";
 import { amountInWords } from "@/lib/domain/amountInWords";
 import { formatDisplayDate, isISODate } from "@/lib/domain/dates";
 import { gstStateName } from "@/lib/domain/gstStates";
+import { taxIdType } from "@/lib/domain/taxIds/foreign";
 import {
   computeTotals,
   formatINR,
@@ -40,6 +41,24 @@ export default function DocumentSheet({
   const hasGst = doc.gstRatePercent > 0;
   const intraState = doc.placeOfSupplyStateCode === studio.stateCode;
   const supplyStateName = gstStateName(doc.placeOfSupplyStateCode);
+
+  /**
+   * The TDS memo, when the frozen snapshot says the recipient deducts.
+   *
+   * Deducted on the **taxable value**, not on the GST — s.194J applies to the
+   * sum payable for professional services, and CBDT Circular 23/2017 excludes
+   * the GST component where it is shown separately. Rounded half-up to whole
+   * paise like every other amount here; the result is only ever displayed, so
+   * it can never drift into a stored total.
+   */
+  const tds =
+    doc.clientSnapshot.tds?.section && doc.clientSnapshot.tds.ratePercent
+      ? doc.clientSnapshot.tds
+      : null;
+  const tdsPaise = tds
+    ? Math.floor((totals.subtotalPaise * (tds.ratePercent ?? 0)) / 100 + 0.5)
+    : 0;
+  const netOfTds = totals.totalPaise - tdsPaise;
   const { cgstPaise, sgstPaise } = splitGST(totals.gstPaise);
 
   return (
@@ -109,6 +128,31 @@ export default function DocumentSheet({
           {doc.clientSnapshot.gstin ? (
             <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
               GSTIN: {doc.clientSnapshot.gstin}
+            </p>
+          ) : null}
+          {/*
+            The recipient's other registrations. Each renders only when the
+            snapshot carries it, so every document frozen before these fields
+            existed prints exactly what it always did — that is the whole
+            condition on which they were added (see ClientSnapshot in types.ts).
+
+            The label is the registration's own name, because a TRN is not a
+            "Tax ID" to the person reading their own invoice.
+          */}
+          {doc.clientSnapshot.pan ? (
+            <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
+              PAN: {doc.clientSnapshot.pan}
+            </p>
+          ) : null}
+          {doc.clientSnapshot.cin ? (
+            <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
+              CIN: {doc.clientSnapshot.cin}
+            </p>
+          ) : null}
+          {doc.clientSnapshot.taxId ? (
+            <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
+              {taxIdType(doc.clientSnapshot.taxIdType)?.label ?? "Registration"}:{" "}
+              {doc.clientSnapshot.taxId}
             </p>
           ) : null}
         </div>
@@ -269,6 +313,21 @@ export default function DocumentSheet({
         <p className="text-right text-black/70 text-[12px] font-normal">
           {amountInWords(totals.totalPaise)}
         </p>
+        {/*
+          A memo, and only a memo. TDS is the *payer's* deduction under Chapter
+          XVII-B: the invoice still bills the gross, and the taxable value on a
+          GST document must be the full consideration. Netting it off here would
+          understate that and put the wrong figure in the GST return. So this
+          sits below TOTAL DUE, touches neither `computeTotals` nor the amount in
+          words, and exists so the smaller payment that arrives reconciles
+          against this invoice instead of looking short.
+        */}
+        {tds ? (
+          <p className="text-right text-black/70 text-[12px] font-normal pt-[4px]">
+            TDS @{tds.ratePercent}% u/s {tds.section} deductible by recipient — net payable{" "}
+            {formatINR(netOfTds)}
+          </p>
+        ) : null}
       </div>
 
       {/*

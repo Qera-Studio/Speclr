@@ -83,5 +83,27 @@ export function breadcrumbForPath(pathname: string): Crumb[] {
     // Under /docs, an unknown leaf is a document id — show it verbatim.
     return [root, { label: 'Documents', href: undefined }, { label: leaf, href: clean }];
   }
+
+  /**
+   * `…/clients/<uuid>` — the onboarding flow for one client.
+   *
+   * Unlike a document id, which is what people quote to each other, a client's
+   * uuid says nothing to anybody, and humanizing it printed thirty-six
+   * characters of hex across the top of the page. The trail can't name the
+   * client — it only has the path, and the record lives in the database — so it
+   * says what kind of thing this is and keeps the list navigable.
+   */
+  if (segments[0] === 'clients' && segments.length === 2) {
+    const listHref = `/${profile}/clients`;
+    const label = leafLabels(profile)[listHref];
+    if (label) {
+      return [
+        root,
+        { label, href: listHref },
+        { label: leaf === 'new' ? 'New client' : 'Client', href: clean },
+      ];
+    }
+  }
+
   return [root, { label: humanize(leaf), href: clean }];
 }

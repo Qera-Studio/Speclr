@@ -56,7 +56,7 @@ describe('LetterEditor (offer letter)', () => {
 
     await selectComboboxOption(u, /employee/i, /Riya/);
     // Seeding fills the single body pane, paragraphs separated by blank lines.
-    const body = screen.getByLabelText(/letter body/i) as HTMLTextAreaElement;
+    const body = screen.getByLabelText('Letter body') as HTMLTextAreaElement;
     expect(body.value).toContain('\n\n');
 
     await autosavedWith(expect.objectContaining({ bodyParagraphs: expect.any(Array) }));
@@ -88,7 +88,7 @@ describe('LetterEditor (offer letter)', () => {
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    const body = screen.getByLabelText(/letter body/i);
+    const body = screen.getByLabelText('Letter body');
     await u.clear(body);
     await u.type(body, 'First para.{Enter}{Enter}Second para.');
 
@@ -113,7 +113,7 @@ describe('LetterEditor subject', () => {
     expect(screen.getByLabelText(/^subject$/i)).toHaveValue(
       'Subject: Offer of Internship — Designer',
     );
-    const body = screen.getByLabelText(/letter body/i) as HTMLTextAreaElement;
+    const body = screen.getByLabelText('Letter body') as HTMLTextAreaElement;
     expect(body.value).not.toContain('Subject:');
   });
 
@@ -143,7 +143,7 @@ describe('LetterEditor rail sections', () => {
   it('opens the letter itself and leaves the boilerplate collapsed', () => {
     render(<LetterEditor type="OFR" employees={employees} title="New offer letter" />);
 
-    expect(screen.getByLabelText(/letter body/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Letter body')).toBeInTheDocument();
     expect(screen.queryByLabelText(/^masthead$/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/^signatory$/i)).not.toBeInTheDocument();
   });

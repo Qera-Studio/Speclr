@@ -18,9 +18,20 @@ function Harness({ initial = '' }: { initial?: string }) {
 
 const PNG = 'data:image/png;base64,abc';
 
-/** The real <input type="file">; the dropzone shares its accessible name. */
+/**
+ * The real <input type="file"> — the control that carries the action name.
+ *
+ * The styled box around it is a `role="button"` labelled only as a drop
+ * target: naming both of them "Upload QR image" would put the same control in
+ * the accessibility tree twice.
+ */
 function fileInput(): HTMLInputElement {
   return document.getElementById('qr') as HTMLInputElement;
+}
+
+/** The styled box — what a drop event has to be dispatched on. */
+function dropTarget(): HTMLElement {
+  return screen.getByRole('button', { name: /drag and drop/i });
 }
 
 beforeEach(() => jest.clearAllMocks());
@@ -28,14 +39,14 @@ beforeEach(() => jest.clearAllMocks());
 describe('UpiQrUpload', () => {
   it('invites an upload when empty', () => {
     render(<Harness />);
-    expect(screen.getByRole('button', { name: /upload qr image/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/upload qr image/i)).toBeInTheDocument();
   });
 
   it('shows the stored QR and offers to replace it', () => {
     render(<Harness initial={PNG} />);
 
     expect(screen.getByAltText(/upi qr code preview/i)).toHaveAttribute('src', PNG);
-    expect(screen.getByRole('button', { name: /replace qr image/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/replace qr image/i)).toBeInTheDocument();
   });
 
   it('compresses a chosen file before storing it', async () => {
@@ -56,8 +67,7 @@ describe('UpiQrUpload', () => {
     compress.mockRejectedValue(new Error('That file is not an image.'));
     render(<Harness />);
 
-    const dropzone = screen.getByRole('button', { name: /upload qr image/i });
-    fireEvent.drop(dropzone, {
+    fireEvent.drop(dropTarget(), {
       dataTransfer: { files: [new File(['x'], 'notes.pdf', { type: 'application/pdf' })] },
     });
 
@@ -69,7 +79,7 @@ describe('UpiQrUpload', () => {
     compress.mockResolvedValue(PNG);
     render(<Harness />);
 
-    fireEvent.drop(screen.getByRole('button', { name: /upload qr image/i }), {
+    fireEvent.drop(dropTarget(), {
       dataTransfer: { files: [new File(['bytes'], 'qr.png', { type: 'image/png' })] },
     });
 

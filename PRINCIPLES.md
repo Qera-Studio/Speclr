@@ -134,23 +134,27 @@ resolved to one canonical answer.
 
 ### Rule 3 — derivation
 
-**The live violation, and the one that caused the bug.**
+**Closed, 14 August 2026.** `placeOfSupplyStateCode` was a per-document
+`Combobox` the operator picked from memory, when it is derivable from the
+recipient — `gstin.slice(0, 2)` for a registered client, `addressParts.state`
+through `GST_STATES` for an unregistered one. Two sources of truth for one fact
+is what produced a wrong invoice; the constrained picker made it *look* safe,
+and a validated wrong answer is still a wrong answer.
 
-`placeOfSupplyStateCode` is a per-document `Combobox` the operator picks
-([DocumentEditor.tsx:397](src/components/docs/editors/DocumentEditor.tsx#L397)),
-stored on the document's fields
-([registry.ts:98](src/lib/domain/registry.ts#L98)), and merely *required* at
-finalize when GST applies
-([registry.ts:111-121](src/lib/domain/registry.ts#L111-L121)).
+It is now derived by [`placeOfSupplyOf`](src/lib/domain/placeOfSupply.ts),
+displayed read-only in the editor, and overridable only behind an explicit
+switch that **requires a recorded reason** — refused at finalize otherwise
+([documents.ts](src/server/actions/documents.ts)). That is the rule 3 exception
+implemented as written.
 
-It is derivable from the recipient — `gstin.slice(0, 2)` for a registered
-client, `addressParts.state` resolved through `GST_STATES` for an unregistered
-one. Two sources of truth for one fact is what produced a wrong invoice. The
-constrained picker made it *look* safe; a validated wrong answer is still a
-wrong answer.
+Two supports make the derivation trustworthy rather than merely automatic: the
+GSTIN's state prefix is cross-checked against the client's address at
+onboarding ([`gstinError`](src/lib/domain/taxIds/india.ts)), and the GSTIN's
+own mod-36 check character is verified, so a transposed pair of characters
+cannot pass as a different state.
 
-**Target shape:** derived from the recipient, displayed read-only, with an
-explicit override that captures the reason (see the rule 3 exception above).
+The same pass derived two more: an invoice's **due date** from the client's
+payment terms, and the **zero-rating label** for an SEZ or overseas recipient.
 
 ### Rule 4 — snapshotting
 
@@ -254,6 +258,39 @@ Specific standing pushbacks:
 - A third pass at rearranging navigation → §0, second correction.
 
 ### Logged deviations
+
+**14 August 2026 — a second jurisdiction now sits inline on the client record.**
+§4 forbids a country selector, a second pack, multi-currency invoices and VAT
+logic by name. Client onboarding asked for all of it. The conflict was raised
+with the three reasons behind §4 — the 15% budget, the §5 liability of implying
+compliance a field is not wired to, and §6's zero foreign clients — and the user
+reaffirmed the request. So it was built, and then bounded:
+
+- **Collected, validated, snapshotted and printed. Nothing computes from it.**
+  `taxIds/foreign.ts` holds per-country formats with real check digits (UK VAT
+  mod-97, ABN mod-89, EIN prefixes). A foreign client's registration prints in
+  the billed-to block exactly where a GSTIN would.
+- **The money core is untouched.** `computeTotals`, `splitGST` and `formatINR`
+  never learned a second regime, and invoices stay INR for the reason
+  `currency.ts` gives. The agreed billing currency is recorded as a commercial
+  term and prints nothing.
+- **A foreign recipient is treated as India's own rule for one** — a zero-rated
+  export of services under an LUT (IGST Act s.16), which is what
+  `zeroRatingLabel` prefills into the existing `gstLabel`. No new tax concept
+  reached a sheet.
+
+What remains outstanding is unchanged: `ROADMAP.md` §8's jurisdiction seam. The
+honest statement of today's position is that a UAE client's TRN is on the record
+and no invoice honours it, and making it honoured is that seam's job.
+
+**14 August 2026 — rule 3's live violation is closed.** `placeOfSupplyStateCode`
+is now derived from the recipient (`placeOfSupply.ts`) and shown read-only, with
+an override that **requires a recorded reason** — enforced in the editor and
+refused at finalize. That is rule 3's stated exception implemented as written:
+derived by default, override explicit and recorded. The GSTIN's first two digits
+are cross-checked against the client's address at onboarding, which is what
+makes the derivation trustworthy rather than merely automatic.
+
 
 **13 August 2026 — the MSA clauses moved into the database.** `msa.ts` said the
 28 clauses lived in code *because* content §2 wants them reviewed as one package

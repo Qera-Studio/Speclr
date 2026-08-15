@@ -168,4 +168,90 @@
     stroke-width: 1.75;
     vector-effect: non-scaling-stroke;
   }
+
+  /*
+    Chrome and Safari paint their own pale blue behind an autofilled field and
+    ignore `background-color`, so the only way out is to clip the background to
+    the glyphs. The fill still exists, it just has nowhere visible to land, and
+    `-webkit-text-fill-color` keeps the value readable since the clip would
+    otherwise let the fill colour tint the text.
+
+    Firefox uses `:autofill` with an ordinary background, which our own
+    `bg-background` already wins against.
+  */
+  :is(input, textarea, select):-webkit-autofill,
+  :is(input, textarea, select):-webkit-autofill:hover,
+  :is(input, textarea, select):-webkit-autofill:focus {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+  }
+
+  /*
+    Motion is decoration here, never information: every animated state in this
+    app also says itself in text, a live region or an `aria-current`. So this
+    can be a blanket kill rather than a per-animation opt-out, and it covers
+    tw-animate-css and anything added later without either remembering it.
+
+    WCAG 2.3.3. Not removed outright, held to a single frame, because an
+    animation cancelled mid-flight can leave a `transform` where it stood.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/*
+  Two motions the wizard uses, both of them saying something.
+
+  `drop-in` is the notice that hangs out from under a field: it starts wholly
+  hidden behind the input, falls past its resting place and settles back. The
+  overshoot is the point. A box that merely fades in reads as another box on the
+  page, where one that drops out of the field it belongs to reads as an answer
+  to what was just typed.
+
+  `fill-flash` is a field the app filled in for you (city and state, from a
+  pincode). A value that appears in a box you are not looking at is a value
+  nobody checks, so the box asks for the glance.
+*/
+@theme {
+  --animate-drop-in: drop-in 950ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fill-flash: fill-flash 900ms ease-out;
+
+  @keyframes drop-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    55% {
+      opacity: 1;
+      transform: translateY(8%);
+    }
+    75% {
+      transform: translateY(-3%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fill-flash {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+    }
+    40% {
+      box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 28%, transparent);
+    }
+    100% {
+      box-shadow: 0 0 0 4px transparent;
+    }
+  }
 }
