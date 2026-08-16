@@ -325,7 +325,12 @@ export interface ClientCommercial {
   noticeDays?: number;
 }
 
-const isoDate = z.string().refine(isISODate, { message: "Expected 'YYYY-MM-DD'." });
+// Empty is absent, not malformed: the date picker's own "nothing chosen" value
+// is '', and the field is optional, so a step with no start date must save. It
+// is pruned before it reaches the record.
+const isoDate = z
+  .string()
+  .refine((value) => value === '' || isISODate(value), { message: "Expected 'YYYY-MM-DD'." });
 
 export const clientCommercialSchema = z.object({
   currency: z.enum(CURRENCY_CODES).optional(),

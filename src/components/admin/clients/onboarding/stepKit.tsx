@@ -2,9 +2,9 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { CycleArrowIcon } from '@/components/ui/tray-arrow-icon';
 import { FieldGroup } from '@/components/ui/field';
 import { clearDraft, draftKey } from '@/lib/draft';
 import { saveClientSection } from '@/server/actions/clients';
@@ -122,10 +122,18 @@ export function StepForm({
 }) {
   const slot = useContext(StepActionsSlot);
 
+  // `hover:bg-primary` cancels the button's own tint: the arrow is the whole
+  // hover response, and a colour shift under it answers the same event twice.
   const submit = (
-    <Button type="submit" size="lg" disabled={submitting} form={STEP_FORM_ID}>
+    <Button
+      type="submit"
+      size="lg"
+      disabled={submitting}
+      form={STEP_FORM_ID}
+      className="group/tray hover:bg-primary"
+    >
       {submitting ? 'Saving…' : submitLabel}
-      {submitting ? null : <ArrowRight aria-hidden />}
+      {submitting ? null : <CycleArrowIcon />}
     </Button>
   );
 

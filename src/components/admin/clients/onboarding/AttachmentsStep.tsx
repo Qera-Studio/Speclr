@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { ArrowRight, FileText, Info, Paperclip } from 'lucide-react';
+import { FileText, Info, Paperclip } from 'lucide-react';
+import { CycleArrowIcon } from '@/components/ui/tray-arrow-icon';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Attachment,
@@ -205,12 +206,12 @@ export default function AttachmentsStep({ client, onSaved, submitLabel }: StepPr
       <Button
         type="button"
         size="lg"
-        className="self-start"
+        className="group/tray self-start hover:bg-primary"
         disabled={!client}
         onClick={() => client && onSaved(client)}
       >
         {submitLabel}
-        <ArrowRight aria-hidden />
+        <CycleArrowIcon />
       </Button>
     </div>
   );
