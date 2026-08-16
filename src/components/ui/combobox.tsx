@@ -33,6 +33,13 @@ export interface ComboboxOption {
    * is too long to sit in a narrow field. Filtering still searches `label`.
    */
   selectedLabel?: string
+  /**
+   * Draws a rule above this row, for the option that is a different *kind* of
+   * answer rather than one more of the same — "Custom" under a list of named
+   * cycles. A styled row rather than a separate element so it stays one flat
+   * list to filter, arrow through and announce.
+   */
+  separatorBefore?: boolean
 }
 
 interface ComboboxProps {
@@ -155,7 +162,10 @@ function Combobox({
                     data attributes outrank one, so hovering the selected row
                     still reads as hover.
                   */
-                  className="relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:data-selected:bg-accent group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm"
+                  className={cn(
+                    "relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:data-selected:bg-accent group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
+                    item.separatorBefore && "mt-1 rounded-t-none border-t border-border pt-2"
+                  )}
                 >
                   <span className="flex min-w-0 flex-1 flex-col">
                     {/* No truncate — the popup sizes to its content instead. */}
@@ -167,7 +177,7 @@ function Combobox({
                     ) : null}
                   </span>
                   {item.trailing ? (
-                    <span className="ms-6 w-12 shrink-0 text-left tabular-nums text-muted-foreground">
+                    <span className="ms-6 w-12 shrink-0 whitespace-nowrap text-left tabular-nums text-muted-foreground">
                       {item.trailing}
                     </span>
                   ) : null}

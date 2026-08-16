@@ -303,7 +303,13 @@ export interface ClientCommercial {
   /** What the invoice's due date is derived from. */
   paymentTermsDays?: number;
   engagementType?: (typeof ENGAGEMENT_TYPES)[number];
-  billingCycle?: (typeof BILLING_CYCLES)[number];
+  /**
+   * How often a retainer is billed, in months. Monthly, quarterly and annual
+   * are 1, 3 and 12; anything else is simply another number, so a client billed
+   * every two months needs no new concept. Stored as the interval rather than
+   * as a name plus an interval, which are two facts that can disagree.
+   */
+  billingIntervalMonths?: number;
   /** Day of the month a retainer is raised on. */
   billingDay?: number;
   lateFeePercentPerMonth?: number;
@@ -325,7 +331,7 @@ export const clientCommercialSchema = z.object({
   currency: z.enum(CURRENCY_CODES).optional(),
   paymentTermsDays: z.number().int().min(0).max(365).optional(),
   engagementType: z.enum(ENGAGEMENT_TYPES).optional(),
-  billingCycle: z.enum(BILLING_CYCLES).optional(),
+  billingIntervalMonths: z.number().int().min(1).max(24).optional(),
   billingDay: z.number().int().min(1).max(31).optional(),
   lateFeePercentPerMonth: z.number().min(0).max(100).optional(),
   poRequired: z.boolean().optional(),

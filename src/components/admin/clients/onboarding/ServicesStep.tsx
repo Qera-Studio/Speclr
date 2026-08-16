@@ -102,10 +102,13 @@ export default function ServicesStep({
       return { ...current, [code]: '' };
     });
 
+  // Carry the previous step's half forward by naming it, rather than spreading
+  // the whole saved section: a field *this* step cleared arrives as `''`,
+  // `pruneEmpty` drops it, and the old value underneath would survive the
+  // clearing. Same reasoning as `CommercialStep`.
   const toPayload = useCallback(
     (values: FormValues) => ({
-      ...client?.commercial,
-      ...pruneEmpty(values),
+      ...pruneEmpty({ ...client?.commercial, ...values }),
       services: Object.entries(selected).map(([code, rupees]) => {
         const trimmed = rupees.trim();
         return trimmed === '' ? { code } : { code, ratePaise: rupeesToPaise(trimmed) ?? 0 };
