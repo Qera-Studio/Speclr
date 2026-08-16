@@ -105,6 +105,23 @@ const HAND_ROLLED_TEXT_RULE = /z\s*\.string\(\)\s*\.trim\(\)/g;
  */
 const HAND_ROLLED_PHONE_RULE = /(?:phone|mobile)\s*:\s*z\s*\.string\(\)/gi;
 
+/**
+ * A calendar date cut out of a UTC timestamp.
+ *
+ * `new Date().toISOString().slice(0, 10)` converts to UTC *first*, so east of
+ * Greenwich it returns yesterday for the first hours of every day. In IST that
+ * is 00:00 to 05:30, which is exactly when nobody is looking. `todayISO()` and
+ * `localDateToISO()` in `domain/dates.ts` read the local calendar instead, and
+ * that file has warned against this in prose since it was written — which is
+ * the point: `EmployeeForm` defaulted a new employee's joining date this way
+ * anyway, and the only thing that noticed was a test that failed one day a
+ * month.
+ *
+ * Whole timestamps are untouched; it is slicing a date out of one that is
+ * wrong.
+ */
+const UTC_DATE_SLICE = /toISOString\(\)\s*\.\s*(?:slice|substring|substr|split)\(/g;
+
 describe('design system', () => {
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
@@ -139,6 +156,12 @@ describe('design system', () => {
 
   it('takes every phone rule from domain/fields.ts', () => {
     expect(violations(HAND_ROLLED_PHONE_RULE, SCHEMA_PRIMITIVES, /\.tsx?$/)).toEqual([]);
+  });
+
+  it('takes every calendar date from domain/dates.ts, never from a UTC slice', () => {
+    // `dates.ts` is exempt because it is the primitive, and because its own
+    // warning against this spells the offending expression out.
+    expect(violations(UTC_DATE_SLICE, ['src/lib/domain/dates.ts'], /\.tsx?$/)).toEqual([]);
   });
 
   it('polices .ts as well as .tsx (the schemas are not .tsx)', () => {

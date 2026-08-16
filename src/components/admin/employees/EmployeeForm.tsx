@@ -29,7 +29,7 @@ import { createEmployee, updateEmployee } from '@/server/actions/employees';
 import { formatINR, rupeesToPaise, paiseToRupees } from '@/lib/domain/money';
 import { splitGrossMonthly } from '@/lib/domain/salaryStructure';
 import { composeAddress, emptyAddressParts, addressPartsSchema } from '@/lib/domain/address';
-import { isISODate } from '@/lib/domain/dates';
+import { isISODate, todayISO } from '@/lib/domain/dates';
 import { isIfsc } from '@/lib/domain/bank';
 import { CURRENCIES, CURRENCY_CODES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
 import { PAN_RE, panSurnameMismatch, type EmployeeRecord } from '@/lib/domain/employee';
@@ -171,7 +171,12 @@ export default function EmployeeForm({
           role: '',
           engagementType: 'intern',
           pronoun: 'he',
-          joiningDate: new Date().toISOString().slice(0, 10),
+          // `todayISO`, never a date sliced out of a UTC timestamp: that
+          // converts to UTC first, so east of Greenwich the small hours default
+          // a new employee's joining date to yesterday. `dates.ts` warns about
+          // it at the helper; this was the one call site that had not read it,
+          // and `design-system.test.ts` now keeps it from coming back.
+          joiningDate: todayISO(),
           endDate: '',
           payRupees: '',
           payCurrency: DEFAULT_CURRENCY,
