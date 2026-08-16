@@ -194,10 +194,28 @@ export default function AddressFields<T extends FieldValues>({
       {/*
         Four short values on one line. A pincode, a state and a city are each a
         few characters wide, and giving them half a row apiece bought nothing
-        but scroll. In postal order — pincode, city, state, country — which is
-        also the order the lookup fills them in.
+        but scroll.
+
+        Country first, because it decides what the three after it mean.
+        "Pincode" is India's word for a postal code and the lookup behind it is
+        India Post; both are a branch off this field, not a default the country
+        is appended to. Asking for the country last reads as an afterthought on
+        a record that is meant to hold clients outside India.
       */}
       <FieldRow columns={4}>
+        <Field>
+          <FieldLabel htmlFor={`${idPrefix}-country`}>Country</FieldLabel>
+          <Combobox
+            id={`${idPrefix}-country`}
+            size={size}
+            options={COUNTRY_OPTIONS}
+            value={countryValue}
+            onValueChange={country.field.onChange}
+            placeholder="Select…"
+          />
+          <FieldError errors={[country.fieldState.error]} />
+        </Field>
+
         <Field>
           {/* The lock is also announced through the live region below — a
               tooltip is not read out, and this is news when it happens. */}
@@ -270,19 +288,6 @@ export default function AddressFields<T extends FieldValues>({
             value={String(state.field.value ?? '')}
           />
           <FieldError errors={[state.fieldState.error]} />
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor={`${idPrefix}-country`}>Country</FieldLabel>
-          <Combobox
-            id={`${idPrefix}-country`}
-            size={size}
-            options={COUNTRY_OPTIONS}
-            value={countryValue}
-            onValueChange={country.field.onChange}
-            placeholder="Select…"
-          />
-          <FieldError errors={[country.fieldState.error]} />
         </Field>
       </FieldRow>
     </>

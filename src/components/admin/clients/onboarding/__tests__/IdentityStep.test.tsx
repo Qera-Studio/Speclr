@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdentityStep from '../IdentityStep';
+import { StepActionsSlot } from '../stepKit';
 import type { ClientRecord } from '@/lib/domain/types';
 
 /**
@@ -27,6 +28,10 @@ const onSaved = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // A step that is not saved leaves its draft behind, and the next test's form
+  // restores it and types on top of the values. Real behaviour (see
+  // `lib/draft.ts`), so the fix belongs here rather than in the component.
+  sessionStorage.clear();
   createClient.mockResolvedValue({ success: true, id: 'new-id' });
   updateClient.mockResolvedValue({ success: true, id: 'c1' });
   // `AddressFields` looks a pincode up on type; without this it throws.
@@ -160,6 +165,46 @@ describe('IdentityStep', () => {
     // Blank and required, so saving forces it to be filled in.
     expect(screen.getByLabelText(/legal entity name/i)).toHaveValue('');
     expect(screen.getByLabelText('Entity type')).toHaveValue('');
+  });
+
+  /**
+   * Country decides what the three fields after it mean: "Pincode" is India's
+   * word for a postal code and the lookup behind it is India Post, so both are
+   * a branch off the country rather than a default it gets appended to.
+   */
+  it('asks for the country before the pincode', () => {
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    const country = screen.getByLabelText('Country');
+    const pincode = screen.getByLabelText('Pincode');
+    expect(country.compareDocumentPosition(pincode)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  /**
+   * The submit button is portalled into the wizard's pinned footer, so it does
+   * not slide with the step. Outside the `<form>`, only its `form` attribute
+   * connects the two — drop that and every step silently stops submitting.
+   */
+  it('still submits when the button is rendered outside the form', async () => {
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const user = userEvent.setup();
+
+    render(
+      <StepActionsSlot.Provider value={slot}>
+        <IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />
+      </StepActionsSlot.Provider>,
+    );
+
+    const submit = screen.getByRole('button', { name: /^tax$/i });
+    expect(submit.closest('form')).toBeNull();
+
+    await fillIdentity(user);
+    await user.click(submit);
+
+    expect(createClient).toHaveBeenCalled();
   });
 
   it('surfaces a server failure instead of pretending it saved', async () => {

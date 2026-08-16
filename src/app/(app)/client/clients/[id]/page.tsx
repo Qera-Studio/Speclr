@@ -1,16 +1,16 @@
-import { notFound, redirect } from 'next/navigation';
-import type { Metadata } from 'next';
-import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getClient, listServices } from '@/db/store';
-import ClientOnboarding from '@/components/admin/clients/onboarding/ClientOnboarding';
+import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { requireAuthorizedUser } from "@/lib/auth/session";
+import { getClient, listServices } from "@/db/store";
+import ClientOnboarding from "@/components/admin/clients/onboarding/ClientOnboarding";
 
 export const metadata: Metadata = {
-  title: 'speclr',
+  title: "speclr",
   robots: { index: false, follow: false },
 };
 
 // Session cookie must be read on every request; the client record is live data.
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * One client, in the same seven-step surface that created them.
@@ -31,8 +31,8 @@ export default async function ClientPage({
   try {
     await requireAuthorizedUser();
   } catch (err) {
-    const reason = err instanceof Error ? err.message : '';
-    redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
+    const reason = err instanceof Error ? err.message : "";
+    redirect(reason === "UNAUTHORIZED" ? "/no-access" : "/sign-in");
   }
 
   const { id } = await params;
@@ -40,7 +40,9 @@ export default async function ClientPage({
   if (!client) notFound();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    // Full height, so the flow can pin its step row and its button to the top
+    // and bottom of the card and scroll only the fields between them.
+    <div className="flex h-full flex-col p-12">
       <ClientOnboarding client={client} services={services} />
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -81,6 +82,24 @@ export function useStepSave<T>(
 }
 
 /**
+ * Where the submit button is rendered, when the wizard shell is around.
+ *
+ * The button belongs to the wizard: it is in the same place on all seven steps
+ * and is pressed seven times in a row, so it must not travel with the step that
+ * slides in and out beneath it. But `submitting` and `submitLabel` belong to the
+ * *step*, and lifting the button into the shell would mean a second copy of that
+ * state kept in step with the first.
+ *
+ * A portal takes the button out of the sliding subtree without taking its state
+ * anywhere. `ClientOnboarding` puts the footer node in here; `StepForm` renders
+ * into it if there is one and in place if there is not.
+ */
+export const StepActionsSlot = createContext<HTMLElement | null>(null);
+
+/** One step form is mounted at a time, so one id is enough. */
+const STEP_FORM_ID = 'client-onboarding-step';
+
+/**
  * The frame every step shares: the fields, one error region, one submit.
  *
  * `noValidate` throughout, as everywhere else in this codebase — the browser's
@@ -101,8 +120,17 @@ export function StepForm({
   submitLabel: string;
   children: ReactNode;
 }) {
+  const slot = useContext(StepActionsSlot);
+
+  const submit = (
+    <Button type="submit" size="lg" disabled={submitting} form={STEP_FORM_ID}>
+      {submitting ? 'Saving…' : submitLabel}
+      {submitting ? null : <ArrowRight aria-hidden />}
+    </Button>
+  );
+
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form id={STEP_FORM_ID} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       <FieldGroup size="form">{children}</FieldGroup>
 
       {serverError ? (
@@ -111,12 +139,10 @@ export function StepForm({
         </Alert>
       ) : null}
 
-      {/* Bottom right, where a "next" lives: the eye leaves a form at the end
-          of the last field, not back at the left margin. */}
-      <Button type="submit" size="lg" disabled={submitting} className="self-end">
-        {submitting ? 'Saving…' : submitLabel}
-        {submitting ? null : <ArrowRight aria-hidden />}
-      </Button>
+      {/* In place when nothing has offered a slot — which is a step rendered on
+          its own, as the tests do, not a failure mode to guard against. `form`
+          is what lets the portalled copy submit this form from outside it. */}
+      {slot ? createPortal(submit, slot) : submit}
     </form>
   );
 }

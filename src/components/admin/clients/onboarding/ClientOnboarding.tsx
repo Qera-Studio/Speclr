@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { ContractService } from "@/lib/domain/contract/service";
 import type { ClientRecord } from "@/lib/domain/types";
 import { ONBOARDING_STEPS, stepIndex } from "./steps";
+import { StepActionsSlot } from "./stepKit";
 import IdentityStep from "./IdentityStep";
 import TaxStep from "./TaxStep";
 import ContactsStep from "./ContactsStep";
@@ -68,6 +69,12 @@ export default function ClientOnboarding({
    * can finish ticking. See the panel below for why the wait earns its keep.
    */
   const [finishing, setFinishing] = useState(false);
+  /**
+   * The footer node the step's submit button is portalled into. State rather
+   * than a ref, because a ref set during commit does not re-render, and the
+   * step below needs to hear about the node in order to render into it.
+   */
+  const [actions, setActions] = useState<HTMLElement | null>(null);
 
   const goTo = useCallback(
     (index: number, id = client?.id) => {
@@ -122,17 +129,30 @@ export default function ClientOnboarding({
   );
 
   return (
-    // One centred column: the step row, the step heading and the fields all
-    // share the form's width, so nothing hangs off the left of the page.
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    /*
+      Three bands over the card's full height, and which band a thing is in is
+      the whole layout rule: **what belongs to the wizard is pinned, what
+      belongs to the step moves.** The row and the button are the same on all
+      seven steps and the button is pressed seven times in a row, so neither
+      may travel with the fields that slide in and out between them.
+
+      Only the middle band scrolls. `h-full` resolves against the inset's
+      scroll area in `AdminShell`, which is therefore never the thing that
+      scrolls here.
+    */
+    <div className="flex h-full min-h-0 flex-col gap-5">
       {/*
         The step row is the whole progress indicator now. The bar, the
         "Step 3 of 7" label and the "2/7 complete" counter all said the same
         thing the row was already showing, three more times — and the page
         heading repeated the step heading directly below it. The h1 stays for
         assistive tech, which does need a page name.
+
+        Full card width, outside the form's column: it is a track across the
+        page, and squeezing it into the width of the fields made a progress
+        indicator that showed less the further the page was widened.
       */}
-      <header className="relative flex flex-col items-center gap-2">
+      <header className="shrink-0">
         <h1 className="sr-only">
           {initialClient ? initialClient.name : "Add a client"}
         </h1>
@@ -142,23 +162,6 @@ export default function ClientOnboarding({
           finishing={finishing}
           onSelect={(index) => goTo(index)}
         />
-        {/* Back is an arrow up here rather than a word below the form: it is a
-            return, not an alternative to submitting, and putting the two side
-            by side at the bottom invited clicking the wrong one. Absolute, so
-            it costs the page no height and leaves the row centred on the
-            column rather than on whatever is left over beside it. */}
-        {previous && !finishing ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="absolute top-0 right-0"
-            aria-label={`Back to ${previous.title}`}
-            onClick={() => goTo(active - 1)}
-          >
-            <ArrowLeft aria-hidden />
-          </Button>
-        ) : null}
       </header>
 
       {/*
@@ -166,12 +169,30 @@ export default function ClientOnboarding({
         as an h2 with a description under it said the same thing twice and cost
         the fold. `aria-label` keeps the section named for assistive tech, which
         does still need to know what it is standing in.
+
+        `m-auto` on the inner column is what gives both behaviours from one
+        rule: a short step sits in the middle of the card instead of hugging the
+        top, and a tall one scrolls from the top once it outgrows the band.
+
+        That needs the band to be a flex *container*, not merely a flex item.
+        `flex-1` makes it the latter, and auto margins in block layout resolve
+        to zero vertically — which is why the column centred sideways and still
+        hugged the top. `flex flex-col` is the whole fix. Auto margins rather
+        than `justify-center` deliberately: a centred flex line pushes overflow
+        past the scroll container's top edge, out of reach; auto margins
+        collapse instead, so a tall step still scrolls from its first field.
       */}
-      <section className="min-w-0" aria-label={step.title}>
-        {finishing ? (
-          <FinishPanel name={client?.name} />
-        ) : (
-        /*
+      <section
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+        aria-label={step.title}
+      >
+        {/* `shrink-0`, or a step taller than the band gets squashed to fit
+            rather than scrolling. */}
+        <div className="m-auto w-full max-w-3xl shrink-0">
+          {finishing ? (
+            <FinishPanel name={client?.name} />
+          ) : (
+            /*
           `key` remounts the step on every move. react-hook-form reads
           `defaultValues` on mount only, so without this, stepping from one
           step to another and back would show the previous step's values.
@@ -180,27 +201,62 @@ export default function ClientOnboarding({
           from the side it is travelling from, so going back looks like going
           back rather than like another new page.
         */
-        <div
-          key={step.key}
-          className={cn(
-            "animate-in fade-in duration-300",
-            forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
+            <div
+              key={step.key}
+              className={cn(
+                "animate-in fade-in duration-300",
+                forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
+              )}
+            >
+              <StepActionsSlot.Provider value={actions}>
+                {step.key === "identity" ? (
+                  <IdentityStep {...stepProps} />
+                ) : null}
+                {step.key === "tax" ? <TaxStep {...stepProps} /> : null}
+                {step.key === "contacts" ? (
+                  <ContactsStep {...stepProps} />
+                ) : null}
+                {step.key === "commercial" ? (
+                  <CommercialStep {...stepProps} />
+                ) : null}
+                {step.key === "services" ? (
+                  <ServicesStep {...stepProps} services={services} />
+                ) : null}
+                {step.key === "attachments" ? (
+                  <AttachmentsStep {...stepProps} />
+                ) : null}
+                {step.key === "access" ? <AccessStep {...stepProps} /> : null}
+              </StepActionsSlot.Provider>
+            </div>
           )}
-        >
-          {step.key === "identity" ? <IdentityStep {...stepProps} /> : null}
-          {step.key === "tax" ? <TaxStep {...stepProps} /> : null}
-          {step.key === "contacts" ? <ContactsStep {...stepProps} /> : null}
-          {step.key === "commercial" ? <CommercialStep {...stepProps} /> : null}
-          {step.key === "services" ? (
-            <ServicesStep {...stepProps} services={services} />
-          ) : null}
-          {step.key === "attachments" ? (
-            <AttachmentsStep {...stepProps} />
-          ) : null}
-          {step.key === "access" ? <AccessStep {...stepProps} /> : null}
         </div>
-        )}
       </section>
+
+      {/*
+        The pinned footer. The submit button is portalled in here by `StepForm`
+        (see `StepActionsSlot`), so it keeps the step's own `submitting` and
+        label while sitting outside the subtree that slides.
+
+        Back is absolute so the button stays centred on the column rather than
+        on whatever space is left beside it. The two ending up in the same band
+        is fine where the original objection was not: they are at opposite ends
+        of the card, not adjacent.
+      */}
+      <div className="relative flex shrink-0 items-center justify-center pt-2">
+        {previous && !finishing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute left-0"
+            aria-label={`Back to ${previous.title}`}
+            onClick={() => goTo(active - 1)}
+          >
+            <ArrowLeft aria-hidden />
+          </Button>
+        ) : null}
+        <div ref={setActions} className="contents" />
+      </div>
     </div>
   );
 }
@@ -274,17 +330,19 @@ function StepNav({
   onSelect: (index: number) => void;
 }) {
   return (
-    // The list is the flex item, not the nav: it sizes to its content and
-    // centres while the steps fit, then fills the width and scrolls when they
-    // don't. Centring the scroll container itself would put the first step out
-    // of reach past its left edge.
-    <nav
-      aria-label="Onboarding steps"
-      className="flex w-full min-w-0 justify-center pb-10"
-    >
-      <ol className="scrollbar-none -mx-1 flex max-w-full items-center gap-3 overflow-x-auto px-1">
+    // Edge to edge across the card. `justify-between` spreads the seven, so the
+    // first and last mark the ends of the track and the spacing itself carries
+    // how far along the flow is.
+    //
+    // Each step stays `shrink-0` and the list keeps `overflow-x-auto`, so a
+    // narrow window scrolls rather than crushing the labels — and the scroll
+    // container is the list itself, never a centred box that would put the
+    // first step out of reach past its left edge.
+    <nav aria-label="Onboarding steps" className="w-full min-w-0">
+      <ol className="scrollbar-none -mx-1 flex items-center justify-between gap-3 overflow-x-auto px-1">
         {ONBOARDING_STEPS.map((step, index) => {
-          const complete = finishing || (client ? step.isComplete(client) : false);
+          const complete =
+            finishing || (client ? step.isComplete(client) : false);
           const locked = step.needsRecord && !client;
           const current = !finishing && index === active;
           const delay = `${index * STAGGER_MS}ms`;
