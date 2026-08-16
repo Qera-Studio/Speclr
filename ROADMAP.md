@@ -267,10 +267,134 @@ if one of these gets picked up, the reasoning is what to re-examine first.
   dispatcher in `PreviewMockup.test.tsx`. Add when the real SVG lands.
 - `docs/MIGRATION_RUNBOOK.md` follow-through.
 
+## What "ready" means
+
+**Set 17 August 2026 by the founder. This is the definition, and it does not
+move.** speclr is not offered to anyone outside Qera until every line below has
+happened *officially*, with real people and real money, not a rehearsal:
+
+- A client onboarded end to end through all seven steps.
+- A contract issued to that client, signed, received back, and the signed copy
+  stored here as an attachment.
+- Three invoices issued to that client.
+- A receipt issued against each of those three.
+- An employee actually hired through the admin side, with no legal error in the
+  offer or the engagement wording.
+- A salary slip issued to that employee.
+- **Every document type in the registry used at least once, officially.**
+
+Until then it is an internal tool being tested by the person who wrote it. The
+reasoning is in the next section, and it is the stronger half of the argument.
+
+## The format freeze (the real gate, ahead of everything below)
+
+**Nothing may be finalized until each document type has been audited against its
+governing rule and the format declared closed.** This came from a concrete near
+miss on 16 August 2026: the `Attn:` line and the separate billing address were
+about to be added to `DocumentSheet` *after* invoices could already have been
+issued. Two consequences, both bad, and neither reversible:
+
+1. **A finalized document is immutable.** An invoice issued under an incomplete
+   format stays incomplete for the 72 months CGST s.36 requires it be retained.
+   There is no edit. A correction is a *new* document, which means the flawed one
+   is still in the sequence.
+2. **Layout stability is itself a trust signal.** Sending one client an invoice
+   in March and a visibly different one in April makes the issuer look
+   improvised. The document is the only artifact most clients ever see, and its
+   consistency is doing quiet work that a feature list cannot replace.
+
+So the format is a **release**, not a rolling edit. Audit, fix everything found,
+freeze, then issue.
+
+### Found already, by inspection on 17 August 2026
+
+Both are hard requirements of CGST Rule 46, and both are absent today:
+
+- **No HSN/SAC anywhere.** Rule 46(g). `grep -i 'hsn\|sac'` returns nothing in
+  `domain/` or the sheets: not on `ContractService`, not on a line item, not on
+  `DocumentSheet`. Notification 78/2020-CT requires a supplier under ₹5 crore
+  turnover to print at least **4 digits** on every B2B supply. Design and
+  branding services sit in SAC heading **9983** (specialty design services are
+  998391). It belongs on the *service* record, so it is captured once and derived
+  onto every line rather than typed per invoice (`PRINCIPLES.md` rule 3), which
+  also means it must be snapshotted at finalize (rule 4).
+- **`reverseCharge` is collected and never printed.** Rule 46(p) requires the
+  invoice to state whether tax is payable on reverse charge. The field is on
+  `ClientTax`, it is on the onboarding form, and **no sheet reads it.**
+
+### The audit still to run, per document type
+
+Nobody should assume the list above is complete. It is what one grep found.
+
+- **Invoice** against **Rule 46** in full, clause by clause: supplier name,
+  address and GSTIN; consecutive unique serial; date; recipient name, address and
+  GSTIN; the unregistered-recipient rule above ₹50,000; HSN/SAC; description;
+  quantity and unit; total and taxable value; rate and amount per tax head; place
+  of supply with state name; delivery address where it differs; the reverse
+  charge declaration; and **signature or DSC of the supplier or an authorised
+  representative** (46(q)). Confirm which of these the sheet prints today rather
+  than trusting that it does.
+- **Receipt** against **Rule 50** (receipt voucher), which has its own field list
+  and is not an invoice with a different masthead.
+- **Export invoice** against **IGST Act s.16** and Rule 46's export endorsement:
+  the LUT wording must be the prescribed sentence, not a paraphrase.
+- **Contract** for the things an Indian commercial agreement needs that are not
+  in the MSA: stamp duty (state-specific, and UP's schedule applies), the
+  jurisdiction clause, and execution formalities.
+- **Pay slip** against the **Code on Wages 2019**, **Payment of Wages Act s.13A**
+  and the **UP Shops & Establishments** wage-register rules.
+- **Offer, experience and exit letters** for the intern-versus-employee wording
+  split, which `CONTEXT.md` §6 already treats as legally load-bearing.
+
+### The export invoice, which is what "global" actually means here
+
+Read `CONTEXT.md` §3a first: **a document follows the supplier's law, not the
+recipient's.** Qera is Indian, so an invoice to a client anywhere on earth is an
+Indian export invoice. This is not N jurisdictions. It is six additions:
+
+| Needed | Status today |
+|---|---|
+| The prescribed export endorsement, **verbatim** ("SUPPLY MEANT FOR EXPORT UNDER LUT WITHOUT PAYMENT OF INTEGRATED TAX") | `zeroRatingLabel` prefills something close. The statutory wording must be confirmed, not paraphrased. |
+| **LUT number and date printed on the invoice** | Not collected anywhere. Belongs on studio settings, and therefore inside `studioSnapshot`. |
+| Recipient's foreign tax ID | Collected (`taxIds/foreign.ts`), prints in the billed-to block |
+| Place of supply for an export of services (IGST s.13(2), location of recipient) | `placeOfSupplyOf` covers the domestic case; the export case needs confirming |
+| INR conversion at the **CBIC notified rate** (Rule 34), not a market rate | Not built. Separate from `currency.ts`, which correctly keeps invoices in INR. |
+| FIRC / BRC as proof of realisation | Already an attachment kind |
+
+The **contract** has a global dimension that is commercial rather than
+formatting: governing law, jurisdiction and arbitration seat, which a foreign
+client will negotiate. Plus stamp duty, which is state law (UP's schedule) and
+applies whoever the counterparty is. The **HR documents have none at all.**
+
+**This wants an Indian CA and a commercial lawyer, not a grep and not an LLM.**
+The grep found two gaps; it cannot tell you what it did not think to look for.
+`PRINCIPLES.md` §5 is explicit that legal compliance is not something this
+project promises, and that applies with most force to its own documents.
+
+### After the freeze
+
+Formats will still change one day, because the law changes. When that happens the
+answer is **not** to edit the sheets in place: it is to record which format
+version a document was issued under, the same way `studioSnapshot` and
+`materialiseContent` already freeze the studio identity and the wording. Then
+"why does this invoice look different from that one" has an answer with a date on
+it. Do not build that now. Build it the first time a format has to change after
+real documents exist.
+
 ## Go-live blockers
 
 - **Clerk is on `pk_test_` dev keys** — localhost only. Production login needs a
   Clerk *production instance* with `speclr.qera.studio` configured.
 - **`SPECLR_ALLOWED_EMAILS` must be set in Vercel** and kept in sync with
   `.env.local`.
+- **Vercel Pro.** Hobby excludes commercial use, and issuing real invoices is
+  commercial use.
+- **A paid Neon tier.** The free tier keeps 24 hours of point-in-time recovery on
+  records the law requires be retained for 72 months.
+- **One browser pass over every sheet at real A4**, before the first finalize.
+  jsdom cannot see print, pagination or clipping, and the pay slip already
+  shipped a clipping bug through a green suite. This one is not recoverable
+  afterwards: the first finalize claims a number atomically and freezes.
+- **`npm test` running in CI.** Free, an afternoon, and the standard already says
+  a task is not done until it passes.
 - **Run `dev/master-launch-readiness-gate.md`** before any production deploy.

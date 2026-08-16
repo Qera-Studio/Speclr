@@ -34,6 +34,25 @@ Finalized numbered documents get a number like `QS-INV-2627-001`:
 ### 3. "Place of supply" is required when GST applies
 An invoice/receipt with `gstRatePercent > 0` **cannot be finalized without a place-of-supply state code**. This drives the CGST/SGST-vs-IGST split (same state as the studio → CGST+SGST; different state → IGST). This is a hard validation guard, not a nicety — issuing a GST document without it is legally incomplete. If finalize fails with "Document is incomplete," this is the usual cause.
 
+### 3a. A document follows the *supplier's* law, not the recipient's
+The single most useful thing to know before anyone plans "global compatibility"
+work. Qera is an Indian company, so an invoice to a client in Scotland is an
+**Indian export invoice** governed by CGST Rule 46 and IGST s.16. Nothing in UK
+law binds what it prints. A foreign recipient may want particular details to
+satisfy their own accountant; that is a courtesy, never a legal requirement on
+the issuer.
+
+So "valid for a client anywhere in the world" is **not** N jurisdictions. It is
+India's rules plus a short set of export-specific fields, listed in
+`ROADMAP.md` under the format freeze. The HR documents have **no** global
+dimension at all: the employees are in India.
+
+N jurisdictions becomes real only when speclr is sold to suppliers who are not
+Indian, because then the customer's own country governs. That is
+`PRINCIPLES.md` rule 5, and it is a different problem with a different budget.
+**Do not conflate the two.** Making Qera's invoices work worldwide is a week;
+making other people's invoices work worldwide is the product.
+
 ### 4. Finalized documents are immutable
 Once finalized, a document **cannot be edited, overwritten, or deleted** — enforced in the persistence layer and surfaced in the UI (no edit/delete controls appear). Corrections happen by **duplicating as a new draft**. This is the audit-trail guarantee for issued financial records. Drafts, by contrast, are freely editable and deletable.
 
