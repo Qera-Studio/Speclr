@@ -6,6 +6,7 @@ import {
   IdCard,
   Image,
   Network,
+  ListChecks,
   Handshake,
   Briefcase,
   Package,
@@ -150,6 +151,10 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
         links: [
           { href: '/client/services', label: 'Service catalogue', icon: Package },
           { href: '/client/clauses', label: 'Clause library', icon: Scale },
+          // Not a tool of the studio's either: it is the list of what a client
+          // has to hand over before a record can be filled in, so it sits with
+          // the other source material a client engagement starts from.
+          { href: '/client/checklist', label: 'What to request', icon: ListChecks },
         ],
       },
     ],

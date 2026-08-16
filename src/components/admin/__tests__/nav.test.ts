@@ -62,6 +62,7 @@ describe('nav model', () => {
     expect(NAV_BY_PROFILE.client.groups[0].links.map((l) => l.href)).toEqual([
       '/client/services',
       '/client/clauses',
+      '/client/checklist',
     ]);
 
     expect(NAV_BY_PROFILE.admin.groups).toHaveLength(1);
