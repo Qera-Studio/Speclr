@@ -142,7 +142,11 @@ export function toPayload(
 export function useDocumentForm(typeCode: DocTypeCode, doc?: AdminDocument | null) {
   const form = useForm<EditorFormValues>({
     defaultValues: defaultsFor(typeCode, doc),
-    mode: 'onBlur',
+    // First blur, then every keystroke. `onBlur` alone left the displayed state
+    // one blur behind the value, so a field already visited kept whatever
+    // verdict it was last given while being changed. Same fix as the onboarding
+    // steps; the note in `TaxStep` has the detail.
+    mode: 'onTouched',
   });
   const lineItems = useFieldArray({ control: form.control, name: 'lineItems' });
   return { form, lineItems };

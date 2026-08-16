@@ -9,6 +9,7 @@ import {
   isClientSection,
   type ClientTax,
 } from '@/lib/domain/client';
+import { ENTITY_TYPE_VALUES } from '@/lib/domain/entityType';
 import type { ActionResult, ClientRecord } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { del } from '@vercel/blob';
@@ -71,6 +72,50 @@ export async function updateClient(id: unknown, data: unknown): Promise<ActionRe
 }
 
 /**
+ * Change a client's entity type, and nothing else.
+ *
+ * Exists because the CIN on step 2 can state the entity type outright, and the
+ * only alternative for a reader who picked the wrong row on step 1 is to go
+ * back, re-submit the whole identity form, and come forward again — for one
+ * column. `updateClient` cannot do it: it validates a whole `clientInputSchema`
+ * payload, so a caller holding only the new type would have to reconstruct the
+ * name, company name and address in the browser and send them back, which is
+ * three more fields that can be clobbered by a stale copy of themselves.
+ *
+ * Deliberately not a `ClientSection`. Sections are JSONB groups written whole;
+ * `entityType` is a real column (`PRINCIPLES.md` rule 2 — it is identity, and
+ * it validates the PAN), and adding it to `CLIENT_SECTION_SCHEMAS` would let
+ * `[section]: parsed.data` write a bare string over it.
+ *
+ * The value is checked against the closed set rather than trusted, because the
+ * browser is not trusted and this column decides what a PAN is checked against.
+ */
+export async function setClientEntityType(id: unknown, entityType: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0) {
+    return { success: false, error: 'Invalid input.' };
+  }
+  if (typeof entityType !== 'string' || !ENTITY_TYPE_VALUES.includes(entityType)) {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  try {
+    await saveClient({ ...existing, entityType, updatedAt: Date.now() });
+  } catch (err) {
+    logger.error({ action: 'setClientEntityType', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to save client.' };
+  }
+
+  revalidatePath('/client/clients');
+  revalidatePath(`/client/clients/${id}`);
+  return { success: true, id };
+}
+
+/**
  * Save one section of a client — the onboarding wizard's write path.
  *
  * One action rather than five, because the five differ only in which schema
@@ -116,7 +161,7 @@ export async function saveClientSection(
       addressState: existing.addressParts?.state,
       entityType: existing.entityType,
     });
-    const first = cross.gstin ?? cross.pan;
+    const first = cross.gstin ?? cross.pan ?? cross.cin;
     if (first) return { success: false, error: first };
   }
 

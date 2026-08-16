@@ -18,7 +18,7 @@
  */
 
 import { GST_STATES, gstStateCodeByName } from '../gstStates';
-import { entityTypeSpec } from '../entityType';
+import { entityTypeForCinOwnership, entityTypeSpec } from '../entityType';
 
 // ─── PAN ──────────────────────────────────────────────────────────────────────
 // Lives here rather than in `employee.ts` because a client has one too, and it
@@ -43,6 +43,33 @@ export const PAN_HOLDER_TYPES: Record<string, string> = {
   L: 'a local authority',
   J: 'an artificial juridical person',
   G: 'a government body',
+};
+
+/**
+ * The same ten kinds as a chip label rather than a sentence fragment.
+ *
+ * A second map over one closed set, which is normally the thing to avoid — but
+ * these are two different renderings, not two copies. `PAN_HOLDER_TYPES` has to
+ * read as a clause inside "This PAN belongs to …"; this has to fit beside a tick
+ * on the trailing edge of the field. Keeping them adjacent is what stops a kind
+ * being added to one and missed by the other.
+ *
+ * Note what `C` does *not* say. The 4th character distinguishes a company from
+ * an individual, never a private limited from a public one — that lives in the
+ * CIN's ownership triple, and claiming it here would be reading back the entity
+ * type the operator already chose rather than decoding what they typed.
+ */
+export const PAN_HOLDER_LABELS: Record<string, string> = {
+  P: 'Individual',
+  C: 'Company',
+  H: 'HUF',
+  F: 'Firm / LLP',
+  A: 'AOP',
+  T: 'Trust',
+  B: 'BOI',
+  L: 'Local authority',
+  J: 'Juridical person',
+  G: 'Government',
 };
 
 /**
@@ -225,7 +252,11 @@ export const CIN_OWNERSHIP_CODES: Record<string, string> = {
  * Why this CIN is wrong, or null.
  *
  * Structure and the ownership triple are blocking, because both are closed
- * sets. **The ROC state pair deliberately is not** — see `cinStateHint`.
+ * sets. **The ROC state pair deliberately is not checked at all**: Qera's own
+ * CIN is `U62099UW2026PTC254312`, whose `UW` appears on no published ROC list,
+ * and a company can be incorporated in one state and operate from another
+ * forever and correctly. A check that fires on the studio's own registration
+ * and on every honest relocation is noise, so there isn't one.
  */
 export function cinError(cin: string): string | null {
   const value = cin.trim().toUpperCase();
@@ -251,36 +282,59 @@ export function cinError(cin: string): string | null {
 }
 
 /**
- * A *hint* when the CIN's ROC state letters don't look like the address state,
- * never a block.
+ * Why this CIN cannot belong to an entity of this type, or null.
  *
- * Deliberately non-blocking, and this is not caution for its own sake: Qera's
- * own CIN is `U62099UW2026PTC254312`, whose `UW` is not a pair any published
- * ROC list explains, and a strict check would refuse the studio's own
- * registration. A company can also legitimately be incorporated in one state
- * and operate from another, at which point the CIN and the address disagree
- * forever and correctly.
+ * The same shape as `panHolderTypeError`, on the other identifier that encodes
+ * what kind of company it belongs to. Two closed facts are checked:
+ *
+ *  - **The ownership triple** at characters 13–15. A Private Limited's CIN says
+ *    `PTC`; a `PLC` on that record means one of the two is wrong.
+ *  - **The listing status** at character 1. A private company cannot be listed,
+ *    so `L` in front of `PTC` or `OPC` is impossible rather than unlikely.
+ *
+ * Blocking, because neither has an honest exception — unlike the ROC state
+ * letters, which have several and are therefore not checked at all (see
+ * `cinError`).
+ *
+ * Assumes `cinError` has already passed; returns null for anything malformed so
+ * the two never report the same string twice.
  */
-export function cinStateHint(cin: string, addressState: string | undefined): string | null {
+export function cinEntityTypeError(cin: string, entityType: string | undefined): string | null {
   const value = cin.trim().toUpperCase();
-  if (!CIN_RE.test(value) || !addressState) return null;
-  const cinState = value.slice(6, 8);
-  const addressStateCode = gstStateCodeByName(addressState);
-  if (!addressStateCode) return null;
-  const expected = ROC_STATE_LETTERS[addressStateCode];
-  if (!expected || expected === cinState) return null;
-  // One line, because it prints in a bar tucked under the field. The longer
-  // version ("worth a second look if the company was incorporated in X") said
-  // no more than this does: the address is on the screen directly above it.
-  return `Registered with the ${cinState} registrar, not ${expected}.`;
+  if (!CIN_RE.test(value)) return null;
+
+  const expected = entityTypeSpec(entityType)?.cinOwnership;
+  if (!expected) return null;
+
+  const ownership = value.slice(12, 15);
+  if (ownership !== expected) {
+    const held = CIN_OWNERSHIP_CODES[ownership] ?? `an unknown kind of company (${ownership})`;
+    return `This CIN belongs to ${held}, not ${CIN_OWNERSHIP_CODES[expected]}.`;
+  }
+
+  if (value[0] === 'L' && (expected === 'PTC' || expected === 'OPC')) {
+    return `This CIN is marked listed (L), and ${CIN_OWNERSHIP_CODES[expected]} cannot be.`;
+  }
+
+  return null;
 }
 
-/** ROC state letters, keyed by the GST state code so the two tables can meet. */
-const ROC_STATE_LETTERS: Record<string, string> = {
-  '01': 'JK', '02': 'HP', '03': 'PB', '04': 'CH', '05': 'UR', '06': 'HR',
-  '07': 'DL', '08': 'RJ', '09': 'UP', '10': 'BR', '11': 'SK', '12': 'AR',
-  '13': 'NL', '14': 'MN', '15': 'MZ', '16': 'TR', '17': 'ML', '18': 'AS',
-  '19': 'WB', '20': 'JH', '21': 'OR', '22': 'CT', '23': 'MP', '24': 'GJ',
-  '26': 'DD', '27': 'MH', '29': 'KA', '30': 'GA', '31': 'LD', '32': 'KL',
-  '33': 'TN', '34': 'PY', '35': 'AN', '36': 'TG', '37': 'AP', '38': 'LA',
-};
+/**
+ * The entity type this CIN states, if it states one this app knows.
+ *
+ * The certificate of incorporation is a stronger source than a dropdown chosen
+ * from memory, so when the two disagree this is the side that is probably
+ * right, and the operator is offered it rather than left to go back a step and
+ * work out which row to pick.
+ *
+ * **Offered, never applied.** Keeping `entityType` an independent answer is the
+ * whole reason `cinEntityTypeError` and `panHolderTypeError` catch anything: a
+ * type derived from the CIN would agree with the CIN by construction, and a
+ * company's PAN pasted onto an individual's record would stop being detectable.
+ * So this returns a suggestion for a human to accept, and nothing writes it.
+ */
+export function entityTypeOfCin(cin: string): string | null {
+  const value = cin.trim().toUpperCase();
+  if (!CIN_RE.test(value)) return null;
+  return entityTypeForCinOwnership(value.slice(12, 15))?.value ?? null;
+}

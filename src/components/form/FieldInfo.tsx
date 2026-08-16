@@ -52,20 +52,29 @@ export default function FieldInfo({
  * flex centres the *margin* box, so the text rode four pixels above the icon.
  * The margin is gone from the legend itself; this is here so the next section
  * heading does not rebuild the row a seventh time.
+ *
+ * `action` puts a control on the far right of the heading, for a section that
+ * is switched on and off as a whole. A `<legend>` is not a `<label>`, so
+ * whatever goes in there carries its own `aria-label` containing the visible
+ * heading text (WCAG 2.5.3): the heading names the section for a sighted
+ * reader, and the control has to name itself for everyone else.
  */
 export function LegendInfo({
   children,
   info,
   label,
+  action,
 }: {
   children: ReactNode;
   info?: string;
   label: string;
+  action?: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex min-h-6 items-center gap-1.5">
       <FieldLegend variant="label">{children}</FieldLegend>
       <InfoTip info={info} label={label} />
+      {action ? <div className="ml-auto">{action}</div> : null}
     </div>
   );
 }

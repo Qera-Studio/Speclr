@@ -26,6 +26,13 @@ export interface EntityTypeSpec {
    * PAN to check against, which is every foreign form until one registers here.
    */
   panKind?: string;
+  /**
+   * The MCA ownership triple this entity's CIN must carry (characters 13–15),
+   * and implicitly whether it has a CIN at all. Absent for the forms the MCA
+   * does not register: an LLP holds an LLPIN in a different format entirely, a
+   * proprietorship or a trust holds nothing.
+   */
+  cinOwnership?: string;
   jurisdiction: EntityJurisdiction;
 }
 
@@ -36,12 +43,12 @@ export interface EntityTypeSpec {
  */
 export const ENTITY_TYPES: readonly EntityTypeSpec[] = [
   // ── India ──
-  { value: 'pvt_ltd', label: 'Private Limited Company', panKind: 'C', jurisdiction: 'in' },
+  { value: 'pvt_ltd', label: 'Private Limited Company', panKind: 'C', cinOwnership: 'PTC', jurisdiction: 'in' },
   { value: 'llp', label: 'Limited Liability Partnership', panKind: 'F', jurisdiction: 'in' },
   { value: 'proprietorship', label: 'Sole Proprietorship', panKind: 'P', jurisdiction: 'in' },
   { value: 'partnership', label: 'Partnership Firm', panKind: 'F', jurisdiction: 'in' },
-  { value: 'public_ltd', label: 'Public Limited Company', panKind: 'C', jurisdiction: 'in' },
-  { value: 'opc', label: 'One Person Company', panKind: 'C', jurisdiction: 'in' },
+  { value: 'public_ltd', label: 'Public Limited Company', panKind: 'C', cinOwnership: 'PLC', jurisdiction: 'in' },
+  { value: 'opc', label: 'One Person Company', panKind: 'C', cinOwnership: 'OPC', jurisdiction: 'in' },
   { value: 'individual', label: 'Individual', panKind: 'P', jurisdiction: 'in' },
   { value: 'huf', label: 'Hindu Undivided Family', panKind: 'H', jurisdiction: 'in' },
   { value: 'trust', label: 'Trust', panKind: 'T', jurisdiction: 'in' },
@@ -73,6 +80,24 @@ export function entityTypeSpec(value: string | undefined): EntityTypeSpec | null
 
 export function entityTypeLabel(value: string | undefined): string | null {
   return entityTypeSpec(value)?.label ?? null;
+}
+
+/**
+ * The entity type an MCA ownership triple names, if it names exactly one.
+ *
+ * `cinOwnership` read backwards. It resolves for `PTC`, `PLC` and `OPC` and for
+ * nothing else — the other eleven triples the MCA issues (`FTC`, `GOI`, `NPL`
+ * …) are real codes with no row here, and returning null for them is the
+ * correct answer rather than a gap: a CIN this app cannot place must not be
+ * used to overwrite an entity type a person chose.
+ *
+ * This is the direction that makes the CIN authoritative. The forward direction
+ * only ever says "these two disagree"; this one says which of the two the
+ * document itself supports.
+ */
+export function entityTypeForCinOwnership(ownership: string | undefined): EntityTypeSpec | null {
+  if (!ownership) return null;
+  return ENTITY_TYPES.find((e) => e.cinOwnership === ownership) ?? null;
 }
 
 /**

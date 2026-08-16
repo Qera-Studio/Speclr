@@ -229,8 +229,9 @@ export const CIN_MAX = 21;
 /**
  * Structure, the MCA ownership triple and a plausible year of incorporation.
  *
- * The ROC state pair is checked separately and never blocks. See
- * `cinStateHint`, which refuses to reject Qera's own `UW`.
+ * The ROC state pair is deliberately not checked — `cinError` says why. What a
+ * CIN *is* cross-checked against is the entity type, in `cinEntityTypeError`,
+ * which runs where the whole record is in hand.
  */
 export function cinSchema({ required }: FieldOptions = {}) {
   return identifier({ max: CIN_MAX, error: cinError, required });

@@ -77,7 +77,12 @@ export default function CommercialStep({ client, onSaved, submitLabel }: StepPro
     // Errors land when a field is left, not only at submit. Seven steps of
     // silence followed by one page of red is a worse trade than being told
     // where you are as you go.
-    mode: 'onBlur',
+    //
+    // `onTouched` rather than `onBlur`: first blur, then every keystroke. Under
+    // `onBlur` the displayed state lagged the value by a whole blur, so a field
+    // already visited kept its tick while wrong and kept its error while being
+    // corrected. See the longer note in `TaxStep`.
+    mode: 'onTouched',
     resolver: zodResolver(
       clientCommercialSchema.omit({
         services: true,

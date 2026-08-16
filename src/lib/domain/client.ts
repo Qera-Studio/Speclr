@@ -22,7 +22,13 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import { entityTypeSpec, ENTITY_TYPE_VALUES } from './entityType';
-import { gstinError, panHolderTypeError, PAN_RE, panKindOfEntityType } from './taxIds/india';
+import {
+  cinEntityTypeError,
+  gstinError,
+  panHolderTypeError,
+  PAN_RE,
+  panKindOfEntityType,
+} from './taxIds/india';
 import { TAX_ID_TYPE_CODES, taxIdError } from './taxIds/foreign';
 import {
   cinSchema,
@@ -147,8 +153,8 @@ export const clientTaxSchema = z.object({
 export function clientTaxCrossErrors(
   tax: ClientTax | undefined,
   context: { addressState?: string; entityType?: string },
-): Partial<Record<'gstin' | 'pan', string>> {
-  const errors: Partial<Record<'gstin' | 'pan', string>> = {};
+): Partial<Record<'gstin' | 'pan' | 'cin', string>> {
+  const errors: Partial<Record<'gstin' | 'pan' | 'cin', string>> = {};
   if (!tax) return errors;
 
   const gstin = gstinError(tax.gstin ?? '', {
@@ -165,6 +171,15 @@ export function clientTaxCrossErrors(
       const label = entityTypeSpec(context.entityType)?.label ?? 'this entity';
       errors.pan = `${held} This record says ${label}.`;
     }
+  }
+
+  // The same question asked of the other identifier that answers it. A CIN's
+  // ownership triple says what kind of company it belongs to, so it agrees with
+  // the entity type or one of the two is wrong.
+  const cin = cinEntityTypeError(tax.cin ?? '', context.entityType);
+  if (cin) {
+    const label = entityTypeSpec(context.entityType)?.label ?? 'this entity';
+    errors.cin = `${cin} This record says ${label}.`;
   }
 
   return errors;

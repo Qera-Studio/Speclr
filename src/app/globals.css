@@ -210,38 +210,13 @@
 }
 
 /*
-  Two motions the wizard uses, both of them saying something.
-
-  `drop-in` is the notice that hangs out from under a field: it starts wholly
-  hidden behind the input, falls past its resting place and settles back. The
-  overshoot is the point. A box that merely fades in reads as another box on the
-  page, where one that drops out of the field it belongs to reads as an answer
-  to what was just typed.
-
-  `fill-flash` is a field the app filled in for you (city and state, from a
-  pincode). A value that appears in a box you are not looking at is a value
-  nobody checks, so the box asks for the glance.
+  `fill-flash` is a field the app filled in for you: city and state from a
+  pincode, PAN from the GSTIN that contains it. A value that appears in a box
+  you are not looking at is a value nobody checks, so the box asks for the
+  glance.
 */
 @theme {
-  --animate-drop-in: drop-in 950ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fill-flash: fill-flash 900ms ease-out;
-
-  @keyframes drop-in {
-    0% {
-      opacity: 0;
-      transform: translateY(-100%);
-    }
-    55% {
-      opacity: 1;
-      transform: translateY(8%);
-    }
-    75% {
-      transform: translateY(-3%);
-    }
-    100% {
-      transform: translateY(0);
-    }
-  }
 
   @keyframes fill-flash {
     0% {

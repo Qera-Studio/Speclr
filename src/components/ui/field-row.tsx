@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 /**
  * Two (or three) fields side by side, exactly equal in width.
@@ -33,7 +33,7 @@ const COLUMNS = {
   // quartering 288px leaves 60px a piece, which is narrower than the values.
   // Pairs first, then all four once there is 512px to split.
   4: "@2xs/field-group:grid-cols-2 @lg/field-group:grid-cols-4",
-} as const
+} as const;
 
 function FieldRow({
   className,
@@ -46,11 +46,11 @@ function FieldRow({
       className={cn(
         "grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
         COLUMNS[columns],
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { FieldRow }
+export { FieldRow };

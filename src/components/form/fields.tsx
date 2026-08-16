@@ -1,20 +1,19 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   useController,
   type Control,
   type FieldValues,
   type Path,
 } from 'react-hook-form';
+import { cn } from '@/lib/utils';
 import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import FieldInfo from '@/components/form/FieldInfo';
 import FieldCheck from '@/components/form/FieldCheck';
+import type { IdentifierKind } from '@/lib/domain/taxIds/decode';
 import { upperNoSpace } from '@/components/form/inputFilters';
-import { cinStateHint } from '@/lib/domain/taxIds/india';
 
 /**
  * The identifier inputs, each owning everything about itself.
@@ -48,6 +47,22 @@ interface IdentifierProps<T extends FieldValues> {
   /** Overrides the accessible name of the info button. */
   infoLabel?: string;
   placeholder?: string;
+  /**
+   * Extra classes for the `<input>` itself. Exists for one thing: the
+   * `animate-fill-flash` a caller adds when the app filled the field in, the
+   * same signal `AddressFields` gives when a pincode fills city and state.
+   */
+  inputClassName?: string;
+  /**
+   * Derived from something else on the form and not typed here.
+   *
+   * `readOnly`, never `disabled`: a disabled input is skipped by the keyboard,
+   * greyed to the same colour as "you may not do this yet", and dropped from a
+   * native submit. A read-only one is still focusable, still selectable, still
+   * copyable, and still submitted — which is what a value that is *correct and
+   * fixed* should be.
+   */
+  readOnly?: boolean;
   /** Rendered after the input, inside the same `Field`. */
   children?: ReactNode;
 }
@@ -71,31 +86,76 @@ function IdentifierField<T extends FieldValues>({
   infoLabel,
   placeholder,
   maxLength,
-  className,
-  wrapperClassName = 'relative',
+  kind,
+  inputClassName,
+  readOnly,
   children,
 }: IdentifierProps<T> & {
   label: string;
   infoLabel: string;
   /** The identifier's real character count, so the browser stops typing there. */
   maxLength: number;
-  /** Extra classes for the `Field` wrapper. */
-  className?: string;
-  /** Classes for the box holding the input and the tick. */
-  wrapperClassName?: string;
+  /** Which decoding `FieldFacts` reads out once the value passes. */
+  kind: IdentifierKind;
 }) {
   const { field, fieldState } = useController({ control, name });
 
+  const value = String(field.value ?? '');
+
+  /**
+   * When the reader is told they are wrong.
+   *
+   * The form validates from the first keystroke (see `onChange` below), which
+   * is what lets the tick appear without the field being left first. Showing
+   * every intermediate error that comes with that would put "Expected a
+   * 15-character GSTIN" under a field for the fourteen characters it takes to
+   * type one, which trains people to ignore the line.
+   *
+   * So the message waits for the value to be *finished*: the identifier's full
+   * length, or the field actually left. Both are moments where the reader has
+   * stopped, and neither can hide a real failure — a value too short to be
+   * complete is one the form still refuses at submit.
+   */
+  const [blurred, setBlurred] = useState(false);
+  const showError = blurred || value.length >= maxLength;
+
+  /**
+   * Room on the trailing edge for whatever `FieldCheck` is currently showing.
+   *
+   * The tick alone is a known 16px, but the fact beside it is not: "Uttar
+   * Pradesh" and "INC 2026" are different widths, in a font that is not loaded
+   * when the first paint happens, at a text size the user can change. A fixed
+   * `pr-*` sized for the longest one wastes the space on every other field and
+   * still loses to a fact added later — so the width is measured from the thing
+   * itself and paid as padding, which is the only version that cannot overlap.
+   *
+   * Measured in a layout effect so it lands before paint, and unconditionally
+   * on every render because the fact changes with the value. Setting the same
+   * number twice is a no-op in React, so this settles rather than looping.
+   */
+  const trailing = useRef<HTMLSpanElement>(null);
+  const [trailingWidth, setTrailingWidth] = useState(0);
+  useLayoutEffect(() => {
+    setTrailingWidth(trailing.current?.offsetWidth ?? 0);
+  });
+
   return (
-    <Field className={className}>
+    <Field>
       <FieldInfo htmlFor={id} label={label} info={info} infoLabel={infoLabel} />
-      <div className={wrapperClassName}>
+      <div className="relative">
         <Input
           id={id}
           size="form"
-          className="pr-8"
+          // `right-2` on the badge, plus the same again as a gutter before the
+          // value. Falls back to the tick's own width when nothing is showing.
+          style={{ paddingRight: (trailingWidth || 16) + 16 }}
           maxLength={maxLength}
           placeholder={placeholder}
+          readOnly={readOnly}
+          // Not `disabled`, and not a colour change either: the value is real
+          // and correct, so it should look like every other value on the page.
+          // The cursor is the only signal it is not yours to edit.
+          className={cn(inputClassName, readOnly && 'cursor-default')}
           autoCapitalize="characters"
           autoCorrect="off"
           // Nothing the browser has stored is a PAN. Left on, it offers the
@@ -103,13 +163,25 @@ function IdentifierField<T extends FieldValues>({
           autoComplete="off"
           spellCheck={false}
           {...field}
-          value={String(field.value ?? '')}
-          onChange={(event) => field.onChange(upperNoSpace(event.target.value))}
+          value={value}
+          onChange={(event) => {
+            field.onChange(upperNoSpace(event.target.value));
+            // Marks the field touched, which under the form's `onTouched` mode
+            // is what makes it validate on every keystroke from here on. Until
+            // this ran, a field being typed into for the first time was not
+            // being checked at all, so nothing could be reported about it and
+            // nothing could be confirmed about it. It does not move focus.
+            field.onBlur();
+          }}
+          onBlur={() => {
+            setBlurred(true);
+            field.onBlur();
+          }}
         />
-        <FieldCheck control={control} name={name} />
+        <FieldCheck control={control} name={name} kind={kind} ref={trailing} />
       </div>
       {children}
-      <FieldError errors={[fieldState.error]} />
+      <FieldError errors={showError ? [fieldState.error] : []} />
     </Field>
   );
 }
@@ -122,6 +194,7 @@ export function GstinField<T extends FieldValues>(props: IdentifierProps<T>) {
       info="The first two digits are the state of registration, and they become the place of supply on every invoice. They are checked against the address so the two can never disagree."
       placeholder="09AABCQ2864Q1ZQ"
       maxLength={15}
+      kind="gstin"
       {...props}
     />
   );
@@ -135,6 +208,7 @@ export function PanField<T extends FieldValues>(props: IdentifierProps<T>) {
       info="Ten characters. The 4th encodes the holder type, so it is checked against the kind of party this record is: a Private Limited's PAN is a C, an individual's a P."
       placeholder="AABCQ2864Q"
       maxLength={10}
+      kind="pan"
       {...props}
     />
   );
@@ -148,105 +222,36 @@ export function TanField<T extends FieldValues>(props: IdentifierProps<T>) {
       info="The account number the deduction is filed against. Anyone deducting TDS is required to hold one."
       placeholder="DELQ12345F"
       maxLength={10}
+      // Nothing to decode: no check digit, and its city prefix has no published
+      // table. `identifierFacts` returns nothing and the field shows no line.
+      kind="tan"
       {...props}
     />
   );
 }
 
 /**
- * CIN, plus the registrar hint when an address is available to compare against.
+ * CIN.
  *
- * The hint travels with the field rather than with the caller: it is a property
- * of a CIN, and the geometry below took two rounds in a real browser to get
- * right. Copying it to a second caller is how one of the two would end up
- * subtly wrong.
+ * It used to carry a registrar hint in a box hanging out from under the field,
+ * comparing the CIN's ROC state letters against the address. That is gone, and
+ * the check behind it with it: the pair disagrees honestly whenever a company
+ * is incorporated in one state and operates from another, and it disagreed on
+ * Qera's own `UW`. A warning that fires on correct data teaches people to
+ * ignore warnings. What a CIN *is* checked against now is the entity type,
+ * which is a closed set with no honest exception (`cinEntityTypeError`).
  */
-export function CinField<T extends FieldValues>({
-  addressState,
-  ...props
-}: IdentifierProps<T> & {
-  /** The state on the same record, if known. Enables the registrar hint. */
-  addressState?: string;
-}) {
-  const { field } = useController({ control: props.control, name: props.name });
-  const value = String(field.value ?? '');
-  const hint = value ? cinStateHint(value, addressState) : null;
-
+export function CinField<T extends FieldValues>(props: IdentifierProps<T>) {
   return (
     <IdentifierField
       label="CIN"
       infoLabel="What is a CIN?"
-      info="The Corporate Identity Number from the certificate of incorporation. 21 characters, and only companies have one. Some contracts ask for it."
+      info="The Corporate Identity Number from the certificate of incorporation. 21 characters, and only companies have one. Characters 13 to 15 say what kind, and are checked against the entity type on this record."
       placeholder="U62099UP2026PTC254312"
       maxLength={21}
-      /*
-        `isolate` so the two z-indexes below are compared against each other and
-        nothing else. Without it they are settled in whatever stacking context
-        the page happens to provide, which is how the notice ended up painting
-        over the field it is supposed to hide behind.
-      */
-      className="isolate"
-      /*
-        Lifted above the notice, and opaque in its own right.
-
-        The wrapper carries the background rather than leaning on the input's:
-        the autofill rule in globals.css sets `background-clip: text` on an
-        autofilled field, which is exactly what stops Chrome painting its blue,
-        and it would just as happily stop the field painting the white that
-        hides the notice's top half. One class here and "behind" no longer
-        depends on the input being opaque.
-      */
-      wrapperClassName="relative z-10 rounded-md bg-background"
+      kind="cin"
       {...props}
-    >
-      {hint ? (
-        <>
-          {/*
-            A warning box, not red text: nothing is blocked and nothing is
-            refused. The registrar pair is a *hint*, since the published ROC
-            codes are not exhaustive, so a real CIN can disagree with this and
-            still be correct.
-
-            It hangs out from behind the field rather than sitting in the flow
-            below it. Five classes make that work and they are interlocking, so
-            none of them is arbitrary:
-
-              `z-0`       behind the input, explicitly. The `Alert` primitive is
-                          itself `relative`, so leaving this to source order put
-                          a later sibling in front of an earlier `z-10` one.
-                          Zero rather than a negative: Tailwind emits `-z-10` as
-                          `z-index: calc(10 * -1)`, and a *negative* layer is the
-                          one case engines disagree on once the drop animation's
-                          transform has promoted this box to its own compositing
-                          layer. 0 against 10 is the boring comparison every
-                          engine agrees about.
-              `max-w`     80% of the field, so it reads as hanging *from* the
-                          field rather than as the form's next row. A max-width,
-                          not a width: `Field` is `flex-col *:w-full`, and that
-                          variant sorts after plain `w-*` in the sheet, so it
-                          wins any straight fight over `width`. `max-width` has
-                          no such competitor.
-              `mx-auto`   centred. An auto cross-axis margin also turns off the
-                          flex container's default `stretch`, which is the other
-                          half of why `w-auto` alone did nothing.
-              `-mt-6`     24px up, against the 8px `Field` gap: 16px of the box
-                          ends up behind the input.
-              `pt-4`      the same 16px, so the text clears the input's bottom
-                          edge exactly and none of it is hidden.
-
-            The fall itself is `drop-in` in globals.css.
-          */}
-          <Alert variant="warning" className="animate-drop-in z-0 mx-auto -mt-6 max-w-[80%] pt-4">
-            <TriangleAlert aria-hidden />
-            <AlertDescription>{hint}</AlertDescription>
-          </Alert>
-          {/* Colour is not announced; this is. */}
-          <span role="status" className="sr-only">
-            {hint}
-          </span>
-        </>
-      ) : null}
-    </IdentifierField>
+    />
   );
 }
 

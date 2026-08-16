@@ -4,7 +4,8 @@ import {
   PAN_RE,
   TAN_RE,
   cinError,
-  cinStateHint,
+  cinEntityTypeError,
+  entityTypeOfCin,
   gstinCheckCharacter,
   gstinError,
   gstinPan,
@@ -128,7 +129,7 @@ describe('TAN', () => {
 
 describe('CIN', () => {
   it('accepts Qera’s own CIN', () => {
-    // The 'UW' registrar pair is why the state check is a hint, not a block.
+    // The 'UW' registrar pair is why there is no ROC state check at all.
     expect(CIN_RE.test('U62099UW2026PTC254312')).toBe(true);
     expect(cinError('U62099UW2026PTC254312')).toBeNull();
   });
@@ -145,9 +146,65 @@ describe('CIN', () => {
     expect(cinError('U62099UP2026PTC25431')).toMatch(/21-character/i);
   });
 
-  it('hints at a registrar mismatch without blocking', () => {
-    expect(cinStateHint('U62099TN2026PTC254312', 'Uttar Pradesh')).toMatch(/TN registrar, not UP/i);
-    expect(cinStateHint('U62099UP2026PTC254312', 'Uttar Pradesh')).toBeNull();
-    expect(cinStateHint('U62099UP2026PTC254312', undefined)).toBeNull();
+  /**
+   * The ROC state pair is deliberately not checked, and this pins that: Qera's
+   * own `UW` and any company incorporated in one state and operating from
+   * another must pass. A warning that fires on correct data is worse than none.
+   */
+  it('says nothing about the registrar state', () => {
+    expect(cinError('U62099TN2026PTC254312')).toBeNull();
+  });
+});
+
+describe('CIN against the entity type', () => {
+  it('refuses a public company’s CIN on a Private Limited', () => {
+    expect(cinEntityTypeError('U62099UP2026PLC254312', 'pvt_ltd')).toMatch(
+      /public limited company, not a private limited company/i,
+    );
+  });
+
+  it('accepts the triple that matches', () => {
+    expect(cinEntityTypeError('U62099UP2026PTC254312', 'pvt_ltd')).toBeNull();
+    expect(cinEntityTypeError('L62099UP2026PLC254312', 'public_ltd')).toBeNull();
+    expect(cinEntityTypeError('U62099UP2026OPC254312', 'opc')).toBeNull();
+  });
+
+  it('refuses a listed private company, which cannot exist', () => {
+    expect(cinEntityTypeError('L62099UP2026PTC254312', 'pvt_ltd')).toMatch(/marked listed/i);
+  });
+
+  it('says nothing about an entity type the MCA does not register', () => {
+    // An LLP holds an LLPIN, not a CIN; a proprietorship holds neither.
+    expect(cinEntityTypeError('U62099UP2026PTC254312', 'llp')).toBeNull();
+    expect(cinEntityTypeError('U62099UP2026PTC254312', undefined)).toBeNull();
+  });
+
+  it('leaves a malformed CIN to cinError rather than reporting it twice', () => {
+    expect(cinEntityTypeError('NOPE', 'pvt_ltd')).toBeNull();
+    expect(cinEntityTypeError('', 'pvt_ltd')).toBeNull();
+  });
+});
+
+describe('the entity type a CIN states', () => {
+  it('reads the three triples this app knows', () => {
+    expect(entityTypeOfCin('U62099UP2026PTC254312')).toBe('pvt_ltd');
+    expect(entityTypeOfCin('L62099UP2026PLC254312')).toBe('public_ltd');
+    expect(entityTypeOfCin('U62099UP2026OPC254312')).toBe('opc');
+  });
+
+  /**
+   * `FTC`, `GOI`, `NPL` and the rest are real MCA codes with no row in
+   * `ENTITY_TYPES`. Returning null is the answer, not a gap: a CIN this app
+   * cannot place must never be offered as a replacement for a type a person
+   * chose deliberately.
+   */
+  it('declines to place a triple with no entity type behind it', () => {
+    expect(entityTypeOfCin('U62099UP2026FTC254312')).toBeNull();
+    expect(entityTypeOfCin('U62099UP2026GOI254312')).toBeNull();
+  });
+
+  it('says nothing about a malformed CIN', () => {
+    expect(entityTypeOfCin('NOPE')).toBeNull();
+    expect(entityTypeOfCin('')).toBeNull();
   });
 });

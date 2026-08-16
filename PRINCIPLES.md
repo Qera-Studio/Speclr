@@ -178,6 +178,36 @@ cannot pass as a different state.
 The same pass derived two more: an invoice's **due date** from the client's
 payment terms, and the **zero-rating label** for an SEZ or overseas recipient.
 
+**16 August 2026 — the same rule at field scale.** A GSTIN carries the holder's
+PAN verbatim at characters 3–12, so a registered client types their PAN whether
+they mean to or not, and asking for it twice is asking for the transposition
+that makes the two disagree. `TaxStep` now fills PAN from a GSTIN that fully
+passes, with the `fill-flash` a pincode already uses, and the field is
+**read-only while that GSTIN stands**. That went further than the first pass,
+which filled an empty field only and left a typed PAN alone to be reported as a
+disagreement. There is no reading of that disagreement where the typed half
+wins: characters 3–12 of a GSTIN that passes mod-36 *are* the holder's PAN, so
+the honest fix is always to the GSTIN. Break or clear it and the field is
+typeable again, keeping what it held. `panHolderTypeError` still runs on the
+result, so a company's GSTIN on a record marked individual is still caught.
+
+**16 August 2026 — and one place the rule deliberately does not fire.**
+`entityType` is derivable: a CIN's ownership triple states it outright for the
+three company forms, and a PAN's 4th character narrows it to a group. Rule 3
+read alone says derive it and drop the field. It stays, because deriving it
+would cost more than it saves: `entityType` is what `panHolderTypeError` and
+`cinEntityTypeError` check *against*, so a type derived from those same
+characters agrees with them by construction, and a company's PAN pasted onto an
+individual's record stops being detectable. Rule 3 governs a fact the system
+knows from *another* source. It does not authorise collapsing two independent
+answers into one and calling the agreement a check.
+
+What was built instead is the offer. `entityTypeOfCin` reads the certificate's
+answer, `TaxStep` shows it beside the disagreement that already blocks the save,
+and `setClientEntityType` writes it only when a person accepts. The stronger
+evidence wins by default and still passes through a human, which is the
+place-of-supply override run the other way round.
+
 ### Rule 4 — snapshotting
 
 Compliant, and the strongest part of the codebase. `snapshot` (client or
