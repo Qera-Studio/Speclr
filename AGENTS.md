@@ -32,6 +32,11 @@ any code is written.
 | [`master-design-brand-checklist.md`](dev/master-design-brand-checklist.md) | Adapted to the shadcn design language (see below). |
 | [`master-launch-readiness-gate.md`](dev/master-launch-readiness-gate.md) | The go/no-go ritual before every production deploy — aggregates the non-negotiable floor of the seven docs. **Run it before shipping.** |
 
+Two measured companions sit in `docs/`: [`vendors.md`](docs/vendors.md) records
+every third party speclr depends on and what replacing it would cost, and
+[`maturity.md`](docs/maturity.md) records where the codebase stands against
+industry practice, with the commands to reproduce every number.
+
 These checklists travel to every Qera project. When one's floor changes, update it here too.
 
 ---
@@ -60,6 +65,14 @@ These checklists travel to every Qera project. When one's floor changes, update 
 - **The document sheets are pixel-faithful artifacts.** They reproduce the finalized designs exactly. Do not redesign them. They use Tailwind + `src/styles/print.css` (the print-specific rules Tailwind can't express: A4 sizing, `break-before: page`, `print-color-adjust`).
 - **Keep components small and focused** — one clear responsibility. Split when a file grows unwieldy.
 - Avoid unnecessary dependencies — every one is an attack surface (`npm audit` before adding; see Security checklist).
+- **Every vendor gets a row in [`docs/vendors.md`](docs/vendors.md), in the same
+  commit that introduces it.** A vendor is anything that is somebody else's: a
+  hosted platform, a third-party API, a data source, a framework, a library.
+  Five answers, no exceptions: what we use, why, the industry substitute, what
+  that costs, and why it beats its two closest competitors. Removing a vendor
+  means moving its row to §7 with the reason, not deleting it. This exists so
+  that the day a free tier stops being good enough, the decision is a purchase
+  rather than a research project.
 
 ---
 
