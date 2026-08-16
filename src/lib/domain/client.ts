@@ -195,51 +195,74 @@ export interface ClientContact {
   phone?: string;
 }
 
+/**
+ * Two roles, because two roles are read.
+ *
+ * `signing` fills a contract's signature block (`clientSnapshotOf`), and
+ * `billing` is where an invoice goes. There was an `escalation` contact and a
+ * separate `invoiceEmail` as well; nothing read either, speclr sends no mail,
+ * and `billing.email` accepts a shared inbox as happily as a person. They come
+ * back the day something here actually delivers a document.
+ */
 export interface ClientContacts {
   primary?: ClientContact;
-  /** Usually a different person. Invoices sent to the wrong one get paid late. */
+  /**
+   * Where the invoice goes: usually someone in their accounts payable rather
+   * than the person the work is discussed with, and often a shared inbox.
+   */
   billing?: ClientContact;
   /** Whose name and designation go in a contract's signature block. */
   signing?: ClientContact;
-  escalation?: ClientContact;
-  /** Often a shared inbox rather than a person. */
-  invoiceEmail?: string;
   /**
-   * Which of the three secondary roles the primary contact also fills.
+   * Who fills a role when it is not a person of its own.
    *
    * A **flag, never a copy** (`PRINCIPLES.md` rule 3). At many clients one
    * person is the day-to-day contact, the one who signs, and the one accounts
-   * payable chases. Storing their details three times means correcting a
-   * changed email in three places and finding the third next year on a
-   * contract — so the mirror is recorded and `resolveContact` performs it on
-   * read.
+   * payable chases. Storing their details twice over means correcting a changed
+   * email in three places and finding the third next year on a contract, so the
+   * choice is recorded and `resolveContact` performs it on read.
    *
-   * Only these three can mirror. `primary` is the thing being mirrored, and
-   * `invoiceEmail` is an inbox rather than a person.
+   * A key absent from this map means the role has details of its own, stored
+   * under `billing` / `signing`. `primary` never appears: it is the thing the
+   * others point at.
+   *
+   * **`'company'` is billing's only, and the default.** An invoice is addressed
+   * to the entity, not to a person, so naming nobody is the ordinary case and a
+   * blank section should not have to stand for it. Signing cannot be
+   * `'company'` because a company does not hold a pen: somebody signs, and the
+   * signature block prints their name.
    */
-  sameAsPrimary?: MirroredContactKey[];
+  roles?: { billing?: ContactSource; signing?: Extract<ContactSource, 'primary'> };
 }
 
-/** The contact roles that can be "same as primary". */
-export const MIRRORABLE_CONTACTS = ['billing', 'signing', 'escalation'] as const;
+/** Where a role's details come from when it has none of its own. */
+export type ContactSource = 'company' | 'primary';
+
+/** The contact roles that can point at somebody else. */
+export const MIRRORABLE_CONTACTS = ['billing', 'signing'] as const;
 export type MirroredContactKey = (typeof MIRRORABLE_CONTACTS)[number];
 
 /**
- * The contact filling a role — the primary one where that role is mirrored.
+ * The person filling a role, or nobody where the role is the company itself.
  *
  * **Every reader must go through this**, including `clientSnapshotOf`: a
- * contract whose signatory is mirrored has nothing stored under `signing`, and
- * reading the group directly would print the blank signature rule this record
- * was built to fix.
+ * contract whose signatory points at the primary contact has nothing stored
+ * under `signing`, and reading the group directly would print the blank
+ * signature rule this record was built to fix.
+ *
+ * `undefined` from a `'company'` billing role is the correct answer, not a
+ * missing one: the invoice is addressed to the entity and there is no person to
+ * mark it for the attention of.
  */
 export function resolveContact(
   contacts: ClientContacts | undefined,
   key: 'primary' | MirroredContactKey,
 ): ClientContact | undefined {
   if (!contacts) return undefined;
-  if (key !== 'primary' && contacts.sameAsPrimary?.includes(key)) {
-    return contacts.primary;
-  }
+  if (key === 'primary') return contacts.primary;
+  const source = contacts.roles?.[key];
+  if (source === 'company') return undefined;
+  if (source === 'primary') return contacts.primary;
   return contacts[key];
 }
 
@@ -254,15 +277,18 @@ export const clientContactsSchema = z.object({
   primary: contactSchema.optional(),
   billing: contactSchema.optional(),
   signing: contactSchema.optional(),
-  escalation: contactSchema.optional(),
-  invoiceEmail: emailSchema().optional(),
-  sameAsPrimary: z.array(z.enum(MIRRORABLE_CONTACTS)).optional(),
+  roles: z
+    .object({
+      billing: z.enum(['company', 'primary']).optional(),
+      // Narrower than billing on purpose: a company cannot sign.
+      signing: z.literal('primary').optional(),
+    })
+    .optional(),
 });
 
 // ─── Commercial terms, and what was engaged ───────────────────────────────────
 
 export const ENGAGEMENT_TYPES = ['retainer', 'project', 'hourly'] as const;
-export const BILLING_CYCLES = ['monthly', 'quarterly', 'annual'] as const;
 
 export interface ClientEngagedService {
   /** The service's own code, as the library keys it. */

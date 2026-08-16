@@ -45,6 +45,7 @@ export async function saveClient(client: ClientRecord): Promise<void> {
     // `onConflictDoUpdate` set, so leaving the key out would keep stale parts
     // on the row after an edit that cleared them.
     addressParts: client.addressParts ?? null,
+    billingAddressParts: client.billingAddressParts ?? null,
     email: client.email,
     phone: client.phone,
     gstin: client.gstin ?? null,
@@ -73,6 +74,7 @@ function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
     companyName: r.companyName ?? undefined,
     address: r.address,
     addressParts: r.addressParts ?? undefined,
+    billingAddressParts: r.billingAddressParts ?? undefined,
     email: r.email,
     phone: r.phone,
     gstin: r.gstin ?? undefined,

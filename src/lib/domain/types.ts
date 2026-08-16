@@ -51,6 +51,13 @@ export interface ClientRecord {
    * frozen shape.
    */
   addressParts?: AddressParts;
+  /**
+   * Where invoices are addressed, when that is not the registered address.
+   *
+   * Absent is the ordinary case and means the registered address. It is display
+   * only: place of supply follows the client's registration, never this.
+   */
+  billingAddressParts?: AddressParts;
   email: string;
   /** E.164, e.g. '+919876543210'. Legacy rows may hold arbitrary text. */
   phone: string;

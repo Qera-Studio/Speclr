@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { useController, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
-import { Field, FieldError, FieldSeparator, FieldSet } from '@/components/ui/field';
+import { Field, FieldError, FieldLabel, FieldSeparator, FieldSet } from '@/components/ui/field';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
@@ -23,11 +24,14 @@ import { StepForm, type StepProps } from './stepKit';
 
 type FormValues = z.infer<typeof clientInputSchema>;
 
+/** `line2` is genuinely optional; the rest are what makes an address one. */
+const REQUIRED_ADDRESS_PARTS = ['line1', 'city', 'state', 'pincode', 'country'] as const;
+
 /**
- * Identity — the step that creates the record.
+ * Identity: the step that creates the record.
  *
- * The resolver carries the two rules the shared schema cannot, both inherited
- * verbatim from the form this replaces:
+ * The resolver carries the rules the shared schema cannot. The first two are
+ * inherited verbatim from the form this replaces:
  *
  * 1. `address` is required — it is what documents print — but nobody types it.
  *    It is composed from the parts, so it has to be derived *before* zod sees
@@ -36,6 +40,7 @@ type FormValues = z.infer<typeof clientInputSchema>;
  *    before phones were structured stay editable; strict per-country validation
  *    belongs here, where it can be corrected. A resolver overrides any `rules`
  *    on a controller, so this is the only place it can live.
+ * 3. A separate billing address, if there is one, has to be whole. See below.
  *
  * Entity type is required *here* and optional on the record — clients created
  * before onboarding existed have none, and a required column would make those
@@ -48,6 +53,29 @@ const resolver: Resolver<FormValues> = async (values, context, options) => {
 
   const errors = { ...result.errors };
   let failed = false;
+
+  /**
+   * A separate billing address is complete or it is not there.
+   *
+   * `addressPartsSchema` is blank-tolerant, which is right for a step that
+   * saves against a half-filled row, but a *second* address is opt-in: ticking
+   * the box is a statement that one exists. Half of one would print on a tax
+   * invoice as an address that goes nowhere, so the missing parts are named
+   * and the alternative is to untick, which removes it entirely.
+   */
+  const billing = values.billingAddressParts;
+  if (billing) {
+    const blanks = REQUIRED_ADDRESS_PARTS.filter((key) => !String(billing[key] ?? '').trim());
+    if (blanks.length > 0) {
+      errors.billingAddressParts = Object.fromEntries(
+        blanks.map((key) => [
+          key,
+          { type: 'manual', message: 'Needed for a separate billing address.' },
+        ]),
+      );
+      failed = true;
+    }
+  }
 
   const phoneError = validatePhoneValue(values.phone);
   if (phoneError) {
@@ -93,6 +121,7 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           companyName: client.companyName ?? '',
           address: client.address,
           addressParts: client.addressParts ?? { ...emptyAddressParts },
+          billingAddressParts: client.billingAddressParts,
           email: client.email,
           phone: client.phone,
           gstin: client.gstin ?? '',
@@ -103,6 +132,7 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           companyName: '',
           address: '',
           addressParts: { ...emptyAddressParts },
+          billingAddressParts: undefined,
           email: '',
           phone: '',
           gstin: '',
@@ -114,6 +144,10 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
   // address rather than a field of its own — one place to say where a client is.
   const country = useWatch({ control, name: 'addressParts.country' });
   const entityType = useController({ control, name: 'entityType' });
+  // The whole second address is one value, present or absent, so the checkbox
+  // is the field rather than a piece of state beside it. Nothing to keep in
+  // step, and a draft restored from sessionStorage comes back ticked.
+  const billingAddress = useController({ control, name: 'billingAddressParts' });
   const entityOptions = useMemo(
     () => entityTypesForCountry(country).map((e) => ({ value: e.value, label: e.label })),
     [country],
@@ -237,6 +271,44 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           documents print, so a failure on it needs somewhere to surface.
         */}
         <FieldError errors={[errors.address]} />
+      </FieldSet>
+
+      {/* No separator: the billing address is a variation on the address above
+          it, not a section of its own, and a rule between them read as one. */}
+      <FieldSet>
+        <div className="flex items-center justify-between gap-3">
+          <LegendInfo
+            info="Only when invoices go somewhere other than the registered office, which is usually an accounts department at another site. It changes who the invoice is addressed to and nothing else: the GST place of supply follows the client's registration, not where the invoice is posted."
+            label="When is a separate billing address needed?"
+          >
+            Billing address
+          </LegendInfo>
+          <div className="flex items-center gap-2">
+            <FieldLabel
+              htmlFor="client-separate-billing"
+              className="text-muted-foreground font-normal"
+            >
+              Different from the registered address
+            </FieldLabel>
+            <Checkbox
+              id="client-separate-billing"
+              checked={Boolean(billingAddress.field.value)}
+              onCheckedChange={(checked) =>
+                billingAddress.field.onChange(
+                  // Ticking starts from the registered country, which is right
+                  // far more often than blank. Unticking removes the address
+                  // rather than blanking it: absent is what "same as
+                  // registered" means on the record.
+                  checked ? { ...emptyAddressParts, country: country ?? '' } : undefined,
+                )
+              }
+            />
+          </div>
+        </div>
+
+        {billingAddress.field.value ? (
+          <AddressFields control={control} name="billingAddressParts" idPrefix="client-billing" />
+        ) : null}
       </FieldSet>
     </StepForm>
   );

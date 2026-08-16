@@ -230,6 +230,24 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 
 ## Pending work (in flight)
 
+- **Make the invoice honour the billing block.** Onboarding now collects two
+  things the sheets do not yet read, deliberately: a **separate billing address**
+  (`clients.billing_address_parts`, page 1) and a **named billing contact**
+  (`contacts.roles.billing`, page 3, where the default is the company itself and
+  naming a person means "mark it for their attention"). Both are recorded,
+  validated and shown in the form; neither prints. Three things have to happen
+  together in that change, and the order matters:
+  1. `ClientSnapshot` widens to carry them, and `clientSnapshotOf` freezes them
+     at finalize. A finalized document reading either one live is a compliance
+     bug, not a preference (`PRINCIPLES.md` rule 4, `CONTEXT.md` §5).
+  2. `DocumentSheet`'s billed-to block prints the billing address when one is
+     present, and an `Attn:` line when `resolveContact(contacts, 'billing')`
+     returns a person. Both are additions to a finished legal artifact, so they
+     want checking in a browser rather than only in jsdom.
+  3. **Place of supply must not move.** It follows the recipient's registration,
+     never where the invoice is posted, so `placeOfSupplyOf` keeps reading the
+     GSTIN and the registered address. Guarded by a test in
+     `placeOfSupply.test.ts`; do not "fix" it to use the billing address.
 - **Browser-verify the icon spec previews** — `.ico` bookmarks-bar and `32px PNG`
   browser-tab templates, light + dark, empty then filled. jsdom cannot validate
   preview layout. *(Committed as of `c9b102d`; verification still outstanding.)*

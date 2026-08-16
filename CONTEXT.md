@@ -159,15 +159,49 @@ missing — a short form that doesn't know about tax registration saves the reco
 without it. (The rail's own regressions moved to `EmployeeManager.test.tsx`,
 which is where `useRecordPanel` still lives.)
 
-**"Same as primary" stores a flag, never a copy.** At most clients one person is
-the day-to-day contact, the one who signs and the one accounts payable chases.
-`contacts.sameAsPrimary` is a list of the roles the primary contact also fills,
-and `resolveContact(contacts, key)` performs the mirror on read — rule 3 again,
-because the details are derivable. **Every reader must go through it**, and the
-one that matters is `clientSnapshotOf`: it used to read `contacts.signing`
-directly, which is empty for a mirrored client, so the contract would have
-frozen the blank signature rule this record exists to fix. Tested in
+**A role stores a choice, never a copy of a person.** At most clients one person
+is the day-to-day contact, the one who signs and the one accounts payable
+chases. `contacts.roles` records where each secondary role points and
+`resolveContact(contacts, key)` performs it on read: rule 3 again, because the
+details are derivable. A key **absent** from that map is how the record says
+"this role names its own person", stored under `contacts.billing` / `.signing`.
+**Every reader must go through `resolveContact`**, and the one that matters is
+`clientSnapshotOf`: it used to read `contacts.signing` directly, which is empty
+for a role that points at the primary contact, so the contract would have frozen
+the blank signature rule this record exists to fix. Tested in
 `ContactsStep.test.tsx`.
+
+The two roles do not offer the same choices, and that asymmetry is the domain
+rather than an oversight. **Billing may be `'company'`, and that is its
+default**: an invoice is addressed to the entity, so naming nobody is the
+ordinary case, and it should not have to be expressed as a blank section that
+reads like an unfinished form. Naming a person there does not change who is
+billed; it means the invoice is *marked for their attention*, which is why
+`resolveContact` returning `undefined` for a `'company'` billing role is the
+correct answer rather than a missing one. **Signing may not be `'company'`,**
+because a company does not hold a pen: somebody signs, and the signature block
+prints their name. Its default is the primary contact, which is also the safe
+one, since a forgotten signatory prints an empty rule.
+
+There were four roles here once, plus a standalone `invoiceEmail`. Nothing read
+`escalation` or that inbox, speclr sends no mail at all, and a billing contact's
+email takes `accounts@` as happily as a person's address. A field nobody reads
+is a field nobody maintains, so they went. They come back the day something here
+actually delivers a document.
+
+**Where invoices are addressed is a company fact, not a contact's.**
+`clients.billing_address_parts` (page 1, behind a checkbox) holds the address to
+bill when that is not the registered office, and null means the registered one,
+which is what most clients will always mean. Two rules hold it: it is **complete
+or absent**, because half an address on a tax invoice goes nowhere, and it
+**never decides tax**. GST place of supply follows the recipient's registration,
+so a client registered in Karnataka whose accounts department sits in Maharashtra
+is still a Karnataka supply. `placeOfSupplyOf` reads the GSTIN and the registered
+address and must keep doing so.
+
+Neither the billing address nor the Attn line prints yet: they are collected,
+validated and frozen-ready, and `ROADMAP.md` holds the change that teaches the
+sheets to read them, snapshot included.
 
 ### 5e. The design system is enforced by tests, not by convention
 

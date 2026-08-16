@@ -219,3 +219,104 @@ describe('IdentityStep', () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The billing address: where invoices are addressed when that is not the
+ * registered office.
+ *
+ * Absent is the ordinary case and means the registered address, so the whole
+ * block is off until someone says otherwise. The rule that matters most is not
+ * tested here because it is a rule about what this value must *never* reach:
+ * GST place of supply follows the client's registration, and `placeOfSupplyOf`
+ * reads `gstin` and `addressParts`, never this.
+ */
+describe('a separate billing address', () => {
+  const toggle = () => screen.getByRole('checkbox', { name: /different from the registered address/i });
+
+  it('is off, and stores nothing, until it is asked for', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    expect(toggle()).not.toBeChecked();
+    expect(screen.queryByLabelText('Pincode', { selector: '#client-billing-pincode' })).toBeNull();
+
+    await fillIdentity(user);
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    const [values] = createClient.mock.calls[0];
+    expect(values.billingAddressParts).toBeUndefined();
+  });
+
+  it('starts from the registered country and saves what is typed', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(toggle());
+
+    await user.type(
+      screen.getByLabelText('Building / flat', { selector: '#client-billing-line1' }),
+      'Level 8, Nariman Point',
+    );
+    await user.type(
+      screen.getByLabelText('Pincode', { selector: '#client-billing-pincode' }),
+      '400021',
+    );
+    await user.type(screen.getByLabelText('City', { selector: '#client-billing-city' }), 'Mumbai');
+    await user.type(
+      screen.getByLabelText('State', { selector: '#client-billing-state' }),
+      'Maharashtra',
+    );
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    const [values] = createClient.mock.calls[0];
+    expect(values.billingAddressParts).toEqual(
+      expect.objectContaining({
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        pincode: '400021',
+        // Carried over when the block was opened, rather than left blank for
+        // someone to pick again.
+        country: 'IN',
+      }),
+    );
+    // The registered address is untouched, and it is still the one the tax
+    // treatment follows.
+    expect(values.addressParts).toEqual(expect.objectContaining({ state: 'Uttar Pradesh' }));
+  });
+
+  it('refuses half of one rather than printing an address that goes nowhere', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(toggle());
+    await user.type(
+      screen.getByLabelText('Building / flat', { selector: '#client-billing-line1' }),
+      'Level 8, Nariman Point',
+    );
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(createClient).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/needed for a separate billing address/i).length).toBeGreaterThan(0);
+  });
+
+  it('removes the address again when it is turned off', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    await fillIdentity(user);
+    await user.click(toggle());
+    await user.type(
+      screen.getByLabelText('City', { selector: '#client-billing-city' }),
+      'Mumbai',
+    );
+    await user.click(toggle());
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    // Absent, not blanked: absent is what "same as the registered address"
+    // means on the record.
+    const [values] = createClient.mock.calls[0];
+    expect(values.billingAddressParts).toBeUndefined();
+  });
+});

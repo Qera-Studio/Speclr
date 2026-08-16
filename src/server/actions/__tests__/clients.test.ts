@@ -52,7 +52,7 @@ const existing: ClientRecord = {
     pincode: '201017',
     country: 'IN',
   },
-  contacts: { invoiceEmail: 'ap@clayora.example' },
+  contacts: { billing: { email: 'ap@clayora.example' } },
   createdAt: 1_000,
   updatedAt: 1_000,
 };
@@ -124,7 +124,7 @@ describe('saveClientSection', () => {
     const saved = saveClient.mock.calls[0][0];
     expect(saved.tax).toEqual({ gstRegistered: true, gstin: '09AABCQ2864Q1ZQ' });
     // Everything the step did not touch survives.
-    expect(saved.contacts).toEqual({ invoiceEmail: 'ap@clayora.example' });
+    expect(saved.contacts).toEqual({ billing: { email: 'ap@clayora.example' } });
     expect(saved.name).toBe('Clayora');
     expect(saved.createdAt).toBe(1_000);
     expect(saved.updatedAt).not.toBe(1_000);

@@ -20,6 +20,19 @@ describe('placeOfSupplyOf', () => {
     expect(placeOfSupplyOf({ gstin: '33AABCQ2864Q1ZZ' }).code).toBe('33');
   });
 
+  it('ignores a separate billing address, which is where the invoice is posted', () => {
+    // A client registered in Karnataka whose accounts department sits in
+    // Maharashtra is still a Karnataka supply: place of supply follows the
+    // recipient's registration, not the envelope. `placeOfSupplyOf` is given
+    // the registration facts and nothing else, and that signature is the
+    // guard — the billing address has no way in.
+    const result = placeOfSupplyOf({
+      gstin: '29AABCQ2864Q1Z2',
+      addressParts: { state: 'Karnataka', country: 'IN' },
+    });
+    expect(result.code).toBe('29');
+  });
+
   it('falls back to the address state when the client is unregistered', () => {
     const result = placeOfSupplyOf({ addressParts: { state: 'Karnataka', country: 'IN' } });
     expect(result).toMatchObject({ code: '29', source: 'address' });

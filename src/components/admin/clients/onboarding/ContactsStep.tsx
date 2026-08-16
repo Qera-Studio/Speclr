@@ -1,36 +1,60 @@
-'use client';
+"use client";
 
-import '@/lib/zod-config';
-import { useForm, useWatch, type Control, type UseFormRegister } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { FieldErrors, UseFormSetValue } from 'react-hook-form';
+import "@/lib/zod-config";
+import {
+  useForm,
+  useWatch,
+  type Control,
+  type UseFormRegister,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type {
+  FieldErrors,
+  UseFormClearErrors,
+  UseFormSetValue,
+} from "react-hook-form";
 import {
   Field,
   FieldError,
   FieldLabel,
-  FieldLegend,
   FieldSeparator,
   FieldSet,
-} from '@/components/ui/field';
-import { FieldRow } from '@/components/ui/field-row';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+} from "@/components/ui/field";
+import { FieldRow } from "@/components/ui/field-row";
+import { Input } from "@/components/ui/input";
+import { LegendInfo } from "@/components/form/FieldInfo";
+import PhoneField from "@/components/form/PhoneField";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   clientContactsSchema,
-  MIRRORABLE_CONTACTS,
   type ClientContacts,
+  type ContactSource,
   type MirroredContactKey,
-} from '@/lib/domain/client';
-import { draftKey, useFormDraft } from '@/lib/draft';
-import { StepForm, pruneEmpty, useStepSave, type StepProps } from './stepKit';
+} from "@/lib/domain/client";
+import { draftKey, useFormDraft } from "@/lib/draft";
+import { StepForm, pruneEmpty, useStepSave, type StepProps } from "./stepKit";
 
 type FormValues = ClientContacts;
 
-type ContactKey = 'primary' | MirroredContactKey;
+type ContactKey = "primary" | MirroredContactKey;
 
 /**
- * Contacts — four roles and an inbox.
+ * The Select's value for "this role names its own person".
+ *
+ * A `<Select>` needs a string for every choice, and the record's way of saying
+ * this is the *absence* of a key. The sentinel lives only in the form; it is
+ * turned back into an absent key before anything is stored.
+ */
+const OWN = "own";
+
+/**
+ * Contacts: three roles, because three are read.
  *
  * They are separated because they behave differently, not to pad the form. The
  * billing contact is usually not the primary one, and an invoice sent to the
@@ -38,27 +62,37 @@ type ContactKey = 'primary' | MirroredContactKey;
  * authority is a different thing again: it is whose name and designation go in
  * a contract's signature block.
  *
+ * An escalation contact and a separate invoice-delivery inbox were asked for
+ * here too, and were cut: nothing in the codebase read either one, speclr sends
+ * no mail at all, and the billing contact's email takes `accounts@` as happily
+ * as a person's address. A field nobody reads is a field nobody maintains.
+ *
  * **"Same as primary" stores a flag, not a copy.** At most clients one person
- * is all four. Copying their details into three more groups means correcting a
- * changed email in four places and missing the fourth; the mirror is recorded
+ * is all three. Copying their details into two more groups means correcting a
+ * changed email in three places and missing the third; the mirror is recorded
  * and `resolveContact` performs it on read, so there is exactly one set of
- * details and everything downstream — including the contract's signatory —
+ * details and everything downstream, including the contract's signatory,
  * follows automatically. `PRINCIPLES.md` rule 3, applied to a form field.
  *
  * Every field is optional. A client with only a primary contact is a normal
- * client, and a form that refuses to save until an escalation contact exists
- * is a form people work around.
+ * client, and a form that refuses to save until every role is named is a form
+ * people work around.
  *
- * Phone is a plain input here rather than `PhoneField`: these are the client's
- * own staff, often overseas, and forcing E.164 through the Indian-mobile rule
- * would reject a perfectly good foreign number. The record's *own* phone, on
- * the identity step, keeps the strict treatment.
+ * Phone is `PhoneField`, the same one the identity step uses. These are the
+ * client's own staff and they are not all in one country, so the country is
+ * picked rather than remembered: the field validates against *that* country's
+ * rule, not India's, and stores E.164.
  */
-export default function ContactsStep({ client, onSaved, submitLabel }: StepProps) {
+export default function ContactsStep({
+  client,
+  onSaved,
+  submitLabel,
+}: StepProps) {
   const {
     register,
     control,
     setValue,
+    clearErrors,
     watch,
     reset,
     handleSubmit,
@@ -72,42 +106,57 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
     // `onBlur` the displayed state lagged the value by a whole blur, so a field
     // already visited kept its tick while wrong and kept its error while being
     // corrected. See the longer note in `TaxStep`.
-    mode: 'onTouched',
+    mode: "onTouched",
     resolver: zodResolver(clientContactsSchema),
     defaultValues: {
       primary: blankContact(client?.contacts?.primary),
       billing: blankContact(client?.contacts?.billing),
       signing: blankContact(client?.contacts?.signing),
-      escalation: blankContact(client?.contacts?.escalation),
-      invoiceEmail: client?.contacts?.invoiceEmail ?? '',
-      sameAsPrimary: client?.contacts?.sameAsPrimary ?? [],
+      // `client.contacts && (… ?? {})`, not `client?.contacts?.roles ?? …`: on a
+      // section somebody has already saved, an absent `roles` means both roles
+      // name their own person, and falling back to the defaults there would
+      // quietly discard the contacts they typed.
+      roles: client?.contacts ? (client.contacts.roles ?? {}) : DEFAULT_ROLES,
     },
   });
 
   /**
-   * A mirrored role stores nothing of its own — the flag is the record.
+   * A role that points elsewhere stores nothing of its own: the choice is the
+   * record.
    *
-   * `pruneEmpty` would keep whatever was typed into the group before the box
-   * was ticked, and that stale copy is exactly what the mirror exists to avoid:
-   * the day the primary contact's email changes, the untouched copy underneath
-   * would still be there to be read by mistake.
+   * `pruneEmpty` would keep whatever was typed into the group before the choice
+   * changed, and that stale copy is exactly what this exists to avoid: the day
+   * the primary contact's email changes, the untouched copy underneath would
+   * still be there to be read by mistake.
    */
   const toPayload = (values: FormValues): FormValues => {
-    const mirrored = values.sameAsPrimary ?? [];
+    const roles = values.roles ?? {};
     const cleaned = { ...values };
-    for (const key of mirrored) delete cleaned[key];
-    // `pruneEmpty` passes arrays through, so an empty one has to go by hand —
-    // storing `sameAsPrimary: []` would make the section look filled in.
-    delete cleaned.sameAsPrimary;
+    for (const key of MIRRORABLE_CONTACTS) if (roles[key]) delete cleaned[key];
+    // `pruneEmpty` recurses, so `roles` has to be carried by hand: it is a map
+    // of choices rather than typed-in text, and an omitted key means something
+    // different from an empty one.
+    delete cleaned.roles;
     const pruned = pruneEmpty(cleaned);
-    return mirrored.length ? { ...pruned, sameAsPrimary: mirrored } : pruned;
+    return Object.keys(roles).length > 0 ? { ...pruned, roles } : pruned;
   };
 
   // Restores what was typed but not saved, so a refresh or a hop to the other
   // profile comes back to the same half-filled form. Cleared on save.
-  useFormDraft(draftKey(client?.id, 'contacts'), watch, reset);
+  useFormDraft(draftKey(client?.id, "contacts"), watch, reset);
 
-  const { serverError, save } = useStepSave<FormValues>(client, 'contacts', onSaved, toPayload);
+  const { serverError, save } = useStepSave<FormValues>(
+    client,
+    "contacts",
+    onSaved,
+    toPayload,
+  );
+
+  // The name the invoice would actually carry, so the choice reads as a fact
+  // about this client rather than a generic "the company itself". Documents
+  // print `companyName || name`, and this follows them.
+  const companyLabel =
+    client?.companyName?.trim() || client?.name?.trim() || "The company itself";
 
   return (
     <StepForm
@@ -119,11 +168,12 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
       <ContactGroup
         name="primary"
         legend="Primary contact"
-        info="Who the work is discussed with day to day. The three roles below can point at this person instead of repeating them."
+        info="Who the work is discussed with day to day. The two roles below can point at this person instead of repeating them."
         register={register}
         errors={errors}
         control={control}
         setValue={setValue}
+        clearErrors={clearErrors}
       />
 
       <FieldSeparator />
@@ -131,11 +181,13 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
       <ContactGroup
         name="billing"
         legend="Accounts / billing contact"
-        info="The person on their side who receives the invoice and puts it through for payment — usually someone in their accounts payable, not the person the work is discussed with. An invoice sent to the wrong one is the most ordinary cause of a late payment."
+        info="Where the invoice goes: usually someone in their accounts payable rather than the person the work is discussed with, and an invoice sent to the wrong one is the most ordinary cause of a late payment. A shared inbox (accounts@, or a portal's intake address) is a perfectly good answer, with the name left blank."
+        companyLabel={companyLabel}
         register={register}
         errors={errors}
         control={control}
         setValue={setValue}
+        clearErrors={clearErrors}
       />
 
       <FieldSeparator />
@@ -148,108 +200,153 @@ export default function ContactsStep({ client, onSaved, submitLabel }: StepProps
         errors={errors}
         control={control}
         setValue={setValue}
+        clearErrors={clearErrors}
       />
-
-      <FieldSeparator />
-
-      <ContactGroup
-        name="escalation"
-        legend="Escalation contact"
-        info="Who to reach when the usual route has stopped answering."
-        register={register}
-        errors={errors}
-        control={control}
-        setValue={setValue}
-      />
-
-      <FieldSeparator />
-
-      <Field>
-        <FieldInfo
-          htmlFor="client-invoice-email"
-          label="Invoice delivery email"
-          info="Often a shared inbox rather than a person — accounts payable, a ticketing address, or a portal's intake address. Kept separate from the billing contact because the two are frequently different."
-          infoLabel="Why is this separate from the billing contact?"
-        />
-        <Input
-          id="client-invoice-email"
-          size="form"
-          type="email"
-          placeholder="accounts@clayora.com"
-          {...register('invoiceEmail')}
-        />
-        <FieldError errors={[errors.invoiceEmail]} />
-      </Field>
     </StepForm>
   );
 }
 
+/** The roles that point somewhere else rather than naming their own person. */
+const MIRRORABLE_CONTACTS = ["billing", "signing"] as const;
+
+/**
+ * What each role does before anyone chooses.
+ *
+ * Billing is the company: an invoice is addressed to the entity, and naming a
+ * person is the exception rather than the rule. Signing is the primary contact,
+ * because a contract is signed by a human and the person the work is discussed
+ * with is usually the one who signs it. Both are also the safe answers: a
+ * forgotten signing role prints an empty rule where a name belongs.
+ *
+ * Applied only to a section nobody has saved. Once `contacts` exists, whatever
+ * is in `roles` is a decision someone made.
+ */
+const DEFAULT_ROLES: ClientContacts["roles"] = {
+  billing: "company",
+  signing: "primary",
+};
+
+/** What each role can point at, in the order the choices are offered. */
+const ROLE_OPTIONS: Record<
+  MirroredContactKey,
+  { value: string; label: string }[]
+> = {
+  billing: [
+    { value: "company", label: "The company itself" },
+    { value: "primary", label: "Same as primary" },
+    { value: OWN, label: "Someone else" },
+  ],
+  signing: [
+    { value: "primary", label: "Same as primary" },
+    { value: OWN, label: "Someone else" },
+  ],
+};
+
 function blankContact(contact: ClientContacts[ContactKey] | undefined) {
   return {
-    name: contact?.name ?? '',
-    designation: contact?.designation ?? '',
-    email: contact?.email ?? '',
-    phone: contact?.phone ?? '',
+    name: contact?.name ?? "",
+    designation: contact?.designation ?? "",
+    email: contact?.email ?? "",
+    phone: contact?.phone ?? "",
   };
 }
 
-const PLACEHOLDERS: Record<ContactKey, { name: string; designation: string; email: string }> = {
-  primary: { name: 'Anaya Rao', designation: 'Founder', email: 'anaya@clayora.com' },
-  billing: { name: 'Rahul Menon', designation: 'Accounts Payable', email: 'ap@clayora.com' },
-  signing: { name: 'Anaya Rao', designation: 'Director', email: 'anaya@clayora.com' },
-  escalation: { name: 'Priya Nair', designation: 'Operations Head', email: 'priya@clayora.com' },
+const PLACEHOLDERS: Record<
+  ContactKey,
+  { name: string; designation: string; email: string }
+> = {
+  primary: {
+    name: "Anaya Rao",
+    designation: "Founder",
+    email: "anaya@clayora.com",
+  },
+  billing: {
+    name: "Rahul Menon",
+    designation: "Accounts Payable",
+    email: "ap@clayora.com",
+  },
+  signing: {
+    name: "Anaya Rao",
+    designation: "Director",
+    email: "anaya@clayora.com",
+  },
 };
 
 function ContactGroup({
   name,
   legend,
   info,
+  companyLabel,
   register,
   errors,
   control,
   setValue,
+  clearErrors,
 }: {
   name: ContactKey;
   legend: string;
   info: string;
+  /** Only the billing role can point at the company, so only it passes one. */
+  companyLabel?: string;
   register: UseFormRegister<FormValues>;
   errors: FieldErrors<FormValues>;
   control: Control<FormValues>;
   setValue: UseFormSetValue<FormValues>;
+  clearErrors: UseFormClearErrors<FormValues>;
 }) {
   const group = errors[name];
   const mirrorable = (MIRRORABLE_CONTACTS as readonly string[]).includes(name);
-  const mirrored = useWatch({ control, name: 'sameAsPrimary' }) ?? [];
+  const roles = useWatch({ control, name: "roles" }) ?? {};
   /**
-   * The four leaves, not `name: 'primary'`.
+   * The leaves, not `name: 'primary'`.
    *
-   * Watching the group returns the *same object reference* each render — RHF
-   * mutates it in place — so React saw no change and the mirrored fields stayed
-   * blank while the primary contact was being typed. An array of paths returns
+   * Watching the group returns the *same object reference* each render, since
+   * RHF mutates it in place, so React saw no change and the summary below stayed
+   * stale while the primary contact was being typed. An array of paths returns
    * a fresh array, which is what makes the mirror live.
    */
   const [pName, pDesignation, pEmail, pPhone] = useWatch({
     control,
-    name: ['primary.name', 'primary.designation', 'primary.email', 'primary.phone'],
+    name: [
+      "primary.name",
+      "primary.designation",
+      "primary.email",
+      "primary.phone",
+    ],
   });
-  const isMirrored = mirrorable && mirrored.includes(name as MirroredContactKey);
+  const source = mirrorable ? (roles[name as MirroredContactKey] ?? OWN) : OWN;
+  const namesItsOwn = source === OWN;
   const hint = PLACEHOLDERS[name];
+  const options = mirrorable
+    ? ROLE_OPTIONS[name as MirroredContactKey].map((option) =>
+        option.value === "company" && companyLabel
+          ? { ...option, label: companyLabel }
+          : option,
+      )
+    : [];
 
   /**
-   * A live mirror, so the fields *show* the primary contact while ticked and
-   * go read-only rather than disabled — a disabled input is skipped by screen
-   * readers, and someone checking who signs the contract should still be able
-   * to read the answer.
+   * Choosing anything but "someone else" empties the group as well.
+   *
+   * `toPayload` already discards the details of a role that points elsewhere,
+   * so nothing is lost that would have been stored. What the emptying prevents
+   * is a save blocked by a field nobody can see: the resolver validates the
+   * whole object, so a half-typed email left behind under a collapsed section
+   * would fail silently with no input on screen to point at.
    */
-  const shown = isMirrored
-    ? { name: pName, designation: pDesignation, email: pEmail, phone: pPhone }
-    : undefined;
-
-  const toggle = (checked: boolean) => {
-    const next = checked
-      ? [...mirrored, name as MirroredContactKey]
-      : mirrored.filter((k) => k !== name);
-    setValue('sameAsPrimary', next, { shouldDirty: true });
+  const choose = (value: string) => {
+    const key = name as MirroredContactKey;
+    const next = { ...roles };
+    // Written per key rather than through one index, because the two are not
+    // the same type: signing can only ever point at the primary contact.
+    if (value === OWN) delete next[key];
+    else if (key === "signing") next.signing = "primary";
+    else next.billing = value as ContactSource;
+    setValue("roles", next, { shouldDirty: true });
+    if (value !== OWN) {
+      setValue(key, blankContact(undefined), { shouldDirty: true });
+      clearErrors(name);
+    }
   };
 
   return (
@@ -261,85 +358,135 @@ function ContactGroup({
 
         {mirrorable ? (
           <div className="flex items-center gap-2">
-            <FieldLabel htmlFor={`${name}-same`} className="text-muted-foreground font-normal">
-              Same as primary
+            <FieldLabel
+              htmlFor={`${name}-source`}
+              className="text-muted-foreground font-normal"
+            >
+              Address it to
             </FieldLabel>
-            <Checkbox
-              id={`${name}-same`}
-              checked={isMirrored}
-              onCheckedChange={(checked) => toggle(Boolean(checked))}
-            />
+            <Select
+              value={source}
+              onValueChange={(value) => choose(value ?? OWN)}
+            >
+              <SelectTrigger id={`${name}-source`} size="form" className="w-56">
+                {/*
+                  The label, not the value. `SelectValue` renders what is stored
+                  when it is given nothing else, and the trigger would read
+                  "company" rather than "The company itself".
+                */}
+                <SelectValue>
+                  {options.find((o) => o.value === source)?.label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent size="form">
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : null}
       </div>
 
-      <FieldRow>
-        <ContactInput
-          id={`${name}-name`}
-          label="Name"
-          placeholder={hint.name}
-          mirrored={isMirrored}
-          mirroredValue={shown?.name}
-          field={register(`${name}.name`)}
-          error={group?.name}
+      {!namesItsOwn ? (
+        <RoleSummary
+          role={name as MirroredContactKey}
+          source={source as ContactSource}
+          parts={[pName, pDesignation, pEmail, pPhone]}
         />
-        <ContactInput
-          id={`${name}-designation`}
-          label="Designation"
-          placeholder={hint.designation}
-          mirrored={isMirrored}
-          mirroredValue={shown?.designation}
-          field={register(`${name}.designation`)}
-          error={group?.designation}
-        />
-      </FieldRow>
+      ) : (
+        <>
+          <FieldRow>
+            <ContactInput
+              id={`${name}-name`}
+              label="Name"
+              placeholder={hint.name}
+              field={register(`${name}.name`)}
+              error={group?.name}
+            />
+            <ContactInput
+              id={`${name}-designation`}
+              label="Designation"
+              placeholder={hint.designation}
+              field={register(`${name}.designation`)}
+              error={group?.designation}
+            />
+          </FieldRow>
 
-      <FieldRow>
-        <ContactInput
-          id={`${name}-email`}
-          label="Email"
-          type="email"
-          placeholder={hint.email}
-          mirrored={isMirrored}
-          mirroredValue={shown?.email}
-          field={register(`${name}.email`)}
-          error={group?.email}
-        />
-        <ContactInput
-          id={`${name}-phone`}
-          label="Phone"
-          type="tel"
-          placeholder="+91 98765 43210"
-          mirrored={isMirrored}
-          mirroredValue={shown?.phone}
-          field={register(`${name}.phone`)}
-          error={group?.phone}
-        />
-      </FieldRow>
+          <FieldRow>
+            <ContactInput
+              id={`${name}-email`}
+              label="Email"
+              type="email"
+              placeholder={hint.email}
+              field={register(`${name}.email`)}
+              error={group?.email}
+            />
+            {/*
+              The same field the identity step uses, country selector included:
+              a client's staff are not all in one country, and a bare box makes
+              the operator remember to type the code. `required={false}` because
+              every contact field here is optional.
+            */}
+            <PhoneField
+              control={control}
+              name={`${name}.phone`}
+              id={`${name}-phone`}
+              required={false}
+            />
+          </FieldRow>
+        </>
+      )}
     </FieldSet>
   );
 }
 
 /**
- * One field of a contact, in one of two entirely separate states.
+ * Where a role points, in place of the four fields it replaces.
  *
- * **The mirrored input is not the registered one.** Handing react-hook-form's
- * `register()` a `value` prop as well switches the input from uncontrolled to
- * controlled mid-life, which React declines to apply — the field stayed
- * stubbornly blank while showing `readonly`. So a mirrored field renders as a
- * plain read-only input with no registration at all, which is also the honest
- * description of it: it is a *view of the primary contact*, not an input.
+ * The fields collapse rather than going read-only: a role pointing elsewhere
+ * has nothing of its own to show, so four boxes repeating the section above
+ * them are four more things to read and one more place someone might try to
+ * type. The line stays live as the primary contact is filled in, so the choice
+ * is never a leap of faith about whose name ends up on the contract.
  *
- * Read-only rather than disabled, because a disabled input is skipped by screen
- * readers and who signs the contract is worth being able to read.
+ * The billing line says what the invoice will *say*, not what the record holds,
+ * because that is the question being answered. Naming a person there does not
+ * change who is billed, only that the invoice is marked for their attention.
  */
+function RoleSummary({
+  role,
+  source,
+  parts,
+}: {
+  role: MirroredContactKey;
+  source: ContactSource;
+  parts: (string | undefined)[];
+}) {
+  // The choice beside it already names the company. A line repeating it back is
+  // one more thing to read that says nothing new.
+  if (role === "billing" && source === "company") return null;
+
+  const filled = parts.map((p) => p?.trim()).filter(Boolean);
+  // Nothing typed above yet, so there is nothing to report. A line saying so
+  // would only restate the choice beside it.
+  if (filled.length === 0) return null;
+
+  return (
+    <p className="text-muted-foreground text-sm">
+      {role === 'billing' ? `Marked for the attention of ${filled[0]}.` : filled.join(' · ')}
+    </p>
+  );
+}
+
+/** One field of a contact. */
 function ContactInput({
   id,
   label,
   type,
   placeholder,
-  mirrored,
-  mirroredValue,
   field,
   error,
 }: {
@@ -347,43 +494,19 @@ function ContactInput({
   label: string;
   type?: string;
   placeholder: string;
-  mirrored: boolean;
-  mirroredValue?: string;
   field: ReturnType<UseFormRegister<FormValues>>;
   error?: { message?: string };
 }) {
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      {/*
-        The `key` is load-bearing. Without it React keeps the same DOM node
-        across the branch, and an input that begins life uncontrolled will not
-        start honouring a `value` prop later — the field showed `readonly` and
-        stayed stubbornly blank. Two keys, two elements, each controlled or not
-        for its whole life.
-      */}
-      {mirrored ? (
-        <Input
-          key="mirrored"
-          id={id}
-          size="form"
-          type={type}
-          readOnly
-          aria-readonly
-          className="text-muted-foreground"
-          value={mirroredValue ?? ''}
-          onChange={() => {}}
-        />
-      ) : (
-        <Input
-          key="editable"
-          id={id}
-          size="form"
-          type={type}
-          placeholder={placeholder}
-          {...field}
-        />
-      )}
+      <Input
+        id={id}
+        size="form"
+        type={type}
+        placeholder={placeholder}
+        {...field}
+      />
       <FieldError errors={[error]} />
     </Field>
   );

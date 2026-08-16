@@ -1,0 +1,17 @@
+-- Where invoices are addressed, when that is not the registered address.
+--
+-- One nullable column, additive. Null means "the registered address", which is
+-- what every existing row means and what most rows will always mean.
+--
+-- Parts only, with no flat `billing_address` twin. The registered address has
+-- both because rows predate the structured form and their hand-typed text is
+-- still authoritative; nothing predates this one, so the printable line is
+-- composed from the parts on read.
+--
+-- **This column never decides tax.** GST place of supply follows the
+-- recipient's registration (their GSTIN, else their registered address), not
+-- where the invoice is posted. A client registered in Karnataka whose accounts
+-- department sits in Maharashtra is still a Karnataka supply. `placeOfSupplyOf`
+-- reads `gstin` and `address_parts` and must keep doing so, or we would start
+-- issuing invoices with the CGST/SGST-vs-IGST split the wrong way round.
+ALTER TABLE "clients" ADD COLUMN "billing_address_parts" jsonb;

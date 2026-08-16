@@ -62,6 +62,15 @@ export const clientInputSchema = z.object({
   /** The flat printable address; composed from `addressParts` when present. */
   address: multilineSchema(500, { required: 'An address is required.' }),
   addressParts: addressPartsSchema.optional(),
+  /**
+   * Where invoices are addressed, when that differs from the registered
+   * address. Absent means the registered one, which is the ordinary case.
+   *
+   * Held to the same rule as the registered address rather than a looser one:
+   * a half-typed second address on a tax invoice is worse than none. It is
+   * display only and never feeds place of supply.
+   */
+  billingAddressParts: addressPartsSchema.optional(),
   email: emailSchema({ required: 'An email is required.' }),
   /**
    * Validated, where it used to be a bare length check.

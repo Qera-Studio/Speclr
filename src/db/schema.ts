@@ -68,6 +68,20 @@ export const clients = pgTable('clients', {
    * parts, and that must keep working.
    */
   addressParts: jsonb('address_parts').$type<AddressParts>(),
+  /**
+   * Where invoices are addressed, when that is not the registered address.
+   *
+   * Null means "the registered address", which is the ordinary case. A client
+   * registered in one state whose accounts department sits in another is the
+   * case this exists for.
+   *
+   * **It never decides tax.** GST place of supply follows the recipient's
+   * registration, not where the envelope goes, so `placeOfSupplyOf` reads the
+   * GSTIN and `addressParts` and must keep doing so. Parts only, with no flat
+   * twin: there are no rows predating it, so the printable line is composed on
+   * read.
+   */
+  billingAddressParts: jsonb('billing_address_parts').$type<AddressParts>(),
   email: text('email').notNull(),
   /** E.164 for new writes; legacy rows may hold arbitrary text. */
   phone: text('phone').notNull(),
