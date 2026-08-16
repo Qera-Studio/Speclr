@@ -100,6 +100,26 @@ export const StepActionsSlot = createContext<HTMLElement | null>(null);
 const STEP_FORM_ID = 'client-onboarding-step';
 
 /**
+ * Stops Enter in a text field from advancing the wizard.
+ *
+ * A browser submits a form when Enter is pressed in a single-line input, which
+ * on a seven-step wizard means a rate typed into a field moves the operator to
+ * the next step before they have looked at the rest of it. Advancing is a
+ * deliberate act: it is the button, or nothing.
+ *
+ * Only single-line inputs, so a textarea keeps its newline and Enter on a
+ * focused button still activates it. Anything that has already handled the key
+ * (a combobox choosing an option) is left alone.
+ */
+function blockImplicitSubmit(event: React.KeyboardEvent<HTMLFormElement>) {
+  if (event.key !== 'Enter' || event.defaultPrevented) return;
+  const target = event.target as HTMLElement;
+  if (target instanceof HTMLInputElement && target.type !== 'submit') {
+    event.preventDefault();
+  }
+}
+
+/**
  * The frame every step shares: the fields, one error region, one submit.
  *
  * `noValidate` throughout, as everywhere else in this codebase — the browser's
@@ -138,7 +158,13 @@ export function StepForm({
   );
 
   return (
-    <form id={STEP_FORM_ID} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form
+      id={STEP_FORM_ID}
+      onSubmit={onSubmit}
+      onKeyDown={blockImplicitSubmit}
+      noValidate
+      className="flex flex-col gap-4"
+    >
       <FieldGroup size="form">{children}</FieldGroup>
 
       {serverError ? (

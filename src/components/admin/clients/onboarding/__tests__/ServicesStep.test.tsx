@@ -109,6 +109,15 @@ describe('ServicesStep', () => {
     expect(payload().services).toEqual([{ code: '01' }, { code: '05' }]);
   });
 
+  it('does not advance when Enter is pressed in a field', async () => {
+    const user = userEvent.setup();
+    show();
+
+    await user.type(screen.getByLabelText('Agreed rate for Domain and email setup'), '2500{Enter}');
+
+    expect(saveClientSection).not.toHaveBeenCalled();
+  });
+
   it('removes a service from the list, and its rate with it', async () => {
     const user = userEvent.setup();
     show();
