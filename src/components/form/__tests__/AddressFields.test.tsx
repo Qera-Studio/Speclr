@@ -87,7 +87,7 @@ describe('AddressFields', () => {
     expect(
       screen.getByRole('button', { name: /why are city and state locked/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/filled from this pincode/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/filled from this postcode/i);
   });
 
   it('leaves a hand-typed city editable', async () => {
@@ -212,12 +212,35 @@ describe('AddressFields', () => {
     expect(screen.getByLabelText(/^city$/i)).toHaveValue('Typed By Hand');
   });
 
-  it('does not look up pincodes outside India', async () => {
+  /**
+   * The field used to strip everything but digits, whatever the country, so a
+   * Scottish client could not type their own postcode: 'EH1 1YZ' became '11'.
+   * The letters and the space have to survive, and the country has to reach the
+   * server, which is what decides the upstream.
+   */
+  it('keeps the letters in a postcode outside India, and looks it up', async () => {
+    mockLookup({ ok: true, city: 'Edinburgh', state: 'Scotland' });
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'GB' }} />);
+
+    await user.type(screen.getByLabelText(/postcode/i), 'EH1 1YZ');
+    await settleDebounce();
+
+    expect(screen.getByLabelText(/postcode/i)).toHaveValue('EH1 1YZ');
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/pincode/EH1%201YZ?country=GB',
+      expect.anything(),
+    );
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Edinburgh');
+    expect(screen.getByLabelText(/^state$/i)).toHaveValue('Scotland');
+  });
+
+  it('still refuses a half-typed Indian pincode', async () => {
     mockLookup({ ok: true, city: 'Nope', state: 'Nope' });
     const user = userEvent.setup();
-    render(<Harness initial={{ country: 'US' }} />);
+    render(<Harness />);
 
-    await user.type(screen.getByLabelText(/pincode/i), '201017');
+    await user.type(screen.getByLabelText(/pincode/i), '2010');
     await settleDebounce();
 
     expect(global.fetch).not.toHaveBeenCalled();

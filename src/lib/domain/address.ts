@@ -72,11 +72,26 @@ export const emptyAddressParts: AddressParts = {
   country: 'IN',
 };
 
-/** India's 6-digit postal code — the only format we can autofill from. */
+/** India's 6-digit postal code. */
 export const INDIA_PINCODE_RE = /^\d{6}$/;
+
+/**
+ * A postcode anywhere else, loosely: letters, digits, one internal space or
+ * hyphen. Deliberately not a per-country format: that would be a jurisdiction
+ * rule (`PRINCIPLES.md` rule 5) for sixty countries, to gate a lookup whose
+ * failure costs nothing. It exists to keep caller-controlled text out of an
+ * upstream URL, not to tell anyone their postcode is wrong.
+ */
+export const POSTCODE_RE = /^[A-Z0-9][A-Z0-9 -]{1,11}$/;
 
 export function isIndianPincode(value: string): boolean {
   return INDIA_PINCODE_RE.test(value.trim());
+}
+
+/** Worth a lookup? India is strict because we can be; elsewhere is a guess. */
+export function isLookupPostcode(value: string, country: string): boolean {
+  const code = value.trim().toUpperCase();
+  return country === 'IN' ? INDIA_PINCODE_RE.test(code) : POSTCODE_RE.test(code);
 }
 
 /**

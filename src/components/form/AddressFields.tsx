@@ -9,16 +9,18 @@ import { Combobox } from '@/components/ui/combobox';
 import { FieldSpinner } from '@/components/ui/spinner';
 import { useMinimumDuration } from '@/lib/useMinimumDuration';
 import FieldInfo from './FieldInfo';
-import { isIndianPincode } from '@/lib/domain/address';
+import { isLookupPostcode } from '@/lib/domain/address';
 import { COUNTRIES } from '@/lib/domain/phone';
 
 /**
  * The structured address block, shared by the client and employee forms.
  *
- * Typing a 6-digit Indian pincode fills in city and state. That lookup is
- * strictly an enhancement: it is debounced, it aborts when superseded, it fails
- * silently, and it never overwrites something already typed. Every field stays
- * editable by hand, so a slow or down third party can't stop anyone saving.
+ * Typing a postcode fills in city and state, in India and in the ~60 countries
+ * the world upstream covers. That lookup is strictly an enhancement: it is
+ * debounced, it aborts when superseded, it fails silently, and it never
+ * overwrites something already typed. Every field stays editable by hand, so a
+ * slow or down third party can't stop anyone saving, which is also what makes
+ * partial country coverage acceptable rather than a half-built feature.
  */
 
 const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
@@ -28,7 +30,18 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
 
 const DEBOUNCE_MS = 400;
 
-const LOCK_HINT = 'City and state filled from this pincode. Change it to edit them.';
+const LOCK_HINT = 'City and state filled from this postcode. Change it to edit them.';
+
+/**
+ * India calls it a pincode and it is always six digits, so that field can say
+ * so and refuse everything else. Everywhere else the shape is the country's own
+ * business: 'EH1 1YZ' is a postcode and stripping it to '11' is how a Scottish
+ * client became unable to type their address.
+ */
+const postcodeField = (country: string) =>
+  country === 'IN'
+    ? { label: 'Pincode', placeholder: '000000', inputMode: 'numeric' as const, digitsOnly: true }
+    : { label: 'Postcode', placeholder: 'Postcode', inputMode: 'text' as const, digitsOnly: false };
 
 interface AddressFieldsProps<T extends FieldValues> {
   control: Control<T>;
@@ -86,6 +99,7 @@ export default function AddressFields<T extends FieldValues>({
 
   const pincodeValue = String(pincode.field.value ?? '');
   const countryValue = String(country.field.value ?? 'IN');
+  const postcode = postcodeField(countryValue);
 
   // Read the latest city/state inside the effect without making them
   // dependencies — otherwise typing a city would restart the lookup.
@@ -110,11 +124,11 @@ export default function AddressFields<T extends FieldValues>({
   const setState = state.field.onChange;
 
   useEffect(() => {
-    // A new pincode (or leaving India) invalidates whatever the last one filled
-    // in — unlock first, then look up again.
+    // A new postcode (or a new country) invalidates whatever the last one
+    // filled in. Unlock first, then look up again.
     setAutofilled({ city: false, state: false });
 
-    if (countryValue !== 'IN' || !isIndianPincode(pincodeValue)) {
+    if (!isLookupPostcode(pincodeValue, countryValue)) {
       setLookingUp(false);
       return;
     }
@@ -124,9 +138,10 @@ export default function AddressFields<T extends FieldValues>({
 
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/pincode/${pincodeValue}`, {
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `/api/pincode/${encodeURIComponent(pincodeValue.trim())}?country=${countryValue}`,
+          { signal: controller.signal },
+        );
         const data: unknown = await response.json();
         if (controller.signal.aborted) return;
 
@@ -221,7 +236,7 @@ export default function AddressFields<T extends FieldValues>({
               tooltip is not read out, and this is news when it happens. */}
           <FieldInfo
             htmlFor={`${idPrefix}-pincode`}
-            label="Pincode"
+            label={postcode.label}
             info={locked ? LOCK_HINT : undefined}
             infoLabel="Why are city and state locked?"
           />
@@ -229,17 +244,22 @@ export default function AddressFields<T extends FieldValues>({
             <Input
               id={`${idPrefix}-pincode`}
               size={size}
-              placeholder="000000"
-              inputMode="numeric"
+              placeholder={postcode.placeholder}
+              inputMode={postcode.inputMode}
               autoComplete={NO_PROFILE_AUTOFILL}
               aria-describedby={`${idPrefix}-pincode-hint`}
               className={busy ? 'pr-8' : undefined}
               {...pincode.field}
               value={pincodeValue}
-              // Digits only. A Controller field, so it cannot use
-              // `numericField` — same sanitise-on-change rule, applied by hand.
+              // A Controller field, so it cannot use `numericField`. Same
+              // sanitise-on-change rule, applied by hand, and only where the
+              // format is actually digits.
               onChange={(event) =>
-                pincode.field.onChange(event.target.value.replace(/\D/g, ''))
+                pincode.field.onChange(
+                  postcode.digitsOnly
+                    ? event.target.value.replace(/\D/g, '')
+                    : event.target.value.toUpperCase(),
+                )
               }
             />
             <FieldSpinner show={busy} />
