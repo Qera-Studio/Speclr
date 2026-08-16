@@ -70,13 +70,35 @@ describe('security headers', () => {
     });
 
     /**
-     * `'unsafe-eval'` would re-enable `eval`-based script execution, and unlike
-     * `'unsafe-inline'` (which is present for the reason documented in the
-     * config) nothing on this stack needs it in a production build.
+     * `'unsafe-eval'` re-enables dynamic code execution, and unlike
+     * `'unsafe-inline'` (present for the reason documented in the config)
+     * nothing on this stack needs it in a build that ships. React's *dev*
+     * build does, which is why the config widens the directive under
+     * `NODE_ENV === 'development'` and only there.
+     *
+     * Jest runs as `test`, so the config this reads is the shipping one. The
+     * second half proves the widening is genuinely conditional rather than a
+     * line that happens to be commented out.
      */
-    it('never allows eval', async () => {
+    it('never allows eval outside development', async () => {
       const csp = (await headerMap())['content-security-policy'];
       expect(csp).not.toContain('unsafe-eval');
+    });
+
+    it('allows it in development, so the policy itself stays on locally', async () => {
+      const previous = process.env.NODE_ENV;
+      // Writable only via defineProperty: Next's types declare it readonly.
+      Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', configurable: true });
+      jest.resetModules();
+      try {
+        const dev = (await import('../../next.config')).default;
+        const headers = (await dev.headers!())[0].headers;
+        const csp = headers.find((h) => h.key === 'Content-Security-Policy')!.value;
+        expect(csp).toContain("'unsafe-eval'");
+      } finally {
+        Object.defineProperty(process.env, 'NODE_ENV', { value: previous, configurable: true });
+        jest.resetModules();
+      }
     });
 
     it('still lets Clerk load, or nobody can sign in', async () => {

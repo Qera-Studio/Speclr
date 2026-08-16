@@ -82,9 +82,25 @@ const CLERK = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.sp
  * script. The pass is: sign in, open a document editor, print preview, the icon
  * tool, and an attachment download, with the console open.
  */
+/**
+ * `'unsafe-eval'` in development only, and never in a build that ships.
+ *
+ * React's development build uses dynamic code evaluation to reconstruct a
+ * callstack from another environment, which is what the console error under a
+ * policy without it is reporting. Turning the whole header off locally would
+ * mean the CSP is only ever exercised in production, which is the one place a
+ * mistake in it is expensive; keeping the policy and widening this single
+ * directive means every other line below is still tested every time the app is
+ * opened. React never reaches for it in a production build.
+ *
+ * `NODE_ENV` is set by Next itself (`development` for `next dev`, `production`
+ * for `next build`), so this cannot be widened by an env var someone sets.
+ */
+const DEV_ONLY = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${CLERK}`,
+  `script-src 'self' 'unsafe-inline'${DEV_ONLY} ${CLERK}`,
   "style-src 'self' 'unsafe-inline'",
   // `data:` for the icon tool's generated previews and the employee UPI QR,
   // `blob:` for the object URLs that tool creates before a download.
