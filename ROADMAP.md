@@ -405,4 +405,12 @@ real documents exist.
   `vercel env pull .env.local`, and restart dev. Nothing is exposed until the
   store holds real client files, which is why this is a blocker rather than an
   incident.
+- **Attachments over 4.5 MB will fail on Vercel.** They upload through a Server
+  Action, and Vercel's serverless functions reject a request body over 4.5 MB
+  before Next runs, so `serverActions.bodySizeLimit: '26mb'` only buys the
+  25 MB limit in local dev. The fix is a client-direct upload: a route that
+  hands out a one-shot token, the browser PUTs to Blob, and the action records
+  the resulting URL. Same private store, same `requireAuthorizedUser`, same
+  byte-sniffing on the way in. Until then a large scan silently fails in
+  production.
 - **Run `dev/master-launch-readiness-gate.md`** before any production deploy.

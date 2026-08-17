@@ -12,17 +12,43 @@ import nextConfig from '../../next.config';
  * These read the real config rather than a copy of it. A duplicated expected
  * string would pass forever after somebody edited only one of the two.
  */
-async function headerMap(): Promise<Record<string, string>> {
+/**
+ * There are two groups, and they are deliberately not merged: the attachment
+ * route is framed by our own preview and everything else is framed by nothing.
+ * `0` is that route, `1` is every page.
+ */
+const FILES = 0;
+const PAGES = 1;
+
+async function headerMap(group = PAGES): Promise<Record<string, string>> {
   const groups = await nextConfig.headers!();
-  const all = groups.flatMap((g) => g.headers);
-  return Object.fromEntries(all.map((h) => [h.key.toLowerCase(), h.value]));
+  return Object.fromEntries(groups[group].headers.map((h) => [h.key.toLowerCase(), h.value]));
 }
 
 describe('security headers', () => {
-  it('applies to every path, including static assets the proxy skips', async () => {
+  it('covers every path, with the attachment route carved out first', async () => {
     const groups = await nextConfig.headers!();
-    expect(groups).toHaveLength(1);
-    expect(groups[0].source).toBe('/(.*)');
+    expect(groups).toHaveLength(2);
+    expect(groups[FILES].source).toBe('/api/clients/:id/files/:fileId');
+    // The catch-all excludes what the first entry claims. Two groups matching
+    // one path would emit two `X-Frame-Options`.
+    expect(groups[PAGES].source).toBe('/((?!api/clients/[^/]+/files/).*)');
+    expect('/client/clients/new').toMatch(new RegExp(`^${groups[PAGES].source}$`));
+    expect('/api/clients/c1/files/a1').not.toMatch(new RegExp(`^${groups[PAGES].source}$`));
+  });
+
+  /**
+   * The exception is exactly one document wide. `'self'` still refuses every
+   * other origin, and the route streams bytes with no control on it to click
+   * through, which is the thing clickjacking needs.
+   */
+  it('lets only our own page frame an attachment', async () => {
+    const files = await headerMap(FILES);
+    expect(files['x-frame-options']).toBe('SAMEORIGIN');
+    expect(files['content-security-policy']).toContain("frame-ancestors 'self'");
+    // Everything else in the set is unchanged there.
+    expect(files['x-content-type-options']).toBe('nosniff');
+    expect(files['content-security-policy']).toContain("connect-src 'self'");
   });
 
   it('sets each header the checklist requires', async () => {
@@ -92,7 +118,7 @@ describe('security headers', () => {
       jest.resetModules();
       try {
         const dev = (await import('../../next.config')).default;
-        const headers = (await dev.headers!())[0].headers;
+        const headers = (await dev.headers!())[PAGES].headers;
         const csp = headers.find((h) => h.key === 'Content-Security-Policy')!.value;
         expect(csp).toContain("'unsafe-eval'");
       } finally {

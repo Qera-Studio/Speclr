@@ -98,7 +98,19 @@ const CLERK = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.sp
  */
 const DEV_ONLY = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
 
-const CSP = [
+/**
+ * The one path that is legitimately framed.
+ *
+ * An attachment's preview is the document's own first page, and the browser's
+ * built-in PDF viewer is the only thing here that can draw one without shipping
+ * pdf.js and a worker. It renders in an `<iframe>`, so this route alone gets
+ * `frame-ancestors 'self'` — us, and nobody else. Everything that serves a
+ * *page* stays `'none'`: the clickjacking risk is a control being clicked
+ * through, and this route streams bytes with no controls on it at all.
+ */
+const FILE_ROUTE = "/api/clients/:id/files/:fileId";
+
+const CSP = (frameAncestors: string) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${DEV_ONLY} ${CLERK}`,
   "style-src 'self' 'unsafe-inline'",
@@ -114,7 +126,7 @@ const CSP = [
   "media-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  "frame-ancestors 'none'",
+  `frame-ancestors ${frameAncestors}`,
   `form-action 'self' ${CLERK}`,
   "upgrade-insecure-requests",
 ].join("; ");
@@ -127,14 +139,14 @@ const CSP = [
  * hold a third party's PAN, GSTIN and registered address, and the documents are
  * retained 72 months under CGST s.36.
  */
-const SECURITY_HEADERS = [
-  { key: "Content-Security-Policy", value: CSP },
+const SECURITY_HEADERS = (frameAncestors: string, frameOptions: string) => [
+  { key: "Content-Security-Policy", value: CSP(frameAncestors) },
   /**
-   * Clickjacking. `frame-ancestors 'none'` in the CSP is the modern equivalent
-   * and is also set; this is the fallback for anything that does not honour it.
-   * Nothing here is ever legitimately framed.
+   * Clickjacking. `frame-ancestors` in the CSP is the modern equivalent and is
+   * also set; this is the fallback for anything that does not honour it. Only
+   * `FILE_ROUTE` is ever legitimately framed, and then only by us.
    */
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: frameOptions },
   /**
    * Stops the browser second-guessing a Content-Type. Load-bearing for
    * `/api/clients/[id]/files/[fileId]`, which streams a third party's identity
@@ -196,11 +208,40 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // The version banner is free reconnaissance. Nothing reads it.
   poweredByHeader: false,
+  experimental: {
+    // Attachments upload through a Server Action, and the default cap is 1 MB,
+    // well under the 25 MB `MAX_ATTACHMENT_BYTES` allows, so a real MSA failed
+    // at the framework before the size check ever saw it. Set just above that
+    // limit, for the multipart envelope and the other form fields riding along.
+    // The real check stays server-side in `uploadClientAttachment`.
+    //
+    // This is the *framework's* limit, not the platform's: Vercel's serverless
+    // functions reject a request body over 4.5 MB before Next runs. Uploading
+    // a 25 MB file in production needs a client-direct upload to Blob, which
+    // `ROADMAP.md` records.
+    serverActions: { bodySizeLimit: '26mb' },
+    // And the *second* limit, which is the one that actually truncated an MSA.
+    // `src/proxy.ts` runs on every request, so Next clones each body for it
+    // through `getCloneableBody`, capped at 10 MB by default. Past that it
+    // pushes `null` into both streams and logs a warning: the request is not
+    // rejected, it is silently cut short, and the action downstream sees a
+    // half-finished multipart body ("Unexpected end of form"). Raised to match.
+    proxyClientMaxBodySize: '26mb',
+  },
   async redirects() {
     return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: false }));
   },
   async headers() {
-    return [{ source: "/(.*)", headers: SECURITY_HEADERS }];
+    return [
+      // Ordered, and the second source excludes the first: two entries matching
+      // one path would emit two `X-Frame-Options`, which browsers resolve as
+      // the strictest, silently undoing the exception.
+      { source: FILE_ROUTE, headers: SECURITY_HEADERS("'self'", "SAMEORIGIN") },
+      {
+        source: "/((?!api/clients/[^/]+/files/).*)",
+        headers: SECURITY_HEADERS("'none'", "DENY"),
+      },
+    ];
   },
 };
 
