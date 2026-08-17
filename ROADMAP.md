@@ -397,4 +397,12 @@ real documents exist.
   afterwards: the first finalize claims a number atomically and freezes.
 - **`npm test` running in CI.** Free, an afternoon, and the standard already says
   a task is not done until it passes.
+- **Rotate `BLOB_READ_WRITE_TOKEN`.** The token issued when the
+  `speclr-attachments` store was created on 17 August 2026 was pasted into an
+  assistant chat transcript, so it must be treated as disclosed. It is
+  read-write on the store holding clients' PAN cards, GST certificates and
+  incorporation documents. Regenerate it on the store's page, re-run
+  `vercel env pull .env.local`, and restart dev. Nothing is exposed until the
+  store holds real client files, which is why this is a blocker rather than an
+  incident.
 - **Run `dev/master-launch-readiness-gate.md`** before any production deploy.
