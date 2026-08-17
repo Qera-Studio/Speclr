@@ -9,8 +9,15 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "bg-card text-card-foreground",
+        /**
+         * The action was refused. Tinted like `warning` below rather than red
+         * text on the card's own background: red *lettering* is the hardest
+         * thing on the page to read, and the panel is what has to be noticed,
+         * not the individual words. The border and wash carry the alarm and
+         * the sentence stays legible.
+         */
         destructive:
-          "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
+          "border-destructive/40 bg-destructive/10 text-foreground *:[svg]:text-destructive *:data-[slot=alert-description]:text-foreground",
         /**
          * Standing context — "these are identity documents", "record where a
          * credential lives". Borderless and filled, because the default

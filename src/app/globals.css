@@ -215,6 +215,25 @@
   you are not looking at is a value nobody checks, so the box asks for the
   glance.
 */
+/*
+  `progress-slide` is the indeterminate bar. An upload here goes browser →
+  server → Vercel Blob, and only the first leg reports bytes, so a percentage
+  would read 100% while the slow half was still running. A bar that says
+  "working" and nothing more is the honest one.
+*/
+@theme {
+  --animate-progress-slide: progress-slide 1.1s ease-in-out infinite;
+
+  @keyframes progress-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(350%);
+    }
+  }
+}
+
 @theme {
   --animate-fill-flash: fill-flash 900ms ease-out;
 

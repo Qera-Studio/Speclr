@@ -123,8 +123,16 @@ export default function ClientOnboarding({
 
   const previous = active > 0 ? ONBOARDING_STEPS[active - 1] : undefined;
 
+  /**
+   * Attachments takes the band's full height instead of being as tall as its
+   * content, so its list of extra documents scrolls rather than the step.
+   * Named here rather than on the step definition because it is a fact about
+   * this layout, not about what the step collects.
+   */
+  const fill = step.key === "attachments";
+
   const stepProps = useMemo(
-    () => ({ client, onSaved, submitLabel }),
+    () => ({ client, onSaved, onRecordChanged: setClient, submitLabel }),
     [client, onSaved, submitLabel],
   );
 
@@ -187,8 +195,21 @@ export default function ClientOnboarding({
         aria-label={step.title}
       >
         {/* `shrink-0`, or a step taller than the band gets squashed to fit
-            rather than scrolling. */}
-        <div className="m-auto w-full max-w-3xl shrink-0">
+            rather than scrolling.
+
+            A filling step is the exception and wants the opposite: it takes the
+            band's height so that one region inside it can scroll instead of the
+            band. See `StepForm`'s `fill`. */}
+        <div
+          className={cn(
+            "w-full max-w-3xl",
+            // `mx-auto` either way. Only the *vertical* auto margin is the
+            // short-step centring; dropping both put the column against the
+            // left edge of the card.
+            "mx-auto",
+            fill ? "flex min-h-0 flex-1 flex-col" : "my-auto shrink-0",
+          )}
+        >
           {finishing ? (
             <FinishPanel name={client?.name} />
           ) : (
@@ -206,6 +227,7 @@ export default function ClientOnboarding({
               className={cn(
                 "animate-in fade-in duration-300",
                 forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
+                fill && "flex min-h-0 flex-1 flex-col",
               )}
             >
               <StepActionsSlot.Provider value={actions}>

@@ -20,6 +20,12 @@ import type { ClientRecord } from '@/lib/domain/types';
  */
 export interface StepProps {
   client: ClientRecord | null;
+  /**
+   * This step is done. **The shell takes it as "move on"**, so it belongs to
+   * the submit button and nothing else. A step that writes to the row before
+   * then wants `onRecordChanged`, which only Attachments needs so far and so
+   * only Attachments declares.
+   */
   onSaved: (client: ClientRecord) => void;
   /**
    * What the submit button says — the next step's name, computed by the shell.
@@ -131,6 +137,7 @@ export function StepForm({
   serverError,
   submitting,
   submitLabel,
+  fill,
   children,
 }: {
   onSubmit: (event: React.FormEvent) => void;
@@ -138,6 +145,18 @@ export function StepForm({
   submitting: boolean;
   /** Where the button goes, supplied by the shell. See `StepProps`. */
   submitLabel: string;
+  /**
+   * This step fills the band rather than being as tall as its content, so that
+   * one region inside it can take the leftover height and scroll on its own.
+   * Only Attachments asks for it: its list of extra documents has no ceiling,
+   * and left to grow it pushed the upload controls off the top of the page.
+   *
+   * The whole chain has to be flex for that to resolve, which is why this is a
+   * flag here rather than a `className` on the step: the shell, this form and
+   * the field group all have to agree, and one of them opting out silently
+   * turns the inner `flex-1` back into "as tall as the content".
+   */
+  fill?: boolean;
   children: ReactNode;
 }) {
   const slot = useContext(StepActionsSlot);
@@ -163,9 +182,11 @@ export function StepForm({
       onSubmit={onSubmit}
       onKeyDown={blockImplicitSubmit}
       noValidate
-      className="flex flex-col gap-4"
+      className={`flex flex-col gap-4${fill ? ' min-h-0 flex-1' : ''}`}
     >
-      <FieldGroup size="form">{children}</FieldGroup>
+      <FieldGroup size="form" className={fill ? 'min-h-0 flex-1' : undefined}>
+        {children}
+      </FieldGroup>
 
       {serverError ? (
         <Alert variant="destructive">

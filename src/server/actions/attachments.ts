@@ -4,15 +4,19 @@ import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { del, put } from '@vercel/blob';
 import {
+  ATTACHMENT_EXTENSIONS,
+  ATTACHMENT_KIND_LABELS,
   ATTACHMENT_KINDS,
   ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_BYTES,
+  isSlotKind,
+  type AttachmentKind,
   type ClientAttachment,
 } from '@/lib/domain/client';
 import type { ActionResult } from '@/lib/domain/types';
 import { getClient, saveClient } from '@/db/store';
 import { logger } from '@/lib/logger';
-import { safeFilename, sniffMimeType } from '@/lib/fileSignature';
+import { isEncryptedPdf, safeFilename, sniffMimeType } from '@/lib/fileSignature';
 import { authorized } from './authGate';
 
 /**
@@ -42,10 +46,15 @@ import { authorized } from './authGate';
 const STORAGE_UNCONFIGURED =
   'File storage is not configured — BLOB_READ_WRITE_TOKEN is not set on this environment.';
 
+/**
+ * `encrypted` rides back on the result because only this side has the bytes:
+ * the browser would have to read the whole file again to learn the same thing,
+ * and the card has to show the lock before anything refetches the row.
+ */
 export async function uploadClientAttachment(
   clientId: unknown,
   formData: unknown,
-): Promise<ActionResult> {
+): Promise<ActionResult & { encrypted?: boolean }> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return { success: false, error: STORAGE_UNCONFIGURED };
@@ -83,7 +92,17 @@ export async function uploadClientAttachment(
   if (!client) return { success: false, error: 'Client not found.' };
 
   const id = randomUUID();
-  const filename = safeFilename(file.name);
+  // A slot document is named by the slot, not by whatever the scanner called
+  // it: "Clayora - GST registration certificate.pdf" is the same shape for
+  // every client, which is what makes a folder of these readable three years
+  // later. The extension comes from the sniffed type, so the name cannot
+  // disagree with the bytes. Extras keep their own name — several purchase
+  // orders would otherwise all be called the same thing.
+  const filename = isSlotKind(kind as AttachmentKind)
+    ? safeFilename(
+        `${client.companyName || client.name} - ${ATTACHMENT_KIND_LABELS[kind as AttachmentKind]}${ATTACHMENT_EXTENSIONS[sniffed] ?? ''}`,
+      )
+    : safeFilename(file.name);
   // The id is in the path so two uploads of "pan.pdf" cannot collide, and
   // `addRandomSuffix` is off so the stored key is exactly what we can delete.
   const key = `clients/${clientId}/${id}-${filename}`;
@@ -99,6 +118,8 @@ export async function uploadClientAttachment(
     return { success: false, error: 'Failed to upload the file.' };
   }
 
+  const encrypted = sniffed === 'application/pdf' && isEncryptedPdf(bytes);
+
   const attachment: ClientAttachment = {
     id,
     kind: kind as ClientAttachment['kind'],
@@ -107,12 +128,24 @@ export async function uploadClientAttachment(
     size: file.size,
     key,
     uploadedAt: Date.now(),
+    ...(encrypted ? { encrypted } : {}),
   };
+
+  // A slot holds one document, so uploading into a full one replaces it. The
+  // row is rewritten first and the old blob deleted after: the other order
+  // leaves the record pointing at bytes that are already gone if the save then
+  // fails, and an orphaned blob is the recoverable half of that pair.
+  const superseded = isSlotKind(kind as AttachmentKind)
+    ? (client.attachments ?? []).filter((a) => a.kind === kind)
+    : [];
 
   try {
     await saveClient({
       ...client,
-      attachments: [...(client.attachments ?? []), attachment],
+      attachments: [
+        ...(client.attachments ?? []).filter((a) => !superseded.includes(a)),
+        attachment,
+      ],
       updatedAt: Date.now(),
     });
   } catch (err) {
@@ -124,8 +157,17 @@ export async function uploadClientAttachment(
     return { success: false, error: 'Failed to save the attachment.' };
   }
 
+  for (const old of superseded) {
+    // Logged rather than surfaced: the replacement is stored and recorded, and
+    // failing the upload now would be a lie about what happened. A blob nothing
+    // points at is a cleanup job, not an error for whoever is standing here.
+    await del(old.key).catch((err) =>
+      logger.error({ action: 'uploadClientAttachment', event: 'replace_del_failed', error: err }),
+    );
+  }
+
   revalidatePath(`/client/clients/${clientId}`);
-  return { success: true, id };
+  return { success: true, id, encrypted };
 }
 
 /**

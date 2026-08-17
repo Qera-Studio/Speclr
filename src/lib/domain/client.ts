@@ -364,12 +364,139 @@ export const ATTACHMENT_KINDS = [
   'pan',
   'incorporation',
   'signed_contract',
+  'nda',
+  'sow',
   'purchase_order',
+  'tds_certificate',
+  'msme',
+  'cancelled_cheque',
+  'vendor_form',
   'tax_form',
   'firc',
   'signature',
+  // Last, and it stays last: the picker pins it to the end of the list as the
+  // answer for a document none of the others name.
   'other',
 ] as const;
+
+export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
+
+/** What each kind is called, wherever one is named. */
+export const ATTACHMENT_KIND_LABELS: Record<AttachmentKind, string> = {
+  gst_certificate: 'GST registration certificate',
+  pan: 'PAN card',
+  incorporation: 'Certificate of incorporation',
+  signed_contract: 'Signed contract or MSA',
+  nda: 'Non-disclosure agreement',
+  sow: 'Statement of work',
+  purchase_order: 'Purchase order',
+  tds_certificate: 'TDS certificate (Form 16A)',
+  msme: 'MSME / Udyam certificate',
+  cancelled_cheque: 'Cancelled cheque or bank letter',
+  vendor_form: 'Vendor onboarding form',
+  tax_form: 'W-8 / W-9 or foreign tax registration',
+  firc: 'FIRC / FIRA — proof of export realisation',
+  signature: 'Signature',
+  other: 'Other',
+};
+
+/**
+ * One line saying what a document is, for whoever is holding the scan.
+ *
+ * The picker used to print the accepted formats under every card, which were
+ * the same three on all but one of them, so the row said nothing. What the
+ * reader actually needs is which of two similar-looking certificates this is.
+ * The exception earns its mention: a signature is an image, not a PDF.
+ */
+export const ATTACHMENT_KIND_DESCRIPTIONS: Record<AttachmentKind, string> = {
+  gst_certificate: 'Form REG-06, issued on registration',
+  pan: 'The permanent account number card',
+  incorporation: 'The certificate the registrar issued',
+  signed_contract: 'The agreement both sides have signed',
+  nda: 'Confidentiality terms, signed',
+  sow: 'The scope and deliverables for a piece of work',
+  purchase_order: 'The order the client raised against us',
+  tds_certificate: 'Proof of tax the client deducted and paid',
+  msme: 'Udyam registration, if the client holds one',
+  cancelled_cheque: 'Bank details, for payments and refunds',
+  vendor_form: "The client's own supplier form, filled in",
+  tax_form: 'Foreign tax registration or a W-8 / W-9',
+  firc: 'Bank proof that an export payment landed',
+  signature: 'An image of the signature, PNG or JPEG',
+  other: 'Anything the list does not name',
+};
+
+/**
+ * The formats a kind accepts, where it is narrower than the rest.
+ *
+ * Sparse on purpose. Nearly every document arrives as a scan or a PDF, so a
+ * full table would be a row per kind restating `ATTACHMENT_MIME_TYPES` and one
+ * more place to forget when that list changes. A signature is the exception:
+ * it is lifted off a page as an image, and a PDF of one is a page, not a
+ * signature.
+ */
+export const ATTACHMENT_KIND_FORMATS: Partial<Record<AttachmentKind, readonly string[]>> = {
+  signature: ['image/png', 'image/jpeg'],
+};
+
+/** What a kind accepts, as the `accept` attribute wants it. */
+export function attachmentAcceptFor(kind: AttachmentKind): string {
+  return (ATTACHMENT_KIND_FORMATS[kind] ?? ATTACHMENT_MIME_TYPES).join(',');
+}
+
+/**
+ * The documents a client has exactly one of, each with its own upload slot.
+ *
+ * A slot is a *label*, where the old picker was a *mode*: the operator set a
+ * type, then uploaded, and forgetting to change it filed a PAN card as a GST
+ * certificate with nothing to catch it. Naming the slot removes the step that
+ * could be skipped.
+ *
+ * `only` scopes a slot to where the client is, the same way
+ * `ClientRequestChecklist` scopes what to ask them for: an Indian client has a
+ * GSTIN and a PAN, an overseas one has a W-8/W-9 and an FIRC to prove the
+ * export was realised. Neither is asked for the other's paperwork.
+ */
+export interface AttachmentSlot {
+  kind: AttachmentKind;
+  /** Where this slot applies. Absent means everywhere. */
+  only?: 'india' | 'foreign';
+}
+
+export const ATTACHMENT_SLOTS: readonly AttachmentSlot[] = [
+  { kind: 'gst_certificate', only: 'india' },
+  { kind: 'pan', only: 'india' },
+  { kind: 'incorporation', only: 'india' },
+  { kind: 'tax_form', only: 'foreign' },
+  { kind: 'firc', only: 'foreign' },
+  // Signature is not a slot. It is not a registration document, it is not one
+  // of the things a client is asked for at onboarding, and a client can have
+  // more than one of them. It stays an "anything else" kind.
+];
+
+/**
+ * The slots for a client, from where they are.
+ *
+ * Derived rather than chosen: the country is already on the record, and a
+ * second place to say where a client is, is a second place for it to disagree
+ * (`PRINCIPLES.md` rule 3). No country on the record yet reads as India, which
+ * is what an unfinished record means here.
+ */
+export function attachmentSlotsFor(country: string | undefined): readonly AttachmentSlot[] {
+  const scope = !country || country === 'IN' ? 'india' : 'foreign';
+  return ATTACHMENT_SLOTS.filter((slot) => !slot.only || slot.only === scope);
+}
+
+/** Whether a kind is a one-per-client slot, as opposed to a repeatable extra. */
+export function isSlotKind(kind: AttachmentKind): boolean {
+  return ATTACHMENT_SLOTS.some((slot) => slot.kind === kind);
+}
+
+/**
+ * The kinds that are not slots: a client can have several of each, so they
+ * arrive through the "anything else" box with a type beside it.
+ */
+export const ATTACHMENT_EXTRA_KINDS = ATTACHMENT_KINDS.filter((k) => !isSlotKind(k));
 
 /**
  * What may be uploaded. Enforced **server-side** — the same list in the file
@@ -377,8 +504,15 @@ export const ATTACHMENT_KINDS = [
  */
 export const ATTACHMENT_MIME_TYPES = ['application/pdf', 'image/png', 'image/jpeg'] as const;
 
-/** 8 MB. A scan of a certificate; not a video. */
-export const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+/** The extension each accepted type is stored under. */
+export const ATTACHMENT_EXTENSIONS: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+};
+
+/** 25 MB. A signed MSA scanned at full resolution is tens of pages. */
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 export interface ClientAttachment {
   id: string;
@@ -394,6 +528,12 @@ export interface ClientAttachment {
    */
   key: string;
   uploadedAt: number;
+  /**
+   * A password-protected PDF. Recorded because nothing can render one: the
+   * preview shows a lock instead of the browser viewer's own "Password
+   * required" panel, which reads as a broken card rather than a locked file.
+   */
+  encrypted?: boolean;
 }
 
 export const clientAttachmentSchema = z.object({
@@ -404,6 +544,7 @@ export const clientAttachmentSchema = z.object({
   size: z.number().int().min(0).max(MAX_ATTACHMENT_BYTES),
   key: textSchema(500, { required: 'A key is required.' }),
   uploadedAt: z.number().int(),
+  encrypted: z.boolean().optional(),
 });
 
 export const clientAttachmentsSchema = z.array(clientAttachmentSchema).max(50);

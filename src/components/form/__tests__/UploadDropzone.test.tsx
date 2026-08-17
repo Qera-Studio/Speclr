@@ -39,7 +39,7 @@ describe('UploadDropzone', () => {
     render(<UploadDropzone id="favicon-32" accept="image/png" onFileSelected={onFileSelected} />);
     const file = new File(['x'], 'a.png', { type: 'image/png' });
     await user.upload(screen.getByLabelText(/upload file/i), file);
-    expect(onFileSelected).toHaveBeenCalledWith(file);
+    expect(onFileSelected).toHaveBeenCalledWith(file, 1);
   });
 
   it('exposes a labelled drop target', () => {
@@ -52,7 +52,21 @@ describe('UploadDropzone', () => {
     render(<UploadDropzone id="favicon-32" accept="image/png" onFileSelected={onFileSelected} />);
     const file = new File(['x'], 'dropped.png', { type: 'image/png' });
     dropFiles(screen.getByRole('button', { name: /drag.*drop|drop.*file|upload/i }), [file]);
-    expect(onFileSelected).toHaveBeenCalledWith(file);
+    expect(onFileSelected).toHaveBeenCalledWith(file, 1);
+  });
+
+  it('takes the first of several dropped files, and says how many there were', () => {
+    const onFileSelected = jest.fn();
+    render(<UploadDropzone id="favicon-32" accept="image/png" onFileSelected={onFileSelected} />);
+    const first = new File(['x'], 'first.png', { type: 'image/png' });
+    const second = new File(['x'], 'second.png', { type: 'image/png' });
+    dropFiles(screen.getByRole('button', { name: /drag.*drop|drop.*file|upload/i }), [
+      first,
+      second,
+    ]);
+    // The count is the caller's business: this box takes one file, and the one
+    // that owns the surrounding fields is the one that can explain why.
+    expect(onFileSelected).toHaveBeenCalledWith(first, 2);
   });
 
   it('ignores a drop that carries no files', () => {

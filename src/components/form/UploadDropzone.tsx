@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRef, useState, type ReactNode } from 'react';
-import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
-import { cn } from '@/lib/utils';
+import { useRef, useState, type ReactNode } from "react";
+import { TrayArrowIcon } from "@/components/ui/tray-arrow-icon";
+import { cn } from "@/lib/utils";
 
 /**
  * The app's file drop zone — click, drop, or Enter/Space to browse.
@@ -26,9 +26,31 @@ interface UploadDropzoneProps {
   id: string;
   /** The `accept` attribute, verbatim — e.g. `'image/png,.svg'`. */
   accept: string;
-  onFileSelected: (file: File) => void;
+  /**
+   * One file, and the number that were actually offered.
+   *
+   * The box takes a single file: the fields around it describe *this* file, so
+   * a batch would land under one description. The count is passed rather than
+   * swallowed so a caller can say so, which is the part that was missing when
+   * dropping three documents quietly uploaded one.
+   *
+   * Optional only because `onActivate` replaces it: a box that asks which
+   * document this is has nowhere to send a file until it has been answered.
+   */
+  onFileSelected?: (file: File, offered: number) => void;
+  /**
+   * Opens something other than the file dialog.
+   *
+   * The "anything else" box has no type yet, so picking a file first would be
+   * picking it for nothing. With this set the box asks *which document* first
+   * and the picker follows. A drop still works: the file is handed over, and
+   * whatever this opens can upload it once it knows the type.
+   */
+  onActivate?: (file?: File) => void;
   /** Whether something is already attached, which changes the prompt. */
   hasFile?: boolean;
+  /** Replaces the tray arrow in the empty state. */
+  icon?: ReactNode;
   /** The second line, shown only when nothing is attached yet. */
   hint?: ReactNode;
   /** Overrides the prompt entirely — "Upload file" / "Replace file" by default. */
@@ -39,25 +61,45 @@ interface UploadDropzoneProps {
    * stays the re-upload affordance.
    */
   attachment?: ReactNode;
+  /**
+   * The document itself, filling the top of the box in place of the prompt.
+   *
+   * A thumbnail beside the filename tells you a file is there, which the
+   * filename already said. A cropped first page tells you *which* file, which
+   * is the only question worth asking of a wall of scanned certificates. The
+   * prompt moves to a hover overlay, so the box is still the way to replace it.
+   */
+  preview?: ReactNode;
+  /** Extra classes on the box — height, mostly. */
+  className?: string;
 }
 
 export default function UploadDropzone({
   id,
   accept,
   onFileSelected,
+  onActivate,
   hasFile: hasFileProp,
+  icon,
   hint,
   label,
   disabled,
   attachment,
+  preview,
+  className,
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const hasFile = hasFileProp ?? Boolean(attachment);
-  const action = label ?? (hasFile ? 'Replace file' : 'Upload file');
+  const action = label ?? (hasFile ? "Replace file" : "Upload file");
 
   const openPicker = () => {
-    if (!disabled) inputRef.current?.click();
+    if (disabled) return;
+    if (onActivate) {
+      onActivate();
+      return;
+    }
+    inputRef.current?.click();
   };
 
   return (
@@ -71,7 +113,7 @@ export default function UploadDropzone({
       aria-label="Drag and drop a file here, or activate to browse"
       onClick={openPicker}
       onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           openPicker();
         }
@@ -86,47 +128,80 @@ export default function UploadDropzone({
         if (disabled) return;
         event.preventDefault();
         setIsDragging(false);
-        const file = event.dataTransfer.files?.[0];
-        if (file) onFileSelected(file);
+        const files = event.dataTransfer.files;
+        if (!files?.[0]) return;
+        if (onActivate) onActivate(files[0]);
+        else onFileSelected?.(files[0], files.length);
       }}
       className={cn(
-        'group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-sm transition-colors',
-        'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isDragging && 'border-primary bg-accent text-accent-foreground',
-        disabled && 'pointer-events-none opacity-50',
+        "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-sm transition-colors",
+        "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        // A wash of the same blue the border turns, not the neutral hover
+        // grey: the box being armed to receive the file is a different state
+        // from the pointer merely resting on it, and it should not look like it.
+        isDragging && "border-primary bg-primary/10 text-foreground",
+        disabled && "pointer-events-none opacity-50",
+        className,
       )}
     >
-      <input
-        ref={inputRef}
-        id={id}
-        type="file"
-        aria-label={action}
-        className="sr-only"
-        accept={accept}
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onFileSelected(file);
-          // Cleared so re-picking the same file fires `change` again.
-          event.target.value = '';
-        }}
-      />
+      {/* No input in activate mode: there is no type yet, so a file dialog here
+          would be picking a file for nothing. Whatever `onActivate` opens
+          carries the picker once it knows which document this is. */}
+      {onActivate ? null : (
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          aria-label={action}
+          className="sr-only"
+          accept={accept}
+          disabled={disabled}
+          onChange={(event) => {
+            const files = event.target.files;
+            if (files?.[0]) onFileSelected?.(files[0], files.length);
+            // Cleared so re-picking the same file fires `change` again.
+            event.target.value = "";
+          }}
+        />
+      )}
 
-      {/* Prompt — always the top section; it is the click/drop target. */}
-      <div className="flex flex-col items-center gap-1 px-3 py-4 text-center">
-        <TrayArrowIcon direction="up" className="text-muted-foreground" />
-        <span className="font-medium">{isDragging ? 'Drop to upload' : action}</span>
-        {!hasFile ? (
-          <span className="text-xs text-muted-foreground">
-            {hint ?? 'Drag & drop or click to browse'}
+      {/* The top section, and the click/drop target: the document if there is
+          one, the prompt if there is not. */}
+      {preview ? (
+        // Inset, not edge to edge: the page sits as its own card on top of the
+        // box rather than being the box's own top half, which is what stops a
+        // scan's white background reading as part of the chrome around it.
+        <div className="flex-1 p-1">
+          <div className="relative h-full overflow-hidden rounded-sm bg-background">
+            {preview}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/80 text-center opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-visible/tray:opacity-100">
+              <TrayArrowIcon direction="up" className="text-muted-foreground" />
+              <span className="font-medium">
+                {isDragging ? "Drop to upload" : "Replace"}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-8 text-center">
+          {icon ?? <TrayArrowIcon direction="up" className="text-muted-foreground" />}
+          <span className="font-medium">
+            {isDragging ? "Drop to upload" : action}
           </span>
-        ) : null}
-      </div>
+          {!hasFile ? (
+            <span className="text-xs text-muted-foreground">
+              {hint ?? "Drag & drop or click to browse"}
+            </span>
+          ) : null}
+        </div>
+      )}
 
       {/* What is attached — inside the box, below a divider. */}
       {attachment ? (
         <div
-          className="border-t border-border/60 px-2 py-2"
+          // No rule under an inset preview: the card's own edge already
+          // separates them, and a second line there is one too many.
+          className={cn("px-1 py-1", !preview && "border-t border-border/60")}
           onClick={(event) => event.stopPropagation()}
         >
           {attachment}

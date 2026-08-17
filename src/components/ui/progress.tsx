@@ -45,7 +45,14 @@ function ProgressIndicator({
   return (
     <ProgressPrimitive.Indicator
       data-slot="progress-indicator"
-      className={cn("h-full bg-primary transition-all", className)}
+      className={cn(
+        "h-full bg-primary transition-all",
+        // Indeterminate gets no width from Base UI, so it would render as
+        // nothing. A short bar sliding across says "working" without claiming
+        // a percentage nobody measured.
+        "data-[indeterminate]:w-2/5 data-[indeterminate]:animate-progress-slide",
+        className
+      )}
       {...props}
     />
   )
