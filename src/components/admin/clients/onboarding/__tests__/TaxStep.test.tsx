@@ -296,9 +296,80 @@ describe('the foreign branch', () => {
     expect(screen.getByLabelText(/^number$/i)).toBeInTheDocument();
   });
 
+  /**
+   * `PRINCIPLES.md` §7 bounds the foreign branch at "collected, validated,
+   * snapshotted and printed; nothing computes from it", and saying so where
+   * the operator can see it is part of that bound. The *reasoning* (the LUT,
+   * the zero-rated export) sits behind the info icon; the claim itself may not.
+   */
   it('states plainly that nothing is computed from it', () => {
     render(<TaxStep client={foreignClient} onSaved={onSaved} submitLabel="Contacts" />);
-    expect(screen.getByText(/zero-rated export of services under an LUT/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing is computed from it/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /why is nothing computed from this/i }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The country is on the record, so the picker follows it. Seven registration
+   * types beside a UAE client is not a choice, it is six ways to file the
+   * number under the wrong check digit.
+   */
+  it('offers this country’s registration type, and the honest fallback', async () => {
+    const user = userEvent.setup();
+    render(<TaxStep client={foreignClient} onSaved={onSaved} submitLabel="Contacts" />);
+
+    await user.click(screen.getByLabelText(/registration type/i));
+
+    expect(await screen.findByRole('option', { name: /TRN \(UAE\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /other registration/i })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /EIN \(US\)/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /ABN \(Australia\)/ })).not.toBeInTheDocument();
+  });
+
+  // A record whose address was corrected afterwards must not open with the
+  // picker blank and drop the number beside it on the next save.
+  it('keeps a saved type the country no longer offers', async () => {
+    const user = userEvent.setup();
+    const moved = {
+      ...foreignClient,
+      tax: { taxIdType: 'GB_VAT', taxId: 'GB123456789' },
+    } as ClientRecord;
+    render(<TaxStep client={moved} onSaved={onSaved} submitLabel="Contacts" />);
+
+    await user.click(screen.getByLabelText(/registration type/i));
+    expect(await screen.findByRole('option', { name: /VAT number \(UK\)/ })).toBeInTheDocument();
+  });
+
+  it('asks only for the paperwork this country has', () => {
+    const { unmount } = render(
+      <TaxStep client={foreignClient} onSaved={onSaved} submitLabel="Contacts" />,
+    );
+    // A UAE client: reverse charge and a TRC, no US withholding form.
+    expect(screen.getByRole('checkbox', { name: /reverse charge/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: /tax residency certificate/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /W-8BEN-E/i })).not.toBeInTheDocument();
+    unmount();
+
+    const american = {
+      ...foreignClient,
+      addressParts: { ...foreignClient.addressParts!, country: 'US' },
+    } as ClientRecord;
+    render(<TaxStep client={american} onSaved={onSaved} submitLabel="Contacts" />);
+    expect(screen.getByRole('checkbox', { name: /W-8BEN-E/i })).toBeInTheDocument();
+    // The US has no VAT and so no reverse charge on an imported service.
+    expect(screen.queryByRole('checkbox', { name: /reverse charge/i })).not.toBeInTheDocument();
+  });
+
+  // Filtering decides what is *offered*. A client who moved country did not
+  // thereby stop having asked for the form, and hiding a ticked box hides a
+  // saved value.
+  it('still shows a requirement that is already ticked', () => {
+    const ticked = { ...foreignClient, tax: { requiresW8BenE: true } } as ClientRecord;
+    render(<TaxStep client={ticked} onSaved={onSaved} submitLabel="Contacts" />);
+    expect(screen.getByRole('checkbox', { name: /W-8BEN-E/i })).toBeChecked();
   });
 
   it('rejects a TRN that fails its own format', async () => {
@@ -453,5 +524,25 @@ describe('checking as you go', () => {
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(tick('GSTIN')).toBeNull();
+  });
+
+  /**
+   * No registrar and no certificate. A proprietor is registered for GST and for
+   * income tax under their own PAN, and a field for a number that cannot exist
+   * is a field somebody will eventually put something else in.
+   */
+  it('does not ask an individual for a CIN, but still asks for a PAN', () => {
+    render(
+      <TaxStep
+        client={{ ...indianClient, entityType: 'individual' }}
+        onSaved={onSaved}
+        submitLabel="Commercial"
+        kind="individual"
+      />,
+    );
+
+    expect(screen.queryByLabelText(/^cin/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^pan$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^gstin$/i)).toBeInTheDocument();
   });
 });

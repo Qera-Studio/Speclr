@@ -1,4 +1,10 @@
-import { TAX_ID_TYPES, taxIdError, taxIdType, taxIdTypeForCountry } from '../foreign';
+import {
+  TAX_ID_TYPES,
+  taxIdError,
+  taxIdType,
+  taxIdTypeForCountry,
+  taxIdTypesForCountry,
+} from '../foreign';
 
 describe('taxIdTypeForCountry', () => {
   it('picks the identifier a country actually issues', () => {
@@ -90,5 +96,25 @@ describe('the table itself', () => {
       const normalised = spec.placeholder.toUpperCase().replace(/[\s-]/g, '');
       expect(taxIdType(spec.code)?.re.test(normalised)).toBe(true);
     }
+  });
+});
+
+describe('taxIdTypesForCountry', () => {
+  it('offers the country’s own type, then the fallback', () => {
+    expect(taxIdTypesForCountry('AU').map((t) => t.code)).toEqual(['AU_ABN', 'OTHER']);
+    expect(taxIdTypesForCountry('GB').map((t) => t.code)).toEqual(['GB_VAT', 'OTHER']);
+  });
+
+  // A half-listed union is a client in Greece being offered nothing but
+  // "Other" for a number the EU issues in one documented format.
+  it('covers every member state of the EU', () => {
+    for (const iso2 of ['GR', 'CZ', 'RO', 'BG', 'HR', 'HU', 'SK', 'SI', 'LT', 'LV', 'EE', 'LU', 'MT', 'CY']) {
+      expect(taxIdTypesForCountry(iso2).map((t) => t.code)).toContain('EU_VAT');
+    }
+  });
+
+  it('falls back to the honest option for a country nobody has billed', () => {
+    expect(taxIdTypesForCountry('BR').map((t) => t.code)).toEqual(['OTHER']);
+    expect(taxIdTypesForCountry(undefined).map((t) => t.code)).toEqual(['OTHER']);
   });
 });

@@ -103,7 +103,14 @@ export const TAX_ID_TYPES: readonly TaxIdType[] = [
   {
     code: 'EU_VAT',
     label: 'VAT number (EU)',
-    countries: ['DE', 'FR', 'NL', 'IE', 'ES', 'IT', 'BE', 'PL', 'SE', 'DK', 'FI', 'AT', 'PT'],
+    // All 27, not the dozen that were here. A half-listed union is a client in
+    // Greece being offered "Other registration" for a number the EU issues in
+    // one documented format, and the picker now filters on this list, so a
+    // missing member state is a missing option rather than a missing default.
+    countries: [
+      'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE',
+      'IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE',
+    ],
     re: /^[A-Z]{2}[0-9A-Z]{2,12}$/,
     placeholder: 'DE123456789',
   },
@@ -163,6 +170,27 @@ export function taxIdTypeForCountry(iso2: string | undefined): string {
   if (!iso2) return 'OTHER';
   const upper = iso2.toUpperCase();
   return TAX_ID_TYPES.find((t) => t.countries.includes(upper))?.code ?? 'OTHER';
+}
+
+/**
+ * The types worth offering for a country: its own, then the honest fallback.
+ *
+ * A client in Australia has an ABN. Listing a UAE TRN, a US EIN and a Canadian
+ * Business Number beside it is not a choice anybody makes — it is seven ways to
+ * file the number wrongly, and the wrong one silently changes which check digit
+ * runs against it. The country is already on the record, so this follows from
+ * it (`PRINCIPLES.md` rule 3).
+ *
+ * `OTHER` is always last and always there. It is what a country this table does
+ * not name answers with, and it is the escape hatch for a client who really
+ * does hold a registration from somewhere else — a UK company registered for
+ * VAT in Ireland, say. Nothing is hidden that cannot be reached.
+ */
+export function taxIdTypesForCountry(iso2: string | undefined): readonly TaxIdType[] {
+  const upper = (iso2 ?? '').toUpperCase();
+  const own = TAX_ID_TYPES.filter((t) => t.countries.includes(upper));
+  const other = TAX_ID_TYPES.filter((t) => t.code === 'OTHER');
+  return [...own, ...other];
 }
 
 /** Why this identifier is wrong for its type, or null. */

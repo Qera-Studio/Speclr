@@ -55,13 +55,14 @@ beforeEach(() => {
   uploadClientAttachment.mockResolvedValue({ success: true, id: 'new' });
 });
 
-function renderStep(record: ClientRecord = client) {
+function renderStep(record: ClientRecord = client, kind: 'individual' | 'company' = 'company') {
   return render(
     <AttachmentsStep
       client={record}
       onSaved={onSaved}
       onRecordChanged={onRecordChanged}
       submitLabel="Access"
+      kind={kind}
     />,
   );
 }
@@ -78,10 +79,37 @@ test('an Indian client is asked for Indian paperwork, and not for anyone else’
 
 test('a foreign client gets the export paperwork instead', () => {
   renderStep({ ...client, addressParts: { country: 'GB' } } as unknown as ClientRecord);
-  expect(screen.getByLabelText(/W-8/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/FIRC/i)).toBeInTheDocument();
+  // The slot's own file input, not the info icon beside it, which answers to
+  // the same words.
+  expect(screen.getByLabelText(/^Add W-8/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^Add FIRC/i)).toBeInTheDocument();
+  // And each card explains the document behind an icon: an FIRC is unfamiliar
+  // until the first export invoice, and hard to obtain a year late.
+  expect(screen.getByRole('button', { name: /what is a FIRC/i })).toBeInTheDocument();
   expect(screen.queryByLabelText(/Add GST registration certificate/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/Add PAN card/i)).not.toBeInTheDocument();
+});
+
+test('an individual is asked for a PAN card and never for an incorporation certificate', () => {
+  // No registrar ever issued one, so the slot would be a card that can only
+  // stay empty. Their PAN is the KYC document that does apply.
+  renderStep(client, 'individual');
+  expect(screen.getByLabelText(/Add PAN card/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/Add GST registration certificate/i)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/certificate of incorporation/i)).not.toBeInTheDocument();
+});
+
+test('the "anything else" box joins the row when there are fewer than three slots', () => {
+  // Two slots leave the row a card short, so the box fills the gap instead of
+  // sitting below it as a wide rectangle. With nothing added there is also
+  // nothing left to head, so the heading waits until there is.
+  renderStep(client, 'individual');
+  expect(screen.getByText('Add anything else')).toBeInTheDocument();
+  expect(screen.queryByText('Anything else')).not.toBeInTheDocument();
+
+  // Three slots, and it keeps its own section under the separator.
+  renderStep();
+  expect(screen.getAllByText('Anything else').length).toBe(1);
 });
 
 test('a file lands in the slot it was dropped on, with no type to set first', async () => {

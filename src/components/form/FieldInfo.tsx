@@ -1,9 +1,14 @@
-'use client';
+"use client";
 
-import type { ReactNode } from 'react';
-import { Info } from 'lucide-react';
-import { FieldLabel, FieldLegend } from '@/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import type { ReactNode } from "react";
+import { Info } from "lucide-react";
+import { FieldLabel, FieldLegend } from "@/components/ui/field";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 /**
  * A field label with an optional explanation behind an info icon.
@@ -87,7 +92,16 @@ export function LegendInfo({
  * keyboard, and `info` omitted renders nothing at all rather than an icon that
  * says nothing.
  */
-export function InfoTip({ info, label }: { info?: string; label: string }) {
+export function InfoTip({
+  info,
+  label,
+  className,
+}: {
+  info?: string;
+  label: string;
+  /** Positioning only, for a heading that is not a row of its own. */
+  className?: string;
+}) {
   if (!info) return null;
   return (
     <Tooltip>
@@ -96,7 +110,10 @@ export function InfoTip({ info, label }: { info?: string; label: string }) {
           <button
             type="button"
             aria-label={label}
-            className="text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground"
+            className={cn(
+              "text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground",
+              className,
+            )}
           />
         }
       >

@@ -1,14 +1,13 @@
 "use client";
 
 import "@/lib/zod-config";
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
-import { Info, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
   FieldError,
-  FieldLegend,
   FieldSeparator,
   FieldSet,
 } from "@/components/ui/field";
@@ -19,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FieldLabel } from "@/components/ui/field";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import FieldInfo, { LegendInfo } from "@/components/form/FieldInfo";
+import FieldInfo, { InfoTip, LegendInfo } from "@/components/form/FieldInfo";
 import FieldCheck from "@/components/form/FieldCheck";
 import {
   CinField,
@@ -35,9 +34,9 @@ import {
   type ClientTax,
 } from "@/lib/domain/client";
 import {
-  TAX_ID_TYPES,
   taxIdType,
   taxIdTypeForCountry,
+  taxIdTypesForCountry,
 } from "@/lib/domain/taxIds/foreign";
 import { entityTypeLabel } from "@/lib/domain/entityType";
 import {
@@ -59,6 +58,60 @@ import {
 type FormValues = ClientTax;
 
 /**
+ * The three things a foreign client's finance team routinely asks a supplier
+ * for. A table rather than three near-identical blocks: they differ only in
+ * name, label and whether the term needs explaining.
+ *
+ * Named as the paperwork itself. "They will ask for a W-8BEN-E" is a sentence
+ * where a label belongs, and the checkbox already carries the question.
+ */
+const REQUIREMENTS: {
+  name: keyof FormValues;
+  id: string;
+  label: string;
+  info?: string;
+  infoLabel?: string;
+  /**
+   * Where the paperwork exists at all. Absent means everywhere.
+   *
+   * Scoped for the same reason the registration types are: the country is on
+   * the record, and offering a UK client a US withholding form is a question
+   * with no true answer. It only ever filters what is *offered* — a flag
+   * already ticked stays ticked and stays saved, because a client who moved
+   * country did not thereby stop having asked for it.
+   */
+  applies?: (country: string) => boolean;
+}[] = [
+  {
+    name: "reverseCharge",
+    id: "client-reverse-charge",
+    label: "Reverse charge",
+    info: "The recipient accounts for the tax in their own country. For Qera this changes nothing computed — the supply is already a zero-rated export — but it is what their finance team will expect the invoice to state.",
+    infoLabel: "What is reverse charge?",
+    // A concept of VAT and GST regimes. The US has neither: its sales tax is
+    // charged by the seller at the point of sale and has no reverse-charge
+    // mechanism for imported services, so the box would never be ticked.
+    applies: (country) => country !== "US",
+  },
+  {
+    name: "requiresTaxResidencyCertificate",
+    id: "client-trc",
+    label: "Tax residency certificate",
+    info: "Proof that Qera is tax-resident in India, which lets the client withhold at the treaty rate under the DTAA instead of their domestic rate. Any country with a treaty may ask, so this one is offered everywhere.",
+    infoLabel: "What is a tax residency certificate?",
+  },
+  {
+    name: "requiresW8BenE",
+    id: "client-w8",
+    label: "W-8BEN-E",
+    info: "The US form on which a foreign entity certifies it is not a US person, so the payer withholds at the treaty rate rather than 30%. A US client's accounts payable asks for it before the first payment.",
+    infoLabel: "What is a W-8BEN-E?",
+    // A US IRS form, asked for by a US payer. Nobody else has one.
+    applies: (country) => country === "US",
+  },
+];
+
+/**
  * Tax & registration.
  *
  * **Two branches, one record.** India gets GSTIN/PAN/SEZ/TDS/CIN; everywhere
@@ -77,7 +130,13 @@ type FormValues = ClientTax;
  * first two digits *are* the place of supply, so agreeing them with the address
  * once, here, is what makes deriving place of supply per document trustworthy.
  */
-export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
+export default function TaxStep({
+  client,
+  onSaved,
+  submitLabel,
+  kind = "company",
+}: StepProps) {
+  const individual = kind === "individual";
   const addressState = client?.addressParts?.state;
   /**
    * The entity type the cross-checks run against.
@@ -164,6 +223,26 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
   const gstRegistered = useWatch({ control, name: "gstRegistered" });
   const tdsApplicable = useWatch({ control, name: "tdsApplicable" });
   const selectedTaxIdType = useWatch({ control, name: "taxIdType" });
+  const values = useWatch({ control });
+
+  /**
+   * The registration types this country issues, plus whatever is already saved.
+   *
+   * The saved one is kept whatever the country says, or a record whose address
+   * was corrected afterwards would open with the picker blank and quietly drop
+   * the number beside it on the next save.
+   */
+  const taxIdOptions = useMemo(() => {
+    const offered = taxIdTypesForCountry(country);
+    const held = taxIdType(selectedTaxIdType);
+    return held && !offered.includes(held) ? [...offered, held] : offered;
+  }, [country, selectedTaxIdType]);
+
+  /** Filtered by country, and never hiding a box that is already ticked. */
+  const requirements = REQUIREMENTS.filter(
+    (item) =>
+      !item.applies || item.applies(country) || Boolean(values[item.name]),
+  );
 
   /**
    * PAN, from the GSTIN that already contains it.
@@ -467,84 +546,96 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
             </Field>
           </FieldRow>
 
-          <FieldSeparator />
-
           {/*
-            CIN takes the full width, below the rule rather than above it.
-            Everything above is what this company is *for tax*: whether they are
-            registered, whether they deduct, and the three numbers that follow
-            from those. A CIN is none of that — it is a registrar's fact about
-            the company existing at all, the one identifier here that no tax
-            treatment reads.
-
-            The width is the second reason. At 21 characters it is the longest
-            identifier by half again, and it is now the one carrying two decoded
-            facts, so a third of a row had the value and its reading competing
-            for the same space.
+            No CIN for an individual. There is no registrar and no certificate:
+            a proprietor is registered for GST and for income tax under their
+            own PAN, and a field for a number that cannot exist is a field
+            somebody will eventually put something else in.
           */}
-          <CinField
-            control={control}
-            name="cin"
-            id="client-cin"
-            label="CIN (optional)"
-          />
+          {individual ? null : (
+            <>
+              <FieldSeparator />
 
-          {/*
-            Not the registrar box that used to hang under this field. That one
-            fired on correct data, which is why it went. This appears only on a
-            disagreement that already blocks the save, and it carries the fix,
-            so it is news with an action rather than a standing caution.
-          */}
-          {offerEntityType ? (
-            <Alert
-              variant="warning"
-              className="animate-in fade-in slide-in-from-top-1"
-            >
-              <TriangleAlert aria-hidden />
-              <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span>
-                  This CIN says {entityTypeLabel(offerEntityType)}, and the
-                  record says {entityTypeLabel(entityType) ?? "something else"}.
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={switching}
-                  onClick={acceptCinEntityType}
+              {/*
+              CIN takes the full width, below the rule rather than above it.
+              Everything above is what this company is *for tax*: whether they are
+              registered, whether they deduct, and the three numbers that follow
+              from those. A CIN is none of that — it is a registrar's fact about
+              the company existing at all, the one identifier here that no tax
+              treatment reads.
+
+              The width is the second reason. At 21 characters it is the longest
+              identifier by half again, and it is now the one carrying two decoded
+              facts, so a third of a row had the value and its reading competing
+              for the same space.
+            */}
+              <CinField
+                control={control}
+                name="cin"
+                id="client-cin"
+                label="CIN (optional)"
+              />
+
+              {/*
+              Not the registrar box that used to hang under this field. That one
+              fired on correct data, which is why it went. This appears only on a
+              disagreement that already blocks the save, and it carries the fix,
+              so it is news with an action rather than a standing caution.
+            */}
+              {offerEntityType ? (
+                <Alert
+                  variant="warning"
+                  className="animate-in fade-in slide-in-from-top-1"
                 >
-                  {switching
-                    ? "Changing…"
-                    : `Change to ${entityTypeLabel(offerEntityType)}`}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : null}
+                  <TriangleAlert aria-hidden />
+                  <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span>
+                      This CIN says {entityTypeLabel(offerEntityType)}, and the
+                      record says{" "}
+                      {entityTypeLabel(entityType) ?? "something else"}.
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={switching}
+                      onClick={acceptCinEntityType}
+                    >
+                      {switching
+                        ? "Changing…"
+                        : `Change to ${entityTypeLabel(offerEntityType)}`}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </>
+          )}
         </>
       ) : (
         <>
-          {/*
-            On the page, not behind an icon — deliberately.
-
-            `PRINCIPLES.md` §4 forbids a second jurisdiction; §7 logs the
-            override and bounds it at "collected, validated, snapshotted and
-            printed; nothing computes from it". Saying so where the operator
-            can see it is part of that bound, the same way the clause library
-            states on the page that nothing there has been reviewed. An
-            explanation that only appears on hover is not a disclosure.
-          */}
-          <Alert variant="note">
-            <Info aria-hidden />
-            <AlertDescription>
-              A foreign registration is recorded and printed on their documents
-              as the recipient’s registration. Nothing is computed from it: Qera
-              invoices an overseas client as a zero-rated export of services
-              under an LUT, and no foreign tax is calculated here.
-            </AlertDescription>
-          </Alert>
-
           <FieldSet>
-            <FieldLegend variant="label">Tax registration</FieldLegend>
+            {/*
+              The banner became an icon, but the disclosure did not.
+
+              `PRINCIPLES.md` §4 forbids a second jurisdiction; §7 logs the
+              override and bounds it at "collected, validated, snapshotted and
+              printed; nothing computes from it". Saying so where the operator
+              can see it is part of that bound, the same way the clause library
+              states on the page that nothing there has been reviewed. So the
+              claim itself stays on the page and only its *reasoning* moved to
+              hover: an explanation nobody has to open is a disclosure, an
+              explanation nobody can see is not.
+            */}
+            <LegendInfo
+              info="Qera invoices an overseas client as a zero-rated export of services under an LUT, so no foreign tax is calculated here and no rate or second tax line comes from this. The registration is the recipient’s, printed where a GSTIN would be."
+              label="Why is nothing computed from this?"
+            >
+              Tax registration
+            </LegendInfo>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Recorded and printed on their documents. Nothing is computed from
+              it.
+            </p>
 
             <FieldRow>
               <Field>
@@ -558,7 +649,7 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
                     <Combobox
                       id="client-tax-id-type"
                       size="form"
-                      options={TAX_ID_TYPES.map((t) => ({
+                      options={taxIdOptions.map((t) => ({
                         value: t.code,
                         label: t.label,
                       }))}
@@ -609,65 +700,63 @@ export default function TaxStep({ client, onSaved, submitLabel }: StepProps) {
 
           <FieldSet>
             <LegendInfo
-              info="Recorded so the paperwork is known before the invoice, not after it."
+              info="What this client's finance team will ask a foreign supplier for. Recorded so the paperwork is known before the invoice, not after it."
               label="Why record these?"
             >
-              What they will ask for
+              Their requirements
             </LegendInfo>
 
-            <Field orientation="horizontal">
-              <FieldInfo
-                htmlFor="client-reverse-charge"
-                label="Reverse charge applies on their side"
-                info="The recipient accounts for the tax in their own country. For Qera this changes nothing computed — the supply is already a zero-rated export — but it is what their finance team will expect the invoice to state."
-                infoLabel="What is reverse charge?"
-              />
-              <Controller
-                control={control}
-                name="reverseCharge"
-                render={({ field }) => (
-                  <Checkbox
-                    id="client-reverse-charge"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
+            {/*
+              One flex row, not a `FieldRow` of horizontal `Field`s. Both of
+              those work against a tight cluster: the row is a grid of equal
+              tracks, and a horizontal `Field` gives its label `flex-auto`,
+              which is what pushed each checkbox to the far side of its column.
+              Here the box sits directly against the words it governs, the way
+              a checkbox reads everywhere else, and `flex-wrap` handles the
+              narrow case.
 
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="client-trc">
-                They need a tax residency certificate
-              </FieldLabel>
-              <Controller
-                control={control}
-                name="requiresTaxResidencyCertificate"
-                render={({ field }) => (
-                  <Checkbox
-                    id="client-trc"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
-
-            <Field orientation="horizontal">
-              <FieldLabel htmlFor="client-w8">
-                They will ask for a W-8BEN-E
-              </FieldLabel>
-              <Controller
-                control={control}
-                name="requiresW8BenE"
-                render={({ field }) => (
-                  <Checkbox
-                    id="client-w8"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
+              Named as the paperwork itself. "They will ask for a W-8BEN-E" is
+              a sentence where a label belongs; the checkbox already carries
+              the "is this required" question.
+            */}
+            <div className="flex w-full flex-wrap items-center justify-between gap-y-3">
+              {requirements.map((item, i) => (
+                <Fragment key={item.id}>
+                  {/*
+                    A hairline rather than a `FieldSeparator`: these three sit
+                    on one line and the divider is only there to stop the eye
+                    running a label into the checkbox before it. It is a flex
+                    child, so `justify-between` centres it in the gap it
+                    divides instead of hanging off one item's edge.
+                  */}
+                  {i > 0 ? (
+                    <span
+                      aria-hidden
+                      className="h-4 w-px shrink-0 bg-border/60"
+                    />
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <FieldLabel htmlFor={item.id}>{item.label}</FieldLabel>
+                    {/* No `info`, no icon — `InfoTip` renders nothing. */}
+                    <InfoTip
+                      info={item.info}
+                      label={item.infoLabel ?? item.label}
+                    />
+                    <Controller
+                      control={control}
+                      name={item.name}
+                      render={({ field }) => (
+                        <Checkbox
+                          id={item.id}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                </Fragment>
+              ))}
+            </div>
           </FieldSet>
         </>
       )}

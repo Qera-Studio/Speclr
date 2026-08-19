@@ -1,33 +1,38 @@
-'use client';
+"use client";
 
-import '@/lib/zod-config';
-import { useCallback, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AddButton } from '@/components/ui/add-button';
-import { RemoveButton } from '@/components/ui/remove-button';
-import { Combobox } from '@/components/ui/combobox';
-import { Field, FieldLabel, FieldSet, FieldLegend } from '@/components/ui/field';
-import FieldInfo from '@/components/form/FieldInfo';
-import { FieldRow } from '@/components/ui/field-row';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ACCESS_KINDS, type ClientAccessRef } from '@/lib/domain/client';
-import { draftKey, useDraft } from '@/lib/draft';
-import { StepForm, useStepSave, type StepProps } from './stepKit';
+import "@/lib/zod-config";
+import { useCallback, useState } from "react";
+import { ShieldAlert } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AddButton } from "@/components/ui/add-button";
+import { RemoveButton } from "@/components/ui/remove-button";
+import { Combobox } from "@/components/ui/combobox";
+import {
+  Field,
+  FieldLabel,
+  FieldSet,
+  FieldLegend,
+} from "@/components/ui/field";
+import FieldInfo from "@/components/form/FieldInfo";
+import { FieldRow } from "@/components/ui/field-row";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ACCESS_KINDS, type ClientAccessRef } from "@/lib/domain/client";
+import { draftKey, useDraft } from "@/lib/draft";
+import { StepForm, useStepSave, type StepProps } from "./stepKit";
 
 const KIND_LABELS: Record<string, string> = {
-  brand_assets: 'Brand assets — logos, fonts, guidelines',
-  domain_registrar: 'Domain registrar',
-  dns: 'DNS',
-  hosting: 'Hosting',
-  analytics: 'Analytics',
-  search_console: 'Search Console',
-  ad_account: 'Ad account',
-  social: 'Social handle',
-  repository: 'Repository',
-  deployment: 'Deployment',
-  other: 'Other',
+  brand_assets: "Brand assets — logos, fonts, guidelines",
+  domain_registrar: "Domain registrar",
+  dns: "DNS",
+  hosting: "Hosting",
+  analytics: "Analytics",
+  search_console: "Search Console",
+  ad_account: "Ad account",
+  social: "Social handle",
+  repository: "Repository",
+  deployment: "Deployment",
+  other: "Other",
 };
 
 let nextId = 0;
@@ -46,25 +51,41 @@ const newId = () => `access-${Date.now()}-${(nextId += 1)}`;
  * The warning is on the page rather than in a comment because the person who
  * would paste a password is the operator, not the next developer.
  */
-export default function AccessStep({ client, onSaved, submitLabel }: StepProps) {
-  const [rows, setRows] = useState<ClientAccessRef[]>(() => client?.access ?? []);
+export default function AccessStep({
+  client,
+  onSaved,
+  submitLabel,
+}: StepProps) {
+  const [rows, setRows] = useState<ClientAccessRef[]>(
+    () => client?.access ?? [],
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const toPayload = useCallback(
-    () => rows.filter((row) => row.label.trim() !== '' && row.location.trim() !== ''),
+    () =>
+      rows.filter(
+        (row) => row.label.trim() !== "" && row.location.trim() !== "",
+      ),
     [rows],
   );
-  const { serverError, save } = useStepSave<void>(client, 'access', onSaved, toPayload);
+  const { serverError, save } = useStepSave<void>(
+    client,
+    "access",
+    onSaved,
+    toPayload,
+  );
 
   // Same draft as every other step, minus react-hook-form: this one keeps its
   // rows in plain state. Note what is *not* stored, and must never be: these
   // rows say where a credential lives, never the credential itself, so the
   // draft inherits that guarantee from the shape of the data rather than from
   // a filter that could be forgotten.
-  useDraft(draftKey(client?.id, 'access'), rows, setRows);
+  useDraft(draftKey(client?.id, "access"), rows, setRows);
 
   const update = (id: string, patch: Partial<ClientAccessRef>) =>
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setRows((current) =>
+      current.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+    );
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -100,89 +121,135 @@ export default function AccessStep({ client, onSaved, submitLabel }: StepProps) 
         </p>
       ) : null}
 
-      {rows.map((row, index) => (
-        <FieldSet key={row.id} className="rounded-lg border border-border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <FieldLegend variant="label">Access {index + 1}</FieldLegend>
-            <RemoveButton
-              label={`Remove access ${index + 1}`}
-              onConfirm={() => setRows((current) => current.filter((r) => r.id !== row.id))}
-            />
-          </div>
-
-          <FieldRow>
-            <Field>
-              <FieldInfo
-                htmlFor={`${row.id}-kind`}
-                label="Kind"
-                info="What sort of account this is — the domain registrar, the DNS, the hosting, an ad account. Pick the closest; “Other” is fine."
-                infoLabel="What is Kind?"
-              />
-              <Combobox
-                id={`${row.id}-kind`}
-                size="form"
-                options={ACCESS_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] }))}
-                value={row.kind}
-                onValueChange={(value) =>
-                  update(row.id, { kind: value as ClientAccessRef['kind'] })
+      {rows.map((row, index) => {
+        /**
+         * The card names itself from what is in it: the account, then the kind,
+         * then its position.
+         *
+         * "Access 1, Access 2, Access 3" is a list nobody can read — the one
+         * thing worth knowing about a row is which account it is, and that is
+         * already typed into "What it is". Derived rather than a second title
+         * field to keep in step (`PRINCIPLES.md` rule 3); renaming a row means
+         * editing the field that names it.
+         */
+        const title =
+          row.label.trim() || KIND_LABELS[row.kind] || `Access ${index + 1}`;
+        return (
+          <FieldSet
+            key={row.id}
+            className="rounded-lg border border-border p-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <FieldLegend variant="label">{title}</FieldLegend>
+              <RemoveButton
+                label={`Remove ${title}`}
+                onConfirm={() =>
+                  setRows((current) => current.filter((r) => r.id !== row.id))
                 }
-                placeholder="Select a kind…"
-                emptyMessage="No matching kinds."
               />
-            </Field>
+            </div>
+
+            <FieldRow>
+              <Field>
+                <FieldInfo
+                  htmlFor={`${row.id}-kind`}
+                  label="Kind"
+                  info="What sort of account this is — the domain registrar, the DNS, the hosting, an ad account. Pick the closest; “Other” is fine."
+                  infoLabel="What is Kind?"
+                />
+                <Combobox
+                  id={`${row.id}-kind`}
+                  size="form"
+                  options={ACCESS_KINDS.map((k) => ({
+                    value: k,
+                    label: KIND_LABELS[k],
+                  }))}
+                  value={row.kind}
+                  onValueChange={(value) =>
+                    update(row.id, { kind: value as ClientAccessRef["kind"] })
+                  }
+                  placeholder="Select a kind…"
+                  emptyMessage="No matching kinds."
+                />
+              </Field>
+
+              <Field>
+                <FieldInfo
+                  htmlFor={`${row.id}-label`}
+                  label="What it is"
+                  info="The account's own name, so it can be told apart from the others of its kind — the domain itself, the handle, the property name."
+                  infoLabel="What goes in “What it is”?"
+                />
+                <Input
+                  id={`${row.id}-label`}
+                  size="form"
+                  placeholder="clayora.com"
+                  value={row.label}
+                  onChange={(event) =>
+                    update(row.id, { label: event.target.value })
+                  }
+                />
+              </Field>
+            </FieldRow>
 
             <Field>
               <FieldInfo
-                htmlFor={`${row.id}-label`}
-                label="What it is"
-                info="The account's own name, so it can be told apart from the others of its kind — the domain itself, the handle, the property name."
-                infoLabel="What goes in “What it is”?"
+                htmlFor={`${row.id}-location`}
+                label="Who holds it, or where it is kept"
+                info="A pointer, never the credential. A vault name, an admin console, or simply the person who has it — “Their IT lead holds it” is a complete answer."
+                infoLabel="What goes here?"
               />
               <Input
-                id={`${row.id}-label`}
+                id={`${row.id}-location`}
                 size="form"
-                placeholder="clayora.com"
-                value={row.label}
-                onChange={(event) => update(row.id, { label: event.target.value })}
+                placeholder="1Password → Clayora vault"
+                value={row.location}
+                onChange={(event) =>
+                  update(row.id, { location: event.target.value })
+                }
               />
             </Field>
-          </FieldRow>
 
-          <Field>
-            <FieldInfo
-              htmlFor={`${row.id}-location`}
-              label="Who holds it, or where it is kept"
-              info="A pointer, never the credential. A vault name, an admin console, or simply the person who has it — “Their IT lead holds it” is a complete answer."
-              infoLabel="What goes here?"
-            />
-            <Input
-              id={`${row.id}-location`}
-              size="form"
-              placeholder="1Password → Clayora vault"
-              value={row.location}
-              onChange={(event) => update(row.id, { location: event.target.value })}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor={`${row.id}-notes`}>Notes</FieldLabel>
-            <Textarea
-              id={`${row.id}-notes`}
-              rows={2}
-              placeholder="Transfer lock comes off after 60 days."
-              value={row.notes ?? ''}
-              onChange={(event) => update(row.id, { notes: event.target.value })}
-            />
-          </Field>
-        </FieldSet>
-      ))}
+            {/*
+            Empty until asked for. Most of these rows are a name and a vault and
+            nothing else, and a standing textarea on every one of them is a card
+            that looks unfinished when it is complete.
+          */}
+            {row.notes === undefined ? (
+              <AddButton
+                type="button"
+                variant="ghost"
+                className="self-start px-2 text-muted-foreground"
+                onClick={() => update(row.id, { notes: "" })}
+              >
+                Add note
+              </AddButton>
+            ) : (
+              <Field>
+                <FieldLabel htmlFor={`${row.id}-notes`}>Notes</FieldLabel>
+                <Textarea
+                  id={`${row.id}-notes`}
+                  rows={2}
+                  placeholder="Transfer lock comes off after 60 days."
+                  value={row.notes}
+                  onChange={(event) =>
+                    update(row.id, { notes: event.target.value })
+                  }
+                />
+              </Field>
+            )}
+          </FieldSet>
+        );
+      })}
 
       <AddButton
         type="button"
         onClick={() =>
           setRows((current) => [
             ...current,
-            { id: newId(), kind: 'other', label: '', location: '', notes: '' },
+            // No `notes` key: undefined is how a row says the note has not
+            // been asked for, which is what keeps the button a button.
+            { id: newId(), kind: "other", label: "", location: "" },
           ])
         }
       >

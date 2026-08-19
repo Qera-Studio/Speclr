@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { FileLock2, FileText, Plus, TriangleAlert } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useEffect, useRef, useState, useTransition } from "react";
+import { FileLock2, FileText, Plus, TriangleAlert } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Attachment,
   AttachmentActions,
@@ -10,27 +10,31 @@ import {
   AttachmentDescription,
   AttachmentMedia,
   AttachmentTitle,
-} from '@/components/ui/attachment';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Progress } from '@/components/ui/progress';
-import { RemoveButton } from '@/components/ui/remove-button';
-import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
-import FieldInfo from '@/components/form/FieldInfo';
-import UploadDropzone from '@/components/form/UploadDropzone';
+} from "@/components/ui/attachment";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Progress } from "@/components/ui/progress";
+import { RemoveButton } from "@/components/ui/remove-button";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import FieldInfo, { InfoTip } from "@/components/form/FieldInfo";
+import UploadDropzone from "@/components/form/UploadDropzone";
 import {
-  ATTACHMENT_EXTRA_KINDS,
   ATTACHMENT_KIND_LABELS,
+  ATTACHMENT_KIND_NOTES,
   ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_BYTES,
+  attachmentExtraKindsFor,
   attachmentSlotsFor,
   type AttachmentKind,
   type ClientAttachment,
-} from '@/lib/domain/client';
-import AttachmentTypeDialog from './AttachmentTypeDialog';
-import { deleteClientAttachment, uploadClientAttachment } from '@/server/actions/attachments';
-import type { ClientRecord } from '@/lib/domain/types';
-import { StepForm, type StepProps } from './stepKit';
+} from "@/lib/domain/client";
+import AttachmentTypeDialog from "./AttachmentTypeDialog";
+import {
+  deleteClientAttachment,
+  uploadClientAttachment,
+} from "@/server/actions/attachments";
+import type { ClientRecord } from "@/lib/domain/types";
+import { StepForm, type StepProps } from "./stepKit";
 
 /** A file picked but not yet stored. The id is local, not the attachment's. */
 type Queued = { id: number; kind: AttachmentKind; file: File };
@@ -48,7 +52,9 @@ let nextQueueId = 0;
  * could be skipped, and it lets the server name the file from the slot rather
  * than keeping whatever the scanner called it.
  *
- * Which slots exist is derived from where the client is (`attachmentSlotsFor`).
+ * Which slots exist is derived from where the client is and what they are
+ * (`attachmentSlotsFor`): an individual has no certificate of incorporation
+ * because no registrar ever issued one.
  * Anything a client can have several of — purchase orders, signed contracts —
  * is not a slot, and arrives through the box at the bottom with its own type.
  *
@@ -67,6 +73,7 @@ export default function AttachmentsStep({
   onSaved,
   onRecordChanged,
   submitLabel,
+  kind = "company",
 }: StepProps & {
   /**
    * The record changed, but the step is not finished. This step writes to the
@@ -102,36 +109,44 @@ export default function AttachmentsStep({
   const started = useRef<number | null>(null);
 
   const attachments = client?.attachments ?? [];
-  const slots = attachmentSlotsFor(client?.addressParts?.country);
-  const extras = attachments.filter(
-    (a) => !slots.some((slot) => slot.kind === a.kind),
-  );
+  // Both halves derived from the record: where they are, and what they are.
+  const context = { country: client?.addressParts?.country, clientKind: kind };
+  const slots = attachmentSlotsFor(context);
+  const extras = attachments.filter((a) => !slots.includes(a.kind));
+  /**
+   * An individual is asked for two documents, not three, which left the row a
+   * card short and a full-width rectangle sitting under the hole. The box takes
+   * the empty place instead: same grid, same shape as its neighbours.
+   */
+  const inlineExtra = slots.length < 3;
 
-  const upload = (kind: AttachmentKind) => (file: File, offered = 1) => {
-    if (!client) return;
-    setError(null);
-    // Checked here as well as on the server, because the framework gets there
-    // first: an over-sized body is cut off mid-stream and the action rejects
-    // with "Unexpected end of form", which reaches the operator as a crashed
-    // step rather than a file that is too big. The server check stays: this one
-    // is a courtesy, not the enforcement.
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      setError(`${file.name} is larger than ${maxMb} MB.`);
-      return;
-    }
-    // Dropping three documents used to upload one and say nothing. Uploading
-    // all three is not the fix: a drop lands in one slot, and the other two
-    // files are not that document.
-    setIgnored(
-      offered > 1
-        ? `${offered - 1} other ${offered === 2 ? 'file was' : 'files were'} not uploaded. Each document has its own upload, so add them one at a time.`
-        : null,
-    );
-    // The card fills the moment the file is picked, whether it goes now or
-    // waits. The round trip is three or four seconds, and a slot that shows
-    // nothing for that long reads as a click that did not land.
-    setQueue((q) => [...q, { id: nextQueueId++, kind, file }]);
-  };
+  const upload =
+    (kind: AttachmentKind) =>
+    (file: File, offered = 1) => {
+      if (!client) return;
+      setError(null);
+      // Checked here as well as on the server, because the framework gets there
+      // first: an over-sized body is cut off mid-stream and the action rejects
+      // with "Unexpected end of form", which reaches the operator as a crashed
+      // step rather than a file that is too big. The server check stays: this one
+      // is a courtesy, not the enforcement.
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        setError(`${file.name} is larger than ${maxMb} MB.`);
+        return;
+      }
+      // Dropping three documents used to upload one and say nothing. Uploading
+      // all three is not the fix: a drop lands in one slot, and the other two
+      // files are not that document.
+      setIgnored(
+        offered > 1
+          ? `${offered - 1} other ${offered === 2 ? "file was" : "files were"} not uploaded. Each document has its own upload, so add them one at a time.`
+          : null,
+      );
+      // The card fills the moment the file is picked, whether it goes now or
+      // waits. The round trip is three or four seconds, and a slot that shows
+      // nothing for that long reads as a click that did not land.
+      setQueue((q) => [...q, { id: nextQueueId++, kind, file }]);
+    };
 
   // Drains the queue one file at a time. The guard is the entry's own id rather
   // than `pending`: `pending` is set asynchronously and is shared with deletes,
@@ -142,29 +157,32 @@ export default function AttachmentsStep({
     started.current = head.id;
 
     const data = new FormData();
-    data.set('file', head.file);
-    data.set('kind', head.kind);
+    data.set("file", head.file);
+    data.set("kind", head.kind);
 
     startTransition(async () => {
       // A Server Action that never returns (the request cut off, the network
       // dropped) rejects, and an uncaught rejection here takes the whole step
       // down with it. The file did not upload either way; say so and leave the
       // rest of the form standing.
-      const result = await uploadClientAttachment(client.id, data).catch((cause) => {
-        // The operator gets the sentence, and whoever is debugging gets the
-        // reason. Which leg failed is infrastructure detail: it tells anyone
-        // watching where the seams are, and does not tell the operator
-        // anything they can act on that "try again" does not.
-        console.error('Attachment upload failed', cause);
-        return {
-          success: false as const,
-          error: 'That upload did not go through. Check the connection and try again.',
-          id: undefined,
-        };
-      });
+      const result = await uploadClientAttachment(client.id, data).catch(
+        (cause) => {
+          // The operator gets the sentence, and whoever is debugging gets the
+          // reason. Which leg failed is infrastructure detail: it tells anyone
+          // watching where the seams are, and does not tell the operator
+          // anything they can act on that "try again" does not.
+          console.error("Attachment upload failed", cause);
+          return {
+            success: false as const,
+            error:
+              "That upload did not go through. Check the connection and try again.",
+            id: undefined,
+          };
+        },
+      );
       setQueue((q) => q.filter((entry) => entry.id !== head.id));
       if (!result.success || !result.id) {
-        setError(result.error ?? 'Something went wrong.');
+        setError(result.error ?? "Something went wrong.");
         return;
       }
       // Mirrors what the action stored, including the replacement of whatever
@@ -182,13 +200,16 @@ export default function AttachmentsStep({
         // "Password required" panel until something refetched the row.
         encrypted: result.encrypted,
       };
-      const replaced = slots.some((slot) => slot.kind === head.kind)
+      const replaced = slots.includes(head.kind)
         ? attachments.filter((a) => a.kind !== head.kind)
         : attachments;
       // Not `onSaved` — the record changed, the step did not finish. See
       // `StepProps`: attaching a file used to walk the operator to the next
       // step, which is not what adding a second document means.
-      onRecordChanged({ ...client, attachments: [...replaced, added] } as ClientRecord);
+      onRecordChanged({
+        ...client,
+        attachments: [...replaced, added],
+      } as ClientRecord);
     });
   }, [head, pending, client, attachments, slots, onRecordChanged]);
 
@@ -203,7 +224,7 @@ export default function AttachmentsStep({
       const result = await deleteClientAttachment(client.id, attachment.id);
       setRemoving(null);
       if (!result.success) {
-        setError(result.error ?? 'Something went wrong.');
+        setError(result.error ?? "Something went wrong.");
         return;
       }
       onRecordChanged({
@@ -245,10 +266,11 @@ export default function AttachmentsStep({
           className="size-10 stroke-[1.25] text-muted-foreground/40"
         />
         <span className="sr-only">
-          {attachment.filename} is password-protected, so it cannot be previewed.
+          {attachment.filename} is password-protected, so it cannot be
+          previewed.
         </span>
       </div>
-    ) : attachment.mime === 'application/pdf' ? (
+    ) : attachment.mime === "application/pdf" ? (
       <iframe
         src={`${fileUrl(attachment)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
         title={`Preview of ${attachment.filename}`}
@@ -302,7 +324,10 @@ export default function AttachmentsStep({
   };
 
   /** The row under a slot's preview, or the one in flight. */
-  const card = (kind: AttachmentKind, attachment: ClientAttachment | undefined) => {
+  const card = (
+    kind: AttachmentKind,
+    attachment: ClientAttachment | undefined,
+  ) => {
     const queued = queue.find((entry) => entry.kind === kind);
     if (queued) return queuedCard(queued);
     if (!attachment) return undefined;
@@ -312,7 +337,7 @@ export default function AttachmentsStep({
       <Attachment
         aria-busy={removing === attachment.id || undefined}
         className={`w-full border-transparent bg-transparent hover:bg-transparent! ${
-          removing === attachment.id ? 'opacity-60' : ''
+          removing === attachment.id ? "opacity-60" : ""
         }`}
       >
         {/* No media here: the document itself is the top of the card now, and a
@@ -337,7 +362,8 @@ export default function AttachmentsStep({
             has been over for some time — the page being there says it landed.
           */}
           <AttachmentDescription>
-            {fileFormat(attachment.filename, attachment.mime)} · {formatBytes(attachment.size)}
+            {fileFormat(attachment.filename, attachment.mime)} ·{" "}
+            {formatBytes(attachment.size)}
           </AttachmentDescription>
         </AttachmentContent>
         {/* Deleting is rare and destructive, so it waits for the pointer. It
@@ -348,8 +374,8 @@ export default function AttachmentsStep({
         <AttachmentActions
           className={
             removing === attachment.id
-              ? 'pr-1.5'
-              : 'pr-1.5 opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-within/tray:opacity-100'
+              ? "pr-1.5"
+              : "pr-1.5 opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-within/tray:opacity-100"
           }
         >
           {removing === attachment.id ? (
@@ -374,6 +400,41 @@ export default function AttachmentsStep({
     );
   };
 
+  /*
+    One box, and the type is asked for *after* it is activated. The type picker
+    used to sit above this as a `Combobox`, which was the same mode the slots
+    removed: set once, it stayed set, so the next upload was filed as whatever
+    the last one had been.
+  */
+  const extraDropzone = (
+    <UploadDropzone
+      id="attachment-extra"
+      accept={ATTACHMENT_MIME_TYPES.join(",")}
+      disabled={!client}
+      // In the grid it is a card like its neighbours. Below it, `shrink-0`, or
+      // the list squeezes the drop box as it fills: a flex item's default is to
+      // give up height, and this one is a target.
+      className={inlineExtra ? "min-h-56" : "shrink-0"}
+      // Turns a quarter on hover, so this card answers the pointer the way the
+      // `TrayArrowIcon` boxes beside it do.
+      icon={
+        <Plus
+          aria-hidden
+          className="size-5 text-muted-foreground transition-transform duration-300 group-hover/tray:rotate-90"
+        />
+      }
+      label="Add anything else"
+      hint={`Add any document up to ${maxMb} MB`}
+      onFileSelected={() => {}}
+      onActivate={(file) => {
+        setDroppedFile(file);
+        setPicking(true);
+      }}
+    />
+  );
+
+  const queuedExtras = queue.filter((entry) => !slots.includes(entry.kind));
+
   return (
     /*
       `StepForm`, like the other six, even though this step saves on each upload
@@ -396,7 +457,7 @@ export default function AttachmentsStep({
     >
       <Field>
         <FieldInfo
-          htmlFor={`attachment-${slots[0]?.kind}`}
+          htmlFor={`attachment-${slots[0]}`}
           label="Documents"
           info="These are the client’s own identity documents. They are stored privately, readable only while signed in, and deleting one deletes the file itself."
           infoLabel="How are these stored?"
@@ -405,32 +466,65 @@ export default function AttachmentsStep({
             still missing" is a glance, not a scroll. */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {slots.map((slot) => {
-            const held = attachments.find((a) => a.kind === slot.kind);
-            const label = ATTACHMENT_KIND_LABELS[slot.kind];
+            const held = attachments.find((a) => a.kind === slot);
+            const label = ATTACHMENT_KIND_LABELS[slot];
             return (
-              <UploadDropzone
-                key={slot.kind}
-                id={`attachment-${slot.kind}`}
-                accept={ATTACHMENT_MIME_TYPES.join(',')}
-                disabled={!client}
-                className="min-h-56"
-                // The slot names itself whether it is full or empty: "Replace"
-                // alone leaves a filled card with nothing saying what it is.
-                label={
-                  held || queue.some((entry) => entry.kind === slot.kind)
-                    ? label
-                    : `Add ${label}`
-                }
-                hasFile={Boolean(held) || queue.some((entry) => entry.kind === slot.kind)}
-                hint={`PDF, PNG or JPEG · up to ${maxMb} MB`}
-                preview={held ? preview(held) : undefined}
-                attachment={card(slot.kind, held)}
-                onFileSelected={upload(slot.kind)}
-              />
+              /*
+                What the document is, behind an icon in the corner.
+
+                An FIRC and a W-8BEN-E are unfamiliar until the first export
+                invoice, and the cost of not knowing is finding out from an
+                accountant a year later — by which time the bank issues the
+                first one grudgingly. The card cannot say it: the whole box is
+                already a button, and a paragraph on it would bury the one
+                thing it is for.
+
+                A sibling of the box rather than a child, because a button
+                inside a button is not a control anyone can operate.
+              */
+              <div key={slot} className="relative">
+                <InfoTip
+                  className="absolute top-2 right-2 z-10"
+                  info={ATTACHMENT_KIND_NOTES[slot]}
+                  label={`What is a ${label}?`}
+                />
+                <UploadDropzone
+                  id={`attachment-${slot}`}
+                  accept={ATTACHMENT_MIME_TYPES.join(",")}
+                  disabled={!client}
+                  className="min-h-56"
+                  // The slot names itself whether it is full or empty: "Replace"
+                  // alone leaves a filled card with nothing saying what it is.
+                  label={
+                    held || queue.some((entry) => entry.kind === slot)
+                      ? label
+                      : `Add ${label}`
+                  }
+                  hasFile={
+                    Boolean(held) || queue.some((entry) => entry.kind === slot)
+                  }
+                  hint={`PDF, PNG or JPEG · up to ${maxMb} MB`}
+                  preview={held ? preview(held) : undefined}
+                  attachment={card(slot, held)}
+                  onFileSelected={upload(slot)}
+                />
+              </div>
             );
           })}
+          {inlineExtra ? extraDropzone : null}
         </div>
       </Field>
+
+      <AttachmentTypeDialog
+        open={picking}
+        onOpenChange={(next) => {
+          setPicking(next);
+          if (!next) setDroppedFile(undefined);
+        }}
+        kinds={attachmentExtraKindsFor(context)}
+        pendingFile={droppedFile}
+        onPicked={(kind, file) => upload(kind)(file)}
+      />
 
       {/* `warning`, not `destructive`: the file that was picked is uploading. */}
       {ignored ? (
@@ -440,50 +534,25 @@ export default function AttachmentsStep({
         </Alert>
       ) : null}
 
-      {/* The two halves are different things: above is the set a client is asked
+      {/* With the box up in the grid there is nothing to head until something
+          has actually been added, and a lone "Anything else" label over an
+          empty box reads as a section that failed to render. */}
+      {inlineExtra &&
+      extras.length === 0 &&
+      queuedExtras.length === 0 ? null : (
+        <>
+          {/* The two halves are different things: above is the set a client is asked
           for, below is whatever else the relationship produced. A line says so
           more cheaply than a heading would. */}
-      <Separator />
+          <Separator />
 
-      {/* The last field is the one that gives: everything above it is a fixed
+          {/* The last field is the one that gives: everything above it is a fixed
           set of controls, and this is the part with no ceiling. */}
-      <Field className="min-h-0 flex-1">
-        <FieldLabel htmlFor="attachment-extra">Anything else</FieldLabel>
-        {/*
-          One box, and the type is asked for *after* it is activated. The type
-          picker used to sit above this as a `Combobox`, which was the same mode
-          the slots removed: set once, it stayed set, so the next upload was
-          filed as whatever the last one had been.
-        */}
-        <UploadDropzone
-          id="attachment-extra"
-          accept={ATTACHMENT_MIME_TYPES.join(',')}
-          disabled={!client}
-          // Or the list below squeezes the drop box as it fills: a flex item's
-          // default is to give up height, and this one is a target.
-          className="shrink-0"
-          icon={<Plus aria-hidden className="size-5 text-muted-foreground" />}
-          label="Add anything else"
-          hint={`Add any document up to ${maxMb} MB`}
-          onFileSelected={() => {}}
-          onActivate={(file) => {
-            setDroppedFile(file);
-            setPicking(true);
-          }}
-        />
+          <Field className="min-h-0 flex-1">
+            <FieldLabel htmlFor="attachment-extra">Anything else</FieldLabel>
+            {inlineExtra ? null : extraDropzone}
 
-        <AttachmentTypeDialog
-          open={picking}
-          onOpenChange={(next) => {
-            setPicking(next);
-            if (!next) setDroppedFile(undefined);
-          }}
-          kinds={ATTACHMENT_EXTRA_KINDS}
-          pendingFile={droppedFile}
-          onPicked={(kind, file) => upload(kind)(file)}
-        />
-
-        {/*
+            {/*
           The extras scroll in their own box.
 
           The list has no ceiling (a client can have three purchase orders and a
@@ -499,72 +568,74 @@ export default function AttachmentsStep({
           half — a flex item's floor is its content, so without it the box grows
           to fit the list and never scrolls at all.
         */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* Extras have no slot to fill, so every one of them queued shows here.
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {/* Extras have no slot to fill, so every one of them queued shows here.
               Several at once is the normal case: three purchase orders are three
               documents. */}
-          {queue
-            .filter((entry) => !slots.some((slot) => slot.kind === entry.kind))
-            .map((entry) => (
-              <div key={entry.id} className="mt-2">
-                {queuedCard(entry)}
-              </div>
-            ))}
+              {queuedExtras.map((entry) => (
+                <div key={entry.id} className="mt-2">
+                  {queuedCard(entry)}
+                </div>
+              ))}
 
-          {extras.length > 0 ? (
-            <ul className="mt-2 flex flex-col gap-2">
-              {extras.map((attachment) => (
-                <li key={attachment.id}>
-                  <Attachment
-                    aria-busy={removing === attachment.id || undefined}
-                    className={`w-full ${removing === attachment.id ? 'opacity-60' : ''}`}
-                  >
-                    <AttachmentMedia>
-                      <FileText aria-hidden />
-                    </AttachmentMedia>
-                    <AttachmentContent>
-                      <AttachmentTitle>
-                        <a
-                          href={`/api/clients/${client?.id}/files/${attachment.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {attachment.filename}
-                        </a>
-                      </AttachmentTitle>
-                      {/* Extras keep their own names, so the kind has to be said —
+              {extras.length > 0 ? (
+                <ul className="mt-2 flex flex-col gap-2">
+                  {extras.map((attachment) => (
+                    <li key={attachment.id}>
+                      <Attachment
+                        aria-busy={removing === attachment.id || undefined}
+                        className={`w-full ${removing === attachment.id ? "opacity-60" : ""}`}
+                      >
+                        <AttachmentMedia>
+                          <FileText aria-hidden />
+                        </AttachmentMedia>
+                        <AttachmentContent>
+                          <AttachmentTitle>
+                            <a
+                              href={`/api/clients/${client?.id}/files/${attachment.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {attachment.filename}
+                            </a>
+                          </AttachmentTitle>
+                          {/* Extras keep their own names, so the kind has to be said —
                           and then the format, or "Other · 325 KB" on a PNG reads
                           as the file's type having been read as "Other". */}
-                      <AttachmentDescription>
-                        {ATTACHMENT_KIND_LABELS[attachment.kind]} ·{' '}
-                        {fileFormat(attachment.filename, attachment.mime)} ·{' '}
-                        {formatBytes(attachment.size)}
-                      </AttachmentDescription>
-                    </AttachmentContent>
-                    <AttachmentActions className="pr-1.5">
-                      {removing === attachment.id ? (
-                        <span className="flex size-7 items-center justify-center">
-                          <Spinner />
-                          <span className="sr-only">Deleting {attachment.filename}…</span>
-                        </span>
-                      ) : (
-                        <RemoveButton
-                          label={`Remove ${attachment.filename}`}
-                          onConfirm={() => onRemove(attachment)}
-                          disabled={pending}
-                          confirmDescription="The file itself is deleted, not just the link to it."
-                          className="size-7!"
-                        />
-                      )}
-                    </AttachmentActions>
-                  </Attachment>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      </Field>
+                          <AttachmentDescription>
+                            {ATTACHMENT_KIND_LABELS[attachment.kind]} ·{" "}
+                            {fileFormat(attachment.filename, attachment.mime)} ·{" "}
+                            {formatBytes(attachment.size)}
+                          </AttachmentDescription>
+                        </AttachmentContent>
+                        <AttachmentActions className="pr-1.5">
+                          {removing === attachment.id ? (
+                            <span className="flex size-7 items-center justify-center">
+                              <Spinner />
+                              <span className="sr-only">
+                                Deleting {attachment.filename}…
+                              </span>
+                            </span>
+                          ) : (
+                            <RemoveButton
+                              label={`Remove ${attachment.filename}`}
+                              onConfirm={() => onRemove(attachment)}
+                              disabled={pending}
+                              confirmDescription="The file itself is deleted, not just the link to it."
+                              className="size-7!"
+                            />
+                          )}
+                        </AttachmentActions>
+                      </Attachment>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </Field>
+        </>
+      )}
     </StepForm>
   );
 }
@@ -578,10 +649,10 @@ export default function AttachmentsStep({
  * browser's claim.
  */
 function fileFormat(filename: string, mime: string): string {
-  const ext = filename.includes('.') ? filename.split('.').pop() : '';
+  const ext = filename.includes(".") ? filename.split(".").pop() : "";
   if (ext && ext.length <= 4) return ext.toUpperCase();
-  const subtype = mime.split('/')[1];
-  return subtype ? subtype.toUpperCase() : 'File';
+  const subtype = mime.split("/")[1];
+  return subtype ? subtype.toUpperCase() : "File";
 }
 
 /** Bytes as something a person reads. Attachments are KB-to-MB, so two units. */
