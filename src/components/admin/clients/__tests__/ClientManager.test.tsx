@@ -76,7 +76,7 @@ describe('ClientManager', () => {
     render(<ClientManager clients={clients} />);
     expect(screen.getByRole('link', { name: /edit beta ltd/i })).toHaveAttribute(
       'href',
-      '/client/clients/c2',
+      '/client/clients/c2?step=identity',
     );
   });
 

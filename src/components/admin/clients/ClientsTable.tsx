@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { BadgeIndianRupee, Building2, ListChecks, Mail, Pencil, Phone, Users } from 'lucide-react';
 import ColumnLabel from '../ColumnLabel';
-import { ONBOARDING_STEPS, completedSteps } from './onboarding/steps';
+import { completedSteps, onboardingStepsFor, resumeStep } from './onboarding/steps';
 import {
   Empty,
   EmptyDescription,
@@ -72,7 +72,9 @@ export default function ClientsTable({
       </TableHeader>
       <TableBody>
         {clients.map((client) => {
+          // Out of *this* client's steps: an individual has six, not seven.
           const done = completedSteps(client);
+          const total = onboardingStepsFor(client).length;
           return (
             <TableRow key={client.id} className="group/row">
               <TableCell>{client.name}</TableCell>
@@ -80,7 +82,7 @@ export default function ClientsTable({
               <TableCell>{client.phone}</TableCell>
               <TableCell>{client.gstin || '—'}</TableCell>
               <TableCell className="tabular-nums text-muted-foreground">
-                {done} of {ONBOARDING_STEPS.length}
+                {done} of {total}
               </TableCell>
               <TableCell className="py-0 text-right">
                 {/*
@@ -95,7 +97,7 @@ export default function ClientsTable({
                 */}
                 <RowActions>
                   <Link
-                    href={`/client/clients/${client.id}`}
+                    href={`/client/clients/${client.id}?step=${resumeStep(client)}`}
                     aria-label={`Edit ${client.name}`}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100"
                   >

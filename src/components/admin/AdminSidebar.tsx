@@ -91,7 +91,11 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
  * `/admin/spec` and `/admin/kit`: its index page sends you there, but neither
  * URL sits under `/admin/tools`.
  */
-function isRailActive(pathname: string, entry: RailEntry, homeHref: string): boolean {
+function isRailActive(
+  pathname: string,
+  entry: RailEntry,
+  homeHref: string,
+): boolean {
   if (entry.link.href === homeHref) return pathname === homeHref;
   return (
     isActiveHref(pathname, entry.link.href) ||
@@ -136,7 +140,7 @@ function ProfileNavBody({
       // 100% *of the track* — two rails each — so the second body began two
       // rails along while the track only ever slides one, and the admin nav
       // rendered entirely off-screen.
-      className="flex w-1/2 shrink-0 flex-col gap-3"
+      className="flex w-1/2 shrink-0 flex-col"
     >
       {nav.rail ? (
         <FlatNavBody nav={nav} pathname={pathname} />
@@ -170,7 +174,13 @@ function FlatNavBody({ nav, pathname }: { nav: ProfileNav; pathname: string }) {
 }
 
 /** The grouped rail: home and a create button, then labelled sections. */
-function GroupedNavBody({ nav, pathname }: { nav: ProfileNav; pathname: string }) {
+function GroupedNavBody({
+  nav,
+  pathname,
+}: {
+  nav: ProfileNav;
+  pathname: string;
+}) {
   return (
     <>
       {/* Dashboard, then the app's one job — alone at the top */}
@@ -303,7 +313,7 @@ export default function AdminSidebar({
    *
    * Getting this wrong is worse than it sounds. `live` decides `inert`, so for
    * the whole second or so the route takes, the nav you are looking at was
-   * unclickable and hidden from screen readers — visibly there, functionally
+   * unclickable and hidden from screen readers: visibly there, functionally
    * dead. Reading it from the latch instead makes the new nav usable the moment
    * it arrives, before the page behind it has loaded.
    */
@@ -342,7 +352,11 @@ export default function AdminSidebar({
             </TooltipContent>
           </Tooltip>
         </div>
-        <ProfileSwitcher profile={profile} offset={offset} dragging={dragging} />
+        <ProfileSwitcher
+          profile={profile}
+          offset={offset}
+          dragging={dragging}
+        />
       </SidebarHeader>
 
       {/*
@@ -371,7 +385,7 @@ export default function AdminSidebar({
             // the moment the movement has to animate. During a drag the offset
             // is already updated per frame, and a transition on top of that lags
             // the fingers.
-            transition: dragging ? undefined : 'transform 300ms ease-out',
+            transition: dragging ? undefined : "transform 300ms ease-out",
           }}
         >
           {PROFILES.map((value) => (

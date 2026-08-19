@@ -30,9 +30,28 @@ describe('ClientsTable', () => {
     render(<ClientsTable clients={clients} onDelete={onDelete} />);
     // A link, not a button: editing a client is now a real URL that survives a
     // refresh and can be shared.
+    //
+    // It names the step the record has nothing for, so the row's "0 of 7" and
+    // the page it opens agree. This client is a legacy row with no sections at
+    // all, so that is the first one.
     expect(screen.getByRole('link', { name: /edit acme co\./i })).toHaveAttribute(
       'href',
-      '/client/clients/c1',
+      '/client/clients/c1?step=identity',
+    );
+  });
+
+  it('opens an onboarding in progress at its gap, not at the top', () => {
+    const partway: ClientRecord = {
+      ...clients[0],
+      entityType: 'pvt_ltd',
+      companyName: 'Acme Co.',
+      tax: { gstin: '09AAACT2727Q1ZW' },
+      contacts: { roles: { signing: 'primary' } },
+    };
+    render(<ClientsTable clients={[partway]} onDelete={onDelete} />);
+    expect(screen.getByRole('link', { name: /edit acme co\./i })).toHaveAttribute(
+      'href',
+      '/client/clients/c1?step=commercial',
     );
   });
 
