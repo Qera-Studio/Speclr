@@ -227,6 +227,50 @@ if one of these gets picked up, the reasoning is what to re-examine first.
   the useful half without being an engine. It deliberately does not compute TDS.
 - **Reporting/analytics dashboards** — the schema already enables them; not built
   during the migration.
+- **A per-country adaptive address form.** Asked for 19 August 2026: the address
+  block would change its *fields* by country, adding a district, a county, a
+  neighbourhood where that country has one. Not built, for three reasons in
+  order of weight.
+
+  **What actually varies is the words, not the slots.** The canonical dataset is
+  Google's libaddressinput metadata (behind Chrome autofill, Stripe and
+  Shopify): ~200 countries, each with a field order, a required-field set and a
+  local label. Read it and every one of them reduces to line 1, line 2, a
+  locality, an administrative area, a postal code and a country, which is
+  exactly what `AddressParts` already holds. `line2` absorbs the locality,
+  district and sublocality; `state` absorbs county, region, province, prefecture
+  and emirate. The countries that genuinely need a seventh slot are a handful
+  (Brazil's neighbourhood, China's dependent locality) and speclr bills none of
+  them. So the payoff is the right *labels*, which `addressWords(country)` in
+  `AddressFields.tsx` already delivers for the two cases that exist.
+
+  **A variable field set is a variable shape in a column finalized documents
+  depend on.** `composeAddress` flattens `AddressParts` into the flat `address`
+  string, and that string is what sheets print and what the snapshot freezes
+  byte-identically for 72 months. Extra parts would have to be
+  additive-optional for ever, which is most of the complexity and none of the
+  tidiness.
+
+  **Per-country field sets and per-country required-ness are `PRINCIPLES.md`
+  rule 5** — jurisdiction pack, which §4 forbids by name. This would be the
+  second pack arriving through the address form instead of the tax layer.
+
+  **The compliant version, when a country earns it:** widen `addressWords` from
+  two branches to a small table keyed by ISO2, holding label, placeholder and
+  input mode per field. Same six fields, better words, one object literal, no
+  schema change and no migration. Add a row the day a client from that country
+  exists, not before.
+
+- **A client profile page.** Raised 19 August 2026. There is no read-only view
+  of a client: everything on the record is visible only inside the onboarding
+  route, so "what did we agree with them, and where does their DNS live" is a
+  question answered by walking six form steps. The record now holds enough to
+  be worth reading on one page (identity, tax, terms, services, documents,
+  access), and the delivery & access rows in particular are reference material
+  that nobody wants to reach through a form. Deferred by the user's own call
+  while onboarding is still being finished; the shape when it lands is a read
+  view per group with an edit link into the step that owns it, so there is still
+  exactly one surface that writes each group.
 
 ## Pending work (in flight)
 

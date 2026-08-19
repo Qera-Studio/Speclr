@@ -191,6 +191,19 @@ the honest fix is always to the GSTIN. Break or clear it and the field is
 typeable again, keeping what it held. `panHolderTypeError` still runs on the
 result, so a company's GSTIN on a record marked individual is still caught.
 
+**17 August 2026 — a fifth derivation, and the request that would have been a
+fourth form.** Onboarding was asked to split into four flows: individual or
+company, crossed with domestic or international. Rule 3 says otherwise, and it
+turned four forms into two predicates. **Individual vs company is already in
+`entityType`** — three of its rows are one human being — and **domestic vs
+international was already derived** from `addressParts.country` and already
+driving `TaxStep`, `entityTypesForCountry` and the attachment slots. So there is
+no `client_kind` column, no migration, and nothing that can disagree with the
+record about what the record is. `onboardingSteps(kind)` returns six steps or
+seven; `clientContact` derives a person as their own contact instead of storing
+a copy of their name in `contacts.primary`; `companyName` is filled from `name`
+for a person who does not trade under a business name. See `CONTEXT.md` §5d-i.
+
 **16 August 2026 — and one place the rule deliberately does not fire.**
 `entityType` is derivable: a CIN's ownership triple states it outright for the
 three company forms, and a PAN's 4th character narrows it to a group. Rule 3

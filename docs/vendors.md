@@ -73,8 +73,31 @@ health check before that matters.
 | **Cost** | As 1.1. **Zippopotam commercial: ~$50/month** for an SLA and higher limits on the same data. |
 | **Beats its two closest competitors** | vs **GeoNames** (free, 250k+ places): GeoNames' postal-code file needs hosting and updating ourselves, and its free web service is rate-limited per username and frequently over quota. vs **Loqate/Melissa**: they are address *verification* suites, which is a much stronger product (they correct and standardise a whole address, not just a postcode) and priced accordingly. Worth buying when speclr posts physical mail, which it does not. |
 
-**Known quirk, already handled:** the UK indexes only the outward code (`EH1`),
-so a full postcode misses and the route retries on the first segment.
+**Known quirk, already handled:** several countries index only part of the code,
+so a full postcode misses and the route retries on the first segment. Where more
+than one place comes back, the code covers a district rather than an address, so
+only the region is filled and the town is left blank and typeable: a guess
+presented as a lookup is worse than no lookup.
+
+**The UK is no longer served from here.** See 1.2a.
+
+### 1.2a UK postcode to town and region
+
+| | |
+|---|---|
+| **Today** | `api.postcodes.io`. No key, no signup, open source (Ideal Postcodes), built on the ONS Postcode Directory and Royal Mail's PAF-derived open data. Same proxy, same gating, same silent failure. Wired 18 August 2026. |
+| **Why** | Zippopotam is not thin in Great Britain, it is **wrong**: it indexes the outward code only, so `PH2` answers with the thirty villages that share it, and `places[0]` filled a Perth address in as Bridge of Earn and then locked the field. Postcodes.io resolves the *full* postcode and returns `admin_district` ('Perth and Kinross'), plus county, region and country. The UK is the one foreign country speclr already has a client in. |
+| **Industry substitute** | **Ideal Postcodes' own paid API** (the same people, the same data, plus the Royal Mail PAF address list and an SLA), or **Loqate**. |
+| **Cost** | Ideal Postcodes: **from ~£0.02 per lookup**, or ~£20/month for a small bundle; PAF address data carries Royal Mail licensing on top. Loqate: **from ~$200/month**. |
+| **Beats its two closest competitors** | vs **Zippopotam** (1.2): it cannot answer a full UK postcode at all, which is the whole failure this replaced. vs **Google Geocoding** (1.1's substitute): Google would answer, but it needs a billing account and a key for a field that is hand-editable anyway, and it returns a locality rather than the administrative district a UK address line names. Buy Ideal Postcodes' paid tier the day speclr needs the *building* (a full PAF address picker), not just the town. |
+
+**The honest ceiling:** free tier, no SLA, and **the post town is not in it**.
+The town on a UK letter comes from Royal Mail's PAF, which is licensed, so the
+route approximates it from the built-up area and the travel-to-work area. That
+is right for 11 of 13 real post towns tested; the two misses are inner London,
+where it names the borough ('Islington' where the letter says LONDON). It is a
+real, checkable answer in an editable field, which is the bar this feature sets.
+Buying Ideal Postcodes' paid tier is what replaces the approximation with PAF.
 
 ### 1.3 IFSC to bank and branch
 

@@ -222,6 +222,111 @@ Neither the billing address nor the Attn line prints yet: they are collected,
 validated and frozen-ready, and `ROADMAP.md` holds the change that teaches the
 sheets to read them, snapshot included.
 
+### 5d-i. A client is a person or a company, and both are derived
+
+Onboarding assumed every client was incorporated. A freelancer was asked for a
+legal entity name, a CIN, an entity type from fourteen company forms, three
+contact people and a vendor portal, and was offered a certificate of
+incorporation to upload. The flow now has two shapes, and the important thing
+is how little of that is stored.
+
+**Two axes, both derived, no new column.**
+
+| Axis | Derived from | Predicate |
+|---|---|---|
+| Individual vs company | `entityType` | `clientKindOf` / `isNaturalPerson` |
+| Domestic vs international | `addressParts.country` | already in use everywhere |
+
+`individual`, `proprietorship` and `sole_trader` carry `naturalPerson: true` in
+`ENTITY_TYPES`; everything else is an organisation. A `client_kind` column would
+be a second place for a record to say what it is, and a second place for it to
+disagree (rule 3, the same reason there is no `country` column). The chooser
+screen before step 1 writes `?kind=` into the URL only while there is no row to
+derive from; once step 1 saves, the entity type is the answer, and an existing
+client never sees the chooser.
+
+**Six steps, not seven.** `onboardingSteps(kind)` drops Contacts for an
+individual: a person is the contact they discuss the work with, the one who
+signs and, unless they say otherwise, the one an invoice goes to. What that step
+collected which the identity fields do not already say is a **designation** and
+an optional **separate billing person**, and both moved to step 1 and are stored
+in the existing `contacts` group, so nothing downstream learned a new shape.
+
+**Their name, email and phone are not copied into `contacts.primary`.** They are
+on the record already, and a copy goes stale the first time identity is edited.
+`clientContact(client, key)` derives them on read and is now what
+`clientSnapshotOf` calls. That last part is load-bearing: `resolveContact` alone
+would have returned a designation with no name for an individual, and a contract
+would have frozen the blank signature rule §5d exists to fix. Tested in
+`domain/__tests__/types.test.ts`.
+
+**`companyName` is derived too.** It is required and it is what every sheet
+prints (`companyName || name`). A plain individual never sees the field and it
+is filled from `name`; a proprietorship or a sole trader types a **trading
+name**, and only while the entity type still says they trade under one.
+
+**Three corrections to the original brief, taken deliberately:**
+
+- **The tax step is shrunk, not removed.** Every individual has a PAN (and their
+  PAN card is asked for at step 6, so the number belongs on the record); a
+  freelancer over ₹20 lakh is GST-registered, at which point Rule 46 requires
+  their GSTIN on our invoice and `placeOfSupplyOf` reads it; a client subject to
+  tax audit deducts TDS under s.194J. **Only CIN goes** — there is no registrar
+  and no certificate.
+- **No Aadhaar, anywhere.** Aadhaar Act s.29 and the UIDAI rules restrict who
+  may store the number or a copy and for what purpose, and a design studio has
+  no authorised purpose. PAN is the appropriate KYC document. Do not add it.
+- **Purchase orders and vendor portals are hidden, not deleted.** They are an
+  enterprise accounts-payable apparatus. The fields stay on the record, so a
+  client reclassified later keeps whatever was saved.
+
+### 5d-ii. What the record knows, the form stops asking
+
+The same rule as §5d-i, applied to four places the international flow was still
+offering every country's answer at once. Each one is `PRINCIPLES.md` rule 3 read
+as "the country is on the record": the filtering is not a preference, it is the
+record deciding.
+
+- **Registration types follow the address** (`taxIdTypesForCountry`). An
+  Australian client is offered an ABN and "Other registration", not seven
+  identifiers of which six run the wrong check digit against the number typed
+  beside them. The EU list is now all 27 member states rather than the dozen
+  that were written down; a half-listed union is a client in Greece being told
+  their VAT number is "other". **A saved type is always kept in the list**, or a
+  record whose address was corrected afterwards would open with the picker blank
+  and drop the number on the next save.
+- **The requirements follow it too.** A W-8BEN-E is a US IRS form asked for by a
+  US payer, and reverse charge is a VAT/GST concept the US does not have. Both
+  filter on country, and a box **already ticked always shows**: a client who
+  moved country did not stop having asked.
+- **A postcode with no town says so.** `readWorld` returns the localities when a
+  code covers several (AU 2155 is four suburbs), and the field prints "This
+  postcode covers 4 localities" with each as a one-click fill. The old behaviour
+  was correct and unreadable: it filled the region, left the town blank, and
+  gave the operator no way to tell a postcode with no town from an app that
+  dropped one. Capped at twelve, beyond which the code is a district.
+- **The town/postcode separator is India's, and only India's.**
+  `composeAddress` writes 'Ghaziabad - 201017' but 'Rouse Hill 2155'. A blank
+  country still reads as India. That is as far as it goes: line *order* per
+  country would be a jurisdiction pack.
+
+**Each document explains itself behind an icon** (`ATTACHMENT_KIND_NOTES`). What
+it is, who issues it, why to chase it, what is in it. The foreign two earn it:
+an FIRC is the evidence an export was realised and is far harder to obtain a
+year after the payment landed, and a W-8BEN-E is what stops a US client
+withholding 30%. The icon is a **sibling** of the drop zone, never a child: the
+box is already a `role="button"`.
+
+**An access row names itself from the account typed into it**, then its kind,
+then its position. Renaming one means editing "What it is" — there is no second
+title field to keep in step. Its note is a ghost button until asked for, because
+most rows are a name and a vault and nothing else.
+
+**Attachment scoping is one table on two axes** (`ATTACHMENT_SCOPES`), and it
+only ever filters what is **offered**. A document already on a record keeps its
+label whatever the record later says, which is why nothing was removed from
+`ATTACHMENT_KINDS`. Every filter above follows that same rule.
+
 ### 5e. The design system is enforced by tests, not by convention
 
 `src/__tests__/design-tokens.test.ts` polices colour — no raw Tailwind palette
