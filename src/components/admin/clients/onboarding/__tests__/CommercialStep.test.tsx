@@ -155,4 +155,25 @@ describe('CommercialStep', () => {
 
     expect(payload().vendorPortalUrl).toBeUndefined();
   });
+
+  /**
+   * Purchase orders and vendor portals are an enterprise accounts-payable
+   * apparatus. An individual has neither, and the fields stay on the record
+   * untouched so a client reclassified later keeps whatever was saved.
+   */
+  it('does not ask an individual about purchase orders or a vendor portal', () => {
+    render(
+      <CommercialStep
+        client={client}
+        onSaved={onSaved}
+        submitLabel="Services"
+        kind="individual"
+      />,
+    );
+
+    expect(screen.queryByText(/invoice submission/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/purchase order/i)).not.toBeInTheDocument();
+    // The terms that do apply are still there.
+    expect(screen.getAllByLabelText(/payment terms/i).length).toBeGreaterThan(0);
+  });
 });

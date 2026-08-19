@@ -34,7 +34,35 @@ export interface EntityTypeSpec {
    */
   cinOwnership?: string;
   jurisdiction: EntityJurisdiction;
+  /**
+   * This form *is* a person rather than an organisation.
+   *
+   * The second axis onboarding branches on, and it lives here because it is
+   * already implied by the legal form: an Individual and a Sole Proprietorship
+   * are one human being with a PAN of kind `P` and no registrar, and everything
+   * else in this table is an entity somebody incorporated. A `client_kind`
+   * column would be a second place for a record to say what it is, and a second
+   * place for it to disagree (`PRINCIPLES.md` rule 3, the same reason there is
+   * no `country` column).
+   *
+   * A proprietorship is on this side deliberately. It has no separate legal
+   * personality: the proprietor is the taxpayer, the PAN is theirs, and there
+   * is no certificate of incorporation to ask for. What it has that a plain
+   * individual does not is a trading name, which is a field, not a category.
+   */
+  naturalPerson?: true;
+  /**
+   * This person trades under a business name that is not their own.
+   *
+   * The one thing a proprietorship or a sole trader has that a plain individual
+   * does not, and it is a field rather than a category: the proprietor is still
+   * the taxpayer, but "Studio Kalpa" is what the invoice is addressed to.
+   */
+  tradingName?: true;
 }
+
+/** Which of the two onboarding flows a client goes through. */
+export type ClientKind = 'individual' | 'company';
 
 /**
  * Indian forms first and in rough order of how often a design studio bills
@@ -45,11 +73,11 @@ export const ENTITY_TYPES: readonly EntityTypeSpec[] = [
   // ── India ──
   { value: 'pvt_ltd', label: 'Private Limited Company', panKind: 'C', cinOwnership: 'PTC', jurisdiction: 'in' },
   { value: 'llp', label: 'Limited Liability Partnership', panKind: 'F', jurisdiction: 'in' },
-  { value: 'proprietorship', label: 'Sole Proprietorship', panKind: 'P', jurisdiction: 'in' },
+  { value: 'proprietorship', label: 'Sole Proprietorship', panKind: 'P', jurisdiction: 'in', naturalPerson: true, tradingName: true },
   { value: 'partnership', label: 'Partnership Firm', panKind: 'F', jurisdiction: 'in' },
   { value: 'public_ltd', label: 'Public Limited Company', panKind: 'C', cinOwnership: 'PLC', jurisdiction: 'in' },
   { value: 'opc', label: 'One Person Company', panKind: 'C', cinOwnership: 'OPC', jurisdiction: 'in' },
-  { value: 'individual', label: 'Individual', panKind: 'P', jurisdiction: 'in' },
+  { value: 'individual', label: 'Individual', panKind: 'P', jurisdiction: 'in', naturalPerson: true },
   { value: 'huf', label: 'Hindu Undivided Family', panKind: 'H', jurisdiction: 'in' },
   { value: 'trust', label: 'Trust', panKind: 'T', jurisdiction: 'in' },
   { value: 'society', label: 'Registered Society', panKind: 'A', jurisdiction: 'in' },
@@ -67,7 +95,7 @@ export const ENTITY_TYPES: readonly EntityTypeSpec[] = [
   { value: 'gmbh', label: 'Limited Company (Europe)', jurisdiction: 'foreign' },
   { value: 'pte_ltd', label: 'Private Limited Company (Singapore)', jurisdiction: 'foreign' },
   { value: 'free_zone', label: 'Free Zone Entity', jurisdiction: 'foreign' },
-  { value: 'sole_trader', label: 'Sole Trader', jurisdiction: 'foreign' },
+  { value: 'sole_trader', label: 'Sole Trader', jurisdiction: 'foreign', naturalPerson: true, tradingName: true },
   { value: 'foreign_other', label: 'Other', jurisdiction: 'foreign' },
 ] as const;
 
@@ -110,4 +138,32 @@ export function entityTypeForCinOwnership(ownership: string | undefined): Entity
 export function entityTypesForCountry(iso2: string | undefined): EntityTypeSpec[] {
   const jurisdiction: EntityJurisdiction = !iso2 || iso2.toUpperCase() === 'IN' ? 'in' : 'foreign';
   return ENTITY_TYPES.filter((e) => e.jurisdiction === jurisdiction);
+}
+
+/**
+ * Whether this client is a person rather than an organisation.
+ *
+ * Derived, never stored. An entity type nobody has chosen yet reads as a
+ * company, which is what an unfinished record means here and what every client
+ * written before this existed is.
+ */
+export function isNaturalPerson(entityType: string | undefined): boolean {
+  return entityTypeSpec(entityType)?.naturalPerson === true;
+}
+
+/** Which flow an entity type puts a client in. */
+export function clientKindOf(entityType: string | undefined): ClientKind {
+  return isNaturalPerson(entityType) ? 'individual' : 'company';
+}
+
+/**
+ * The forms offered, on both axes at once.
+ *
+ * The two compose here rather than at each call site, so a form can never be
+ * offered on one axis and rejected on the other — which is what
+ * `IdentityStep`'s resolver checks the submitted value against.
+ */
+export function entityTypesForClient(iso2: string | undefined, kind: ClientKind): EntityTypeSpec[] {
+  const wanted = kind === 'individual';
+  return entityTypesForCountry(iso2).filter((e) => (e.naturalPerson === true) === wanted);
 }

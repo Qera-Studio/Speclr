@@ -18,10 +18,12 @@ import type { ClientRecord } from '@/lib/domain/types';
 
 const createClient = jest.fn();
 const updateClient = jest.fn();
+const saveClientSection = jest.fn();
 
 jest.mock('@/server/actions/clients', () => ({
   createClient: (...a: unknown[]) => createClient(...a),
   updateClient: (...a: unknown[]) => updateClient(...a),
+  saveClientSection: (...a: unknown[]) => saveClientSection(...a),
 }));
 
 const onSaved = jest.fn();
@@ -34,6 +36,7 @@ beforeEach(() => {
   sessionStorage.clear();
   createClient.mockResolvedValue({ success: true, id: 'new-id' });
   updateClient.mockResolvedValue({ success: true, id: 'c1' });
+  saveClientSection.mockResolvedValue({ success: true });
   // `AddressFields` looks a pincode up on type; without this it throws.
   global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: false }) });
 });
@@ -318,5 +321,104 @@ describe('a separate billing address', () => {
     // means on the record.
     const [values] = createClient.mock.calls[0];
     expect(values.billingAddressParts).toBeUndefined();
+  });
+});
+
+/**
+ * The individual flow. Six steps rather than seven, because a person is their
+ * own contact — so this step carries the two things the Contacts step would
+ * have asked that the identity fields do not already answer.
+ */
+describe('IdentityStep, for an individual', () => {
+  /** Everything except the second name column, which an individual may not have. */
+  async function fillPerson(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText(/^full name$/i), 'Rahul Menon');
+    await user.type(screen.getByLabelText(/^email$/i), 'rahul@example.test');
+    await user.type(screen.getByLabelText('Phone'), '9876543210');
+    await user.type(screen.getByLabelText(/building/i), 'C-204');
+    await user.type(screen.getByLabelText('Pincode'), '201017');
+    await user.type(screen.getByLabelText('City'), 'Ghaziabad');
+    await user.type(screen.getByLabelText('State'), 'Uttar Pradesh');
+  }
+
+  it('offers only the forms that are one person, and no legal entity name', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" kind="individual" />);
+
+    expect(screen.queryByLabelText(/legal entity name/i)).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText('Entity type'));
+    expect(await screen.findByRole('option', { name: /^individual$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /private limited/i })).not.toBeInTheDocument();
+  });
+
+  // `companyName` is required and is what every sheet prints. The field is not
+  // rendered for a person, so a form that could not derive it could never save.
+  it('prints their own name, deriving the required legal name from it', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" kind="individual" />);
+
+    await fillPerson(user);
+    await pickEntityType(user, /^individual$/i);
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Rahul Menon', companyName: 'Rahul Menon' }),
+    );
+  });
+
+  it('takes a trading name from a proprietorship and prints that instead', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" kind="individual" />);
+
+    await fillPerson(user);
+    await pickEntityType(user, /^sole proprietorship$/i);
+    await user.type(screen.getByLabelText(/business \/ trading name/i), 'Studio Kalpa');
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Rahul Menon', companyName: 'Studio Kalpa' }),
+    );
+  });
+
+  /**
+   * The designation and the billing role are stored; the name, email and phone
+   * are not. A copy of those would go stale the first time this step was
+   * edited, and `clientContact` derives them on read instead.
+   */
+  it('saves the designation and points both roles at the person', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" kind="individual" />);
+
+    await fillPerson(user);
+    await pickEntityType(user, /^individual$/i);
+    await user.type(screen.getByLabelText(/^designation$/i), 'Consultant');
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    expect(saveClientSection).toHaveBeenCalledWith('new-id', 'contacts', {
+      primary: { designation: 'Consultant' },
+      roles: { signing: 'primary', billing: 'primary' },
+    });
+  });
+
+  it('records a separate billing contact when there is one', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" kind="individual" />);
+
+    await fillPerson(user);
+    await pickEntityType(user, /^individual$/i);
+    await user.click(
+      screen.getByRole('checkbox', { name: /someone else handles invoices/i }),
+    );
+    await user.type(
+      screen.getByLabelText('Name', { selector: '#client-billing-contact-name' }),
+      'Asha Rao',
+    );
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    const [, , contacts] = saveClientSection.mock.calls[0];
+    expect(contacts.billing).toEqual({ name: 'Asha Rao' });
+    // Billing names its own person, so it is absent from `roles` — that is how
+    // the record says "this role does not point anywhere".
+    expect(contacts.roles).toEqual({ signing: 'primary' });
   });
 });

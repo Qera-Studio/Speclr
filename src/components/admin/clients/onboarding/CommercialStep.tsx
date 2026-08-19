@@ -68,7 +68,12 @@ const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
  * the other saved — a section save replaces its column, and a half-payload
  * would silently drop the other half.
  */
-export default function CommercialStep({ client, onSaved, submitLabel }: StepProps) {
+export default function CommercialStep({
+  client,
+  onSaved,
+  submitLabel,
+  kind = 'company',
+}: StepProps) {
   const {
     register,
     control,
@@ -352,87 +357,97 @@ export default function CommercialStep({ client, onSaved, submitLabel }: StepPro
         </FieldRow>
       ) : null}
 
-      <FieldSeparator />
+      {/*
+        Purchase orders and vendor portals are an enterprise accounts-payable
+        apparatus. An individual has neither, and offering the section anyway
+        is two switches nobody will ever turn on. The fields stay on the record
+        untouched, so a client reclassified later keeps whatever was saved.
+      */}
+      {kind === 'individual' ? null : (
+        <>
+        <FieldSeparator />
 
-      <FieldSet>
-        <LegendInfo
-          info="How this client wants to receive an invoice. Enterprise clients often have requirements that change the delivery step entirely."
-          label="About invoice submission"
-        >
-          Invoice submission
-        </LegendInfo>
+        <FieldSet>
+          <LegendInfo
+            info="How this client wants to receive an invoice. Enterprise clients often have requirements that change the delivery step entirely."
+            label="About invoice submission"
+          >
+            Invoice submission
+          </LegendInfo>
 
-        {/* Two switches that each reveal one field, so they sit as a pair
-            rather than as a stack whose halves look unrelated. */}
-        <FieldRow>
-          <Field>
-            <div className="flex min-h-9.5 items-center justify-between gap-3">
-              <FieldInfo
-                htmlFor="client-po-required"
-                label="A PO is required"
-                info="Finalizing an invoice for this client without a PO number will be refused. Their accounts payable will not process one, so an invoice without it simply waits."
-                infoLabel="What does requiring a PO do?"
-              />
-              <Controller
-                control={control}
-                name="poRequired"
-                render={({ field }) => (
-                  <Switch
-                    id="client-po-required"
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
+          {/* Two switches that each reveal one field, so they sit as a pair
+              rather than as a stack whose halves look unrelated. */}
+          <FieldRow>
+            <Field>
+              <div className="flex min-h-9.5 items-center justify-between gap-3">
+                <FieldInfo
+                  htmlFor="client-po-required"
+                  label="A PO is required"
+                  info="Finalizing an invoice for this client without a PO number will be refused. Their accounts payable will not process one, so an invoice without it simply waits."
+                  infoLabel="What does requiring a PO do?"
+                />
+                <Controller
+                  control={control}
+                  name="poRequired"
+                  render={({ field }) => (
+                    <Switch
+                      id="client-po-required"
+                      checked={field.value ?? false}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+              {poRequired ? (
+                <>
+                  <Input
+                    aria-label="PO number"
+                    size="form"
+                    placeholder="PO-2026-0042"
+                    {...register('poNumber')}
                   />
-                )}
-              />
-            </div>
-            {poRequired ? (
-              <>
-                <Input
-                  aria-label="PO number"
-                  size="form"
-                  placeholder="PO-2026-0042"
-                  {...register('poNumber')}
-                />
-                <FieldError errors={[errors.poNumber]} />
-              </>
-            ) : null}
-          </Field>
+                  <FieldError errors={[errors.poNumber]} />
+                </>
+              ) : null}
+            </Field>
 
-          <Field>
-            <div className="flex min-h-9.5 items-center justify-between gap-3">
-              <FieldInfo
-                htmlFor="client-vendor-portal-used"
-                label="Invoices go through a portal"
-                info="Where invoices are submitted, if not by email. Large clients often route everything through Coupa, Ariba or their own portal."
-                infoLabel="What is the vendor portal?"
-              />
-              <Switch
-                id="client-vendor-portal-used"
-                checked={portalUsed}
-                onCheckedChange={(checked) => {
-                  setPortalUsed(checked);
-                  // Off means there is no portal, so the address goes with it.
-                  // Leaving it behind would restore itself the next time the
-                  // switch was flipped and print nowhere in between.
-                  if (!checked) setValue('vendorPortalUrl', '', { shouldDirty: true });
-                }}
-              />
-            </div>
-            {portalUsed ? (
-              <>
-                <Input
-                  aria-label="Vendor portal address"
-                  size="form"
-                  type="url"
-                  placeholder="https://clayora.coupahost.com"
-                  {...register('vendorPortalUrl')}
+            <Field>
+              <div className="flex min-h-9.5 items-center justify-between gap-3">
+                <FieldInfo
+                  htmlFor="client-vendor-portal-used"
+                  label="Invoices go through a portal"
+                  info="Where invoices are submitted, if not by email. Large clients often route everything through Coupa, Ariba or their own portal."
+                  infoLabel="What is the vendor portal?"
                 />
-                <FieldError errors={[errors.vendorPortalUrl]} />
-              </>
-            ) : null}
-          </Field>
-        </FieldRow>
-      </FieldSet>
+                <Switch
+                  id="client-vendor-portal-used"
+                  checked={portalUsed}
+                  onCheckedChange={(checked) => {
+                    setPortalUsed(checked);
+                    // Off means there is no portal, so the address goes with it.
+                    // Leaving it behind would restore itself the next time the
+                    // switch was flipped and print nowhere in between.
+                    if (!checked) setValue('vendorPortalUrl', '', { shouldDirty: true });
+                  }}
+                />
+              </div>
+              {portalUsed ? (
+                <>
+                  <Input
+                    aria-label="Vendor portal address"
+                    size="form"
+                    type="url"
+                    placeholder="https://clayora.coupahost.com"
+                    {...register('vendorPortalUrl')}
+                  />
+                  <FieldError errors={[errors.vendorPortalUrl]} />
+                </>
+              ) : null}
+            </Field>
+          </FieldRow>
+        </FieldSet>
+        </>
+      )}
     </StepForm>
   );
 }

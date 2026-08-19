@@ -1,5 +1,5 @@
 /**
- * The seven onboarding steps, as data.
+ * The onboarding steps, as data.
  *
  * One array drives the progress bar, the step nav, the URL slug and the
  * completeness dots, so a step cannot exist in the nav and not in the
@@ -11,9 +11,18 @@
  * identity, and it brings the country with it — which is why there is no
  * separate country field anywhere in this flow (`PRINCIPLES.md` rule 3: two
  * places to say where a client is means two places for them to disagree).
+ *
+ * **Seven steps for a company, six for an individual.** A person is their own
+ * contact — the one they discuss the work with, the one who signs and, unless
+ * they say otherwise, the one an invoice goes to — so Contacts collapses into
+ * a designation and one optional billing person on the identity step. Which
+ * kind a client is comes from `entityType` and is never stored separately.
  */
 
+import { clientKindOf, type ClientKind } from '@/lib/domain/entityType';
 import type { ClientRecord } from '@/lib/domain/types';
+
+export type { ClientKind };
 
 export interface OnboardingStep {
   /** The `?step=` slug. Part of a URL people paste, so it does not change. */
@@ -34,9 +43,17 @@ export interface OnboardingStep {
   needsRecord: boolean;
   /** Whether the client carries anything for this step yet. */
   isComplete: (client: ClientRecord) => boolean;
+  /**
+   * Which flow this step belongs to. Absent means both.
+   *
+   * The one exception is Contacts: an individual's contact details are their
+   * own, already on the record, and asking for them a second time would store
+   * a copy that goes stale the first time identity is edited.
+   */
+  only?: ClientKind;
 }
 
-export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
+const ALL_STEPS: readonly OnboardingStep[] = [
   {
     key: 'identity',
     short: 'Identity',
@@ -60,6 +77,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     description: 'The people — and which inbox an invoice goes to.',
     needsRecord: true,
     isComplete: (c) => Boolean(c.contacts && Object.keys(c.contacts).length > 0),
+    only: 'company',
   },
   {
     key: 'commercial',
@@ -95,10 +113,31 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   },
 ] as const;
 
-export const FIRST_STEP = ONBOARDING_STEPS[0].key;
+export const FIRST_STEP = ALL_STEPS[0].key;
 
-export function stepIndex(key: string | null | undefined): number {
-  const found = ONBOARDING_STEPS.findIndex((s) => s.key === key);
+/** The steps a client of this kind walks through. */
+export function onboardingSteps(kind: ClientKind): readonly OnboardingStep[] {
+  return ALL_STEPS.filter((s) => !s.only || s.only === kind);
+}
+
+/**
+ * The steps a *saved* client walks through, from its own entity type.
+ *
+ * A client with no entity type reads as a company, which is both what an
+ * unfinished record means and what every row written before onboarding existed
+ * is.
+ */
+export function onboardingStepsFor(client: ClientRecord): readonly OnboardingStep[] {
+  return onboardingSteps(clientKindOf(client.entityType));
+}
+
+/**
+ * Where a `?step=` slug sits in a list. An unknown slug is the first step,
+ * which is also how a step this client does not have resolves: an individual
+ * sent `?step=contacts` lands on Identity rather than on nothing.
+ */
+export function stepIndex(steps: readonly OnboardingStep[], key: string | null | undefined): number {
+  const found = steps.findIndex((s) => s.key === key);
   return found === -1 ? 0 : found;
 }
 
@@ -107,8 +146,23 @@ export function stepIndex(key: string | null | undefined): number {
  *
  * Derived rather than stored (`PRINCIPLES.md` rule 3): a column recording which
  * step someone stopped on would disagree with the record the first time a step
- * was revisited and left empty.
+ * was revisited and left empty. Counted against *this* client's steps, so an
+ * individual is never 6 of 7 with a seventh they were never shown.
  */
 export function completedSteps(client: ClientRecord): number {
-  return ONBOARDING_STEPS.filter((s) => s.isComplete(client)).length;
+  return onboardingStepsFor(client).filter((s) => s.isComplete(client)).length;
+}
+
+/**
+ * The step to open a saved client on: the first one it carries nothing for.
+ *
+ * Not "the step after the count", because the count is how many steps are
+ * complete and not how far along the record is — a client can have Documents
+ * filled and Contacts empty. The first gap is the one worth landing on, and a
+ * client with no gaps opens on its last step rather than on nothing.
+ */
+export function resumeStep(client: ClientRecord): string {
+  const steps = onboardingStepsFor(client);
+  const next = steps.find((s) => !s.isComplete(client));
+  return (next ?? steps[steps.length - 1]).key;
 }

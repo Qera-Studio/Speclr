@@ -1,10 +1,10 @@
 'use client';
 
 import '@/lib/zod-config';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useController, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { Field, FieldError, FieldLabel, FieldSeparator, FieldSet } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldRow } from '@/components/ui/field-row';
@@ -16,13 +16,44 @@ import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import { EmailField } from '@/components/form/fields';
 import { clientInputSchema } from '@/lib/domain/registry';
 import { composeAddress, emptyAddressParts } from '@/lib/domain/address';
-import { entityTypesForCountry } from '@/lib/domain/entityType';
-import { createClient, updateClient } from '@/server/actions/clients';
+import {
+  entityTypeSpec,
+  entityTypesForClient,
+  type ClientKind,
+} from '@/lib/domain/entityType';
+import { emailSchema, phoneSchema } from '@/lib/domain/fields';
+import { personNameSchema, textSchema } from '@/lib/domain/text';
+import type { ClientContacts } from '@/lib/domain/client';
+import { createClient, saveClientSection, updateClient } from '@/server/actions/clients';
 import type { ClientRecord } from '@/lib/domain/types';
 import { clearDraft, draftKey, useFormDraft } from '@/lib/draft';
-import { StepForm, type StepProps } from './stepKit';
+import { pruneEmpty, StepForm, type StepProps } from './stepKit';
 
-type FormValues = z.infer<typeof clientInputSchema>;
+/**
+ * Identity, plus the two things an individual has no separate step for.
+ *
+ * A person is their own contact, so the Contacts step is not shown to one
+ * (`onboardingSteps`). What that step collected which the identity fields do
+ * not already say is exactly this: what they call themselves, and whether
+ * invoices go to somebody else. Both are stored in the existing `contacts`
+ * group, so nothing downstream learns a new shape.
+ *
+ * Their name, email and phone are **not** collected again. They are already on
+ * the record, and a copy would go stale the first time this step was edited
+ * (`PRINCIPLES.md` rule 3). `clientContact` derives them on read.
+ */
+const identityFormSchema = clientInputSchema.extend({
+  designation: textSchema(200).optional(),
+  billingContact: z
+    .object({
+      name: personNameSchema(200).optional(),
+      email: emailSchema().optional(),
+      phone: phoneSchema().optional(),
+    })
+    .optional(),
+});
+
+type FormValues = z.infer<typeof identityFormSchema>;
 
 /** `line2` is genuinely optional; the rest are what makes an address one. */
 const REQUIRED_ADDRESS_PARTS = ['line1', 'city', 'state', 'pincode', 'country'] as const;
@@ -46,10 +77,26 @@ const REQUIRED_ADDRESS_PARTS = ['line1', 'city', 'state', 'pincode', 'country'] 
  * before onboarding existed have none, and a required column would make those
  * rows permanently un-saveable.
  */
-const resolver: Resolver<FormValues> = async (values, context, options) => {
+const makeResolver = (kind: ClientKind): Resolver<FormValues> => async (values, context, options) => {
   const composed = composeAddress(values.addressParts ?? emptyAddressParts);
-  const withAddress = { ...values, address: composed || values.address };
-  const result = await zodResolver(clientInputSchema)(withAddress, context, options);
+  /**
+   * An individual has no legal name apart from their own.
+   *
+   * `companyName` is what every sheet prints (`companyName || name`), and it is
+   * required, so it is derived here for the same reason `address` is: the field
+   * is not rendered, and a required field nobody can see is a form that cannot
+   * be submitted. A proprietorship or a sole trader *does* type one — their
+   * trading name — and only while the entity type says so, or switching back to
+   * a plain individual would keep printing a business name they no longer use.
+   */
+  const trades = entityTypeSpec(values.entityType)?.tradingName === true;
+  const companyName =
+    kind === 'individual' && !(trades && values.companyName?.trim())
+      ? values.name
+      : values.companyName;
+
+  const withAddress = { ...values, address: composed || values.address, companyName };
+  const result = await zodResolver(identityFormSchema)(withAddress, context, options);
 
   const errors = { ...result.errors };
   let failed = false;
@@ -82,11 +129,11 @@ const resolver: Resolver<FormValues> = async (values, context, options) => {
     errors.phone = { type: 'manual', message: phoneError };
     failed = true;
   }
-  // Checked against the forms *this country* offers, not merely against empty.
-  // Moving the address abroad leaves an Indian selection in the field with
-  // nothing showing in the list — and a UAE client saved as a private limited
-  // under the Companies Act is a wrong record, not a cosmetic one.
-  const offered = entityTypesForCountry(values.addressParts?.country);
+  // Checked against the forms *this country and this kind* offer, not merely
+  // against empty. Moving the address abroad leaves an Indian selection in the
+  // field with nothing showing in the list, and a person saved as a private
+  // limited is a wrong record rather than a cosmetic one.
+  const offered = entityTypesForClient(values.addressParts?.country, kind);
   if (!values.entityType || !offered.some((e) => e.value === values.entityType)) {
     errors.entityType = { type: 'manual', message: 'Choose the entity type.' };
     failed = true;
@@ -95,13 +142,21 @@ const resolver: Resolver<FormValues> = async (values, context, options) => {
   return failed ? { ...result, values: {}, errors } : result;
 };
 
-export default function IdentityStep({ client, onSaved, submitLabel }: StepProps) {
+export default function IdentityStep({
+  client,
+  onSaved,
+  submitLabel,
+  kind = 'company',
+}: StepProps) {
+  const individual = kind === 'individual';
   const [serverError, setServerError] = useState<string | null>(null);
+  const resolver = useMemo(() => makeResolver(kind), [kind]);
   const {
     register,
     control,
     watch,
     reset,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -126,6 +181,8 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           phone: client.phone,
           gstin: client.gstin ?? '',
           entityType: client.entityType ?? '',
+          designation: client.contacts?.primary?.designation ?? '',
+          billingContact: client.contacts?.roles?.billing ? undefined : client.contacts?.billing,
         }
       : {
           name: '',
@@ -137,6 +194,8 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           phone: '',
           gstin: '',
           entityType: '',
+          designation: '',
+          billingContact: undefined,
         },
   });
 
@@ -148,10 +207,34 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
   // is the field rather than a piece of state beside it. Nothing to keep in
   // step, and a draft restored from sessionStorage comes back ticked.
   const billingAddress = useController({ control, name: 'billingAddressParts' });
+  // Same shape as the second address: one value, present or absent, held by the
+  // field rather than by state beside it.
+  const billingContact = useController({ control, name: 'billingContact' });
   const entityOptions = useMemo(
-    () => entityTypesForCountry(country).map((e) => ({ value: e.value, label: e.label })),
-    [country],
+    () => entityTypesForClient(country, kind).map((e) => ({ value: e.value, label: e.label })),
+    [country, kind],
   );
+
+  /**
+   * One option is not a choice.
+   *
+   * A sole trader is the only form a foreign individual has, so the dropdown
+   * would be a single row somebody has to open to agree with. It is set here
+   * instead — the resolver still checks the submitted value against what is
+   * offered, so this fills the field rather than bypassing the rule.
+   */
+  const onlyOption = entityOptions.length === 1 ? entityOptions[0].value : null;
+  const chosenEntityType = entityType.field.value;
+  useEffect(() => {
+    if (onlyOption && chosenEntityType !== onlyOption) {
+      setValue('entityType', onlyOption, { shouldValidate: true });
+    }
+  }, [chosenEntityType, onlyOption, setValue]);
+
+  /** A proprietorship bills under a business name; a plain individual does not. */
+  const tradesUnderName = entityTypeSpec(String(chosenEntityType ?? ''))?.tradingName === true;
+  const showSecondName = !individual || tradesUnderName;
+  const nameColumns = (1 + (showSecondName ? 1 : 0) + (onlyOption ? 0 : 1)) as 2 | 3;
 
   // Restores what was typed but not saved, so a refresh or a hop to the other
   // profile comes back to the same half-filled form. Cleared on save.
@@ -164,20 +247,48 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
+    const { designation, billingContact: billTo, ...identity } = values;
     const result = client
-      ? await updateClient(client.id, values)
-      : await createClient(values);
+      ? await updateClient(client.id, identity)
+      : await createClient(identity);
 
     if (!result.success || !result.id) {
       setServerError(result.error ?? 'Something went wrong.');
       return;
     }
 
+    /**
+     * An individual's contacts, saved as a second call against the row this
+     * one just wrote. Ordinary `saveClientSection`, not a new action: by here
+     * the record exists, which is the only thing that call needs.
+     *
+     * What is stored is only what the record does not already say — the
+     * designation, and a billing person if there is one. Both roles otherwise
+     * point at `primary`, which `clientContact` resolves to the client
+     * themselves rather than to a copy.
+     */
+    let contacts: ClientContacts | undefined;
+    if (individual) {
+      const billing = billTo ? (pruneEmpty(billTo) as ClientContacts['billing']) : undefined;
+      const named = billing && Object.keys(billing).length > 0 ? billing : undefined;
+      contacts = {
+        ...(designation?.trim() ? { primary: { designation: designation.trim() } } : {}),
+        ...(named ? { billing: named } : {}),
+        roles: { signing: 'primary', ...(named ? {} : { billing: 'primary' as const }) },
+      };
+      const saved = await saveClientSection(result.id, 'contacts', contacts);
+      if (!saved.success) {
+        setServerError(saved.error ?? 'Something went wrong.');
+        return;
+      }
+    }
+
     clearDraft(key);
     const now = Date.now();
     onSaved({
       ...(client ?? { createdAt: now }),
-      ...values,
+      ...identity,
+      ...(contacts ? { contacts } : {}),
       id: result.id,
       updatedAt: now,
     } as ClientRecord);
@@ -195,14 +306,23 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
         cards at the bottom of the step — a third of the page to say one word,
         and a word that belongs beside the names it qualifies. A dropdown of
         fourteen is a dropdown; a grid of fourteen is a wall.
+
+        An individual drops the columns that do not apply rather than blanking
+        them: no legal entity name (they are the entity), and no entity type
+        where the country offers only one form. The row narrows to match, so
+        two fields are two fields and not two fields and a gap.
       */}
-      <FieldRow columns={3}>
+      <FieldRow columns={nameColumns}>
         <Field>
           <FieldInfo
             htmlFor="client-name"
-            label="Name"
-            info="The short name, used in lists, the client picker and this page's heading. Documents print the legal entity name instead."
-            infoLabel="Where is the short name used?"
+            label={individual ? 'Full name' : 'Name'}
+            info={
+              individual
+                ? "Their own name, as it appears on their PAN. It is what documents print unless they trade under a business name."
+                : "The short name, used in lists, the client picker and this page's heading. Documents print the legal entity name instead."
+            }
+            infoLabel={individual ? 'Whose name is this?' : 'Where is the short name used?'}
           />
           {/* Placeholders name the *kind* of value, not an example of one. A
               plausible example sitting in an empty field reads as filled in. */}
@@ -210,42 +330,55 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           <FieldError errors={[errors.name]} />
         </Field>
 
-        <Field>
-          <FieldInfo
-            htmlFor="client-company-name"
-            label="Legal entity name"
-            info="What documents print. CGST Rule 46 wants the recipient's legal name on a tax invoice, which is rarely the name anyone says out loud."
-            infoLabel="Why is the legal name separate?"
-          />
-          <Input
-            id="client-company-name"
-            size="form"
-            placeholder="Registered name"
-            {...register('companyName')}
-          />
-          <FieldError errors={[errors.companyName]} />
-        </Field>
+        {showSecondName ? (
+          <Field>
+            <FieldInfo
+              htmlFor="client-company-name"
+              label={individual ? 'Business / trading name' : 'Legal entity name'}
+              info={
+                individual
+                  ? 'What they invoice under, if that is not their own name. Left empty, documents print the name above.'
+                  : 'What documents print. CGST Rule 46 wants the recipient’s legal name on a tax invoice, which is rarely the name anyone says out loud.'
+              }
+              infoLabel={
+                individual ? 'What is a trading name?' : 'Why is the legal name separate?'
+              }
+            />
+            <Input
+              id="client-company-name"
+              size="form"
+              placeholder={individual ? 'Optional' : 'Registered name'}
+              {...register('companyName')}
+            />
+            <FieldError errors={[errors.companyName]} />
+          </Field>
+        ) : null}
 
-        <Field>
-          <FieldInfo
-            htmlFor="client-entity-type"
-            label="Entity type"
-            info="The legal form, which decides what identifiers apply — an Indian entity's PAN encodes its own kind, so this is what turns a shape check into a real one. The list follows the country in the address below."
-            infoLabel="Why does the entity type matter?"
-          />
-          <Combobox
-            id="client-entity-type"
-            size="form"
-            options={entityOptions}
-            value={String(entityType.field.value ?? '')}
-            onValueChange={entityType.field.onChange}
-            placeholder="Select…"
-          />
-          <FieldError errors={[errors.entityType]} />
-        </Field>
+        {onlyOption ? null : (
+          <Field>
+            <FieldInfo
+              htmlFor="client-entity-type"
+              label="Entity type"
+              info="The legal form, which decides what identifiers apply — an Indian entity's PAN encodes its own kind, so this is what turns a shape check into a real one. The list follows the country in the address below."
+              infoLabel="Why does the entity type matter?"
+            />
+            <Combobox
+              id="client-entity-type"
+              size="form"
+              options={entityOptions}
+              value={String(entityType.field.value ?? '')}
+              onValueChange={entityType.field.onChange}
+              placeholder="Select…"
+            />
+            <FieldError errors={[errors.entityType]} />
+          </Field>
+        )}
       </FieldRow>
 
-      <FieldRow>
+      {/* An individual's designation rides with their email and phone, because
+          it describes the same person. A company's belongs to whichever contact
+          holds it, which is the Contacts step. */}
+      <FieldRow columns={individual ? 3 : 2}>
         <EmailField
           control={control}
           name="email"
@@ -254,6 +387,24 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
         />
 
         <PhoneField control={control} name="phone" id="client-phone" />
+
+        {individual ? (
+          <Field>
+            <FieldInfo
+              htmlFor="client-designation"
+              label="Designation"
+              info="How they describe themselves, printed under their name in a contract's signature block. Optional — a signature works without one."
+              infoLabel="Where does the designation print?"
+            />
+            <Input
+              id="client-designation"
+              size="form"
+              placeholder="Proprietor, Consultant…"
+              {...register('designation')}
+            />
+            <FieldError errors={[errors.designation]} />
+          </Field>
+        ) : null}
       </FieldRow>
 
       <FieldSeparator />
@@ -310,6 +461,72 @@ export default function IdentityStep({ client, onSaved, submitLabel }: StepProps
           <AddressFields control={control} name="billingAddressParts" idPrefix="client-billing" />
         ) : null}
       </FieldSet>
+
+      {/*
+        An individual is their own contact, so there is no Contacts step and
+        this is the only question it asked that the fields above do not already
+        answer: does the invoice go to them, or to somebody who pays on their
+        behalf — an accountant, an agency, a manager.
+
+        Unticked stores `roles.billing = 'primary'`, which resolves to the
+        person themselves. Nothing is copied, so correcting their email above
+        corrects it here too.
+      */}
+      {individual ? (
+        <FieldSet>
+          <div className="flex items-center justify-between gap-3">
+            <LegendInfo
+              info="Invoices go to the person above unless somebody else pays on their behalf — an accountant, an agency or a manager. It changes where the invoice is sent and nothing else: it is still their supply and still their place of supply."
+              label="When is a separate billing contact needed?"
+            >
+              Billing contact
+            </LegendInfo>
+            <div className="flex items-center gap-2">
+              <FieldLabel
+                htmlFor="client-separate-billing-contact"
+                className="text-muted-foreground font-normal"
+              >
+                Someone else handles invoices
+              </FieldLabel>
+              <Checkbox
+                id="client-separate-billing-contact"
+                checked={Boolean(billingContact.field.value)}
+                onCheckedChange={(checked) =>
+                  billingContact.field.onChange(checked ? {} : undefined)
+                }
+              />
+            </div>
+          </div>
+
+          {billingContact.field.value ? (
+            <FieldRow columns={3}>
+              <Field>
+                <FieldLabel htmlFor="client-billing-contact-name">Name</FieldLabel>
+                <Input
+                  id="client-billing-contact-name"
+                  size="form"
+                  placeholder="Full name"
+                  {...register('billingContact.name')}
+                />
+                <FieldError errors={[errors.billingContact?.name]} />
+              </Field>
+
+              <EmailField
+                control={control}
+                name="billingContact.email"
+                id="client-billing-contact-email"
+                placeholder="accounts@example.com"
+              />
+
+              <PhoneField
+                control={control}
+                name="billingContact.phone"
+                id="client-billing-contact-phone"
+              />
+            </FieldRow>
+          ) : null}
+        </FieldSet>
+      ) : null}
     </StepForm>
   );
 }

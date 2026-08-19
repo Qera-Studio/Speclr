@@ -1,3 +1,4 @@
+import { clientContact } from '../client';
 import { clientSnapshotOf } from '../types';
 import type { ClientRecord } from '../types';
 
@@ -43,5 +44,71 @@ describe('clientSnapshotOf', () => {
     // sheets fall back to `name`.
     const { companyName: _omitted, ...legacy } = client;
     expect(clientSnapshotOf(legacy).companyName).toBeUndefined();
+  });
+
+  /**
+   * The regression `clientContact` exists to stop: an individual has no
+   * Contacts step, so nothing is stored under `signing`, and a snapshot that
+   * read the group directly would freeze a contract's signature block blank.
+   */
+  it('signs an individual with their own name', () => {
+    const person: ClientRecord = {
+      ...client,
+      name: 'Rahul Menon',
+      companyName: 'Rahul Menon',
+      entityType: 'individual',
+      contacts: { primary: { designation: 'Consultant' }, roles: { signing: 'primary' } },
+    };
+    expect(clientSnapshotOf(person).signatory).toEqual({
+      name: 'Rahul Menon',
+      designation: 'Consultant',
+    });
+  });
+
+  it('signs an individual even with no contacts group at all', () => {
+    const person: ClientRecord = { ...client, name: 'Rahul Menon', entityType: 'proprietorship' };
+    expect(clientSnapshotOf(person).signatory).toEqual({
+      name: 'Rahul Menon',
+      designation: undefined,
+    });
+  });
+});
+
+describe('clientContact', () => {
+  const person: ClientRecord = {
+    ...client,
+    name: 'Rahul Menon',
+    email: 'rahul@example.test',
+    phone: '+919000000000',
+    entityType: 'individual',
+  };
+
+  it('resolves an individual to themselves, not to a stored copy', () => {
+    expect(clientContact(person, 'primary')).toEqual({
+      name: 'Rahul Menon',
+      designation: undefined,
+      email: 'rahul@example.test',
+      phone: '+919000000000',
+    });
+  });
+
+  it('keeps a billing contact who was actually named', () => {
+    const withBilling: ClientRecord = {
+      ...person,
+      contacts: { billing: { name: 'Asha Rao', email: 'accounts@example.test' } },
+    };
+    expect(clientContact(withBilling, 'billing')?.name).toBe('Asha Rao');
+  });
+
+  it('leaves a company client to resolveContact unchanged', () => {
+    const company: ClientRecord = {
+      ...client,
+      entityType: 'pvt_ltd',
+      contacts: { primary: { name: 'Ira Shah' }, roles: { billing: 'company', signing: 'primary' } },
+    };
+    // A company billing role means the entity, so nobody — and the individual
+    // fallback must not put the client's own details there instead.
+    expect(clientContact(company, 'billing')).toBeUndefined();
+    expect(clientContact(company, 'signing')?.name).toBe('Ira Shah');
   });
 });

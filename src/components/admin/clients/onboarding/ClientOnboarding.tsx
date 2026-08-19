@@ -6,9 +6,12 @@ import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ContractService } from "@/lib/domain/contract/service";
+import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
+import { attachmentSlotsFor } from "@/lib/domain/client";
 import type { ClientRecord } from "@/lib/domain/types";
-import { ONBOARDING_STEPS, stepIndex } from "./steps";
+import { onboardingSteps, stepIndex, type OnboardingStep } from "./steps";
 import { StepActionsSlot } from "./stepKit";
+import KindChooser from "./KindChooser";
 import IdentityStep from "./IdentityStep";
 import TaxStep from "./TaxStep";
 import ContactsStep from "./ContactsStep";
@@ -54,8 +57,28 @@ export default function ClientOnboarding({
     initialClient ?? null,
   );
 
-  const active = stepIndex(searchParams.get("step"));
-  const step = ONBOARDING_STEPS[active];
+  /**
+   * Which of the two flows this is.
+   *
+   * Derived from the saved entity type once there is a record, so an existing
+   * client never sees the chooser and can never disagree with itself. Before
+   * the record exists there is nothing to derive from, so the choice rides in
+   * the URL — the same place the active step lives, and for the same reason:
+   * a refresh or a hop to the other profile must come back to where it was.
+   *
+   * `null` means "not chosen yet", which is the only state that shows the
+   * chooser. Nothing is ever stored (`PRINCIPLES.md` rule 3).
+   */
+  const kindParam = searchParams.get("kind");
+  const kind: ClientKind | null = client
+    ? clientKindOf(client.entityType)
+    : kindParam === "individual" || kindParam === "company"
+      ? kindParam
+      : null;
+
+  const steps = useMemo(() => onboardingSteps(kind ?? "company"), [kind]);
+  const active = stepIndex(steps, searchParams.get("step"));
+  const step = steps[active];
 
   /**
    * Which way the last move went, so the step slides in from the side it came
@@ -78,13 +101,17 @@ export default function ClientOnboarding({
 
   const goTo = useCallback(
     (index: number, id = client?.id) => {
-      const key = ONBOARDING_STEPS[index]?.key;
+      const key = steps[index]?.key;
       if (!key) return;
       setForward(index >= active);
       const base = id ? `/client/clients/${id}` : "/client/clients/new";
-      router.replace(`${base}?step=${key}`, { scroll: false });
+      // The kind rides along only while there is no record to derive it from.
+      // Once the row exists its entity type is the answer, and a second copy in
+      // the URL is a second thing that can be wrong.
+      const carry = !id && kind ? `&kind=${kind}` : "";
+      router.replace(`${base}?step=${key}${carry}`, { scroll: false });
     },
-    [active, client?.id, router],
+    [active, client?.id, kind, router, steps],
   );
 
   /**
@@ -96,7 +123,7 @@ export default function ClientOnboarding({
     (saved: ClientRecord) => {
       const created = !client;
       setClient(saved);
-      if (created || active < ONBOARDING_STEPS.length - 1) {
+      if (created || active < steps.length - 1) {
         goTo(created ? 1 : active + 1, saved.id);
         return;
       }
@@ -107,7 +134,7 @@ export default function ClientOnboarding({
       setFinishing(true);
       setTimeout(() => router.push("/client/clients"), FINISH_MS);
     },
-    [active, client, goTo, router],
+    [active, client, goTo, router, steps.length],
   );
 
   /**
@@ -117,24 +144,67 @@ export default function ClientOnboarding({
    * the last step has nowhere to go, so only it says what it does.
    */
   const submitLabel = useMemo(() => {
-    const next = ONBOARDING_STEPS[active + 1];
+    const next = steps[active + 1];
     return next ? next.short : "Finish";
-  }, [active]);
+  }, [active, steps]);
 
-  const previous = active > 0 ? ONBOARDING_STEPS[active - 1] : undefined;
+  const previous = active > 0 ? steps[active - 1] : undefined;
 
   /**
    * Attachments takes the band's full height instead of being as tall as its
    * content, so its list of extra documents scrolls rather than the step.
    * Named here rather than on the step definition because it is a fact about
    * this layout, not about what the step collects.
+   *
+   * Only while there *is* such a list. A client with two slots and nothing else
+   * attached is a row of cards with no growing part under it, and filling the
+   * band then pins that row to the top of an otherwise empty screen. Without
+   * `fill` the band's own `my-auto` centres it, like every other short step.
    */
-  const fill = step.key === "attachments";
+  const attachmentSlots = attachmentSlotsFor({
+    country: client?.addressParts?.country,
+    clientKind: kind ?? "company",
+  });
+  const fill =
+    step.key === "attachments" &&
+    (attachmentSlots.length >= 3 ||
+      (client?.attachments ?? []).some((a) => !attachmentSlots.includes(a.kind)));
 
   const stepProps = useMemo(
-    () => ({ client, onSaved, onRecordChanged: setClient, submitLabel }),
-    [client, onSaved, submitLabel],
+    () => ({
+      client,
+      onSaved,
+      onRecordChanged: setClient,
+      submitLabel,
+      // `?? 'company'` never fires here: a null kind renders the chooser
+      // instead of a step. It is the type narrowing, not a default.
+      kind: kind ?? ("company" as ClientKind),
+    }),
+    [client, kind, onSaved, submitLabel],
   );
+
+  /**
+   * Nothing chosen and nothing saved: ask which kind of client this is before
+   * showing a form that would otherwise ask a freelancer for their CIN.
+   *
+   * Its own early return rather than a branch inside the layout below, because
+   * it has no step row, no back button and no submit — the three things that
+   * layout exists to pin.
+   */
+  if (!kind) {
+    return (
+      <div className="flex h-full min-h-0 flex-col p-1">
+        <h1 className="sr-only">Add a client</h1>
+        <KindChooser
+          onChoose={(chosen) =>
+            router.replace(`/client/clients/new?step=${steps[0].key}&kind=${chosen}`, {
+              scroll: false,
+            })
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     /*
@@ -165,6 +235,7 @@ export default function ClientOnboarding({
           {initialClient ? initialClient.name : "Add a client"}
         </h1>
         <StepNav
+          steps={steps}
           active={active}
           client={client}
           finishing={finishing}
@@ -340,11 +411,14 @@ function FinishPanel({ name }: { name?: string }) {
  * it repeating the label and a description under that.
  */
 function StepNav({
+  steps,
   active,
   client,
   finishing,
   onSelect,
 }: {
+  /** Six or seven, depending on the kind. See `onboardingSteps`. */
+  steps: readonly OnboardingStep[];
   active: number;
   client: ClientRecord | null;
   /** Every step reads as done, ticking left to right. See `FinishPanel`. */
@@ -362,7 +436,7 @@ function StepNav({
     // first step out of reach past its left edge.
     <nav aria-label="Onboarding steps" className="w-full min-w-0">
       <ol className="scrollbar-none -mx-1 flex items-center justify-between gap-3 overflow-x-auto px-1">
-        {ONBOARDING_STEPS.map((step, index) => {
+        {steps.map((step, index) => {
           const complete =
             finishing || (client ? step.isComplete(client) : false);
           const locked = step.needsRecord && !client;

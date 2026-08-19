@@ -14,7 +14,7 @@ import type {
 } from './client';
 // A value import, not a type: the snapshot resolves the signing contact through
 // it rather than reading the group.
-import { resolveContact } from './client';
+import { clientContact } from './client';
 import type { BlankValues } from './contract/blanks';
 import type { ContractPart } from './contract/assembly';
 import type { CurrencyCode } from './currency';
@@ -159,10 +159,11 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
       ? { section: client.tax.tdsSection, ratePercent: client.tax.tdsRatePercent }
       : undefined;
 
-  // Through `resolveContact`, never `contacts.signing` — a client who ticked
-  // "same as primary" has nothing stored under `signing`, and reading the group
-  // directly would freeze a blank signatory onto the contract.
-  const signing = resolveContact(client.contacts, 'signing');
+  // Through `clientContact`, never `contacts.signing` — a client who ticked
+  // "same as primary" has nothing stored under `signing`, and an individual has
+  // no contacts group at all. Reading the group directly would freeze a blank
+  // signatory onto the contract in both cases.
+  const signing = clientContact(client, 'signing');
   const signatory =
     signing?.name || signing?.designation
       ? { name: signing.name, designation: signing.designation }

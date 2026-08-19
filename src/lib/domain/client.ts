@@ -21,7 +21,12 @@
 import { z } from 'zod';
 import { isISODate } from './dates';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
-import { entityTypeSpec, ENTITY_TYPE_VALUES } from './entityType';
+import {
+  entityTypeSpec,
+  ENTITY_TYPE_VALUES,
+  isNaturalPerson,
+  type ClientKind,
+} from './entityType';
 import {
   cinEntityTypeError,
   gstinError,
@@ -266,6 +271,54 @@ export function resolveContact(
   return contacts[key];
 }
 
+/**
+ * The person filling a role, for a client of either kind.
+ *
+ * **This is the reader every caller wants**, and `resolveContact` is the half
+ * of it that only knows about the `contacts` group.
+ *
+ * An individual has no Contacts step: they are their own contact, and their
+ * name, email and phone are on the record already. Copying them into
+ * `contacts.primary` would be storing a fact twice (`PRINCIPLES.md` rule 3) and
+ * would go stale the first time the identity step was edited, so only the
+ * designation is stored and the rest is overlaid here.
+ *
+ * That matters most for `signing`. Without this, a contract for a freelancer
+ * would freeze a signatory carrying a job title and no name — the blank
+ * signature rule this record was built to remove, back again in a new place.
+ */
+export function clientContact(
+  client: Pick<ClientPerson, 'name' | 'email' | 'phone' | 'entityType' | 'contacts'>,
+  key: 'primary' | MirroredContactKey,
+): ClientContact | undefined {
+  const resolved = resolveContact(client.contacts, key);
+  if (!isNaturalPerson(client.entityType)) return resolved;
+
+  // A billing role pointing at the company is still "nobody", the same answer
+  // as for a company client: there is no person to mark the invoice for.
+  if (key !== 'primary' && client.contacts?.roles?.[key] === 'company') return undefined;
+  // A role with its own person named keeps them. Only the roles that point at
+  // the primary contact, and the primary contact itself, resolve to the client.
+  if (resolved && resolved.name) return resolved;
+
+  return {
+    name: client.name,
+    designation: resolved?.designation ?? client.contacts?.primary?.designation,
+    email: resolved?.email ?? client.email,
+    phone: resolved?.phone ?? client.phone,
+  };
+}
+
+/** The parts of a client `clientContact` reads. Kept structural to avoid a
+ *  cycle: `types.ts` imports this file. */
+interface ClientPerson {
+  name: string;
+  email: string;
+  phone: string;
+  entityType?: string;
+  contacts?: ClientContacts;
+}
+
 const contactSchema = z.object({
   name: personNameSchema(200).optional(),
   designation: textSchema(200).optional(),
@@ -427,6 +480,46 @@ export const ATTACHMENT_KIND_DESCRIPTIONS: Record<AttachmentKind, string> = {
 };
 
 /**
+ * The longer answer: what a document is, who issues it, why it is worth asking
+ * a client for, and what is inside it.
+ *
+ * Separate from `ATTACHMENT_KIND_DESCRIPTIONS`, which is the one line printed
+ * under a card. This is what sits behind the info icon, for the person deciding
+ * whether to chase a client for something. The foreign ones earn it most: a
+ * W-8BEN-E and an FIRC are unfamiliar until the first export invoice, and the
+ * cost of not knowing is finding out from an accountant a year later.
+ *
+ * Kept here rather than in the step, because it is a fact about the document
+ * and the request checklist asks for the same things.
+ */
+export const ATTACHMENT_KIND_NOTES: Record<AttachmentKind, string> = {
+  gst_certificate:
+    'Form REG-06, issued by the GST portal on registration. It carries the GSTIN, the legal and trade names, the registered address and the date of registration. Worth having: it is what confirms the GSTIN typed on the record is theirs, and Rule 46 requires that number on every invoice to them.',
+  pan: 'The income-tax department’s permanent account number card, showing the number, the holder’s name and date of birth or incorporation. Needed whenever tax is deducted at source: TDS credit is matched by PAN, and a wrong one means the client cannot claim it.',
+  incorporation:
+    'The certificate the Registrar of Companies issued when the company was formed, carrying the CIN, the incorporated name and the date. Confirms the entity actually exists under the name a contract will be signed in.',
+  signed_contract:
+    'The agreement both sides have signed, as executed. The one document to keep above all others: it is what a dispute is decided on, and an unsigned draft has no standing.',
+  nda: 'Confidentiality terms, signed. Usually the first thing signed and the easiest to lose track of, because it is often agreed before the engagement has a folder.',
+  sow: 'The scope, deliverables and dates for one piece of work, usually under a master agreement. What "out of scope" is argued against.',
+  purchase_order:
+    'The order the client raised in their own system, carrying a PO number their accounts payable will match the invoice against. At larger clients an invoice with no PO number is not paid, whatever it says.',
+  tds_certificate:
+    'Form 16A, issued quarterly by a client who deducted tax at source. It states the amount deducted and deposited against Qera’s PAN, and it is the proof that lets that tax be claimed on the annual return. Chase it: without it the deduction is money simply gone.',
+  msme: 'The Udyam registration certificate, if the client holds one. Relevant because the MSMED Act sets payment deadlines between registered enterprises, and because some clients ask for ours.',
+  cancelled_cheque:
+    'A cheque marked cancelled, or a bank letter. It shows the account number, IFSC and the name on the account, and it is what a client’s finance team wants before setting Qera up as a payee.',
+  vendor_form:
+    'The client’s own supplier onboarding form, filled in and returned. Purely their process, but nothing gets paid until it is done.',
+  tax_form:
+    'A foreign client’s tax paperwork: their own registration certificate, or the W-8 / W-9 that goes the other way. A US client asks Qera for a W-8BEN-E, certifying we are not a US person, so they withhold at the India-US treaty rate rather than a flat 30%. Ask before the first invoice, not after the first short payment.',
+  firc: 'The Foreign Inward Remittance Certificate (or the FIRA a bank issues instead), confirming money arrived from abroad and in which currency. It is the evidence that an export of services was realised, which is what an LUT zero-rating and any GST refund rest on. Ask the bank once a foreign payment lands; it is far harder to obtain a year later.',
+  signature:
+    'An image of a signature, lifted off a page, used to sign a document rendered here. Sensitive in its own right: it is reusable by anyone holding the file.',
+  other: 'Anything the list does not name. The kind and the filename are all that will say what it was.',
+};
+
+/**
  * The formats a kind accepts, where it is narrower than the rest.
  *
  * Sparse on purpose. Nearly every document arrives as a scan or a PDF, so a
@@ -445,6 +538,62 @@ export function attachmentAcceptFor(kind: AttachmentKind): string {
 }
 
 /**
+ * Where a document kind applies. Absent on either axis means everywhere.
+ *
+ * Scoped the same way `ClientRequestChecklist` scopes what to ask a client
+ * for: an Indian client has a GSTIN and a PAN, an overseas one has a W-8/W-9
+ * and an FIRC to prove the export was realised, and a freelancer has no
+ * certificate of incorporation because no registrar ever issued one. Neither
+ * is offered the other's paperwork.
+ *
+ * Both axes are **derived** from the record — the country from the address and
+ * the kind from the entity type — so there is nothing here to keep in step
+ * (`PRINCIPLES.md` rule 3).
+ */
+interface AttachmentScope {
+  place?: 'india' | 'foreign';
+  who?: ClientKind;
+}
+
+const ATTACHMENT_SCOPES: Partial<Record<AttachmentKind, AttachmentScope>> = {
+  gst_certificate: { place: 'india' },
+  pan: { place: 'india' },
+  incorporation: { place: 'india', who: 'company' },
+  tds_certificate: { place: 'india' },
+  msme: { place: 'india' },
+  tax_form: { place: 'foreign' },
+  firc: { place: 'foreign' },
+  // Both of these are an accounts-payable apparatus. A person engaging a studio
+  // does not raise a purchase order or run a supplier onboarding process, and
+  // the commercial step hides the matching fields for the same reason.
+  purchase_order: { who: 'company' },
+  vendor_form: { who: 'company' },
+};
+
+/** Which client a document is being asked of. Both halves are derived. */
+export interface AttachmentContext {
+  /** ISO-2 from `addressParts.country`. Absent reads as India. */
+  country?: string;
+  /** From `clientKindOf(entityType)`. Absent reads as a company. */
+  clientKind?: ClientKind;
+}
+
+/**
+ * Whether a kind is worth offering for this client.
+ *
+ * Only ever filters what is *offered*. A document already on a record keeps its
+ * label and keeps rendering, whatever the record later says — the alternative
+ * is a file nobody can name because the client moved country.
+ */
+export function attachmentKindApplies(kind: AttachmentKind, ctx: AttachmentContext): boolean {
+  const scope = ATTACHMENT_SCOPES[kind];
+  if (!scope) return true;
+  const place = !ctx.country || ctx.country === 'IN' ? 'india' : 'foreign';
+  if (scope.place && scope.place !== place) return false;
+  return !scope.who || scope.who === (ctx.clientKind ?? 'company');
+}
+
+/**
  * The documents a client has exactly one of, each with its own upload slot.
  *
  * A slot is a *label*, where the old picker was a *mode*: the operator set a
@@ -452,51 +601,42 @@ export function attachmentAcceptFor(kind: AttachmentKind): string {
  * certificate with nothing to catch it. Naming the slot removes the step that
  * could be skipped.
  *
- * `only` scopes a slot to where the client is, the same way
- * `ClientRequestChecklist` scopes what to ask them for: an Indian client has a
- * GSTIN and a PAN, an overseas one has a W-8/W-9 and an FIRC to prove the
- * export was realised. Neither is asked for the other's paperwork.
+ * Signature is not here. It is not a registration document, it is not one of
+ * the things a client is asked for at onboarding, and a client can have more
+ * than one of them. It stays an "anything else" kind.
  */
-export interface AttachmentSlot {
-  kind: AttachmentKind;
-  /** Where this slot applies. Absent means everywhere. */
-  only?: 'india' | 'foreign';
-}
-
-export const ATTACHMENT_SLOTS: readonly AttachmentSlot[] = [
-  { kind: 'gst_certificate', only: 'india' },
-  { kind: 'pan', only: 'india' },
-  { kind: 'incorporation', only: 'india' },
-  { kind: 'tax_form', only: 'foreign' },
-  { kind: 'firc', only: 'foreign' },
-  // Signature is not a slot. It is not a registration document, it is not one
-  // of the things a client is asked for at onboarding, and a client can have
-  // more than one of them. It stays an "anything else" kind.
+export const ATTACHMENT_SLOTS: readonly AttachmentKind[] = [
+  'gst_certificate',
+  'pan',
+  'incorporation',
+  'tax_form',
+  'firc',
 ];
 
-/**
- * The slots for a client, from where they are.
- *
- * Derived rather than chosen: the country is already on the record, and a
- * second place to say where a client is, is a second place for it to disagree
- * (`PRINCIPLES.md` rule 3). No country on the record yet reads as India, which
- * is what an unfinished record means here.
- */
-export function attachmentSlotsFor(country: string | undefined): readonly AttachmentSlot[] {
-  const scope = !country || country === 'IN' ? 'india' : 'foreign';
-  return ATTACHMENT_SLOTS.filter((slot) => !slot.only || slot.only === scope);
+/** The slots for a client, from where they are and what they are. */
+export function attachmentSlotsFor(ctx: AttachmentContext): readonly AttachmentKind[] {
+  return ATTACHMENT_SLOTS.filter((kind) => attachmentKindApplies(kind, ctx));
 }
 
 /** Whether a kind is a one-per-client slot, as opposed to a repeatable extra. */
 export function isSlotKind(kind: AttachmentKind): boolean {
-  return ATTACHMENT_SLOTS.some((slot) => slot.kind === kind);
+  return ATTACHMENT_SLOTS.includes(kind);
 }
 
 /**
- * The kinds that are not slots: a client can have several of each, so they
- * arrive through the "anything else" box with a type beside it.
+ * The kinds offered in the "anything else" picker: everything that is not a
+ * slot *for this client*, scoped the same way the slots are.
+ *
+ * Note that a slot removed by its scope does **not** reappear here — the same
+ * rule removed it, and it is the same answer either way. `other` is always on
+ * offer, which is where a document nothing else names goes.
  */
-export const ATTACHMENT_EXTRA_KINDS = ATTACHMENT_KINDS.filter((k) => !isSlotKind(k));
+export function attachmentExtraKindsFor(ctx: AttachmentContext): readonly AttachmentKind[] {
+  const slots = attachmentSlotsFor(ctx);
+  return ATTACHMENT_KINDS.filter(
+    (kind) => !slots.includes(kind) && attachmentKindApplies(kind, ctx),
+  );
+}
 
 /**
  * What may be uploaded. Enforced **server-side** — the same list in the file

@@ -9,6 +9,7 @@ import { FieldGroup } from '@/components/ui/field';
 import { clearDraft, draftKey } from '@/lib/draft';
 import { saveClientSection } from '@/server/actions/clients';
 import type { ClientSection } from '@/lib/domain/client';
+import type { ClientKind } from '@/lib/domain/entityType';
 import type { ClientRecord } from '@/lib/domain/types';
 
 /**
@@ -33,6 +34,19 @@ export interface StepProps {
    * hard-coding its successor is a step that lies the day the order changes.
    */
   submitLabel: string;
+  /**
+   * Which of the two flows this is, so a step can drop what does not apply.
+   *
+   * Handed down rather than each step deriving it, because the first step is
+   * the one that *sets* the entity type it would be derived from: before that
+   * save there is no record and nothing to read. The shell holds the one answer
+   * both sides of that moment agree on.
+   *
+   * Optional, defaulting to `'company'` in each step that reads it: that is
+   * what a record with no entity type is, which is every client written before
+   * onboarding existed and every step rendered on its own in a test.
+   */
+  kind?: ClientKind;
 }
 
 /**
