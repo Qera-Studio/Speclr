@@ -3,6 +3,7 @@ import {
   composeAddress,
   emptyAddressParts,
   flattenAddress,
+  formatPostcode,
   isEmptyAddressParts,
   isIndianPincode,
   type AddressParts,
@@ -16,6 +17,27 @@ const full: AddressParts = {
   pincode: '201017',
   country: 'IN',
 };
+
+describe('formatPostcode', () => {
+  it('puts the UK space three from the end, wherever it was typed', () => {
+    for (const typed of ['PH28AL', 'ph2 8al', 'PH2  8AL', ' PH28AL ']) {
+      expect(formatPostcode(typed, 'GB')).toBe('PH2 8AL');
+    }
+    expect(formatPostcode('EC1A1BB', 'GB')).toBe('EC1A 1BB');
+  });
+
+  it('leaves a half-typed UK postcode alone', () => {
+    // Nothing to split yet, and inserting a space would fight the typist.
+    expect(formatPostcode('PH2', 'GB')).toBe('PH2');
+    expect(formatPostcode('PH28', 'GB')).toBe('PH28');
+  });
+
+  it('inserts nothing anywhere else', () => {
+    expect(formatPostcode('201017', 'IN')).toBe('201017');
+    expect(formatPostcode('10115', 'DE')).toBe('10115');
+    expect(formatPostcode('k1a 0b1', 'CA')).toBe('K1A 0B1');
+  });
+});
 
 describe('flattenAddress', () => {
   it('collapses a composed address onto one line', () => {
@@ -82,6 +104,20 @@ describe('composeAddress', () => {
   it('handles a city with no pincode and a pincode with no city', () => {
     expect(composeAddress({ ...emptyAddressParts, city: 'Pune' })).toBe('Pune\nIndia');
     expect(composeAddress({ ...emptyAddressParts, pincode: '411001' })).toBe('411001\nIndia');
+  });
+
+  // The hyphen between town and postcode is India's own convention. 'Rouse
+  // Hill - 2155' is not how an Australian writes their address, and this line
+  // prints on an export invoice.
+  it('separates town and postcode the way the country writes it', () => {
+    expect(composeAddress({ ...full, country: 'AU', city: 'Rouse Hill', pincode: '2155' })).toContain(
+      'Rouse Hill 2155',
+    );
+    expect(composeAddress({ ...full, country: 'GB', city: 'Windermere', pincode: 'LA23 1AB' })).toContain(
+      'Windermere LA23 1AB',
+    );
+    // Blank reads as India, which is what an untouched record means.
+    expect(composeAddress({ ...full, country: '' })).toContain('Ghaziabad - 201017');
   });
 
   it('prints the full country name, not the ISO code', () => {

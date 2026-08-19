@@ -146,6 +146,37 @@ describe('AddressFields', () => {
   });
 
   /**
+   * The same failure one character at a time, which is how it actually
+   * happened: a Paisley postcode edited into a Perth one kept saying Paisley,
+   * because between the two there is a moment with no answer at all, and the
+   * old one was left standing through it.
+   */
+  it('drops the old answer the moment the pincode changes', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, city: 'Chennai', state: 'Tamil Nadu' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true, city: 'Ghaziabad', state: 'Uttar Pradesh' }) });
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    const pincode = screen.getByLabelText(/pincode/i);
+    await user.type(pincode, '600042');
+    await settleDebounce();
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toHaveValue('Chennai'));
+
+    // One character back: the code is incomplete, so nothing is known, and
+    // saying 'Chennai' beside it would be saying something false.
+    await user.type(pincode, '{backspace}');
+    expect(screen.getByLabelText(/^city$/i)).toHaveValue('');
+    expect(screen.getByLabelText(/^state$/i)).toHaveValue('');
+
+    await user.type(pincode, '7');
+    await settleDebounce();
+    await waitFor(() => expect(screen.getByLabelText(/^city$/i)).toHaveValue('Ghaziabad'));
+    expect(screen.getByLabelText(/^state$/i)).toHaveValue('Uttar Pradesh');
+  });
+
+  /**
    * The other half of the same rule: replacing our own answer is fair game,
    * replacing someone's correction is not. Editing an autofilled city makes it
    * theirs, and the next lookup must leave it alone.
@@ -231,8 +262,26 @@ describe('AddressFields', () => {
       '/api/pincode/EH1%201YZ?country=GB',
       expect.anything(),
     );
-    expect(screen.getByLabelText(/^city$/i)).toHaveValue('Edinburgh');
-    expect(screen.getByLabelText(/^state$/i)).toHaveValue('Scotland');
+    // And the two words below it are the country's own: a UK address has a post
+    // town and a region, not a city and a state.
+    expect(screen.getByLabelText(/town/i)).toHaveValue('Edinburgh');
+    expect(screen.getByLabelText(/region/i)).toHaveValue('Scotland');
+    expect(screen.queryByLabelText(/^state$/i)).not.toBeInTheDocument();
+  });
+
+  it('puts the space into a UK postcode typed without one', async () => {
+    mockLookup({ ok: false });
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'GB' }} />);
+
+    // Left alone until the code is finished: 'PH28A' could still become
+    // 'PH2 8AL', and splitting three from the end would print 'PH 28A' under
+    // the cursor.
+    await user.type(screen.getByLabelText(/postcode/i), 'PH28A');
+    expect(screen.getByLabelText(/postcode/i)).toHaveValue('PH28A');
+
+    await user.type(screen.getByLabelText(/postcode/i), 'L');
+    expect(screen.getByLabelText(/postcode/i)).toHaveValue('PH2 8AL');
   });
 
   it('still refuses a half-typed Indian pincode', async () => {
@@ -244,6 +293,84 @@ describe('AddressFields', () => {
     await settleDebounce();
 
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * A postcode that covers several localities has no town to fill in, and an
+ * empty box cannot say whether that is the postcode's doing or the app's. AU
+ * 2155 is four suburbs; the region is known and filled, the four are offered.
+ */
+describe('AddressFields, a postcode with no single town', () => {
+  const many = {
+    ok: true,
+    city: '',
+    state: 'New South Wales',
+    options: ['Rouse Hill', 'Beaumont Hills', 'Kellyville', 'Kellyville Ridge'],
+  };
+
+  it('says why the town is empty, and names what the code covers', async () => {
+    mockLookup(many);
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'AU' }} />);
+
+    await user.type(screen.getByLabelText(/postcode/i), '2155');
+    await settleDebounce();
+
+    expect(screen.getByText(/no single town/i)).toBeInTheDocument();
+    // And announced, since a list appearing under a field is not read out.
+    expect(screen.getByRole('status')).toHaveTextContent(/covers 4 localities/i);
+    expect(screen.getByLabelText(/region/i)).toHaveValue('New South Wales');
+    expect(screen.getByLabelText(/town/i)).toHaveValue('');
+    for (const name of many.options) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('fills the town from the one that is picked, and stops offering', async () => {
+    mockLookup(many);
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'AU' }} />);
+
+    await user.type(screen.getByLabelText(/postcode/i), '2155');
+    await settleDebounce();
+    await user.click(screen.getByRole('button', { name: 'Rouse Hill' }));
+
+    expect(screen.getByLabelText(/town/i)).toHaveValue('Rouse Hill');
+    expect(screen.queryByText(/no single town/i)).not.toBeInTheDocument();
+    // Locked like anything else the postcode filled, and taken back the same
+    // way: the choice is only right for the code it came from.
+    expect(screen.getByLabelText(/town/i)).toHaveAttribute('readonly');
+  });
+
+  it('takes the offer back when the postcode changes', async () => {
+    mockLookup(many);
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'AU' }} />);
+
+    await user.type(screen.getByLabelText(/postcode/i), '2155');
+    await settleDebounce();
+
+    mockLookup({ ok: true, city: 'Sydney', state: 'New South Wales' });
+    await user.clear(screen.getByLabelText(/postcode/i));
+    await user.type(screen.getByLabelText(/postcode/i), '2000');
+    await settleDebounce();
+
+    expect(screen.queryByRole('button', { name: 'Rouse Hill' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/town/i)).toHaveValue('Sydney');
+  });
+
+  it('does not offer a list against a town already typed', async () => {
+    mockLookup(many);
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'AU' }} />);
+
+    await user.type(screen.getByLabelText(/town/i), 'Kellyville');
+    await user.type(screen.getByLabelText(/postcode/i), '2155');
+    await settleDebounce();
+
+    expect(screen.queryByText(/no single town/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/town/i)).toHaveValue('Kellyville');
   });
 });
 

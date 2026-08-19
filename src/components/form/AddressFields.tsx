@@ -1,16 +1,21 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useController, type Control, type FieldValues, type Path } from 'react-hook-form';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { FieldRow } from '@/components/ui/field-row';
-import { Input } from '@/components/ui/input';
-import { Combobox } from '@/components/ui/combobox';
-import { FieldSpinner } from '@/components/ui/spinner';
-import { useMinimumDuration } from '@/lib/useMinimumDuration';
-import FieldInfo from './FieldInfo';
-import { isLookupPostcode } from '@/lib/domain/address';
-import { COUNTRIES } from '@/lib/domain/phone';
+import { useEffect, useRef, useState } from "react";
+import {
+  useController,
+  type Control,
+  type FieldValues,
+  type Path,
+} from "react-hook-form";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { FieldRow } from "@/components/ui/field-row";
+import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
+import { FieldSpinner } from "@/components/ui/spinner";
+import { useMinimumDuration } from "@/lib/useMinimumDuration";
+import FieldInfo from "./FieldInfo";
+import { formatPostcode, isLookupPostcode } from "@/lib/domain/address";
+import { COUNTRIES } from "@/lib/domain/phone";
 
 /**
  * The structured address block, shared by the client and employee forms.
@@ -30,18 +35,40 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
 
 const DEBOUNCE_MS = 400;
 
-const LOCK_HINT = 'City and state filled from this postcode. Change it to edit them.';
+const LOCK_HINT =
+  "City and state filled from this postcode. Change it to edit them.";
 
 /**
  * India calls it a pincode and it is always six digits, so that field can say
  * so and refuse everything else. Everywhere else the shape is the country's own
  * business: 'EH1 1YZ' is a postcode and stripping it to '11' is how a Scottish
  * client became unable to type their address.
+ *
+ * The other two words change with it, and that is the whole answer to
+ * districts, counties, prefectures and the rest: **the same three lines, named
+ * in the reader's words.** A UK address has a locality, a post town and a
+ * region, which is `line2`, `city` and `state` exactly. Adding a field per
+ * country would be a jurisdiction pack (`PRINCIPLES.md` rule 5) and a column
+ * per country on a record that already holds the value.
  */
-const postcodeField = (country: string) =>
-  country === 'IN'
-    ? { label: 'Pincode', placeholder: '000000', inputMode: 'numeric' as const, digitsOnly: true }
-    : { label: 'Postcode', placeholder: 'Postcode', inputMode: 'text' as const, digitsOnly: false };
+const addressWords = (country: string) =>
+  country === "IN"
+    ? {
+        postcode: "Pincode",
+        placeholder: "000000",
+        inputMode: "numeric" as const,
+        digitsOnly: true,
+        city: "City",
+        state: "State",
+      }
+    : {
+        postcode: "Postcode",
+        placeholder: "Postcode",
+        inputMode: "text" as const,
+        digitsOnly: false,
+        city: "Town / city",
+        state: "Region / county",
+      };
 
 interface AddressFieldsProps<T extends FieldValues> {
   control: Control<T>;
@@ -49,7 +76,7 @@ interface AddressFieldsProps<T extends FieldValues> {
   name: Path<T>;
   /** Prefix for input ids, keeping them unique when two forms share a page. */
   idPrefix: string;
-  size?: 'default' | 'form';
+  size?: "default" | "form";
 }
 
 /**
@@ -66,20 +93,26 @@ interface AddressFieldsProps<T extends FieldValues> {
  * The pincode lookup is this form's autofill, and it fills from the postal
  * database rather than from whoever last used the browser.
  */
-const NO_PROFILE_AUTOFILL = 'off';
+const NO_PROFILE_AUTOFILL = "off";
 
 export default function AddressFields<T extends FieldValues>({
   control,
   name,
   idPrefix,
-  size = 'form',
+  size = "form",
 }: AddressFieldsProps<T>) {
   const line1 = useController({ control, name: `${name}.line1` as Path<T> });
   const line2 = useController({ control, name: `${name}.line2` as Path<T> });
   const city = useController({ control, name: `${name}.city` as Path<T> });
   const state = useController({ control, name: `${name}.state` as Path<T> });
-  const pincode = useController({ control, name: `${name}.pincode` as Path<T> });
-  const country = useController({ control, name: `${name}.country` as Path<T> });
+  const pincode = useController({
+    control,
+    name: `${name}.pincode` as Path<T>,
+  });
+  const country = useController({
+    control,
+    name: `${name}.country` as Path<T>,
+  });
 
   const [lookingUp, setLookingUp] = useState(false);
   // Held for half a second: a cached pincode returns fast enough that a bare
@@ -96,22 +129,33 @@ export default function AddressFields<T extends FieldValues>({
    */
   const [autofilled, setAutofilled] = useState({ city: false, state: false });
   const locked = autofilled.city || autofilled.state;
+  /**
+   * The localities a postcode covers when it covers several, straight from the
+   * lookup.
+   *
+   * This is the answer to "is the app broken, or does this code really have no
+   * town?" — a question an empty box cannot answer, and one that matters
+   * because plenty of countries file addresses by a region and a suburb with no
+   * town between them. AU 2155 is four suburbs; the region is known and filled,
+   * and the four are offered here rather than guessed at.
+   */
+  const [options, setOptions] = useState<string[]>([]);
 
-  const pincodeValue = String(pincode.field.value ?? '');
-  const countryValue = String(country.field.value ?? 'IN');
-  const postcode = postcodeField(countryValue);
+  const pincodeValue = String(pincode.field.value ?? "");
+  const countryValue = String(country.field.value ?? "IN");
+  const words = addressWords(countryValue);
 
   // Read the latest city/state inside the effect without making them
   // dependencies — otherwise typing a city would restart the lookup.
-  const latest = useRef({ city: '', state: '' });
+  const latest = useRef({ city: "", state: "" });
   latest.current = {
-    city: String(city.field.value ?? ''),
-    state: String(state.field.value ?? ''),
+    city: String(city.field.value ?? ""),
+    state: String(state.field.value ?? ""),
   };
   /**
-   * What the last lookup wrote. A field is ours to overwrite while it still
-   * holds exactly that; the moment someone edits it, it stops matching and
-   * becomes theirs.
+   * What the last lookup wrote, so it can be taken back. A field still holding
+   * exactly that is ours; the moment someone edits it, it stops matching and
+   * becomes theirs, and nothing here touches it again.
    *
    * Without this, a *corrected* pincode never took effect: after the first
    * lookup city and state are non-empty, and "only fill what is empty" then
@@ -119,7 +163,7 @@ export default function AddressFields<T extends FieldValues>({
    * to Ghaziabad, which is precisely the disagreement this record exists to
    * prevent.
    */
-  const filled = useRef({ city: '', state: '' });
+  const filled = useRef({ city: "", state: "" });
   const setCity = city.field.onChange;
   const setState = state.field.onChange;
 
@@ -127,6 +171,32 @@ export default function AddressFields<T extends FieldValues>({
     // A new postcode (or a new country) invalidates whatever the last one
     // filled in. Unlock first, then look up again.
     setAutofilled({ city: false, state: false });
+    setOptions([]);
+
+    /**
+     * And take the old answer off the screen, rather than leaving it there
+     * until a new one arrives.
+     *
+     * It is derived from the postcode, so the moment the postcode changes it
+     * is either right by luck or wrong: a Paisley postcode edited into a Perth
+     * one kept saying Paisley, and a city that disagrees with the code beside
+     * it is the one thing this field must never show. Blank says "not known
+     * yet", which is true, and is a state the operator can act on.
+     *
+     * Only what this lookup wrote. A hand-typed city is theirs, and survives.
+     * `latest` is corrected here too rather than waiting for the next render,
+     * so the check below sees what is actually in the field.
+     */
+    const drop = (current: string, mine: string) =>
+      mine && current === mine ? "" : current;
+    const cleared = {
+      city: drop(latest.current.city, filled.current.city),
+      state: drop(latest.current.state, filled.current.state),
+    };
+    if (cleared.city !== latest.current.city) setCity("");
+    if (cleared.state !== latest.current.state) setState("");
+    latest.current = cleared;
+    filled.current = { city: "", state: "" };
 
     if (!isLookupPostcode(pincodeValue, countryValue)) {
       setLookingUp(false);
@@ -145,23 +215,32 @@ export default function AddressFields<T extends FieldValues>({
         const data: unknown = await response.json();
         if (controller.signal.aborted) return;
 
-        const result = data as { ok?: boolean; city?: string; state?: string };
+        const result = data as {
+          ok?: boolean;
+          city?: string;
+          state?: string;
+          options?: string[];
+        };
         if (!result?.ok) return;
 
-        // Fill what is empty, and replace what this lookup put there last
-        // time. Someone who has typed a city meant it, and a postal database
-        // shouldn't overrule them — but its own previous answer is fair game.
-        const ours = (current: string, mine: string) => !current.trim() || current === mine;
-        const filledCity =
-          Boolean(result.city) && ours(latest.current.city, filled.current.city);
-        const filledState =
-          Boolean(result.state) && ours(latest.current.state, filled.current.state);
+        // Offered only while the field is still empty. A city already typed is
+        // the answer, and a list under it would read as a correction.
+        if (result.options?.length && !latest.current.city.trim()) {
+          setOptions(result.options);
+        }
+
+        // Fill what is empty. Our own previous answer already went above, so
+        // anything still in the field was typed by someone who meant it, and a
+        // postal database does not get to overrule them.
+        const ours = (current: string) => !current.trim();
+        const filledCity = Boolean(result.city) && ours(latest.current.city);
+        const filledState = Boolean(result.state) && ours(latest.current.state);
         if (filledCity) setCity(result.city);
         if (filledState) setState(result.state);
         if (filledCity || filledState) {
           filled.current = {
-            city: filledCity ? result.city! : '',
-            state: filledState ? result.state! : '',
+            city: filledCity ? result.city! : "",
+            state: filledState ? result.state! : "",
           };
           setAutofilled({ city: filledCity, state: filledState });
         }
@@ -188,7 +267,7 @@ export default function AddressFields<T extends FieldValues>({
             size={size}
             autoComplete={NO_PROFILE_AUTOFILL}
             {...line1.field}
-            value={String(line1.field.value ?? '')}
+            value={String(line1.field.value ?? "")}
           />
           <FieldError errors={[line1.fieldState.error]} />
         </Field>
@@ -200,7 +279,7 @@ export default function AddressFields<T extends FieldValues>({
             size={size}
             autoComplete={NO_PROFILE_AUTOFILL}
             {...line2.field}
-            value={String(line2.field.value ?? '')}
+            value={String(line2.field.value ?? "")}
           />
           <FieldError errors={[line2.fieldState.error]} />
         </Field>
@@ -236,7 +315,7 @@ export default function AddressFields<T extends FieldValues>({
               tooltip is not read out, and this is news when it happens. */}
           <FieldInfo
             htmlFor={`${idPrefix}-pincode`}
-            label={postcode.label}
+            label={words.postcode}
             info={locked ? LOCK_HINT : undefined}
             infoLabel="Why are city and state locked?"
           />
@@ -244,34 +323,47 @@ export default function AddressFields<T extends FieldValues>({
             <Input
               id={`${idPrefix}-pincode`}
               size={size}
-              placeholder={postcode.placeholder}
-              inputMode={postcode.inputMode}
+              placeholder={words.placeholder}
+              inputMode={words.inputMode}
               autoComplete={NO_PROFILE_AUTOFILL}
               aria-describedby={`${idPrefix}-pincode-hint`}
-              className={busy ? 'pr-8' : undefined}
+              className={busy ? "pr-8" : undefined}
               {...pincode.field}
               value={pincodeValue}
               // A Controller field, so it cannot use `numericField`. Same
               // sanitise-on-change rule, applied by hand, and only where the
               // format is actually digits.
+              // Sanitised on the way in, as everywhere else. `formatPostcode`
+              // only rewrites a *finished* code, so the space appears on the
+              // last keystroke rather than mid-word under the cursor.
               onChange={(event) =>
                 pincode.field.onChange(
-                  postcode.digitsOnly
-                    ? event.target.value.replace(/\D/g, '')
-                    : event.target.value.toUpperCase(),
+                  words.digitsOnly
+                    ? event.target.value.replace(/\D/g, "")
+                    : formatPostcode(event.target.value, countryValue),
                 )
               }
             />
             <FieldSpinner show={busy} />
           </div>
-          <span id={`${idPrefix}-pincode-hint`} className="sr-only" role="status">
-            {locked ? LOCK_HINT : lookingUp ? 'Looking up city and state…' : ''}
+          <span
+            id={`${idPrefix}-pincode-hint`}
+            className="sr-only"
+            role="status"
+          >
+            {options.length
+              ? `This postcode covers ${options.length} localities. Choose one, or type it.`
+              : locked
+                ? LOCK_HINT
+                : lookingUp
+                  ? "Looking up city and state…"
+                  : ""}
           </span>
           <FieldError errors={[pincode.fieldState.error]} />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor={`${idPrefix}-city`}>City</FieldLabel>
+          <FieldLabel htmlFor={`${idPrefix}-city`}>{words.city}</FieldLabel>
           <Input
             id={`${idPrefix}-city`}
             size={size}
@@ -286,26 +378,71 @@ export default function AddressFields<T extends FieldValues>({
             // no state of its own: the effect clears `autofilled` before every
             // lookup, so the class is genuinely removed and re-added on each
             // answer, which is what makes a *corrected* pincode flash again.
-            className={autofilled.city ? 'animate-fill-flash' : undefined}
+            className={autofilled.city ? "animate-fill-flash" : undefined}
             readOnly={autofilled.city}
             aria-readonly={autofilled.city || undefined}
             {...city.field}
-            value={String(city.field.value ?? '')}
+            value={String(city.field.value ?? "")}
           />
+          {/*
+            Why the box is empty, and the fix in one click.
+
+            A blank field after a lookup that plainly worked (the region filled)
+            reads as a bug, and the operator has no way to tell a postcode with
+            no town of its own from an app that dropped one. Naming the
+            localities says which it is, and says it with the data that produced
+            it rather than with reassurance.
+          */}
+          {options.length ? (
+            <div className="mt-1 space-y-1">
+              <p className="text-xs text-muted-foreground">
+                This postcode covers {options.length} localities, so there is no
+                single {words.city.toLowerCase()} to fill in.
+              </p>
+              {/* Its own short label rather than the line above it: a group
+                  labelled with that sentence would answer to "postcode", which
+                  is the field's name to own and not this list's. */}
+              <div
+                className="flex flex-wrap gap-1"
+                role="group"
+                aria-label="Localities this code covers"
+              >
+                {options.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => {
+                      // Chosen, not guessed — but it came from the postcode, so
+                      // it locks and flashes like anything else the lookup put
+                      // there, and editing the postcode takes it back.
+                      setCity(option);
+                      latest.current = { ...latest.current, city: option };
+                      filled.current = { ...filled.current, city: option };
+                      setAutofilled((current) => ({ ...current, city: true }));
+                      setOptions([]);
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <FieldError errors={[city.fieldState.error]} />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor={`${idPrefix}-state`}>State</FieldLabel>
+          <FieldLabel htmlFor={`${idPrefix}-state`}>{words.state}</FieldLabel>
           <Input
             id={`${idPrefix}-state`}
             size={size}
             autoComplete={NO_PROFILE_AUTOFILL}
-            className={autofilled.state ? 'animate-fill-flash' : undefined}
+            className={autofilled.state ? "animate-fill-flash" : undefined}
             readOnly={autofilled.state}
             aria-readonly={autofilled.state || undefined}
             {...state.field}
-            value={String(state.field.value ?? '')}
+            value={String(state.field.value ?? "")}
           />
           <FieldError errors={[state.fieldState.error]} />
         </Field>

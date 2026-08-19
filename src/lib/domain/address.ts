@@ -88,6 +88,40 @@ export function isIndianPincode(value: string): boolean {
   return INDIA_PINCODE_RE.test(value.trim());
 }
 
+/**
+ * A complete UK postcode, ignoring the space. One or two letters, a digit, an
+ * optional letter or digit, then the inward code: a digit and two letters.
+ *
+ * The point of matching the *whole* shape rather than counting characters is
+ * that it says when the code is finished. 'PH28A' is five characters and could
+ * still become 'PH2 8AL', so splitting it at three from the end would produce
+ * 'PH 28A' under the typist's cursor.
+ */
+const UK_POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/;
+
+/**
+ * A postcode written the way its country writes it.
+ *
+ * Only the UK, and deliberately so. Its postcode is the one whose canonical
+ * form has a *mandatory* internal space, and the one whose lookup depends on
+ * finding it. So 'PH28AL' typed in one run reached the upstream as a code that
+ * does not exist, with no hint that a space was what it wanted. The inward half
+ * is always the last three characters, which is what makes this a rule and not
+ * a guess.
+ *
+ * Everywhere else the code is uppercased and its runs of whitespace collapsed,
+ * and nothing is inserted. Sixty countries' postcode formats would be a
+ * jurisdiction pack (`PRINCIPLES.md` rule 5) to save one keystroke.
+ */
+export function formatPostcode(value: string, country: string): string {
+  const code = value.trim().toUpperCase().replace(/\s+/g, ' ');
+  if (country !== 'GB') return code;
+
+  const bare = code.replace(/[^A-Z0-9]/g, '');
+  if (!UK_POSTCODE_RE.test(bare)) return code;
+  return `${bare.slice(0, -3)} ${bare.slice(-3)}`;
+}
+
 /** Worth a lookup? India is strict because we can be; elsewhere is a guess. */
 export function isLookupPostcode(value: string, country: string): boolean {
   const code = value.trim().toUpperCase();
@@ -120,9 +154,18 @@ export function composeAddress(parts: AddressParts): string {
   if (line2) lines.push(`${line2},`);
 
   // 'Ghaziabad - 201017', or just whichever half is present.
+  //
+  // The hyphen is India's own convention and is wrong everywhere else: an
+  // Australian address is 'Rouse Hill 2155' and a British one 'Windermere LA23
+  // 1AB'. A space is what the rest of the world writes, and it is as far as
+  // this goes — a line order per country would be a jurisdiction pack
+  // (`PRINCIPLES.md` rule 5) for a block that is already legible without one.
   const city = clean(parts.city);
   const pincode = clean(parts.pincode);
-  const cityLine = city && pincode ? `${city} - ${pincode}` : city || pincode;
+  // A blank country reads as India, as it does everywhere else on the record.
+  const iso = clean(parts.country).toUpperCase();
+  const join = !iso || iso === 'IN' ? ' - ' : ' ';
+  const cityLine = city && pincode ? `${city}${join}${pincode}` : city || pincode;
   if (cityLine) lines.push(cityLine);
 
   // State and country share a line — 'Uttar Pradesh, India'. They used to take
