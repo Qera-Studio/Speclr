@@ -76,6 +76,43 @@ These checklists travel to every Qera project. When one's floor changes, update 
 
 ---
 
+## Input rules
+
+- **A field types the way the value is written.** If a value conventionally
+  carries separators, spacing or a case, the input applies them **as the
+  operator types**, not on blur and not only in the placeholder. An EIN is
+  `83-0000000`, a UK VAT number is `GB 123 4567 89`, an IFSC is uppercase. A
+  field that shows a formatted placeholder and then accepts an unformatted
+  string is telling the reader two different things about the same value, and
+  the one they end up looking at is the wrong one.
+
+  Cosmetic is not a reason to skip it. The separator is what lets somebody
+  check a number against a certificate at a glance, and the reassurance that
+  the field understood what was typed is most of what a form is for.
+
+  The pair rule from `CONTEXT.md` §5f applies: the format lives beside its
+  validator in `src/lib/domain/`, and the input in
+  `src/components/form/fields.tsx` applies it. Never write the mask inline in a
+  step. Validators must go on **stripping separators before checking**, so a
+  formatted value and a pasted bare one are the same value.
+
+- **Never show a validity tick on a field with no rule.** `FieldCheck` says
+  "this was checked and it passed". On a field that accepts anything, it says
+  that about a check that never ran, which is worse than showing nothing:
+  it is the app claiming to have verified a number it cannot verify.
+
+- **Numeric inputs reject non-digits** rather than accepting and complaining.
+  Use `numericField` from `components/form/inputFilters`, and sanitise on the
+  way in, before react-hook-form stores it.
+
+- **No format invented for a country nobody has billed.** A rule that rejects a
+  valid number blocks a real invoice, which is worse than no rule at all. Where
+  the format genuinely varies (a company registration number, whose register
+  differs per country and, in the US, per state), the honest answer is a plain
+  field, no mask and no tick. See `taxIds/foreign.ts`'s `OTHER` row.
+
+---
+
 ## Writing rules
 
 - **Never use an em dash (`—`).** Not in chat, not in code comments, not in

@@ -13,13 +13,13 @@ import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
-import { numericField } from '@/components/form/inputFilters';
+import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import {
   ENGAGEMENT_TYPES,
   clientCommercialSchema,
   type ClientCommercial,
 } from '@/lib/domain/client';
-import { CURRENCIES, DEFAULT_CURRENCY } from '@/lib/domain/currency';
+import { CURRENCIES, currencyForCountry } from '@/lib/domain/currency';
 import { draftKey, useFormDraft } from '@/lib/draft';
 import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } from './stepKit';
 
@@ -123,7 +123,12 @@ export default function CommercialStep({
         }),
     ),
     defaultValues: {
-      currency: client?.commercial?.currency ?? DEFAULT_CURRENCY,
+      // Defaulted from where the client is, not to INR. A UK client agreeing
+      // GBP is the ordinary case and the operator should not have to remember
+      // to change it; the field stays editable for the ones who agree
+      // otherwise. Only ever a default: a saved value always wins.
+      currency:
+        client?.commercial?.currency ?? currencyForCountry(client?.addressParts?.country),
       paymentTermsDays: client?.commercial?.paymentTermsDays,
       engagementType: client?.commercial?.engagementType,
       billingIntervalMonths: client?.commercial?.billingIntervalMonths,
@@ -400,11 +405,28 @@ export default function CommercialStep({
               </div>
               {poRequired ? (
                 <>
+                  {/*
+                    Upper-cased, and that is as far as the formatting goes.
+
+                    **There is no prefix to prefill and no length to split into
+                    boxes.** A PO number is raised in the *client's* own system
+                    and its shape is theirs: `4500123456` at an SAP shop,
+                    `PO-2026-0881` at one that formats them the way this
+                    placeholder does, a bare `88214` at a small one. Prefilling
+                    `PO-2026-` would assert a convention Qera does not control
+                    and cannot see, and the operator would have to delete it
+                    more often than keep it.
+
+                    If a *particular* client turns out to have a fixed prefix,
+                    the honest shape is a prefix remembered per client, derived
+                    from what was typed last time. That is a real feature and it
+                    is in `ROADMAP.md`; it is not this field acquiring a guess.
+                  */}
                   <Input
                     aria-label="PO number"
                     size="form"
                     placeholder="PO-2026-0042"
-                    {...register('poNumber')}
+                    {...uppercaseField(register('poNumber'))}
                   />
                   <FieldError errors={[errors.poNumber]} />
                 </>

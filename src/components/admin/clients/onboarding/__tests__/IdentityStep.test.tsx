@@ -69,6 +69,31 @@ async function pickEntityType(user: ReturnType<typeof userEvent.setup>, name: Re
   await user.click(await screen.findByRole('option', { name }));
 }
 
+/**
+ * A saved client, for the cases about the country control: it only renders once
+ * there is a record, because on the create path `CountryChooser` has just asked
+ * the same question a screen earlier.
+ */
+const savedClient = {
+  id: 'c1',
+  name: 'Clayora',
+  companyName: 'Clayora Private Limited',
+  address: 'C-204,\nGhaziabad - 201017\nUttar Pradesh, India',
+  addressParts: {
+    line1: 'C-204',
+    line2: '',
+    city: 'Ghaziabad',
+    state: 'Uttar Pradesh',
+    pincode: '201017',
+    country: 'IN',
+  },
+  email: 'accounts@clayora.test',
+  phone: '+919876543210',
+  entityType: 'pvt_ltd',
+  createdAt: 0,
+  updatedAt: 0,
+} as ClientRecord;
+
 describe('IdentityStep', () => {
   it('composes the printable address from the parts and stores E.164', async () => {
     const user = userEvent.setup();
@@ -112,22 +137,25 @@ describe('IdentityStep', () => {
     expect(createClient).not.toHaveBeenCalled();
   });
 
-  it('offers overseas legal forms when the address is outside India', async () => {
+  /**
+   * On the create path the country arrives as a prop from `CountryChooser`,
+   * which asked it on its own page. It still has to reach the entity type
+   * filter, which is the whole reason it is asked first.
+   */
+  it('offers the legal forms of the country chosen before this step', async () => {
     const user = userEvent.setup();
-    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
 
     // Named on a form only India has: 'private limited' is not decisive, since
     // Singapore's is spelled out too now that the acronyms are gone.
+    const india = render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
     await user.click(screen.getByLabelText('Entity type'));
     expect(
       await screen.findByRole('option', { name: /hindu undivided family/i }),
     ).toBeInTheDocument();
-    await user.keyboard('{Escape}');
+    india.unmount();
+    sessionStorage.clear();
 
-    // `/country/i` alone is ambiguous — the phone field has one too.
-    await user.click(screen.getByLabelText('Country'));
-    await user.click(await screen.findByRole('option', { name: /united arab emirates/i }));
-
+    render(<IdentityStep client={null} country="AE" onSaved={onSaved} submitLabel="Tax" />);
     await user.click(screen.getByLabelText('Entity type'));
     expect(await screen.findByRole('option', { name: /free zone entity/i })).toBeInTheDocument();
     expect(
@@ -137,18 +165,18 @@ describe('IdentityStep', () => {
 
   it('refuses an Indian legal form once the address has moved abroad', async () => {
     const user = userEvent.setup();
-    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
 
-    await fillIdentity(user);
+    // `/country/i` alone is ambiguous: the phone field has one too.
     await user.click(screen.getByLabelText('Country'));
     await user.click(await screen.findByRole('option', { name: /united arab emirates/i }));
     await user.click(screen.getByRole('button', { name: /^tax$/i }));
 
-    // The field looks empty — the chosen form is not in the list any more — but
+    // The field looks empty: the saved form is not in the list any more. But
     // the value is still on the form, and saving it would file a UAE client as
     // a company under the Companies Act.
     expect(await screen.findByText(/choose the entity type/i)).toBeInTheDocument();
-    expect(createClient).not.toHaveBeenCalled();
+    expect(updateClient).not.toHaveBeenCalled();
   });
 
   it('loads a client written before entity types and company names existed', () => {
@@ -171,18 +199,43 @@ describe('IdentityStep', () => {
   });
 
   /**
-   * Country decides what the three fields after it mean: "Pincode" is India's
-   * word for a postal code and the lookup behind it is India Post, so both are
-   * a branch off the country rather than a default it gets appended to.
+   * Country decides what the fields after it mean: "Pincode" is India's word
+   * for a postal code and the lookup behind it is India Post, so both are a
+   * branch off the country rather than a default it gets appended to.
+   *
+   * **And it decides what entity type is allowed to offer**, which is why it
+   * was lifted out of the address block to the head of the step. While it sat
+   * at the bottom of the page, the filter above it only worked for someone who
+   * already knew to scroll down and set it first, which is a control whose
+   * effect appears above it: nobody finds that.
    */
-  it('asks for the country before the pincode', () => {
-    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+  it('asks for the country before everything it decides', () => {
+    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
 
     const country = screen.getByLabelText('Country');
-    const pincode = screen.getByLabelText('Pincode');
-    expect(country.compareDocumentPosition(pincode)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    for (const after of ['Entity type', 'Pincode']) {
+      expect(country.compareDocumentPosition(screen.getByLabelText(after))).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    }
+  });
+
+  // One country field, not two. Hoisting it left the address block's own slot
+  // behind once, which is a second control writing the same value.
+  it('renders exactly one country control for the registered address', () => {
+    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+    expect(screen.getAllByLabelText('Country')).toHaveLength(1);
+  });
+
+  /**
+   * `CountryChooser` asks this on its own page immediately before step 1, so a
+   * field here would be the same question twice, pre-answered, one screen
+   * apart. It comes back the moment there is a record, because that is the only
+   * way to correct a client entered under the wrong country.
+   */
+  it('does not ask for the country again while creating', () => {
+    render(<IdentityStep client={null} country="AE" onSaved={onSaved} submitLabel="Tax" />);
+    expect(screen.queryByLabelText('Country')).not.toBeInTheDocument();
   });
 
   /**

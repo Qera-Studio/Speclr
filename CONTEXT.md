@@ -327,6 +327,121 @@ only ever filters what is **offered**. A document already on a record keeps its
 label whatever the record later says, which is why nothing was removed from
 `ATTACHMENT_KINDS`. Every filter above follows that same rule.
 
+### 5d-iii. A company abroad is the same company, minus the Indian apparatus
+
+The fourth quadrant (company, international) turned out to be mostly already
+built: the individual/company axis and the domestic/international axis were
+written as independent predicates, so they compose. What was left were five
+places where "foreign" had been read as "not a company" or where an Indian
+artefact had leaked past the border.
+
+- **Entity types now follow the country, not just the jurisdiction.**
+  `entityTypesForCountry` filtered on `jurisdiction` alone, so a client in
+  London was offered a US corporation, a UAE free zone and a Singapore private
+  limited in one dropdown. That is the §5d-ii bug one field up, and the fix is
+  the same shape as `taxIdTypesForCountry`: a `countries` list per row, absent
+  meaning everywhere. **The table is deliberately not exhaustive.** A country
+  with no row is offered "Other", which is a truer record than a form from the
+  wrong register, and adding a row per country would grow this into the
+  jurisdiction pack `PRINCIPLES.md` §4 forbids. Nothing computes from a foreign
+  entity type: it validates a PAN, and only Indian entities have one.
+- **A saved form is kept on offer, but only across the country axis.** A
+  Delaware corporation really can be addressed in London. The `keep` parameter
+  passes through the country filter and stops at the kind and jurisdiction
+  filters, because a person saved as a private limited is the wrong record this
+  check exists to catch, and keeping it would be keeping the mistake.
+- **The certificate of incorporation crossed the border.** It was scoped
+  `{ place: 'india', who: 'company' }` while `ClientRequestChecklist` asked a
+  foreign client for "Certificate of incorporation, or local equivalent": two
+  files in the repo disagreeing. Every company was incorporated somewhere and
+  only the register's name changes, so it is scoped by kind alone now. The
+  **cancelled cheque** went the other way and is India-only: it carries an IFSC,
+  and a foreign client's remittance runs the other direction anyway.
+- **Withholding is one concept in two regimes, and it reuses the TDS fields.**
+  A US client withholding under the India-US treaty leaves exactly the TDS
+  problem behind, the payment arrives short of the invoice and nothing on the
+  invoice says why. So `tdsApplicable` and `tdsRatePercent` serve both, freeze
+  into the same `ClientSnapshot.tds` and keep the rule that they never change
+  the amount billed. What does **not** travel is the apparatus: `tdsSection`
+  names a section of the Income-tax Act 1961 and `tan` is a number the Indian
+  department issues to a deductor. Both moved out of `clientTaxSchema`, which
+  only ever sees the tax group, and into `clientTaxCrossErrors`, which has the
+  country in hand. Both call sites now map over whatever that function returns
+  instead of naming three keys, which is how a rule added there had gone
+  unenforced on the server until somebody widened a line.
+- **`clientSnapshotOf` had a latent bug that branch would have shipped.** `tds`
+  froze only when `tdsSection` was set, so a foreign client's withholding memo
+  would have frozen as `undefined` and never printed. A section *or* a rate is
+  now enough.
+
+**One new field, and it prints.** `tax.registrationNumber` is `cin`'s
+counterpart abroad, a separate field from `taxId` because they are separate
+numbers: a UK company's Companies House number is not its VAT number, and
+typing one into the other runs mod-97 against a value that was never going to
+pass. Singapore's UEN happens to be both, so it is typed once into each. It has
+**no format rule**, for the reason `taxIds/foreign.ts` gives for its `OTHER`
+row, and it prints in the billed-to block as "Company no." because a CIN prints
+there and identifying a foreign company by less would be the asymmetry.
+
+**Two things the request checklist asks for that were deliberately not added.**
+Governing law and courts is contract content, and the clauses live in the
+`clauses` table already, per document and editable, so a `commercial` column
+for it would be a second place to disagree with the clause it contradicts. Who
+bears the conversion and bank charges is a sentence in a contract, not a fact
+about who the client is. Both fail rule 2.
+
+### 5d-iv. The country is asked first, from the whole world
+
+Two changes, and the second is what made the first honest.
+
+**The list is every country now, not a shortlist.** `COUNTRY_SEED` held the
+twenty-five Qera might plausibly bill, which is a rule that holds until the
+twenty-sixth client and meanwhile means a client in Norway cannot be added at
+all. It is the 243 officially assigned ISO 3166-1 codes libphonenumber carries
+metadata for, so every row has a working dial code behind it and the address
+picker and the phone picker offer the same world. **The names are the ISO short
+names, not CLDR's**: these strings compose into the `address` line that prints
+on a tax invoice and freezes into a snapshot for 72 months (CGST s.36), so
+"Congo - Kinshasa" and "Hong Kong SAR China" are not acceptable spellings of a
+recipient's country, ampersands are spelled out and "St." is written "Saint".
+`COUNTRIES_BY_CONTINENT` is built from the seed rather than from `phone.ts`, or
+a country with no phone metadata would silently vanish from an address form.
+
+**`CountryChooser` asks it on its own page, after the kind and before step 1.**
+The country was buried two thirds of the way down step 1 while deciding five
+things above and after it: which legal forms `entityTypesForClient` offers,
+which registrations `taxIdTypesForCountry` offers, whether a W-8BEN-E and
+reverse charge are asked about, which documents are requested, and what the
+postcode field is even called. A field that decides that much cannot sit below
+most of it.
+
+Three rules, matching the kind chooser's:
+
+- **Nothing is stored.** It rides in the URL as `?country=` until step 1 saves,
+  and from then on `addressParts.country` is the answer (rule 3, the same
+  reason there is no `client_kind` column). `addressParts.country` is still
+  where the value lives; the chooser only seeds it, and an existing client never
+  sees the screen.
+- **Step 1's country field renders only once there is a record.** On the create
+  path the chooser has just asked, so the field would be the same question
+  twice, pre-answered, one screen apart. It is **not** removed, because an
+  existing client never reaches the chooser and this is the only editor for a
+  fact that decides place of supply, which registrations and legal forms are
+  offered, what a postcode is called and which documents are requested. A client
+  entered under the wrong country has to be fixable.
+- **The parameter is validated against the seed, never trusted.** It is a URL
+  value that seeds a form field; an unknown code reads as unanswered.
+- **Choosing does not advance, and that is the opposite call from
+  `KindChooser`.** Two hundred and forty-three targets a click apart is a page
+  where the wrong one gets hit, and a wrong click that also changes the page is
+  a wrong click nobody notices. Two options are not mis-clicked.
+
+The selection is component state rather than the URL, because a URL that
+changed on every click would be a history entry per country looked at, and it
+survives the search filter hiding it: narrowing a list must not take back an
+answer already given.
+
+
 ### 5e. The design system is enforced by tests, not by convention
 
 `src/__tests__/design-tokens.test.ts` polices colour — no raw Tailwind palette

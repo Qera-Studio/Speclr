@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ContractService } from "@/lib/domain/contract/service";
 import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
-import { attachmentSlotsFor } from "@/lib/domain/client";
 import type { ClientRecord } from "@/lib/domain/types";
+import { COUNTRY_SEED } from "@/lib/domain/countries";
 import { onboardingSteps, stepIndex, type OnboardingStep } from "./steps";
 import { StepActionsSlot } from "./stepKit";
 import KindChooser from "./KindChooser";
+import CountryChooser from "./CountryChooser";
 import IdentityStep from "./IdentityStep";
 import TaxStep from "./TaxStep";
 import ContactsStep from "./ContactsStep";
@@ -76,6 +77,24 @@ export default function ClientOnboarding({
       ? kindParam
       : null;
 
+  /**
+   * Where the client is based, chosen on the screen after the kind and before
+   * step 1. Same rule as the kind, for the same reason: it rides in the URL
+   * only until there is a row, and from then on `addressParts.country` is the
+   * answer and nothing else may hold a second copy of it.
+   *
+   * Validated against the list rather than trusted, because it is a URL
+   * parameter that seeds a form field. An unknown code reads as unanswered and
+   * shows the chooser, which is the right failure: the country field on step 1
+   * is still there and still editable either way.
+   */
+  const countryParam = (searchParams.get("country") ?? "").toUpperCase();
+  const country = client
+    ? null
+    : COUNTRY_SEED.some((c) => c.iso2 === countryParam)
+      ? countryParam
+      : null;
+
   const steps = useMemo(() => onboardingSteps(kind ?? "company"), [kind]);
   const active = stepIndex(steps, searchParams.get("step"));
   const step = steps[active];
@@ -108,10 +127,12 @@ export default function ClientOnboarding({
       // The kind rides along only while there is no record to derive it from.
       // Once the row exists its entity type is the answer, and a second copy in
       // the URL is a second thing that can be wrong.
-      const carry = !id && kind ? `&kind=${kind}` : "";
+      const carry = id
+        ? ""
+        : `${kind ? `&kind=${kind}` : ""}${country ? `&country=${country}` : ""}`;
       router.replace(`${base}?step=${key}${carry}`, { scroll: false });
     },
-    [active, client?.id, kind, router, steps],
+    [active, client?.id, country, kind, router, steps],
   );
 
   /**
@@ -150,26 +171,6 @@ export default function ClientOnboarding({
 
   const previous = active > 0 ? steps[active - 1] : undefined;
 
-  /**
-   * Attachments takes the band's full height instead of being as tall as its
-   * content, so its list of extra documents scrolls rather than the step.
-   * Named here rather than on the step definition because it is a fact about
-   * this layout, not about what the step collects.
-   *
-   * Only while there *is* such a list. A client with two slots and nothing else
-   * attached is a row of cards with no growing part under it, and filling the
-   * band then pins that row to the top of an otherwise empty screen. Without
-   * `fill` the band's own `my-auto` centres it, like every other short step.
-   */
-  const attachmentSlots = attachmentSlotsFor({
-    country: client?.addressParts?.country,
-    clientKind: kind ?? "company",
-  });
-  const fill =
-    step.key === "attachments" &&
-    (attachmentSlots.length >= 3 ||
-      (client?.attachments ?? []).some((a) => !attachmentSlots.includes(a.kind)));
-
   const stepProps = useMemo(
     () => ({
       client,
@@ -179,8 +180,10 @@ export default function ClientOnboarding({
       // `?? 'company'` never fires here: a null kind renders the chooser
       // instead of a step. It is the type narrowing, not a default.
       kind: kind ?? ("company" as ClientKind),
+      // Only ever set before the first save; after that the record holds it.
+      country: country ?? undefined,
     }),
-    [client, kind, onSaved, submitLabel],
+    [client, country, kind, onSaved, submitLabel],
   );
 
   /**
@@ -200,6 +203,27 @@ export default function ClientOnboarding({
             router.replace(`/client/clients/new?step=${steps[0].key}&kind=${chosen}`, {
               scroll: false,
             })
+          }
+        />
+      </div>
+    );
+  }
+
+  /**
+   * The kind is answered and the country is not: ask it before step 1, for the
+   * reason `CountryChooser` gives. Same shape of early return as the chooser
+   * above, and for the same reason.
+   */
+  if (!client && !country) {
+    return (
+      <div className="flex h-full min-h-0 flex-col p-1">
+        <h1 className="sr-only">Add a client</h1>
+        <CountryChooser
+          onContinue={(chosen) =>
+            router.replace(
+              `/client/clients/new?step=${steps[0].key}&kind=${kind}&country=${chosen}`,
+              { scroll: false },
+            )
           }
         />
       </div>
@@ -268,17 +292,18 @@ export default function ClientOnboarding({
         {/* `shrink-0`, or a step taller than the band gets squashed to fit
             rather than scrolling.
 
-            A filling step is the exception and wants the opposite: it takes the
-            band's height so that one region inside it can scroll instead of the
-            band. See `StepForm`'s `fill`. */}
+            Every step centres. Attachments used to be the exception, taking the
+            band's height so its list of extras could take the leftover and
+            scroll, which pinned the step to the top of an otherwise empty
+            screen in the common case, where there are no extras at all. The
+            list caps itself at four rows now, so there is no exception left. */}
         <div
           className={cn(
             "w-full max-w-3xl",
             // `mx-auto` either way. Only the *vertical* auto margin is the
             // short-step centring; dropping both put the column against the
             // left edge of the card.
-            "mx-auto",
-            fill ? "flex min-h-0 flex-1 flex-col" : "my-auto shrink-0",
+            "mx-auto my-auto shrink-0",
           )}
         >
           {finishing ? (
@@ -298,7 +323,6 @@ export default function ClientOnboarding({
               className={cn(
                 "animate-in fade-in duration-300",
                 forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
-                fill && "flex min-h-0 flex-1 flex-col",
               )}
             >
               <StepActionsSlot.Provider value={actions}>

@@ -11,7 +11,7 @@ import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
-import AddressFields from '@/components/form/AddressFields';
+import AddressFields, { COUNTRY_GROUPS } from '@/components/form/AddressFields';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import { EmailField } from '@/components/form/fields';
 import { clientInputSchema } from '@/lib/domain/registry';
@@ -77,7 +77,7 @@ const REQUIRED_ADDRESS_PARTS = ['line1', 'city', 'state', 'pincode', 'country'] 
  * before onboarding existed have none, and a required column would make those
  * rows permanently un-saveable.
  */
-const makeResolver = (kind: ClientKind): Resolver<FormValues> => async (values, context, options) => {
+const makeResolver = (kind: ClientKind, saved?: string): Resolver<FormValues> => async (values, context, options) => {
   const composed = composeAddress(values.addressParts ?? emptyAddressParts);
   /**
    * An individual has no legal name apart from their own.
@@ -133,7 +133,11 @@ const makeResolver = (kind: ClientKind): Resolver<FormValues> => async (values, 
   // against empty. Moving the address abroad leaves an Indian selection in the
   // field with nothing showing in the list, and a person saved as a private
   // limited is a wrong record rather than a cosmetic one.
-  const offered = entityTypesForClient(values.addressParts?.country, kind);
+  //
+  // The form already on the record is passed through, so the rule matches the
+  // dropdown: a US corporation addressed in London stays saveable, an Indian
+  // form on a foreign address still does not.
+  const offered = entityTypesForClient(values.addressParts?.country, kind, saved);
   if (!values.entityType || !offered.some((e) => e.value === values.entityType)) {
     errors.entityType = { type: 'manual', message: 'Choose the entity type.' };
     failed = true;
@@ -147,10 +151,18 @@ export default function IdentityStep({
   onSaved,
   submitLabel,
   kind = 'company',
+  country: chosenCountry,
 }: StepProps) {
   const individual = kind === 'individual';
   const [serverError, setServerError] = useState<string | null>(null);
-  const resolver = useMemo(() => makeResolver(kind), [kind]);
+  // What the record already says, not what the field currently holds: the
+  // exemption is for a form that was saved, and a fresh pick has to pass on its
+  // own merits.
+  const savedEntityType = client?.entityType;
+  const resolver = useMemo(
+    () => makeResolver(kind, savedEntityType),
+    [kind, savedEntityType],
+  );
   const {
     register,
     control,
@@ -188,7 +200,13 @@ export default function IdentityStep({
           name: '',
           companyName: '',
           address: '',
-          addressParts: { ...emptyAddressParts },
+          // Seeded from the country chosen before this step. It is an ordinary
+          // default on an ordinary field: the picker below is still here, still
+          // editable, and still the one place the answer lives.
+          addressParts: {
+            ...emptyAddressParts,
+            country: chosenCountry || emptyAddressParts.country,
+          },
           billingAddressParts: undefined,
           email: '',
           phone: '',
@@ -211,17 +229,26 @@ export default function IdentityStep({
   // field rather than by state beside it.
   const billingContact = useController({ control, name: 'billingContact' });
   const entityOptions = useMemo(
-    () => entityTypesForClient(country, kind).map((e) => ({ value: e.value, label: e.label })),
-    [country, kind],
+    () =>
+      entityTypesForClient(country, kind, savedEntityType).map((e) => ({
+        value: e.value,
+        label: e.label,
+      })),
+    [country, kind, savedEntityType],
   );
 
   /**
-   * One option is not a choice.
+   * One option is filled in, but the field still shows.
    *
-   * A sole trader is the only form a foreign individual has, so the dropdown
-   * would be a single row somebody has to open to agree with. It is set here
-   * instead — the resolver still checks the submitted value against what is
-   * offered, so this fills the field rather than bypassing the rule.
+   * A sole trader is the only form a foreign individual has, so nobody should
+   * have to open a one-row dropdown to agree with it. It is set here instead,
+   * and the resolver still checks the submitted value against what is offered,
+   * so this fills the field rather than bypassing the rule.
+   *
+   * Hiding the field as well was a mistake and read as one: a company in a
+   * country this table names no form for got no entity type control at all, so
+   * the only way to learn the record said "Other" was to save it and look. The
+   * whole point of the field is that the record states its own legal form.
    */
   const onlyOption = entityOptions.length === 1 ? entityOptions[0].value : null;
   const chosenEntityType = entityType.field.value;
@@ -234,7 +261,7 @@ export default function IdentityStep({
   /** A proprietorship bills under a business name; a plain individual does not. */
   const tradesUnderName = entityTypeSpec(String(chosenEntityType ?? ''))?.tradingName === true;
   const showSecondName = !individual || tradesUnderName;
-  const nameColumns = (1 + (showSecondName ? 1 : 0) + (onlyOption ? 0 : 1)) as 2 | 3;
+  const nameColumns = (2 + (showSecondName ? 1 : 0)) as 2 | 3;
 
   // Restores what was typed but not saved, so a refresh or a hop to the other
   // profile comes back to the same half-filled form. Cleared on save.
@@ -302,16 +329,62 @@ export default function IdentityStep({
       submitLabel={submitLabel}
     >
       {/*
-        Three identity facts on one line. Entity type used to be fourteen radio
+        The identity facts on one line. Entity type used to be fourteen radio
         cards at the bottom of the step — a third of the page to say one word,
         and a word that belongs beside the names it qualifies. A dropdown of
         fourteen is a dropdown; a grid of fourteen is a wall.
+
+        **Country leads the row**, lifted out of the address block below. It is
+        what decides which legal forms the entity type three cells along is
+        allowed to offer, and while it sat at the bottom of the page that filter
+        only worked for someone who already knew to scroll down and set it
+        first. A control whose effect appears above it is a control nobody finds.
 
         An individual drops the columns that do not apply rather than blanking
         them: no legal entity name (they are the entity), and no entity type
         where the country offers only one form. The row narrows to match, so
         two fields are two fields and not two fields and a gap.
       */}
+      {/*
+        **Only when there is a record to correct.** `CountryChooser` asks this
+        on its own page before step 1, so on the create path the field would be
+        the same question twice, pre-answered, one screen apart.
+        `addressParts.country` is still where the value lives and the chooser
+        still only seeds it.
+
+        It cannot go altogether. An existing client never sees the chooser, and
+        this is the only editor for a fact that decides place of supply, which
+        registrations are offered, which legal forms exist, what a postcode is
+        called and which documents are requested. Removing it would make a
+        client entered in the wrong country impossible to fix.
+
+        **Its own line, above the row, and narrow.** Making it a fourth column
+        squeezed all four to a width where a legal entity name could not be
+        read. It is not a fourth identity fact anyway: it is the setting the
+        rest of the page is answered under.
+      */}
+      {client ? (
+        <Field className="max-w-xs">
+          <FieldInfo
+            htmlFor="client-country"
+            label="Country"
+            info="Where the client is registered. Everything on this record follows from it: which legal forms the entity type offers, which tax registration the next step asks for, what a postal code is called, which documents are worth requesting, and what their invoices are billed in."
+            infoLabel="What does the country decide?"
+          />
+          <Combobox
+            id="client-country"
+            size="form"
+            groups={COUNTRY_GROUPS}
+            value={String(country ?? '')}
+            onValueChange={(value) =>
+              setValue('addressParts.country', value, { shouldValidate: true })
+            }
+            placeholder="Select…"
+          />
+          <FieldError errors={[errors.addressParts?.country]} />
+        </Field>
+      ) : null}
+
       <FieldRow columns={nameColumns}>
         <Field>
           <FieldInfo
@@ -354,12 +427,11 @@ export default function IdentityStep({
           </Field>
         ) : null}
 
-        {onlyOption ? null : (
-          <Field>
+        <Field>
             <FieldInfo
               htmlFor="client-entity-type"
               label="Entity type"
-              info="The legal form, which decides what identifiers apply — an Indian entity's PAN encodes its own kind, so this is what turns a shape check into a real one. The list follows the country in the address below."
+              info="The legal form, which decides what identifiers apply: an Indian entity's PAN encodes its own kind, so this is what turns a shape check into a real one. The list follows the country chosen at the start of this row."
               infoLabel="Why does the entity type matter?"
             />
             <Combobox
@@ -371,8 +443,7 @@ export default function IdentityStep({
               placeholder="Select…"
             />
             <FieldError errors={[errors.entityType]} />
-          </Field>
-        )}
+        </Field>
       </FieldRow>
 
       {/* An individual's designation rides with their email and phone, because
@@ -386,7 +457,15 @@ export default function IdentityStep({
           placeholder="example@gmail.com"
         />
 
-        <PhoneField control={control} name="phone" id="client-phone" />
+        {/* Starts on the country chosen at the top of this step. Their phone
+            is almost always in the country they are registered in, and
+            defaulting to India meant answering that question twice. */}
+        <PhoneField
+          control={control}
+          name="phone"
+          id="client-phone"
+          defaultCountry={country}
+        />
 
         {individual ? (
           <Field>
@@ -411,12 +490,12 @@ export default function IdentityStep({
 
       <FieldSet>
         <LegendInfo
-          info="Rule 46 wants the recipient's address on a tax invoice, and the country here decides how the next step treats their tax registration — and which legal forms the entity type offers."
+          info="Rule 46 wants the recipient's address on a tax invoice. The country it is in was asked at the top of this step, because the rest of the form follows from it."
           label="Why is the address required?"
         >
           Registered address
         </LegendInfo>
-        <AddressFields control={control} name="addressParts" idPrefix="client" />
+        <AddressFields control={control} name="addressParts" idPrefix="client" hideCountry />
         {/*
           `address` is derived from the parts, not typed — but it is what
           documents print, so a failure on it needs somewhere to surface.
@@ -522,6 +601,7 @@ export default function IdentityStep({
                 control={control}
                 name="billingContact.phone"
                 id="client-billing-contact-phone"
+                defaultCountry={country}
               />
             </FieldRow>
           ) : null}

@@ -196,6 +196,17 @@ pretended away.
 Moved here from `CONTEXT.md`. Deferred on purpose, with the reasoning intact —
 if one of these gets picked up, the reasoning is what to re-examine first.
 
+- **A live contact card on the Contacts step.** An empty card beside the fields
+  that fills as the primary contact is typed, standing in for the line that used
+  to echo "name · designation · email · phone" back underneath them. The echo was
+  removed 21 August 2026 as clutter: it repeated four values already on screen a
+  few rows up. A card is a different thing, showing what the *contract's
+  signature block* will look like rather than restating the inputs, and it is a
+  component rather than a paragraph, which is why it is here and not in that
+  commit. `RoleSummary` in `ContactsStep.tsx` is where it would live; the one
+  line still printed there (billing's "marked for the attention of") is the
+  behaviour to keep, because it states a consequence rather than an echo.
+
 - **Server-side PDF renderer** — print-CSS now. Sheets stay pure `data → markup`
   precisely so this lands later as a non-breaking, additive upgrade. Don't couple
   sheets to the DOM in the meantime (see §3, which touches the same surface).
