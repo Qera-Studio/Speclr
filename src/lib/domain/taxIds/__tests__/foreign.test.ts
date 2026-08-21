@@ -118,3 +118,56 @@ describe('taxIdTypesForCountry', () => {
     expect(taxIdTypesForCountry(undefined).map((t) => t.code)).toEqual(['OTHER']);
   });
 });
+
+/**
+ * A field types the way the value is written (`AGENTS.md`, input rules). The
+ * two properties that matter are that the format is **idempotent** (it runs on
+ * every keystroke against a value it has already formatted) and that
+ * `taxIdError` bares the value before checking, so a formatted number and a
+ * pasted bare one are the same number.
+ */
+describe('taxIdType formats', () => {
+  const format = (code: string, value: string) => taxIdType(code)!.format!(value);
+
+  it('writes an EIN the way the IRS letter does', () => {
+    expect(format('US_EIN', '830000000')).toBe('83-0000000');
+    expect(format('US_EIN', '83')).toBe('83');
+    expect(format('US_EIN', '8')).toBe('8');
+  });
+
+  it("writes an ABN in the ATO's 2-3-3-3", () => {
+    expect(format('AU_ABN', '51824000370')).toBe('51 824 000 370');
+  });
+
+  it('groups a UK VAT number 3-4-2, keeping a typed GB prefix and never adding one', () => {
+    expect(format('GB_VAT', '123400037')).toBe('123 4000 37');
+    expect(format('GB_VAT', 'GB123400037')).toBe('GB 123 4000 37');
+  });
+
+  it('is idempotent, because it runs against its own output on every keystroke', () => {
+    for (const [code, raw] of [
+      ['US_EIN', '830000000'],
+      ['AU_ABN', '51824000370'],
+      ['GB_VAT', 'GB123400037'],
+    ] as const) {
+      const once = format(code, raw);
+      expect(format(code, once)).toBe(once);
+    }
+  });
+
+  it('leaves a formatted value valid, since the checks bare it first', () => {
+    expect(taxIdError('US_EIN', format('US_EIN', '830000000'))).toBeNull();
+    expect(taxIdError('AU_ABN', format('AU_ABN', '51824000370'))).toBeNull();
+    expect(taxIdError('GB_VAT', format('GB_VAT', 'GB123400037'))).toBeNull();
+  });
+
+  /**
+   * Sparse on purpose. Inventing a grouping is the same mistake as inventing a
+   * check digit, and EU VAT would be wrong in 26 of 27 member states.
+   */
+  it('gives no format to the identifiers with no published grouping', () => {
+    for (const code of ['AE_TRN', 'EU_VAT', 'SG_UEN', 'CA_BN', 'OTHER']) {
+      expect(taxIdType(code)!.format).toBeUndefined();
+    }
+  });
+});

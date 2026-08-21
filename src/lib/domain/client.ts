@@ -72,11 +72,26 @@ export interface ClientTax {
   pan?: string;
   /** Supplies to an SEZ unit are zero-rated — this changes the tax treatment. */
   sez?: boolean;
-  /** Whether the client deducts TDS before paying. Most corporates do. */
+  /**
+   * Whether the client withholds tax before paying. Most Indian corporates do.
+   *
+   * **These four serve both regimes**, and that is reuse rather than an
+   * India field pressed into foreign service. A US client withholding under
+   * the India-US treaty produces exactly the same problem TDS does: the
+   * payment arrives short of the invoice, and nothing on the invoice explains
+   * why. Same memo, same snapshot (`ClientSnapshot.tds`), same rule that it
+   * never changes the amount billed.
+   *
+   * What does not travel is the *apparatus*: `tdsSection` names a section of
+   * the Income-tax Act 1961 and `tan` is a number the Indian department issues
+   * to a deductor. Both are required in India and neither exists abroad, which
+   * is why that requirement sits in `clientTaxCrossErrors` where the country
+   * is in hand rather than in the schema, which only ever sees this group.
+   */
   tdsApplicable?: boolean;
   tdsSection?: string;
   tdsRatePercent?: number;
-  /** Their TAN, required on their side to deduct. */
+  /** Their TAN, required on their side to deduct. Indian deductors only. */
   tan?: string;
   cin?: string;
 
@@ -85,6 +100,23 @@ export interface ClientTax {
   // from them. See the bound recorded at the top of `taxIds/foreign.ts`.
   taxIdType?: string;
   taxId?: string;
+  /**
+   * The number the company register issued: a Companies House number, a state
+   * file number, a UEN, whatever the local equivalent is called.
+   *
+   * `cin`'s counterpart abroad, and a separate field from `taxId` because they
+   * are separate numbers. A UK company's registration number is not its VAT
+   * number, and putting one in the other runs the mod-97 check against a value
+   * that was never going to pass it. Singapore is the exception that proves it:
+   * a UEN really is both, so it is typed once into each.
+   *
+   * **No format rule, deliberately.** There is one register per country and a
+   * regex invented for a country nobody here has billed rejects a valid number
+   * and blocks a real contract, which is the reasoning `taxIds/foreign.ts`
+   * gives for its `OTHER` row. The check digits stop where the published ones
+   * do.
+   */
+  registrationNumber?: string;
   /** Whether the client accounts for the tax on their side. */
   reverseCharge?: boolean;
   /** Some jurisdictions ask the supplier for a tax residency certificate. */
@@ -113,23 +145,18 @@ export const clientTaxSchema = z.object({
   cin: cinSchema().optional(),
   taxIdType: z.enum(TAX_ID_TYPE_CODES as [string, ...string[]]).optional(),
   taxId: codeSchema(40).optional(),
+  registrationNumber: codeSchema(40).optional(),
   reverseCharge: z.boolean().optional(),
   requiresTaxResidencyCertificate: z.boolean().optional(),
   requiresW8BenE: z.boolean().optional(),
 })
   .superRefine((tax, ctx) => {
-    // A rate without a section is a number nobody can act on, and a section
-    // without a rate cannot be applied. Either both or neither.
-    if (tax.tdsApplicable) {
-      if (!tax.tdsSection) {
-        ctx.addIssue({ code: 'custom', message: 'Which section do they deduct under?', path: ['tdsSection'] });
-      }
-      if (tax.tdsRatePercent === undefined) {
-        ctx.addIssue({ code: 'custom', message: 'At what rate?', path: ['tdsRatePercent'] });
-      }
-      if (!tax.tan) {
-        ctx.addIssue({ code: 'custom', message: 'A deductor needs a TAN.', path: ['tan'] });
-      }
+    // The rate is the one piece that is required wherever the client is: a
+    // deduction nobody can quantify is a payment that will simply arrive short.
+    // The section and the TAN are Indian apparatus and are demanded in
+    // `clientTaxCrossErrors`, which knows what country this client is in.
+    if (tax.tdsApplicable && tax.tdsRatePercent === undefined) {
+      ctx.addIssue({ code: 'custom', message: 'At what rate?', path: ['tdsRatePercent'] });
     }
     if (tax.gstRegistered && !tax.gstin) {
       ctx.addIssue({ code: 'custom', message: 'A registered client has a GSTIN.', path: ['gstin'] });
@@ -155,12 +182,28 @@ export const clientTaxSchema = z.object({
  * place of supply from a GSTIN trustworthy (`placeOfSupply.ts`), and therefore
  * what closes `PRINCIPLES.md` rule 3 rather than merely moving it.
  */
+export type ClientTaxCrossField = 'gstin' | 'pan' | 'cin' | 'tdsSection' | 'tan';
+
 export function clientTaxCrossErrors(
   tax: ClientTax | undefined,
-  context: { addressState?: string; entityType?: string },
-): Partial<Record<'gstin' | 'pan' | 'cin', string>> {
-  const errors: Partial<Record<'gstin' | 'pan' | 'cin', string>> = {};
+  context: { addressState?: string; entityType?: string; country?: string },
+): Partial<Record<ClientTaxCrossField, string>> {
+  const errors: Partial<Record<ClientTaxCrossField, string>> = {};
   if (!tax) return errors;
+
+  /**
+   * A withholding client in India deducts under a named section of the
+   * Income-tax Act and holds a TAN to do it. Neither exists anywhere else, so
+   * asking a US client which section they withhold under is a question with no
+   * true answer, and refusing to save without one strands the record.
+   *
+   * Absent country reads as India, the same default as everywhere else here.
+   */
+  const inIndia = !context.country || context.country.toUpperCase() === 'IN';
+  if (tax.tdsApplicable && inIndia) {
+    if (!tax.tdsSection) errors.tdsSection = 'Which section do they deduct under?';
+    if (!tax.tan) errors.tan = 'A deductor needs a TAN.';
+  }
 
   const gstin = gstinError(tax.gstin ?? '', {
     addressState: context.addressState,
@@ -447,7 +490,7 @@ export const ATTACHMENT_KIND_LABELS: Record<AttachmentKind, string> = {
   msme: 'MSME / Udyam certificate',
   cancelled_cheque: 'Cancelled cheque or bank letter',
   vendor_form: 'Vendor onboarding form',
-  tax_form: 'W-8 / W-9 or foreign tax registration',
+  tax_form: 'Tax registration certificate',
   firc: 'FIRC / FIRA — proof of export realisation',
   signature: 'Signature',
   other: 'Other',
@@ -464,7 +507,7 @@ export const ATTACHMENT_KIND_LABELS: Record<AttachmentKind, string> = {
 export const ATTACHMENT_KIND_DESCRIPTIONS: Record<AttachmentKind, string> = {
   gst_certificate: 'Form REG-06, issued on registration',
   pan: 'The permanent account number card',
-  incorporation: 'The certificate the registrar issued',
+  incorporation: 'The certificate the register issued',
   signed_contract: 'The agreement both sides have signed',
   nda: 'Confidentiality terms, signed',
   sow: 'The scope and deliverables for a piece of work',
@@ -473,7 +516,7 @@ export const ATTACHMENT_KIND_DESCRIPTIONS: Record<AttachmentKind, string> = {
   msme: 'Udyam registration, if the client holds one',
   cancelled_cheque: 'Bank details, for payments and refunds',
   vendor_form: "The client's own supplier form, filled in",
-  tax_form: 'Foreign tax registration or a W-8 / W-9',
+  tax_form: 'Their registration certificate, from their own tax authority',
   firc: 'Bank proof that an export payment landed',
   signature: 'An image of the signature, PNG or JPEG',
   other: 'Anything the list does not name',
@@ -497,7 +540,7 @@ export const ATTACHMENT_KIND_NOTES: Record<AttachmentKind, string> = {
     'Form REG-06, issued by the GST portal on registration. It carries the GSTIN, the legal and trade names, the registered address and the date of registration. Worth having: it is what confirms the GSTIN typed on the record is theirs, and Rule 46 requires that number on every invoice to them.',
   pan: 'The income-tax department’s permanent account number card, showing the number, the holder’s name and date of birth or incorporation. Needed whenever tax is deducted at source: TDS credit is matched by PAN, and a wrong one means the client cannot claim it.',
   incorporation:
-    'The certificate the Registrar of Companies issued when the company was formed, carrying the CIN, the incorporated name and the date. Confirms the entity actually exists under the name a contract will be signed in.',
+    'The certificate the register issued when the company was formed, carrying its registered number, the incorporated name and the date. In India that is the Registrar of Companies and the number is the CIN; elsewhere it is whatever the local register is called. Confirms the entity actually exists under the name a contract will be signed in.',
   signed_contract:
     'The agreement both sides have signed, as executed. The one document to keep above all others: it is what a dispute is decided on, and an unsigned draft has no standing.',
   nda: 'Confidentiality terms, signed. Usually the first thing signed and the easiest to lose track of, because it is often agreed before the engagement has a folder.',
@@ -512,7 +555,7 @@ export const ATTACHMENT_KIND_NOTES: Record<AttachmentKind, string> = {
   vendor_form:
     'The client’s own supplier onboarding form, filled in and returned. Purely their process, but nothing gets paid until it is done.',
   tax_form:
-    'A foreign client’s tax paperwork: their own registration certificate, or the W-8 / W-9 that goes the other way. A US client asks Qera for a W-8BEN-E, certifying we are not a US person, so they withhold at the India-US treaty rate rather than a flat 30%. Ask before the first invoice, not after the first short payment.',
+    'The certificate their own tax authority issued: a UK VAT registration certificate, an ATO registration, an EU VAT certificate, whatever their country calls it. It confirms the registration number typed on this record is theirs, which is the same job the GST certificate does for an Indian client. A US client’s own W-9 belongs here too. Not the W-8BEN-E: that one is Qera’s form, given to them, and it is tracked as a requirement on the tax step rather than filed as their document.',
   firc: 'The Foreign Inward Remittance Certificate (or the FIRA a bank issues instead), confirming money arrived from abroad and in which currency. It is the evidence that an export of services was realised, which is what an LUT zero-rating and any GST refund rest on. Ask the bank once a foreign payment lands; it is far harder to obtain a year later.',
   signature:
     'An image of a signature, lifted off a page, used to sign a document rendered here. Sensitive in its own right: it is reusable by anyone holding the file.',
@@ -558,9 +601,17 @@ interface AttachmentScope {
 const ATTACHMENT_SCOPES: Partial<Record<AttachmentKind, AttachmentScope>> = {
   gst_certificate: { place: 'india' },
   pan: { place: 'india' },
-  incorporation: { place: 'india', who: 'company' },
+  // Scoped by kind and not by place. Every company was incorporated somewhere,
+  // and the certificate is what confirms the entity a contract will be signed
+  // with actually exists under that name, a question that does not stop
+  // mattering at the border. Only the registrar's name changes.
+  incorporation: { who: 'company' },
   tds_certificate: { place: 'india' },
   msme: { place: 'india' },
+  // A cancelled cheque is an Indian artefact, and it carries an IFSC. A foreign
+  // client's bank details are not asked for at all: the remittance runs the
+  // other way, and what they need is Qera's.
+  cancelled_cheque: { place: 'india' },
   tax_form: { place: 'foreign' },
   firc: { place: 'foreign' },
   // Both of these are an accounts-payable apparatus. A person engaging a studio

@@ -33,6 +33,43 @@ export interface TaxIdType {
   placeholder: string;
   /** Only where the identifier carries a published check digit. */
   checksum?: (value: string) => boolean;
+  /**
+   * How the number is conventionally written, applied as it is typed.
+   *
+   * An EIN is `83-0000000` on the IRS letter that carries it, and a field that
+   * shows that as a placeholder and then accepts `830000000` is telling the
+   * reader two different things about one value. See the input rules in
+   * `AGENTS.md`.
+   *
+   * Sparse on purpose. Only the identifiers with a **published** grouping get
+   * one; a UAE TRN and a Singapore UEN are written as a run of characters, and
+   * inventing a grouping for them would be the same mistake as inventing a
+   * check digit. EU VAT is left alone for a stronger reason: the grouping
+   * differs per member state, so one rule here would be wrong in 26 of 27
+   * countries.
+   *
+   * Must be **idempotent and prefix-safe**: it runs on every keystroke against
+   * a value it has already formatted, and against half a number. Every one
+   * below strips its own separators first, which is also why `bare()` in
+   * `taxIdError` makes a formatted value and a pasted bare one the same value.
+   */
+  format?: (value: string) => string;
+}
+
+/** Groups digits by the given run lengths, dropping empty trailing groups. */
+function group(digits: string, sizes: number[], sep = ' '): string {
+  const out: string[] = [];
+  let rest = digits;
+  for (const size of sizes) {
+    if (!rest) break;
+    out.push(rest.slice(0, size));
+    rest = rest.slice(size);
+  }
+  // Anything past the last group stays put rather than being dropped: the
+  // format decorates, it never truncates, and the length check is the rule's
+  // job.
+  if (rest) out.push(rest);
+  return out.join(sep);
 }
 
 /** Strips the separators people paste along with the number. */
@@ -97,8 +134,18 @@ export const TAX_ID_TYPES: readonly TaxIdType[] = [
     label: 'VAT number (UK)',
     countries: ['GB'],
     re: /^(GB)?\d{9}(\d{3})?$/,
-    placeholder: 'GB123456789',
+    placeholder: 'GB 123 4567 89',
     checksum: gbVatChecksum,
+    // HMRC prints it 3-4-2, with or without the country prefix. The prefix is
+    // kept when it was typed and never added, because plenty of clients quote
+    // the number without it.
+    format: (value) => {
+      const bared = bare(value);
+      const prefixed = bared.startsWith('GB');
+      const digits = (prefixed ? bared.slice(2) : bared).replace(/\D/g, '');
+      const grouped = group(digits, [3, 4, 2]);
+      return prefixed ? `GB ${grouped}`.trimEnd() : grouped;
+    },
   },
   {
     code: 'EU_VAT',
@@ -119,16 +166,21 @@ export const TAX_ID_TYPES: readonly TaxIdType[] = [
     label: 'EIN (US)',
     countries: ['US'],
     re: /^\d{9}$/,
-    placeholder: '12-3456789',
+    placeholder: '83-0000000',
     checksum: usEinChecksum,
+    // Two digits, a hyphen, seven digits. It is on the IRS letter that way and
+    // on every W-9 that way.
+    format: (value) => group(bare(value).replace(/\D/g, ''), [2], '-'),
   },
   {
     code: 'AU_ABN',
     label: 'ABN (Australia)',
     countries: ['AU'],
     re: /^\d{11}$/,
-    placeholder: '51824753556',
+    placeholder: '51 824 753 556',
     checksum: auAbnChecksum,
+    // The ATO's own 2-3-3-3.
+    format: (value) => group(bare(value).replace(/\D/g, ''), [2, 3, 3, 3]),
   },
   {
     code: 'SG_UEN',

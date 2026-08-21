@@ -39,6 +39,52 @@ describe('entityTypesForClient', () => {
     expect(entityTypesForClient('GB', 'individual').map((e) => e.value)).toEqual(['sole_trader']);
   });
 
+  // The bug this closed: every foreign form was offered in every foreign
+  // country, so a London client's dropdown listed a US corporation, a UAE free
+  // zone and a Singapore private limited.
+  it('offers a foreign company only its own register, plus Other', () => {
+    expect(entityTypesForClient('GB', 'company').map((e) => e.value)).toEqual([
+      'ltd_plc',
+      'foreign_other',
+    ]);
+    expect(entityTypesForClient('US', 'company').map((e) => e.value)).toEqual([
+      'corporation',
+      'llc',
+      'foreign_other',
+    ]);
+    expect(entityTypesForClient('AE', 'company').map((e) => e.value)).toEqual([
+      'llc',
+      'free_zone',
+      'foreign_other',
+    ]);
+  });
+
+  // A truer record than a form from the wrong register, and the reason this
+  // table is not allowed to grow a row per country.
+  it('falls back to Other for a country with no register listed', () => {
+    expect(entityTypesForClient('JP', 'company').map((e) => e.value)).toEqual(['foreign_other']);
+  });
+
+  it('keeps a saved form on offer when the address no longer issues it', () => {
+    // A Delaware corporation really can be addressed in London. Without this
+    // the picker opens blank and the next save drops the entity type.
+    expect(entityTypesForClient('GB', 'company', 'corporation').map((e) => e.value)).toContain(
+      'corporation',
+    );
+    expect(entityTypesForClient('GB', 'company').map((e) => e.value)).not.toContain('corporation');
+  });
+
+  it('does not keep a saved form across the kind axis or the jurisdiction', () => {
+    // Both of these are wrong records rather than narrow ones, and keeping
+    // them would be keeping the mistake.
+    expect(entityTypesForClient('GB', 'company', 'sole_trader').map((e) => e.value)).not.toContain(
+      'sole_trader',
+    );
+    expect(entityTypesForClient('GB', 'company', 'pvt_ltd').map((e) => e.value)).not.toContain(
+      'pvt_ltd',
+    );
+  });
+
   it('leaves no form unreachable: the two kinds partition the country', () => {
     for (const country of ['IN', 'GB']) {
       const all = entityTypesForCountry(country).map((e) => e.value).sort();

@@ -1,5 +1,6 @@
 import { amountInWords } from '../amountInWords';
 import { formatINR, formatMoney } from '../money';
+import { currencyForCountry } from '../currency';
 
 /**
  * The currency-aware paths, added when stipend slips became payable in a
@@ -70,5 +71,37 @@ describe('amountInWords with a currency', () => {
   it('rejects a non-integer or negative minor amount', () => {
     expect(() => amountInWords(1.5, 'USD')).toThrow();
     expect(() => amountInWords(-1, 'USD')).toThrow();
+  });
+});
+
+/**
+ * A default, not a derivation. The field stays editable, because a Dutch client
+ * really can agree to be billed in dollars, and only the saved value is read
+ * back. What this closes is the operator having to remember to change INR on
+ * every foreign client (`PRINCIPLES.md` rule 3: the country is on the record).
+ */
+describe('currencyForCountry', () => {
+  it('answers with what the country actually pays in', () => {
+    expect(currencyForCountry('GB')).toBe('GBP');
+    expect(currencyForCountry('US')).toBe('USD');
+    expect(currencyForCountry('AU')).toBe('AUD');
+    expect(currencyForCountry('IN')).toBe('INR');
+  });
+
+  it('treats the eurozone as one answer, lower case included', () => {
+    for (const iso2 of ['de', 'FR', 'nl', 'IE', 'ES', 'IT', 'PT', 'FI']) {
+      expect(currencyForCountry(iso2)).toBe('EUR');
+    }
+  });
+
+  /**
+   * Not a guess at a currency this list does not carry. Every Qera invoice
+   * prints INR whatever was agreed (see the note at the top of `currency.ts`),
+   * so the fallback is a true statement rather than a stand-in.
+   */
+  it('falls back to INR for a country it does not carry, and for none', () => {
+    expect(currencyForCountry('JP')).toBe('INR');
+    expect(currencyForCountry(undefined)).toBe('INR');
+    expect(currencyForCountry('')).toBe('INR');
   });
 });

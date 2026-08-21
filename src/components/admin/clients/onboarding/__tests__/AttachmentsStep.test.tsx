@@ -73,16 +73,22 @@ test('an Indian client is asked for Indian paperwork, and not for anyone else’
   renderStep();
   expect(screen.getByLabelText(/Add GST registration certificate/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Add PAN card/i)).toBeInTheDocument();
-  expect(screen.queryByLabelText(/W-8/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/Tax registration certificate/i)).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/FIRC/i)).not.toBeInTheDocument();
 });
 
-test('a foreign client gets the export paperwork instead', () => {
+test('a foreign company gets its certificate and the export paperwork', () => {
   renderStep({ ...client, addressParts: { country: 'GB' } } as unknown as ClientRecord);
   // The slot's own file input, not the info icon beside it, which answers to
   // the same words.
-  expect(screen.getByLabelText(/^Add W-8/i)).toBeInTheDocument();
+  //
+  // "Tax registration certificate", not "W-8 / W-9": what is asked of a UK
+  // client is the certificate their own authority issued, and leading the label
+  // with a US form made the slot read as a mistake to whoever opened it.
+  expect(screen.getByLabelText(/^Add Tax registration certificate/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/^Add FIRC/i)).toBeInTheDocument();
+  // Every company was incorporated somewhere; only the register's name changes.
+  expect(screen.getByLabelText(/^Add Certificate of incorporation/i)).toBeInTheDocument();
   // And each card explains the document behind an icon: an FIRC is unfamiliar
   // until the first export invoice, and hard to obtain a year late.
   expect(screen.getByRole('button', { name: /what is a FIRC/i })).toBeInTheDocument();

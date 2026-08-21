@@ -1,7 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AddressFields from '../AddressFields';
+import AddressFields, { COUNTRY_GROUPS } from '../AddressFields';
+import { COUNTRY_SEED } from '@/lib/domain/countries';
 import { emptyAddressParts, type AddressParts } from '@/lib/domain/address';
 
 interface Values {
@@ -309,38 +310,41 @@ describe('AddressFields, a postcode with no single town', () => {
     options: ['Rouse Hill', 'Beaumont Hills', 'Kellyville', 'Kellyville Ridge'],
   };
 
-  it('says why the town is empty, and names what the code covers', async () => {
+  // The town is filled with the first locality rather than left blank: a
+  // required part of a printed address should not be empty when the code names
+  // four candidates and any of them completes it. The count says it is a
+  // default and not the only answer.
+  it('fills the first locality and says how many the code covers', async () => {
     mockLookup(many);
     const user = userEvent.setup();
     render(<Harness initial={{ country: 'AU' }} />);
 
     await user.type(screen.getByLabelText(/postcode/i), '2155');
     await settleDebounce();
-
-    expect(screen.getByText(/no single town/i)).toBeInTheDocument();
-    // And announced, since a list appearing under a field is not read out.
-    expect(screen.getByRole('status')).toHaveTextContent(/covers 4 localities/i);
-    expect(screen.getByLabelText(/region/i)).toHaveValue('New South Wales');
-    expect(screen.getByLabelText(/town/i)).toHaveValue('');
-    for (const name of many.options) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
-  });
-
-  it('fills the town from the one that is picked, and stops offering', async () => {
-    mockLookup(many);
-    const user = userEvent.setup();
-    render(<Harness initial={{ country: 'AU' }} />);
-
-    await user.type(screen.getByLabelText(/postcode/i), '2155');
-    await settleDebounce();
-    await user.click(screen.getByRole('button', { name: 'Rouse Hill' }));
 
     expect(screen.getByLabelText(/town/i)).toHaveValue('Rouse Hill');
-    expect(screen.queryByText(/no single town/i)).not.toBeInTheDocument();
-    // Locked like anything else the postcode filled, and taken back the same
-    // way: the choice is only right for the code it came from.
-    expect(screen.getByLabelText(/town/i)).toHaveAttribute('readonly');
+    // Twice over: the visible line under the field, and the live region, since
+    // a field quietly changing shape is not read out.
+    expect(screen.getAllByText(/covers 4 localities/i)).toHaveLength(2);
+    expect(screen.getByRole('status')).toHaveTextContent(/covers 4 localities/i);
+    expect(screen.getByLabelText(/region/i)).toHaveValue('New South Wales');
+  });
+
+  it('offers the rest in the field itself', async () => {
+    mockLookup(many);
+    const user = userEvent.setup();
+    render(<Harness initial={{ country: 'AU' }} />);
+
+    await user.type(screen.getByLabelText(/postcode/i), '2155');
+    await settleDebounce();
+
+    await user.click(screen.getByLabelText(/town/i));
+    await user.click(screen.getByRole('option', { name: 'Kellyville' }));
+
+    expect(screen.getByLabelText(/town/i)).toHaveValue('Kellyville');
+    // Still a picker, because the postcode still covers four: the default was
+    // disagreed with, not resolved.
+    expect(screen.getAllByText(/covers 4 localities/i)).toHaveLength(2);
   });
 
   it('takes the offer back when the postcode changes', async () => {
@@ -404,5 +408,31 @@ describe('AddressFields lookup feedback', () => {
     await settleDebounce();
 
     expect(document.querySelector('.animate-spin')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Two hundred and forty-three rows is far past the point where a flat list is
+ * scanned rather than read, and a continent is how somebody holds the world in
+ * their head. Search still runs across the whole list, so grouping never makes
+ * finding one slower.
+ */
+describe('the country list', () => {
+  it('files each country under its continent', () => {
+    for (const { iso2, continent } of COUNTRY_SEED) {
+      const group = COUNTRY_GROUPS.find((g) => g.label === continent);
+      expect(group?.items.map((i) => i.value)).toContain(iso2);
+    }
+  });
+
+  it('renders no empty heading, and loses no country', () => {
+    for (const group of COUNTRY_GROUPS) expect(group.items.length).toBeGreaterThan(0);
+    expect(COUNTRY_GROUPS.flatMap((g) => g.items)).toHaveLength(COUNTRY_SEED.length);
+  });
+
+  // Ordered by how often Qera bills them, not alphabetically. India is in the
+  // first group and it is the first row of it.
+  it('puts India first', () => {
+    expect(COUNTRY_GROUPS[0].items[0].value).toBe('IN');
   });
 });

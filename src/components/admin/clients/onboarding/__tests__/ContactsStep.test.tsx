@@ -125,7 +125,7 @@ describe('who a role points at', () => {
     expect(payload.billing).toEqual({ name: 'Rahul Menon' });
   });
 
-  it('collapses a pointing role to a live line naming who it points at', async () => {
+  it('collapses a pointing role to nothing at all', async () => {
     const user = userEvent.setup();
     render(<ContactsStep client={client} onSaved={onSaved} submitLabel="Commercial" />);
 
@@ -136,10 +136,17 @@ describe('who a role points at', () => {
     await choose(user, 'signing', /same as primary/i);
 
     expect(screen.queryByLabelText('Name', { selector: '#signing-name' })).not.toBeInTheDocument();
-    // Live, not a leap of faith: the line names whoever the primary contact is
-    // as it is typed, so the choice is never a guess about whose name ends up
-    // in the signature block.
-    expect(screen.getByText(/Anaya Rao · Director · anaya@clayora\.test/)).toBeInTheDocument();
+    /**
+     * And nothing takes their place. This used to echo the primary contact back
+     * as "name · designation · email · phone", four values sitting a few rows
+     * up the same page. The select already says where the role points, so the
+     * echo was clutter rather than reassurance.
+     *
+     * Billing is the exception, tested below, because its line states a
+     * consequence rather than repeating an input. A live preview card is
+     * deferred in `ROADMAP.md`.
+     */
+    expect(screen.queryByText(/Anaya Rao · Director/)).not.toBeInTheDocument();
   });
 
   it('says what the invoice will say, for each billing choice', async () => {

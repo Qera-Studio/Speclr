@@ -155,6 +155,18 @@ export default function DocumentSheet({
               {doc.clientSnapshot.taxId}
             </p>
           ) : null}
+          {/*
+            CIN's counterpart abroad, and it prints for the same reason: the
+            line above is what the recipient is registered for *tax*, this is
+            the register saying the entity exists. Labelled generically because
+            the register's own name is not on the record, and "Company no." is
+            read correctly in every country that issues one.
+          */}
+          {doc.clientSnapshot.registrationNumber ? (
+            <p className="text-black/80 text-[12px] font-normal whitespace-pre-line">
+              Company no.: {doc.clientSnapshot.registrationNumber}
+            </p>
+          ) : null}
         </div>
         <div>
           <h3 className="text-black/80 text-[12px] font-normal mb-[4px]">

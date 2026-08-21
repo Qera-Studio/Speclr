@@ -171,6 +171,25 @@ describe('the client fields onboarding added', () => {
     expect(screen.getByText(/TRN \(UAE\): 100123456700003/)).toBeInTheDocument();
   });
 
+  // A company number is not a tax registration, and printing only the second
+  // leaves a foreign company identified by less than an Indian one, which gets
+  // its CIN on the same block.
+  it('prints a foreign company number alongside its tax registration', () => {
+    const doc = {
+      ...baseInvoice,
+      clientSnapshot: {
+        ...baseInvoice.clientSnapshot,
+        taxIdType: 'GB_VAT',
+        taxId: 'GB123456789',
+        registrationNumber: '09876543',
+      },
+    } as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText(/VAT number \(UK\): GB123456789/)).toBeInTheDocument();
+    expect(screen.getByText('Company no.: 09876543')).toBeInTheDocument();
+  });
+
   /**
    * The load-bearing assertion about TDS: it is a memo. The invoice still bills
    * the gross, because the taxable value on a GST document is the full

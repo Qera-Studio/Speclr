@@ -162,6 +162,33 @@ describe('saveClientSection', () => {
     expect(result.error).toMatch(/tdsSection|tdsRatePercent|tan/);
   });
 
+  // The section and the TAN moved out of the schema, which cannot see the
+  // country, and into `clientTaxCrossErrors`, which can. This pins the half
+  // that is still India-only, since the rate alone would keep the test above
+  // passing whatever happened to the other two.
+  it('still demands the section and TAN for an Indian deductor', async () => {
+    const result = await saveClientSection('client-1', 'tax', {
+      tdsApplicable: true,
+      tdsRatePercent: 10,
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/section|TAN/i);
+  });
+
+  it('demands neither from a foreign client who withholds', async () => {
+    // There is no section of the Income-tax Act to name and no TAN to hold.
+    // The rate is the whole of what the memo needs.
+    getClient.mockResolvedValue({
+      ...existing,
+      addressParts: { ...existing.addressParts, country: 'US' },
+    });
+    const result = await saveClientSection('client-1', 'tax', {
+      tdsApplicable: true,
+      tdsRatePercent: 15,
+    });
+    expect(result.success).toBe(true);
+  });
+
   it('refuses an access entry that is not a real pointer', async () => {
     const result = await saveClientSection('client-1', 'access', [
       { id: 'a1', kind: 'hosting', label: 'Vercel', location: '' },

@@ -160,8 +160,12 @@ export async function saveClientSection(
     const cross = clientTaxCrossErrors(parsed.data as ClientTax, {
       addressState: existing.addressParts?.state,
       entityType: existing.entityType,
+      country: existing.addressParts?.country,
     });
-    const first = cross.gstin ?? cross.pan ?? cross.cin;
+    // Whichever came back first. Naming the keys here meant a rule added to
+    // that function was silently unenforced on the server until somebody
+    // remembered to widen this line.
+    const first = Object.values(cross)[0];
     if (first) return { success: false, error: first };
   }
 

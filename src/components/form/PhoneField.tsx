@@ -77,6 +77,20 @@ interface PhoneFieldProps<T extends FieldValues> {
   label?: string;
   size?: 'default' | 'form';
   required?: boolean;
+  /**
+   * Which country to start on when there is no number yet.
+   *
+   * Passed the client's own country, because that is where their phone almost
+   * always is, and defaulting to India meant picking the country twice on every
+   * foreign record: once in the address and once here. `PRINCIPLES.md` rule 3
+   * read as a **default** rather than a derivation, so the picker stays fully
+   * usable for the client abroad whose contact is not.
+   *
+   * It only ever applies to an **empty** field. A stored number carries its own
+   * country in its `+` prefix and that always wins, or editing a record would
+   * rewrite the dial code of a number somebody already checked.
+   */
+  defaultCountry?: string;
 }
 
 export default function PhoneField<T extends FieldValues>({
@@ -86,6 +100,7 @@ export default function PhoneField<T extends FieldValues>({
   label = 'Phone',
   size = 'form',
   required = true,
+  defaultCountry,
 }: PhoneFieldProps<T>) {
   /**
    * No `rules` here on purpose: a form-level resolver overrides them entirely,
@@ -97,9 +112,17 @@ export default function PhoneField<T extends FieldValues>({
 
   const stored = String(field.value ?? '');
 
+  /**
+   * The record's country, but only where it names one this field can use.
+   * Anything else falls through to what `parsePhone` decides.
+   */
+  const preferred = countryByIso2(String(defaultCountry ?? '').toUpperCase())?.iso2;
+
   // Local editing state, seeded from the stored value. Kept separate so a
   // half-typed number isn't thrown away by a re-parse on every keystroke.
-  const [iso2, setIso2] = useState<CountryCode>(() => parsePhone(stored).iso2);
+  const [iso2, setIso2] = useState<CountryCode>(
+    () => (stored ? parsePhone(stored).iso2 : preferred) ?? parsePhone(stored).iso2,
+  );
   const [national, setNational] = useState(() => parsePhone(stored).national);
 
   const dialCode =
@@ -127,6 +150,20 @@ export default function PhoneField<T extends FieldValues>({
     // Only when the stored value changes from the outside.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stored]);
+
+  /**
+   * Follow the record's country while the field is still empty.
+   *
+   * Seeding alone is not enough: the country is chosen at the top of the
+   * identity step and this field is two rows below it, so it has already
+   * mounted, on India, by the time anyone picks the United States. Guarded on
+   * `national` being empty, so it can never move a number already typed and
+   * can never overrule a country deliberately chosen beside one.
+   */
+  useEffect(() => {
+    if (!preferred || national) return;
+    setIso2((current) => (current === preferred ? current : preferred));
+  }, [preferred, national]);
 
   const push = (nextNational: string, nextIso2: CountryCode) => {
     // Keep the raw digits when they don't yet form a valid number, so the

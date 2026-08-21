@@ -451,9 +451,6 @@ export default function AttachmentsStep({
       serverError={error}
       submitting={pending}
       submitLabel={submitLabel}
-      // Take the band's height, so the extras list below can scroll instead of
-      // the step. See `StepForm`'s `fill`.
-      fill
     >
       <Field>
         <FieldInfo
@@ -548,7 +545,7 @@ export default function AttachmentsStep({
 
           {/* The last field is the one that gives: everything above it is a fixed
           set of controls, and this is the part with no ceiling. */}
-          <Field className="min-h-0 flex-1">
+          <Field>
             <FieldLabel htmlFor="attachment-extra">Anything else</FieldLabel>
             {inlineExtra ? null : extraDropzone}
 
@@ -561,14 +558,20 @@ export default function AttachmentsStep({
           controls a person is using stay put and only the record of what has
           already been added moves.
 
-          `flex-1`, not a fixed `max-h`: a height picked by hand is either short
-          enough to waste a tall window or tall enough that the step overflows a
-          short one, and overflowing is what put the scrollbar back on the whole
-          form. This takes exactly what is left. `min-h-0` is the load-bearing
-          half — a flex item's floor is its content, so without it the box grows
-          to fit the list and never scrolls at all.
+          **A ceiling of four rows, not the leftover height.** This step used to
+          take the whole band (`StepForm`'s `fill`) so the list could have
+          `flex-1`, and the cost was paid by the common case: with no extras at
+          all the step stretched to the full height and sat at the top of the
+          page while the other six were centred in it.
+
+          So the list is as tall as its contents until it holds four, and
+          scrolls after that. Each file added pushes the step down by one row,
+          which is the feedback that something landed, and four is where that
+          stops. The height is in rows rather than pixels, and a fifth row is
+          left half visible on purpose: a scroll box with nothing peeking out of
+          it does not look like one.
         */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="max-h-56 overflow-y-auto">
               {/* Extras have no slot to fill, so every one of them queued shows here.
               Several at once is the normal case: three purchase orders are three
               documents. */}

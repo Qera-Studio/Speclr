@@ -15,7 +15,7 @@ import { FieldSpinner } from "@/components/ui/spinner";
 import { useMinimumDuration } from "@/lib/useMinimumDuration";
 import FieldInfo from "./FieldInfo";
 import { formatPostcode, isLookupPostcode } from "@/lib/domain/address";
-import { COUNTRIES } from "@/lib/domain/phone";
+import { COUNTRIES_BY_CONTINENT, COUNTRY_SEED } from "@/lib/domain/countries";
 
 /**
  * The structured address block, shared by the client and employee forms.
@@ -28,9 +28,34 @@ import { COUNTRIES } from "@/lib/domain/phone";
  * partial country coverage acceptable rather than a half-built feature.
  */
 
-const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
+/**
+ * Exported because the identity step renders the country field itself, above
+ * the rest of the form. One list, so the hoisted control and the inline one can
+ * never offer different countries.
+ */
+export const COUNTRY_OPTIONS = COUNTRY_SEED.map((c) => ({
   value: c.iso2,
   label: `${c.flag} ${c.name}`,
+}));
+
+/**
+ * The same list, under continent headings.
+ *
+ * Two hundred and forty-three rows is far past the point where a flat list is
+ * scanned rather than read, and a continent is how somebody actually holds the
+ * world in their head: you know a client is in Europe before you remember
+ * whether the list calls it "Netherlands" or "The Netherlands". Search still
+ * runs across the whole list, so typing is never slower than it was.
+ *
+ * Built from the seed, not from `phone.ts`'s list: an address needs no dial
+ * code, and going through the phone list would silently drop any country
+ * libphonenumber has no metadata for. `COUNTRY_SEED` is the only place a
+ * country is declared, so a continent with nothing in it simply does not
+ * appear.
+ */
+export const COUNTRY_GROUPS = COUNTRIES_BY_CONTINENT.map((g) => ({
+  label: g.continent,
+  items: g.countries.map((c) => ({ value: c.iso2, label: `${c.flag} ${c.name}` })),
 }));
 
 const DEBOUNCE_MS = 400;
@@ -77,6 +102,20 @@ interface AddressFieldsProps<T extends FieldValues> {
   /** Prefix for input ids, keeping them unique when two forms share a page. */
   idPrefix: string;
   size?: "default" | "form";
+  /**
+   * The country is rendered somewhere else on this form, so leave the slot out.
+   *
+   * Set by the identity step, which lifts it to the top of the page. The
+   * country decides which legal forms the entity type offers, and entity type
+   * is asked two rows *above* the address, so a country sitting down here means
+   * the filter above it only works for someone who already knew to scroll down
+   * and set it first.
+   *
+   * Only the field moves. The controller still writes `${name}.country`, the
+   * postcode lookup still reads it, and a second address on the same form (the
+   * billing one) keeps its own country inline, where nothing depends on it.
+   */
+  hideCountry?: boolean;
 }
 
 /**
@@ -100,6 +139,7 @@ export default function AddressFields<T extends FieldValues>({
   name,
   idPrefix,
   size = "form",
+  hideCountry = false,
 }: AddressFieldsProps<T>) {
   const line1 = useController({ control, name: `${name}.line1` as Path<T> });
   const line2 = useController({ control, name: `${name}.line2` as Path<T> });
@@ -225,21 +265,26 @@ export default function AddressFields<T extends FieldValues>({
 
         // Offered only while the field is still empty. A city already typed is
         // the answer, and a list under it would read as a correction.
-        if (result.options?.length && !latest.current.city.trim()) {
-          setOptions(result.options);
-        }
+        const offering = Boolean(result.options?.length) && !latest.current.city.trim();
+        if (offering) setOptions(result.options!);
 
         // Fill what is empty. Our own previous answer already went above, so
         // anything still in the field was typed by someone who meant it, and a
         // postal database does not get to overrule them.
+        //
+        // Where the code covers several localities the first one is filled in
+        // rather than left blank, and the field becomes a picker holding the
+        // rest. A blank box on a required part of a printed address is worse
+        // than a visible default sitting next to its own alternatives.
         const ours = (current: string) => !current.trim();
-        const filledCity = Boolean(result.city) && ours(latest.current.city);
+        const cityAnswer = result.city || (offering ? result.options![0] : undefined);
+        const filledCity = Boolean(cityAnswer) && ours(latest.current.city);
         const filledState = Boolean(result.state) && ours(latest.current.state);
-        if (filledCity) setCity(result.city);
+        if (filledCity) setCity(cityAnswer);
         if (filledState) setState(result.state);
         if (filledCity || filledState) {
           filled.current = {
-            city: filledCity ? result.city! : "",
+            city: filledCity ? cityAnswer! : "",
             state: filledState ? result.state! : "",
           };
           setAutofilled({ city: filledCity, state: filledState });
@@ -295,20 +340,25 @@ export default function AddressFields<T extends FieldValues>({
         India Post; both are a branch off this field, not a default the country
         is appended to. Asking for the country last reads as an afterthought on
         a record that is meant to hold clients outside India.
+
+        Unless `hideCountry` says the form asks for it earlier still, which is
+        the same argument carried one step further up the page.
       */}
-      <FieldRow columns={4}>
-        <Field>
-          <FieldLabel htmlFor={`${idPrefix}-country`}>Country</FieldLabel>
-          <Combobox
-            id={`${idPrefix}-country`}
-            size={size}
-            options={COUNTRY_OPTIONS}
-            value={countryValue}
-            onValueChange={country.field.onChange}
-            placeholder="Select…"
-          />
-          <FieldError errors={[country.fieldState.error]} />
-        </Field>
+      <FieldRow columns={hideCountry ? 3 : 4}>
+        {hideCountry ? null : (
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-country`}>Country</FieldLabel>
+            <Combobox
+              id={`${idPrefix}-country`}
+              size={size}
+              groups={COUNTRY_GROUPS}
+              value={countryValue}
+              onValueChange={country.field.onChange}
+              placeholder="Select…"
+            />
+            <FieldError errors={[country.fieldState.error]} />
+          </Field>
+        )}
 
         <Field>
           {/* The lock is also announced through the live region below — a
@@ -352,7 +402,7 @@ export default function AddressFields<T extends FieldValues>({
             role="status"
           >
             {options.length
-              ? `This postcode covers ${options.length} localities. Choose one, or type it.`
+              ? `This postcode covers ${options.length} localities. The first is filled in; choose another if it is wrong.`
               : locked
                 ? LOCK_HINT
                 : lookingUp
@@ -364,6 +414,33 @@ export default function AddressFields<T extends FieldValues>({
 
         <Field>
           <FieldLabel htmlFor={`${idPrefix}-city`}>{words.city}</FieldLabel>
+          {/*
+            A code covering several localities gets a picker rather than a box,
+            because the answer is one of a known few and typing it is a chance
+            to spell a suburb wrong. The first is already filled in by the
+            lookup, so the address is complete before anyone touches this; the
+            dropdown is how they disagree with it.
+
+            It reverts to a plain input the moment the postcode changes, since
+            `options` is cleared at the top of every lookup.
+          */}
+          {options.length ? (
+            <Combobox
+              id={`${idPrefix}-city`}
+              size={size}
+              className={autofilled.city ? "animate-fill-flash" : undefined}
+              options={options.map((option) => ({
+                value: option,
+                label: option,
+              }))}
+              value={String(city.field.value ?? "")}
+              onValueChange={(value) => {
+                setCity(value);
+                latest.current = { ...latest.current, city: value };
+                filled.current = { ...filled.current, city: value };
+              }}
+            />
+          ) : (
           <Input
             id={`${idPrefix}-city`}
             size={size}
@@ -384,50 +461,17 @@ export default function AddressFields<T extends FieldValues>({
             {...city.field}
             value={String(city.field.value ?? "")}
           />
+          )}
           {/*
-            Why the box is empty, and the fix in one click.
-
-            A blank field after a lookup that plainly worked (the region filled)
-            reads as a bug, and the operator has no way to tell a postcode with
-            no town of its own from an app that dropped one. Naming the
-            localities says which it is, and says it with the data that produced
-            it rather than with reassurance.
+            Says which of the two states the field is in, so a filled-in suburb
+            is never mistaken for the only one the code names. The count is the
+            data that produced it rather than reassurance about it.
           */}
           {options.length ? (
-            <div className="mt-1 space-y-1">
-              <p className="text-xs text-muted-foreground">
-                This postcode covers {options.length} localities, so there is no
-                single {words.city.toLowerCase()} to fill in.
-              </p>
-              {/* Its own short label rather than the line above it: a group
-                  labelled with that sentence would answer to "postcode", which
-                  is the field's name to own and not this list's. */}
-              <div
-                className="flex flex-wrap gap-1"
-                role="group"
-                aria-label="Localities this code covers"
-              >
-                {options.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => {
-                      // Chosen, not guessed — but it came from the postcode, so
-                      // it locks and flashes like anything else the lookup put
-                      // there, and editing the postcode takes it back.
-                      setCity(option);
-                      latest.current = { ...latest.current, city: option };
-                      filled.current = { ...filled.current, city: option };
-                      setAutofilled((current) => ({ ...current, city: true }));
-                      setOptions([]);
-                    }}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              This postcode covers {options.length} localities. The first is
+              filled in; choose another if it is wrong.
+            </p>
           ) : null}
           <FieldError errors={[city.fieldState.error]} />
         </Field>

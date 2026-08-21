@@ -26,7 +26,11 @@ import {
   PanField,
   TanField,
 } from "@/components/form/fields";
-import { numericField, uppercaseField } from "@/components/form/inputFilters";
+import {
+  formattedField,
+  numericField,
+  uppercaseField,
+} from "@/components/form/inputFilters";
 import {
   clientTaxCrossErrors,
   clientTaxSchema,
@@ -109,6 +113,21 @@ const REQUIREMENTS: {
     // A US IRS form, asked for by a US payer. Nobody else has one.
     applies: (country) => country === "US",
   },
+  /**
+   * Last, because it is the one that reveals a field. The rate appears under
+   * this row when it is ticked.
+   *
+   * It belongs here rather than in a section of its own: the two items before
+   * it are what decide *what rate* a treaty allows, and a rule plus a legend
+   * around a single number is more furniture than the number is worth.
+   */
+  {
+    name: "tdsApplicable",
+    id: "client-withholding",
+    label: "Withholds tax",
+    info: "Many foreign clients withhold before remitting, usually at the rate their country's treaty with India sets rather than their domestic one. Recorded so the smaller payment reconciles against the invoice instead of looking short. It prints as a memo and never changes the amount billed.",
+    infoLabel: "What does recording this do?",
+  },
 ];
 
 /**
@@ -161,19 +180,22 @@ export default function TaxStep({
     const cross = clientTaxCrossErrors(values, {
       addressState,
       entityType,
+      country,
     });
 
-    if (!cross.gstin && !cross.pan && !cross.cin) return result;
+    // Mapped over whatever came back rather than field by field. Every key that
+    // function returns is a field on this form, and spelling them out here is
+    // how a rule added there goes unshown until somebody remembers this line.
+    const entries = Object.entries(cross);
+    if (entries.length === 0) return result;
     return {
       ...result,
       values: {},
       errors: {
         ...result.errors,
-        ...(cross.gstin
-          ? { gstin: { type: "manual", message: cross.gstin } }
-          : {}),
-        ...(cross.pan ? { pan: { type: "manual", message: cross.pan } } : {}),
-        ...(cross.cin ? { cin: { type: "manual", message: cross.cin } } : {}),
+        ...Object.fromEntries(
+          entries.map(([field, message]) => [field, { type: "manual", message }]),
+        ),
       },
     };
   };
@@ -213,6 +235,7 @@ export default function TaxStep({
       cin: client?.tax?.cin ?? "",
       taxIdType: client?.tax?.taxIdType ?? taxIdTypeForCountry(country),
       taxId: client?.tax?.taxId ?? "",
+      registrationNumber: client?.tax?.registrationNumber ?? "",
       reverseCharge: client?.tax?.reverseCharge ?? false,
       requiresTaxResidencyCertificate:
         client?.tax?.requiresTaxResidencyCertificate ?? false,
@@ -687,7 +710,13 @@ export default function TaxStep({
                       taxIdType(selectedTaxIdType)?.placeholder ??
                       "Registration number"
                     }
-                    {...uppercaseField(register("taxId"))}
+                    // Formatted as the country writes it, on every
+                    // keystroke. `taxIdError` bares the value before checking,
+                    // so the separators are display and never a second value.
+                    {...formattedField(
+                      register("taxId"),
+                      taxIdType(selectedTaxIdType)?.format,
+                    )}
                   />
                   <FieldCheck control={control} name="taxId" />
                 </div>
@@ -696,11 +725,59 @@ export default function TaxStep({
             </FieldRow>
           </FieldSet>
 
+          {/*
+            A company's registration number, in the same place and for the same
+            reason CIN sits at the foot of the Indian branch: it is the one
+            identifier here that no tax treatment reads, a registrar's fact
+            about the company existing at all.
+
+            A separate field from the tax registration beside it because they
+            are separate numbers. A UK company's Companies House number is not
+            its VAT number, and typing one into the other runs a mod-97 check
+            against a value that was never going to pass. Singapore's UEN
+            happens to be both, which is why it is typed once into each rather
+            than shared.
+
+            No individual: a sole trader has no register, exactly as a
+            proprietor has no CIN.
+          */}
+          {individual ? null : (
+            <>
+              <FieldSeparator />
+              <Field>
+                <FieldInfo
+                  htmlFor="client-registration-number"
+                  label="Company registration number (optional)"
+                  info="The number the company register issued when the entity was formed: a Companies House number in the UK, a state file number in the US, a UEN in Singapore, or the local equivalent. Not their tax registration, which is the field above. It is what confirms the entity a contract is signed with exists under that name."
+                  infoLabel="Which number is this?"
+                />
+                {/*
+                  **No tick, deliberately, and this is a fix rather than an
+                  omission.** `FieldCheck` says "this was checked and it
+                  passed". This field has no format rule to check against: a
+                  company registration number differs per country and, in the
+                  United States, per state, so nine digits and eleven are
+                  equally plausible and there is nothing here that can tell
+                  them apart. A tick on that is the app claiming to have
+                  verified a number it cannot verify, which is worse than
+                  saying nothing.
+                */}
+                <Input
+                  id="client-registration-number"
+                  size="form"
+                  placeholder="Whatever their register issued"
+                  {...uppercaseField(register("registrationNumber"))}
+                />
+                <FieldError errors={[errors.registrationNumber]} />
+              </Field>
+            </>
+          )}
+
           <FieldSeparator />
 
           <FieldSet>
             <LegendInfo
-              info="What this client's finance team will ask a foreign supplier for. Recorded so the paperwork is known before the invoice, not after it."
+              info="What this client's finance team does before it pays, and what it will ask a foreign supplier for. Recorded so the paperwork is known before the invoice, not after it."
               label="Why record these?"
             >
               Their requirements
@@ -757,6 +834,38 @@ export default function TaxStep({
                 </Fragment>
               ))}
             </div>
+
+            {/*
+              The one item in that row that carries a figure, so it reveals a
+              field rather than only a flag. It sits under the row instead of
+              in a section of its own: a rule and a legend for one number is
+              more furniture than the number is worth, and withholding belongs
+              beside the two treaty items that decide its rate.
+
+              No section and no TAN. Those are Indian apparatus, demanded in
+              `clientTaxCrossErrors` where the country is in hand.
+            */}
+            {tdsApplicable ? (
+              <FieldRow
+                columns={3}
+                className="animate-in fade-in slide-in-from-top-2 duration-300"
+              >
+                <Field>
+                  <FieldLabel htmlFor="client-withholding-rate">
+                    Withholding rate (%)
+                  </FieldLabel>
+                  <Input
+                    id="client-withholding-rate"
+                    size="form"
+                    placeholder="15"
+                    {...numericField(
+                      register("tdsRatePercent", asOptionalNumber),
+                    )}
+                  />
+                  <FieldError errors={[errors.tdsRatePercent]} />
+                </Field>
+              </FieldRow>
+            ) : null}
           </FieldSet>
         </>
       )}

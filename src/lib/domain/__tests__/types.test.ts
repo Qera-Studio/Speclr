@@ -33,6 +33,33 @@ describe('clientSnapshotOf', () => {
     });
   });
 
+  it("freezes a foreign company's register number", () => {
+    const snapshot = clientSnapshotOf({
+      ...client,
+      tax: { registrationNumber: '09876543', taxIdType: 'GB_VAT', taxId: 'GB123456789' },
+    });
+    expect(snapshot.registrationNumber).toBe('09876543');
+  });
+
+  /**
+   * The regression the foreign withholding branch would otherwise have shipped:
+   * `tds` used to require a section, and a client outside India has none to
+   * give. The memo explaining why their remittance landed short would have
+   * frozen as `undefined` and never printed.
+   */
+  it('freezes withholding stated as a rate alone', () => {
+    const snapshot = clientSnapshotOf({
+      ...client,
+      tax: { tdsApplicable: true, tdsRatePercent: 15 },
+    });
+    expect(snapshot.tds).toEqual({ section: undefined, ratePercent: 15 });
+  });
+
+  it('freezes nothing when the client does not withhold at all', () => {
+    expect(clientSnapshotOf({ ...client, tax: { tdsApplicable: false, tdsRatePercent: 15 } }).tds)
+      .toBeUndefined();
+  });
+
   it('leaves the structured address parts out', () => {
     // Documents print the flat `address` string and must reprint byte-identically
     // years later; the parts are only an editing aid.

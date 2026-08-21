@@ -7,11 +7,22 @@ interface Values {
   phone: string;
 }
 
-function Harness({ initial = '' }: { initial?: string }) {
+function Harness({
+  initial = '',
+  defaultCountry,
+}: {
+  initial?: string;
+  defaultCountry?: string;
+}) {
   const { control, watch } = useForm<Values>({ defaultValues: { phone: initial } });
   return (
     <>
-      <PhoneField control={control} name="phone" id="phone" />
+      <PhoneField
+        control={control}
+        name="phone"
+        id="phone"
+        defaultCountry={defaultCountry}
+      />
       <output data-testid="stored">{watch('phone')}</output>
     </>
   );
@@ -117,7 +128,9 @@ describe('PhoneField', () => {
 
     await user.type(screen.getByLabelText(/^phone$/i), '2015550123');
     await user.click(screen.getByLabelText(/phone country/i));
-    await user.click(await screen.findByRole('option', { name: /United States/ }));
+    // Anchored on the flag: the list also holds "United States Virgin Islands",
+    // and a loose match would find two options rather than fail loudly.
+    await user.click(await screen.findByRole('option', { name: /🇺🇸 United States/ }));
 
     expect(screen.getByTestId('stored')).toHaveTextContent('+12015550123');
   });
@@ -164,5 +177,40 @@ describe('PhoneField', () => {
       // Ten digits left, regrouped as India writes them.
       expect(screen.getByLabelText(/^phone$/i)).toHaveValue('151 234 5678');
     });
+  });
+});
+
+
+/**
+ * The client's country is where their phone almost always is, so an empty field
+ * starts there instead of on India. A **default**, never a lock: the picker is
+ * fully usable for the client abroad whose contact is not.
+ */
+describe('defaultCountry', () => {
+  it('starts an empty field on the record’s country', () => {
+    render(<Harness defaultCountry="GB" />);
+    expect(screen.getByLabelText(/phone country/i)).toHaveValue('🇬🇧');
+  });
+
+  it('never overrules a stored number, which carries its own country', () => {
+    // Editing a record must not rewrite the dial code of a number somebody has
+    // already checked against a business card.
+    render(<Harness initial="+919876543210" defaultCountry="US" />);
+    expect(screen.getByLabelText(/phone country/i)).toHaveValue('🇮🇳');
+  });
+
+  it('ignores a country it does not carry, rather than blanking the picker', () => {
+    render(<Harness defaultCountry="ZZ" />);
+    expect(screen.getByLabelText(/phone country/i)).toHaveValue('🇮🇳');
+  });
+
+  it('lets the operator choose a different one', async () => {
+    const user = userEvent.setup();
+    render(<Harness defaultCountry="GB" />);
+
+    await user.click(screen.getByLabelText(/phone country/i));
+    await user.click(await screen.findByRole('option', { name: /Singapore/ }));
+
+    expect(screen.getByLabelText(/phone country/i)).toHaveValue('🇸🇬');
   });
 });

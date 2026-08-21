@@ -46,6 +46,40 @@ export function currencyByCode(code: string) {
   return CURRENCIES.find((c) => c.code === code);
 }
 
+/**
+ * What a country pays in, for defaulting the picker.
+ *
+ * `PRINCIPLES.md` rule 3: the country is on the record, so the currency a UK
+ * client agrees terms in is derivable rather than something an operator has to
+ * remember to change from INR. It is a **default, not a derivation**: the
+ * field stays editable, because a Dutch client really can agree to be billed in
+ * dollars, and only the saved value is ever read back.
+ *
+ * Deliberately partial. A country with no entry falls back to INR, which is
+ * what every Qera invoice prints in anyway (see the note at the top of this
+ * file), so the fallback is a true statement rather than a guess at a currency
+ * this list does not carry.
+ */
+const CURRENCY_BY_COUNTRY: Record<string, CurrencyCode> = {
+  IN: 'INR',
+  US: 'USD',
+  GB: 'GBP',
+  AE: 'AED',
+  SG: 'SGD',
+  AU: 'AUD',
+  CA: 'CAD',
+  // The eurozone. Listed in full rather than only the members the country
+  // selector offers today, because the set is defined by treaty and adding a
+  // country to that selector should not silently change what it bills in.
+  AT: 'EUR', BE: 'EUR', HR: 'EUR', CY: 'EUR', EE: 'EUR', FI: 'EUR', FR: 'EUR',
+  DE: 'EUR', GR: 'EUR', IE: 'EUR', IT: 'EUR', LV: 'EUR', LT: 'EUR', LU: 'EUR',
+  MT: 'EUR', NL: 'EUR', PT: 'EUR', SK: 'EUR', SI: 'EUR', ES: 'EUR',
+};
+
+export function currencyForCountry(iso2: string | undefined): CurrencyCode {
+  return CURRENCY_BY_COUNTRY[(iso2 ?? '').trim().toUpperCase()] ?? DEFAULT_CURRENCY;
+}
+
 /** 'USD' → 'USD — US Dollar ($)', for the picker. */
 export function currencyLabel(code: CurrencyCode): string {
   const currency = currencyByCode(code);

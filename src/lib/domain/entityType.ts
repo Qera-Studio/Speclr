@@ -35,6 +35,23 @@ export interface EntityTypeSpec {
   cinOwnership?: string;
   jurisdiction: EntityJurisdiction;
   /**
+   * The ISO-2 countries that issue this form. Absent means everywhere in its
+   * jurisdiction, which is what the Indian rows and the two fallbacks want.
+   *
+   * The same narrowing `taxIdTypesForCountry` does one field down, and for the
+   * same reason: a client in London offered "Corporation (United States)",
+   * "Free Zone Entity" and "Private Limited Company (Singapore)" is not being
+   * given a choice, it is being given seven ways to file the record wrongly.
+   * The country is already on the record (`PRINCIPLES.md` rule 3).
+   *
+   * Deliberately not exhaustive. A country with no row here is offered "Other",
+   * which is a truer record than a form from the wrong register, and adding
+   * rows for their own sake would grow this table into the jurisdiction pack
+   * `PRINCIPLES.md` §4 forbids. Nothing computes from a foreign entity type: it
+   * validates a PAN, and only Indian entities have one.
+   */
+  countries?: readonly string[];
+  /**
    * This form *is* a person rather than an organisation.
    *
    * The second axis onboarding branches on, and it lives here because it is
@@ -89,13 +106,29 @@ export const ENTITY_TYPES: readonly EntityTypeSpec[] = [
   // ── Outside India ──
   // The country belongs in the label out here: with the acronyms gone, half of
   // these read as the same words and only the jurisdiction separates them.
-  { value: 'corporation', label: 'Corporation (United States)', jurisdiction: 'foreign' },
-  { value: 'llc', label: 'Limited Liability Company', jurisdiction: 'foreign' },
-  { value: 'ltd_plc', label: 'Limited Company (United Kingdom)', jurisdiction: 'foreign' },
-  { value: 'gmbh', label: 'Limited Company (Europe)', jurisdiction: 'foreign' },
-  { value: 'pte_ltd', label: 'Private Limited Company (Singapore)', jurisdiction: 'foreign' },
-  { value: 'free_zone', label: 'Free Zone Entity', jurisdiction: 'foreign' },
+  { value: 'corporation', label: 'Corporation (United States)', jurisdiction: 'foreign', countries: ['US'] },
+  // Mainland UAE companies are LLCs too, and the label carries no country for
+  // exactly that reason.
+  { value: 'llc', label: 'Limited Liability Company', jurisdiction: 'foreign', countries: ['US', 'AE'] },
+  { value: 'ltd_plc', label: 'Limited Company (United Kingdom)', jurisdiction: 'foreign', countries: ['GB'] },
+  {
+    value: 'gmbh',
+    label: 'Limited Company (Europe)',
+    jurisdiction: 'foreign',
+    // The European countries the address selector actually offers. A GmbH, a
+    // SARL, a BV and a Ltd are one form wearing four names, which is why this
+    // row is labelled by continent rather than by country.
+    countries: ['DE', 'FR', 'NL', 'IE', 'CH', 'SE', 'ES', 'IT'],
+  },
+  { value: 'pte_ltd', label: 'Private Limited Company (Singapore)', jurisdiction: 'foreign', countries: ['SG'] },
+  { value: 'pty_ltd', label: 'Proprietary Limited (Australia)', jurisdiction: 'foreign', countries: ['AU'] },
+  { value: 'free_zone', label: 'Free Zone Entity', jurisdiction: 'foreign', countries: ['AE'] },
+  // No `countries`: a person trading under their own name is every country's
+  // answer, and it is the only form the individual flow offers abroad.
   { value: 'sole_trader', label: 'Sole Trader', jurisdiction: 'foreign', naturalPerson: true, tradingName: true },
+  // Last, and always offered. The honest answer for a register this table does
+  // not name, and the escape hatch for a company incorporated somewhere other
+  // than where it is now addressed.
   { value: 'foreign_other', label: 'Other', jurisdiction: 'foreign' },
 ] as const;
 
@@ -134,10 +167,25 @@ export function entityTypeForCinOwnership(ownership: string | undefined): Entity
  * Driven by the address rather than a separate country field, because
  * `addressParts.country` already holds the answer and two places to say where a
  * client is means two places for them to disagree (`PRINCIPLES.md` rule 3).
+ *
+ * Two filters, in order: the jurisdiction, then the country within it. The
+ * first is absolute (an Indian private limited is a wrong record on a London
+ * address, not a narrow one); the second is not, which is what `keep` is
+ * for. A Delaware corporation really can be addressed in London, and a record
+ * whose address was corrected afterwards must not open with the picker blank
+ * and drop its entity type on the next save.
  */
-export function entityTypesForCountry(iso2: string | undefined): EntityTypeSpec[] {
-  const jurisdiction: EntityJurisdiction = !iso2 || iso2.toUpperCase() === 'IN' ? 'in' : 'foreign';
-  return ENTITY_TYPES.filter((e) => e.jurisdiction === jurisdiction);
+export function entityTypesForCountry(
+  iso2: string | undefined,
+  keep?: string,
+): EntityTypeSpec[] {
+  const upper = (iso2 ?? '').toUpperCase();
+  const jurisdiction: EntityJurisdiction = !upper || upper === 'IN' ? 'in' : 'foreign';
+  return ENTITY_TYPES.filter(
+    (e) =>
+      e.jurisdiction === jurisdiction &&
+      (!e.countries || e.countries.includes(upper) || e.value === keep),
+  );
 }
 
 /**
@@ -162,8 +210,17 @@ export function clientKindOf(entityType: string | undefined): ClientKind {
  * The two compose here rather than at each call site, so a form can never be
  * offered on one axis and rejected on the other — which is what
  * `IdentityStep`'s resolver checks the submitted value against.
+ *
+ * `keep` passes through to the country filter and no further. A saved form is
+ * kept on offer whatever the address later says, but never across the kind
+ * axis: a person saved as a private limited is the wrong record this check
+ * exists to catch, and keeping it would be keeping the mistake.
  */
-export function entityTypesForClient(iso2: string | undefined, kind: ClientKind): EntityTypeSpec[] {
+export function entityTypesForClient(
+  iso2: string | undefined,
+  kind: ClientKind,
+  keep?: string,
+): EntityTypeSpec[] {
   const wanted = kind === 'individual';
-  return entityTypesForCountry(iso2).filter((e) => (e.naturalPerson === true) === wanted);
+  return entityTypesForCountry(iso2, keep).filter((e) => (e.naturalPerson === true) === wanted);
 }

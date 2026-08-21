@@ -174,6 +174,7 @@ export default function ContactsStep({
         control={control}
         setValue={setValue}
         clearErrors={clearErrors}
+        defaultCountry={client?.addressParts?.country}
       />
 
       <FieldSeparator />
@@ -188,6 +189,7 @@ export default function ContactsStep({
         control={control}
         setValue={setValue}
         clearErrors={clearErrors}
+        defaultCountry={client?.addressParts?.country}
       />
 
       <FieldSeparator />
@@ -201,6 +203,7 @@ export default function ContactsStep({
         control={control}
         setValue={setValue}
         clearErrors={clearErrors}
+        defaultCountry={client?.addressParts?.country}
       />
     </StepForm>
   );
@@ -282,12 +285,20 @@ function ContactGroup({
   control,
   setValue,
   clearErrors,
+  defaultCountry,
 }: {
   name: ContactKey;
   legend: string;
   info: string;
   /** Only the billing role can point at the company, so only it passes one. */
   companyLabel?: string;
+  /**
+   * Where the client is, so an empty phone starts on their dial code instead of
+   * India's. Their staff are usually in the same country they are, and this is
+   * a default rather than a lock: the picker is fully usable for the ones who
+   * are not.
+   */
+  defaultCountry?: string;
   register: UseFormRegister<FormValues>;
   errors: FieldErrors<FormValues>;
   control: Control<FormValues>;
@@ -435,6 +446,7 @@ function ContactGroup({
               name={`${name}.phone`}
               id={`${name}-phone`}
               required={false}
+              defaultCountry={defaultCountry}
             />
           </FieldRow>
         </>
@@ -449,12 +461,18 @@ function ContactGroup({
  * The fields collapse rather than going read-only: a role pointing elsewhere
  * has nothing of its own to show, so four boxes repeating the section above
  * them are four more things to read and one more place someone might try to
- * type. The line stays live as the primary contact is filled in, so the choice
- * is never a leap of faith about whose name ends up on the contract.
+ * type.
  *
- * The billing line says what the invoice will *say*, not what the record holds,
- * because that is the question being answered. Naming a person there does not
- * change who is billed, only that the invoice is marked for their attention.
+ * **Only billing prints a line, and only when it names a person.** The signing
+ * line used to echo the primary contact back as "name · designation · email ·
+ * phone", four values already on screen a few rows up, which is clutter rather
+ * than reassurance. Billing's line is not an echo: it states what the invoice
+ * will *say*, which is the question being answered, and naming somebody there
+ * does not change who is billed, only that it is marked for their attention.
+ *
+ * A live preview card that fills as the fields above are typed would earn its
+ * place where this line did not. It is recorded in `ROADMAP.md` rather than
+ * built here, because it is a component, not a paragraph.
  */
 function RoleSummary({
   role,
@@ -467,7 +485,7 @@ function RoleSummary({
 }) {
   // The choice beside it already names the company. A line repeating it back is
   // one more thing to read that says nothing new.
-  if (role === "billing" && source === "company") return null;
+  if (role !== "billing" || source === "company") return null;
 
   const filled = parts.map((p) => p?.trim()).filter(Boolean);
   // Nothing typed above yet, so there is nothing to report. A line saying so
@@ -476,7 +494,7 @@ function RoleSummary({
 
   return (
     <p className="text-muted-foreground text-sm">
-      {role === 'billing' ? `Marked for the attention of ${filled[0]}.` : filled.join(' · ')}
+      Marked for the attention of {filled[0]}.
     </p>
   );
 }

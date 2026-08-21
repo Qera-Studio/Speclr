@@ -92,3 +92,62 @@ export function uppercaseField(
     },
   };
 }
+
+/**
+ * Makes a registered field write itself the way the value is conventionally
+ * written: `83-0000000`, `51 824 753 556`, `PO-2026-0881`.
+ *
+ * The rule from `AGENTS.md`: a field types the way the value is written, on
+ * every keystroke rather than on blur, because a formatted placeholder over an
+ * unformatted value tells the reader two different things about one number.
+ *
+ * The `format` passed in must be **idempotent and prefix-safe**: it runs
+ * against a value it has already formatted, and against half a number. The ones
+ * in `taxIds/foreign.ts` strip their own separators first, which is what makes
+ * that true.
+ *
+ * **The caret moves, and that is why this is separate from `uppercaseField`.**
+ * Inserting a character shifts everything after it, so typing in the *middle*
+ * of an already-formatted value would leave the caret behind. This puts it back
+ * by counting the value characters before it rather than the raw offset, which
+ * is the same technique the grouped amount input in `DocumentFilters` uses.
+ */
+export function formattedField(
+  registration: UseFormRegisterReturn,
+  format: ((value: string) => string) | undefined,
+): UseFormRegisterReturn & {
+  autoCapitalize: 'characters';
+  autoCorrect: 'off';
+  spellCheck: false;
+} {
+  return {
+    ...registration,
+    autoCapitalize: 'characters',
+    autoCorrect: 'off',
+    spellCheck: false,
+    onChange: (event: { target: { value?: string; selectionStart?: number | null; setSelectionRange?: (a: number, b: number) => void } }) => {
+      const raw = String(event.target.value ?? '');
+      const next = format ? format(raw) : raw.toUpperCase();
+
+      if (next !== raw && typeof event.target.selectionStart === 'number') {
+        // How many characters that are not separators sit before the caret.
+        // That count survives reformatting; a raw offset does not.
+        const before = raw.slice(0, event.target.selectionStart).replace(/[^0-9A-Za-z]/g, '').length;
+        let seen = 0;
+        let caret = next.length;
+        for (let i = 0; i < next.length; i += 1) {
+          if (seen === before) {
+            caret = i;
+            break;
+          }
+          if (/[0-9A-Za-z]/.test(next[i])) seen += 1;
+        }
+        event.target.value = next;
+        event.target.setSelectionRange?.(caret, caret);
+      } else {
+        event.target.value = next;
+      }
+      return registration.onChange(event);
+    },
+  };
+}

@@ -20,15 +20,32 @@ describe('attachmentSlotsFor', () => {
     ]);
   });
 
-  it('asks a foreign client for the export paperwork instead', () => {
-    expect(attachmentSlotsFor({ country: 'GB' })).toEqual(['tax_form', 'firc']);
+  // The certificate travels; the Indian registrations do not. Every company was
+  // incorporated somewhere, and only the register's name changes.
+  it('asks a foreign company for its certificate and the export paperwork', () => {
+    expect(attachmentSlotsFor({ country: 'GB' })).toEqual([
+      'incorporation',
+      'tax_form',
+      'firc',
+    ]);
   });
 
-  it('drops the incorporation certificate for a person', () => {
+  it('drops the incorporation certificate for a person, at home or abroad', () => {
     expect(attachmentSlotsFor({ country: 'IN', clientKind: 'individual' })).toEqual([
       'gst_certificate',
       'pan',
     ]);
+    expect(attachmentSlotsFor({ country: 'GB', clientKind: 'individual' })).toEqual([
+      'tax_form',
+      'firc',
+    ]);
+  });
+
+  it('does not ask a foreign client for a cancelled cheque', () => {
+    // An Indian artefact carrying an IFSC, and the remittance runs the other
+    // way: what a foreign client needs is Qera's bank details, not their own.
+    expect(attachmentExtraKindsFor({ country: 'GB' })).not.toContain('cancelled_cheque');
+    expect(attachmentExtraKindsFor({ country: 'IN' })).toContain('cancelled_cheque');
   });
 
   // Every client written before onboarding existed, and every half-filled one.

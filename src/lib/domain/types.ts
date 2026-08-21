@@ -118,13 +118,13 @@ export type ClientSnapshot = Pick<
   'name' | 'companyName' | 'address' | 'email' | 'phone' | 'gstin'
 > & {
   /**
-   * The six fields onboarding added, **flattened and every one optional.**
+   * The fields onboarding added, **flattened and every one optional.**
    *
    * Flattened rather than carrying `tax` and `contacts` wholesale, because the
    * `Pick` above is the guarantee that a field cannot reach an issued document
    * by accident — freezing a whole group would hand every future field on it a
-   * free ride onto every invoice. These six were each chosen because a sheet
-   * prints them.
+   * free ride onto every invoice. Each of these was chosen because a sheet
+   * prints it.
    *
    * Optional is what makes this safe to add. Every snapshot already stored has
    * none of them, so every new sheet line is conditional and renders nothing at
@@ -141,6 +141,8 @@ export type ClientSnapshot = Pick<
   /** For a recipient outside India — printed as their registration. */
   taxIdType?: string;
   taxId?: string;
+  /** `cin`'s counterpart abroad: the number their company register issued. */
+  registrationNumber?: string;
   /** What the recipient deducts, printed as a memo. Never changes the total. */
   tds?: { section?: string; ratePercent?: number };
 };
@@ -154,8 +156,18 @@ export type ClientSnapshot = Pick<
  * here, beside the type, means adding a snapshot field is a single edit.
  */
 export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
+  /**
+   * A section *or* a rate, not a section full stop.
+   *
+   * A foreign client who withholds has no section of the Income-tax Act to
+   * name, so requiring one froze nothing for them and the memo explaining why
+   * their remittance landed short would never have printed. The rate alone is
+   * a complete statement; a section alone still is too, and either beats
+   * silence.
+   */
   const tds =
-    client.tax?.tdsApplicable && client.tax.tdsSection
+    client.tax?.tdsApplicable &&
+    (client.tax.tdsSection || client.tax.tdsRatePercent !== undefined)
       ? { section: client.tax.tdsSection, ratePercent: client.tax.tdsRatePercent }
       : undefined;
 
@@ -176,7 +188,7 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
     email: client.email,
     phone: client.phone,
     gstin: client.gstin,
-    // Each of the six is `undefined` unless there is something to say, so a
+    // Each is `undefined` unless there is something to say, so a
     // client with no tax section produces a snapshot byte-identical to the ones
     // written before these existed.
     pan: client.tax?.pan,
@@ -184,6 +196,7 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
     signatory,
     taxIdType: client.tax?.taxIdType,
     taxId: client.tax?.taxId,
+    registrationNumber: client.tax?.registrationNumber,
     tds,
   };
 }
