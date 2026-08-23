@@ -39,8 +39,10 @@ describe('NewDocumentCommand', () => {
     renderPalette('client');
     await u.click(screen.getByRole('button', { name: 'Open palette' }));
 
+    // Anchored: a card's name is now its label *and* its description, and the
+    // receipt's description mentions an invoice.
     for (const label of ['Contract', 'Invoice', 'Receipt']) {
-      expect(screen.getByRole('option', { name: new RegExp(label, 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
     }
     expect(screen.getAllByRole('option')).toHaveLength(3);
   });
@@ -74,33 +76,45 @@ describe('NewDocumentCommand', () => {
     expect(await screen.findByRole('dialog', { name: /new document/i })).toBeInTheDocument();
   });
 
-  it('filters as you type and opens the match on Enter', async () => {
+  /** Three types a side, all on screen: a filter would filter nothing. */
+  it('offers no search field', async () => {
     const u = userEvent.setup();
     renderPalette('client');
     await u.keyboard('{Meta>}d{/Meta}');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  });
 
-    await u.type(screen.getByRole('textbox', { name: /search document types/i }), 'rec');
-    expect(screen.getByRole('option', { name: /receipt/i })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /invoice/i })).not.toBeInTheDocument();
-
-    await u.keyboard('{Enter}');
+  it('walks the grid sideways and opens on Enter', async () => {
+    const u = userEvent.setup();
+    renderPalette('client');
+    await u.keyboard('{Meta>}d{/Meta}');
+    await u.keyboard('{ArrowRight}{ArrowRight}{Enter}');
     expect(mockPush).toHaveBeenCalledWith('/client/docs/new/receipt');
   });
 
-  it('walks the list with arrow keys', async () => {
+  /** Down is a row, which is three cards — not the next one along. */
+  it('walks a whole row on ArrowDown, and clamps at the end', async () => {
     const u = userEvent.setup();
     renderPalette('admin');
     await u.keyboard('{Meta>}d{/Meta}');
-    await u.keyboard('{ArrowDown}{ArrowDown}{Enter}');
-    expect(mockPush).toHaveBeenCalledWith('/admin/docs/new/pay-slip');
+    await u.keyboard('{ArrowDown}{Enter}');
+    expect(mockPush).toHaveBeenCalledWith('/admin/docs/new/experience-letter');
+
+    mockPush.mockClear();
+    await u.keyboard('{Meta>}d{/Meta}');
+    await u.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}');
+    expect(mockPush).toHaveBeenCalledWith('/admin/docs/new/exit-letter');
   });
 
-  it('says so when nothing matches', async () => {
+  /** Each card says what it is, not only what it is called. */
+  it('describes each type in a line under its name', async () => {
     const u = userEvent.setup();
-    renderPalette();
+    renderPalette('client');
     await u.keyboard('{Meta>}d{/Meta}');
-    await u.type(screen.getByRole('textbox', { name: /search document types/i }), 'zzz');
-    expect(screen.getByRole('status')).toHaveTextContent(/no document type matches/i);
+    expect(
+      screen.getByRole('option', { name: /^Invoice/ }),
+    ).toHaveTextContent(/numbered for the financial year/i);
   });
 
   it('jumps straight to a new document on ⌥ + its letter, with no palette', async () => {

@@ -1,10 +1,11 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Kbd, KbdGroup, Shortcut } from '@/components/ui/kbd';
+import SheetThumbnail from '@/components/docs/SheetThumbnail';
+import { DOC_SAMPLES } from '@/components/docs/samples';
 import { cn } from '@/lib/utils';
 import type { Profile } from '@/lib/profile';
 import { NAV_BY_PROFILE, type NavLink } from './nav';
@@ -29,6 +30,11 @@ import { NAV_BY_PROFILE, type NavLink } from './nav';
  *
  * The type list is read from the nav rather than the registry so the palette's
  * labels, icons and order can never drift from the nav's.
+ *
+ * Each card shows the document it would make, rendered small — see
+ * `docs/SheetThumbnail.tsx`. That is worth the weight here in a way it would
+ * not be in a list of eight: at three types a side, recognising the page is
+ * faster than reading its name.
  */
 
 type NewDocumentContextValue = { open: () => void };
@@ -116,6 +122,13 @@ export function NewDocumentProvider({
   );
 }
 
+/**
+ * Cards per row. Three, because the client profile has exactly three document
+ * types and a full row is what makes the grid read as the whole offer rather
+ * than the start of a list.
+ */
+const COLUMNS = 3;
+
 function NewDocumentCommand({
   open,
   onOpenChange,
@@ -126,18 +139,8 @@ function NewDocumentCommand({
   links: NavLink[];
 }) {
   const router = useRouter();
-  const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-
-  // Filtering is local — at most five strings, no server round-trip, no
-  // debounce. One flat list now that the palette shows a single profile: the
-  // group headings it used to carry said "Client" and "Admin", which is exactly
-  // what the switcher above already says.
-  const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return links;
-    return links.filter((link) => link.label.toLowerCase().includes(needle));
-  }, [query, links]);
+  const cards = useRef<(HTMLButtonElement | null)[]>([]);
 
   const go = useCallback(
     (link: NavLink) => {
@@ -147,110 +150,111 @@ function NewDocumentCommand({
     [onOpenChange, router],
   );
 
-  // Reset between visits so ⌘D always opens on the full list at the top.
+  // Reset between visits so ⌘D always opens on the first card.
   useEffect(() => {
-    if (!open) {
-      setQuery('');
-      setActive(0);
-    }
+    if (!open) setActive(0);
   }, [open]);
 
+  /**
+   * Focus follows the selection, rather than the selection being tracked
+   * separately with `aria-activedescendant`.
+   *
+   * There is no search field here any more, so there is nothing else for focus
+   * to sit in — and a real focused button is what makes Enter, Space and the
+   * focus ring work without any of them being re-implemented.
+   */
   useEffect(() => {
-    setActive(0);
-  }, [query]);
+    if (open) cards.current[active]?.focus();
+  }, [open, active]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (!matches.length) return;
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setActive((i) => (i + 1) % matches.length);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setActive((i) => (i - 1 + matches.length) % matches.length);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      const link = matches[active];
-      if (link) go(link);
-    }
+    // Clamped, not wrapped. On a grid a wrap moves the eye to the far end of
+    // another row, which reads as a jump rather than a step.
+    const step =
+      event.key === 'ArrowRight' ? 1
+      : event.key === 'ArrowLeft' ? -1
+      : event.key === 'ArrowDown' ? COLUMNS
+      : event.key === 'ArrowUp' ? -COLUMNS
+      : 0;
+    if (!step) return;
+    event.preventDefault();
+    setActive((i) => Math.max(0, Math.min(links.length - 1, i + step)));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="gap-0 overflow-hidden p-0 sm:max-w-lg"
+        className="gap-0 overflow-hidden p-0 sm:max-w-2xl"
         showCloseButton={false}
         aria-label="New document"
       >
-        <DialogTitle className="sr-only">New document</DialogTitle>
+        <DialogTitle className="border-b px-4 py-3 text-sm font-medium">New document</DialogTitle>
         <DialogDescription className="sr-only">
           Choose a document type to open a blank editor.
         </DialogDescription>
 
-        <div className="flex items-center gap-2 border-b px-3">
-          <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <input
-            autoFocus
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Search document types…"
-            aria-label="Search document types"
-            aria-controls="new-document-list"
-            aria-activedescendant={matches[active] ? `new-document-${active}` : undefined}
-            autoComplete="off"
-            className="h-11 w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
-          />
-        </div>
-
-        <div className="max-h-80 overflow-y-auto p-1">
-          {matches.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-muted-foreground" role="status">
-              No document type matches “{query.trim()}”.
-            </p>
-          ) : (
-            <div id="new-document-list" role="listbox" aria-label="Document types">
-              {matches.map((link, position) => {
-                    const Icon = link.icon;
-                    return (
-                      <button
-                        key={link.href}
-                        type="button"
-                        id={`new-document-${position}`}
-                        role="option"
-                        aria-selected={position === active}
-                        onMouseEnter={() => setActive(position)}
-                        onClick={() => go(link)}
-                        className={cn(
-                          'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
-                          // Not full --foreground: several rows of pure white on
-                          // a dark popover glare, and the highlighted row has
-                          // nothing left to be brighter *than*. The active row
-                          // gets the full value; the rest sit a step back.
-                          'text-foreground/70',
-                          position === active && 'bg-accent text-accent-foreground',
-                        )}
-                      >
-                        <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                        <span className="truncate">{link.label}</span>
-                        {link.shortcut ? (
-                          <Shortcut className="ml-auto" keys={['alt', link.shortcut]} />
-                        ) : null}
-                      </button>
-                    );
-              })}
-            </div>
-          )}
+        {/* No search field: three types on one side and five on the other, all
+            of them on screen at once. A box that filters a list you can already
+            see whole is a keystroke asking to be spent on nothing. */}
+        <div
+          role="listbox"
+          aria-label="Document types"
+          onKeyDown={onKeyDown}
+          className="grid max-h-[60vh] grid-cols-3 justify-items-center gap-3 overflow-y-auto p-4"
+        >
+          {links.map((link, position) => {
+            const slug = link.href.slice(link.href.lastIndexOf('/') + 1);
+            const sample = DOC_SAMPLES[slug];
+            return (
+              <button
+                key={link.href}
+                type="button"
+                ref={(node) => {
+                  cards.current[position] = node;
+                }}
+                role="option"
+                aria-selected={position === active}
+                // Roving: one stop in the grid, so Tab leaves the grid rather
+                // than walking every card in it.
+                tabIndex={position === active ? 0 : -1}
+                onFocus={() => setActive(position)}
+                onClick={() => go(link)}
+                className={cn(
+                  'group/card flex w-full cursor-pointer flex-col items-center gap-2 rounded-md p-2 text-center',
+                  // A step darker than --accent, which is a 1% difference from
+                  // the dialog behind it. Tinting the foreground gets the same
+                  // step in both themes: darker on light, lighter on dark.
+                  'transition-colors hover:bg-foreground/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  position === active && 'bg-foreground/8',
+                )}
+              >
+                {sample ? (
+                  <SheetThumbnail doc={sample.doc} />
+                ) : (
+                  <link.icon className="size-8 text-muted-foreground" aria-hidden="true" />
+                )}
+                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  {link.label}
+                  {link.shortcut ? <Shortcut keys={['alt', link.shortcut]} /> : null}
+                </span>
+                {sample ? (
+                  <span className="text-xs text-balance text-muted-foreground">{sample.blurb}</span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
 
         {/* The key is a keycap, the gloss is text. Run together as plain glyphs
             ("↑↓ to move") the two read as one string and the arrows stop
-            looking pressable — `Kbd` is the same cap the rows already use. */}
+            looking pressable — `Kbd` is the same cap the cards already use. */}
         <div className="flex items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <KbdGroup>
               <Kbd>↑</Kbd>
               <Kbd>↓</Kbd>
+              <Kbd>←</Kbd>
+              <Kbd>→</Kbd>
             </KbdGroup>
             to move
           </span>
