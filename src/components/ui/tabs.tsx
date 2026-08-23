@@ -77,7 +77,7 @@ function TabsList({
  * carrying the elevation.
  */
 const tabPillSurface =
-  "bg-background shadow-sm dark:bg-input/85 dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+  "bg-raised shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
@@ -88,7 +88,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         // Same surface as `tabPillSurface`, spelled with `data-active:` since
         // it paints on the trigger itself. Keep the two in step.
-        "data-active:bg-background data-active:shadow-sm data-active:text-foreground dark:data-active:bg-input/85 dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
+        "data-active:bg-raised data-active:shadow-sm data-active:text-foreground dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}

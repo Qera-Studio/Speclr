@@ -112,6 +112,11 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['sidebar-foreground', 'sidebar'],
   ['sidebar-accent-foreground', 'sidebar-accent'],
   ['sidebar-accent-foreground', 'sidebar-active'],
+  // The active tab and the active profile. `--raised` is the only token whose
+  // light and dark values are a whole step apart in *role*, so it is the one
+  // most likely to be nudged in one theme without the other being checked.
+  ['foreground', 'raised'],
+  ['muted-foreground', 'raised'],
 ];
 
 /**

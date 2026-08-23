@@ -48,10 +48,27 @@ Tokens live in `globals.css` as OKLCH, defined once for light and once for
 it (`--warning` is the model: amber-500 fails AA on our background, so it is a
 token).
 
+**The neutrals are taupe, hue 40, not grey.** Every neutral token is
+`oklch(L C 40)` on the same lightness ramp a grey would use, and the chroma
+follows the curve written at the top of the `:root` block: it peaks near 0.02
+mid-ramp and tapers to almost nothing at both ends, because a near-white or a
+near-black holds a hue badly and starts reading as a cast. A new neutral
+interpolates from that curve. It is not a free choice per token: two surfaces
+at slightly different hues is exactly the "boilerplate" look this replaced,
+arrived at one token at a time.
+
+The chromatic tokens keep their own hues, and the dark mode's `--border` /
+`--input` stay a pure white overlay, which composites to a taupe hairline on
+its own. A *fill* may never be an alpha white for that reason: white lends no
+hue, so a wash of it over taupe composites grey however warm the ground is.
+That is what `--raised` exists to stop, and it is why the active tab and the
+active profile use a token rather than `bg-input/85`.
+
 | Use | Token |
 |---|---|
 | Page ground | `bg-background` / `text-foreground` |
 | A raised surface (card, popover, dialog) | `bg-card`, `bg-popover` |
+| A pill sitting on a track (active tab, active profile) | `bg-raised` |
 | Anything quieter than body text | `text-muted-foreground` |
 | A resting fill (hover, selected, chip) | `bg-muted` / `bg-accent` |
 | The action colour | `primary` |

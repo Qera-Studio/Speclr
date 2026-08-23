@@ -44,6 +44,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-raised: var(--raised);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -79,6 +80,28 @@
 }
 
 /*
+  The neutrals are taupe, not grey, and that is the one thing to know before
+  editing a lightness here.
+
+  Every neutral token is `oklch(L C 40)` — the same lightness ramp a pure grey
+  would have, carrying a little warm chroma. The chroma is not constant: it
+  peaks in the middle of the ramp (~0.02) and tapers to almost nothing at both
+  ends, because a near-white or a near-black holds a hue badly and reads as a
+  colour cast rather than as a warm neutral. Hue 40 everywhere, so no two
+  surfaces disagree about which warm this is.
+
+  Chroma by lightness, the curve to interpolate from when adding a token:
+
+    0.99 → 0.002   0.92 → 0.005   0.71 → 0.014   0.44 → 0.017   0.15 → 0.005
+    0.97 → 0.003   0.87 → 0.007   0.55 → 0.021   0.27 → 0.011
+
+  Two deliberate exceptions. The chromatic tokens (`--primary`, `--destructive`,
+  `--warning`, the charts) keep their own hues: they are signals, and a signal
+  that drifts toward the surface it sits on is a weaker signal. And the dark
+  mode's `--border` / `--input` stay a *pure white* overlay, because an alpha
+  white over a taupe surface composites to a taupe hairline on its own; giving
+  it a hue of its own would double the warmth on exactly the edges.
+
   `color-scheme` is the half of theming that is not ours to paint: the canvas
   the browser fills before the first stylesheet lands, the native form controls,
   the default scrollbar, the autofill sheet. Without it a dark session flashes a
@@ -87,23 +110,35 @@
 */
 :root {
   color-scheme: light;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* Taupe 50, not white. Three surfaces share it (the page, a card, a popover)
+     because separation here is drawn with a hairline, never with a fill. It is
+     the top of the ramp and the rail sits two steps below it; anything darker
+     for the page closes that gap and the shell reads flat. */
+  --background: oklch(0.986 0.002 40);
+  --foreground: oklch(0.145 0.005 40);
+  /* The pill that sits *on* a track: the active tab, the active profile. In
+     light mode it is the page surface, which is what it always was. In dark
+     mode it cannot be, because a raised thing has to be lighter than the track
+     under it. It was an alpha white over the ground, which composites grey
+     however warm the ground is: white has no hue to lend. So it is a real
+     taupe now, and this token exists so the two themes stop disagreeing about
+     what "raised" means. */
+  --raised: oklch(0.986 0.002 40);
+  --card: oklch(0.986 0.002 40);
+  --card-foreground: oklch(0.145 0.005 40);
+  --popover: oklch(0.986 0.002 40);
+  --popover-foreground: oklch(0.145 0.005 40);
   --primary: oklch(0.488 0.243 264.376);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.97 0 0);
+  --secondary: oklch(0.967 0.003 40);
+  --secondary-foreground: oklch(0.21 0.009 40);
+  --muted: oklch(0.97 0.003 40);
   /* 0.556 was 4.34:1 on --muted, which is where this colour most often
      actually lands (hovered rows, tooltips, muted panels). It read as passing
      because it was only ever measured against white. */
-  --muted-foreground: oklch(0.54 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.54 0.021 40);
+  --accent: oklch(0.97 0.003 40);
+  --accent-foreground: oklch(0.205 0.009 40);
   --destructive: oklch(0.577 0.245 27.325);
   /* What sits *on* a solid destructive fill: the confirm button inside a
      destructive dialog, and the offline bar. White is 4.76:1 on the light
@@ -116,33 +151,38 @@
      is only 2.15:1 here, which is why this is a token and not a palette
      class. Same hue (70) in both modes so the state doesn't shift colour. */
   --warning: oklch(0.555 0.14 70);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.922 0.005 40);
+  --input: oklch(0.922 0.005 40);
   /* The focus indicator, and the one token that has to clear 3:1 against the
      surface behind it (WCAG 1.4.11). 0.708 was 2.59:1 on white. */
-  --ring: oklch(0.64 0 0);
+  --ring: oklch(0.64 0.019 40);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+  /* Two steps down the ramp from the page, not one. The rail is a different
+     surface from the content, and at 0.985 on a 0.995 background it was
+     announcing that with a 1% difference nobody sees on a bright screen. Its
+     three fills move together: a rail whose hover is the same value as its
+     ground has no hover. */
+  --sidebar: oklch(0.955 0.004 40);
   /* The rail is scenery, not content: muted so the *current* page (which keeps
-     --sidebar-accent-foreground) is the one thing that reads loud. 7.4:1 on
+     --sidebar-accent-foreground) is the one thing that reads loud. 6.9:1 on
      --sidebar, so it still clears AA as body text. */
-  --sidebar-foreground: oklch(0.44 0 0);
+  --sidebar-foreground: oklch(0.44 0.017 40);
   --sidebar-primary: oklch(0.546 0.245 262.881);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.925 0.005 40);
+  --sidebar-accent-foreground: oklch(0.205 0.009 40);
   /* Hover and active must not be the same fill, or "you are here" is invisible
      the moment the cursor rests on any other row. Active is the darker of the
      two in both modes. */
-  --sidebar-hover: oklch(0.955 0 0);
-  --sidebar-active: oklch(0.91 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-hover: oklch(0.925 0.005 40);
+  --sidebar-active: oklch(0.878 0.007 40);
+  --sidebar-border: oklch(0.892 0.006 40);
+  --sidebar-ring: oklch(0.708 0.014 40);
 }
 
 /*
@@ -164,45 +204,50 @@
 */
 .dark {
   color-scheme: dark;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.93 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.93 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.93 0 0);
+  /* One step up the ramp, all three surfaces together. At 0.145 the panel read
+     as black rather than as the darkest taupe: a hue needs some lightness under
+     it to be seen at all, which is the same reason the chroma curve tapers at
+     the ends. Cards and the rail move with it, or the layering closes up. */
+  --background: oklch(0.185 0.006 40);
+  --foreground: oklch(0.93 0.004 40);
+  --raised: oklch(0.335 0.013 40);
+  --card: oklch(0.235 0.009 40);
+  --card-foreground: oklch(0.93 0.004 40);
+  --popover: oklch(0.235 0.009 40);
+  --popover-foreground: oklch(0.93 0.004 40);
   --primary: oklch(0.424 0.199 265.638);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.93 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.93 0 0);
+  --secondary: oklch(0.274 0.011 40);
+  --secondary-foreground: oklch(0.93 0.004 40);
+  --muted: oklch(0.269 0.011 40);
+  --muted-foreground: oklch(0.708 0.014 40);
+  --accent: oklch(0.269 0.011 40);
+  --accent-foreground: oklch(0.93 0.004 40);
   --destructive: oklch(0.704 0.191 22.216);
   /* Near-black, not white: 6.84:1 on this fill against white's 2.89:1. */
-  --destructive-foreground: oklch(0.145 0 0);
+  --destructive-foreground: oklch(0.145 0.005 40);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
   /* Up from 10% and 15%. See the note above the block. */
   --border: oklch(1 0 0 / 14%);
   --input: oklch(1 0 0 / 22%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.556 0.021 40);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.235 0.009 40);
   /* 8.1:1 on --sidebar. */
-  --sidebar-foreground: oklch(0.78 0 0);
+  --sidebar-foreground: oklch(0.78 0.012 40);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.93 0 0);
-  --sidebar-hover: oklch(0.269 0 0);
-  --sidebar-active: oklch(0.32 0 0);
+  --sidebar-accent: oklch(0.269 0.011 40);
+  --sidebar-accent-foreground: oklch(0.93 0.004 40);
+  --sidebar-hover: oklch(0.269 0.011 40);
+  --sidebar-active: oklch(0.32 0.013 40);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.556 0.021 40);
 }
 
 @layer base {
