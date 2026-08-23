@@ -127,6 +127,11 @@ export default function EmployeeForm({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
+    // First blur, then every keystroke, the same rule the onboarding steps
+    // run under, and for the same reason: a form that stays silent until submit
+    // reports every mistake at once, at the moment the operator has decided
+    // they are finished. See the note in `CommercialStep`.
+    mode: 'onTouched',
     resolver,
     defaultValues: employee
       ? {
@@ -649,8 +654,8 @@ export default function EmployeeForm({
         </Alert>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : employee ? 'Save changes' : 'Add employee'}
+      <Button type="submit" size="lg" pending={isSubmitting}>
+        {employee ? 'Save changes' : 'Add employee'}
       </Button>
     </form>
   );

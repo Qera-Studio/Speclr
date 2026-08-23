@@ -4,6 +4,7 @@ import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listClauses } from '@/db/store';
 import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
 import ClauseLibrary from '@/components/admin/clauses/ClauseLibrary';
+import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -35,11 +36,11 @@ export default async function ClauseLibraryPage() {
   const stored = await listClauses();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <PageBody>
       <ClauseLibrary
         clauses={stored.length > 0 ? stored : MSA_CLAUSES}
         stored={stored.length > 0}
       />
-    </div>
+    </PageBody>
   );
 }

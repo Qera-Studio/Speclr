@@ -90,7 +90,7 @@ export default function FieldCheck<T extends FieldValues>({
   return (
     <span
       ref={ref}
-      className="animate-in fade-in text-primary pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1.5 text-xs duration-300"
+      className="animate-in fade-in text-primary pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1.5 text-xs duration-200"
     >
       <Check aria-hidden className="animate-in zoom-in-50 size-4 shrink-0" />
       {/*

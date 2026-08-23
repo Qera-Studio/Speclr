@@ -171,7 +171,7 @@ export default function ProfileSwitcher({
           // Untransitioned while dragging — the offset is already per-frame, and
           // a transition on top of it lags the fingers. Everything else,
           // including the committed hold that outlasts the gesture, animates.
-          !dragging && 'transition-transform duration-300 ease-out',
+          !dragging && 'transition-transform duration-200 ease-standard',
         )}
         style={{ transform: `translateX(${(index + offset) * 100}%)` }}
       />

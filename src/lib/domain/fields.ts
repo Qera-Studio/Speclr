@@ -158,6 +158,35 @@ export function tanSchema({ required }: FieldOptions = {}) {
   return identifier({ max: TAN_MAX, error: tanError, required });
 }
 
+// ─── SAC ──────────────────────────────────────────────────────────────────────
+
+export const SAC_MAX = 6;
+
+/**
+ * A Service Accounting Code — the GST classification of a thing sold.
+ *
+ * Six digits, and the first two are always `99`: SACs live in Chapter 99 of the
+ * scheme, which is the services chapter, and a code that does not start there is
+ * a *goods* HSN typed into the wrong field. That is the one mistake worth
+ * catching, and it is caught by the two characters rather than by a table.
+ *
+ * **Deliberately not checked against the published list.** The list is long,
+ * revised by notification, and a rule that rejects a code CBIC issued last
+ * quarter blocks a real invoice, which `AGENTS.md` puts as the worse failure.
+ * The shape is checked; the classification is a judgement, and it belongs to
+ * whoever signs the return.
+ */
+export function sacSchema({ required }: FieldOptions = {}) {
+  return identifier({
+    max: SAC_MAX,
+    error: (value) =>
+      /^99\d{4}$/.test(value)
+        ? null
+        : 'Expected a six-digit SAC beginning 99, like 998314.',
+    required,
+  });
+}
+
 // ─── Bank ─────────────────────────────────────────────────────────────────────
 
 export const IFSC_MAX = 11;

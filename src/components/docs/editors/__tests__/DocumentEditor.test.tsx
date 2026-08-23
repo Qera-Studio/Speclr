@@ -123,8 +123,30 @@ describe('DocumentEditor (new invoice)', () => {
     await selectComboboxOption(u, 'Client', 'Tamil Client');
 
     const field = screen.getByLabelText('Place of supply');
-    expect(field).toHaveValue('33 — Tamil Nadu');
+    expect(field).toHaveValue('33 · Tamil Nadu');
     expect(field).toHaveAttribute('readonly');
+  });
+
+  /**
+   * A value the reader did not type arrives on screen the same way a bug does.
+   * The mechanism is in the info tip because it is the same on every document;
+   * *this* document's answer is under the field, because that is the thing
+   * being checked. See `ui/derived-note.tsx`.
+   */
+  it('says where the derived place of supply came from, under the field', async () => {
+    const u = userEvent.setup();
+    render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
+
+    await selectComboboxOption(u, 'Client', 'Tamil Client');
+    expect(
+      screen.getByText(/first two digits of the client’s GSTIN/i),
+    ).toBeInTheDocument();
+
+    // An unregistered client's answer comes from somewhere else, and says so.
+    await selectComboboxOption(u, 'Client', 'Acme Co.');
+    expect(
+      screen.getByText(/comes from the state on their address/i),
+    ).toBeInTheDocument();
   });
 
   it('takes the state from an unregistered client’s address instead', async () => {
@@ -132,7 +154,7 @@ describe('DocumentEditor (new invoice)', () => {
     render(<DocumentEditor typeCode="INV" clients={clients} title="New invoice" />);
 
     await selectComboboxOption(u, 'Client', 'Acme Co.');
-    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 · Uttar Pradesh');
   });
 
   it('opens the picker only once the override is switched on, and asks why', async () => {
@@ -145,7 +167,7 @@ describe('DocumentEditor (new invoice)', () => {
     await u.click(screen.getByRole('switch', { name: /override place of supply/i }));
 
     expect(screen.getByLabelText('Why')).toBeInTheDocument();
-    await selectComboboxOption(u, 'Place of supply', '29 — Karnataka');
+    await selectComboboxOption(u, 'Place of supply', '29 · Karnataka');
   });
 
   /**
@@ -161,7 +183,7 @@ describe('DocumentEditor (new invoice)', () => {
     await u.clear(screen.getByLabelText(/gst rate/i));
     await u.type(screen.getByLabelText(/gst rate/i), '18');
     await selectComboboxOption(u, 'Client', 'Acme Co.');
-    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 · Uttar Pradesh');
 
     await u.click(screen.getByRole('switch', { name: /gst applies/i }));
 
@@ -175,7 +197,7 @@ describe('DocumentEditor (new invoice)', () => {
     expect(screen.getByLabelText(/gst rate/i)).toHaveValue('0');
     // Re-derived from the client that is still picked, rather than left blank:
     // the code is a fact about the recipient, not something the switch owns.
-    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 — Uttar Pradesh');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('09 · Uttar Pradesh');
   });
 
   it('no longer offers a notes field', () => {

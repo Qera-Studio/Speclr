@@ -177,7 +177,7 @@ export default function SearchCommand() {
                 return (
                   <li key={`${hit.group}-${hit.id}`}>
                     {heading ? (
-                      <p className="px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      <p className="px-3 pt-2 pb-1 text-xs font-medium tracking-[0.01em] text-muted-foreground">
                         {heading}
                       </p>
                     ) : null}

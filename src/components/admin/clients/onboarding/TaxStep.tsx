@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldLabel } from "@/components/ui/field";
+import { DerivedNote } from "@/components/ui/derived-note";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import FieldInfo, { InfoTip, LegendInfo } from "@/components/form/FieldInfo";
@@ -186,6 +187,7 @@ export default function TaxStep({
     // Mapped over whatever came back rather than field by field. Every key that
     // function returns is a field on this form, and spelling them out here is
     // how a rule added there goes unshown until somebody remembers this line.
+    // eslint-disable-next-line no-console
     const entries = Object.entries(cross);
     if (entries.length === 0) return result;
     return {
@@ -376,6 +378,7 @@ export default function TaxStep({
       serverError={serverError}
       submitting={isSubmitting}
       submitLabel={submitLabel}
+      allOptional
     >
       {isIndia ? (
         /*
@@ -429,7 +432,7 @@ export default function TaxStep({
                 // appears: a field that pops into a form the eye has already
                 // measured reads as a redraw, and the same field sliding down
                 // reads as a response.
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                   <GstinField
                     control={control}
                     name="gstin"
@@ -462,7 +465,7 @@ export default function TaxStep({
               </LegendInfo>
 
               {tdsApplicable ? (
-                <FieldRow className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <FieldRow className="animate-in fade-in slide-in-from-top-2 duration-200">
                   <Field>
                     <FieldLabel htmlFor="client-tds-section">
                       Section
@@ -528,6 +531,16 @@ export default function TaxStep({
               inputClassName={panAutofilled ? "animate-fill-flash" : undefined}
               readOnly={Boolean(derivedPan)}
             />
+            {/* The flash says something happened; this says what. A field that
+                fills itself and then refuses to be typed in is the one place
+                the reason cannot be optional, because the only other way to
+                find it out is to try to correct it and fail. */}
+            {derivedPan ? (
+              <DerivedNote>
+                Read from the GSTIN above, which contains it verbatim. Change
+                the GSTIN to change this.
+              </DerivedNote>
+            ) : null}
 
             {/*
               The cell is built like its neighbours rather than aligned against
@@ -596,7 +609,7 @@ export default function TaxStep({
                 control={control}
                 name="cin"
                 id="client-cin"
-                label="CIN (optional)"
+                label="CIN"
               />
 
               {/*
@@ -619,14 +632,11 @@ export default function TaxStep({
                     </span>
                     <Button
                       type="button"
-                      size="sm"
                       variant="outline"
-                      disabled={switching}
+                      pending={switching}
                       onClick={acceptCinEntityType}
                     >
-                      {switching
-                        ? "Changing…"
-                        : `Change to ${entityTypeLabel(offerEntityType)}`}
+                      {`Change to ${entityTypeLabel(offerEntityType)}`}
                     </Button>
                   </AlertDescription>
                 </Alert>
@@ -747,7 +757,7 @@ export default function TaxStep({
               <Field>
                 <FieldInfo
                   htmlFor="client-registration-number"
-                  label="Company registration number (optional)"
+                  label="Company registration number"
                   info="The number the company register issued when the entity was formed: a Companies House number in the UK, a state file number in the US, a UEN in Singapore, or the local equivalent. Not their tax registration, which is the field above. It is what confirms the entity a contract is signed with exists under that name."
                   infoLabel="Which number is this?"
                 />
@@ -848,7 +858,7 @@ export default function TaxStep({
             {tdsApplicable ? (
               <FieldRow
                 columns={3}
-                className="animate-in fade-in slide-in-from-top-2 duration-300"
+                className="animate-in fade-in slide-in-from-top-2 duration-200"
               >
                 <Field>
                   <FieldLabel htmlFor="client-withholding-rate">

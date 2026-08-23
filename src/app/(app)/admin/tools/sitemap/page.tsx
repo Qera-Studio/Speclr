@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import SitemapChart from '@/components/tools/SitemapChart';
+import { PageBody, PageHeader } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'Sitemap chart — speclr',
@@ -28,16 +29,18 @@ export default async function SitemapPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Sitemap chart</h1>
-        <p className="text-sm text-muted-foreground">
-          Reads a site&rsquo;s own <code>sitemap.xml</code> and draws the structure its URLs
-          describe — useful for sizing a build or seeing what a client already has. It does not
-          crawl: a site that publishes no sitemap gets no chart.
-        </p>
-      </div>
+    <PageBody>
+      <PageHeader
+        title="Sitemap chart"
+        description={
+          <>
+            Reads a site&rsquo;s own <code>sitemap.xml</code> and draws the structure its URLs
+            describe, which is useful for sizing a build or seeing what a client already has. It
+            does not crawl: a site that publishes no sitemap gets no chart.
+          </>
+        }
+      />
       <SitemapChart />
-    </div>
+    </PageBody>
   );
 }

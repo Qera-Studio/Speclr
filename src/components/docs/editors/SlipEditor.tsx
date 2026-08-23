@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { deleteDraftAction, finalizeDocument } from "@/server/actions/documents";
 import { useDraftAutosave } from "./useDraftAutosave";
-import { AutosaveStatus, UnsavedChangesDialog } from "./draftStatus";
+import { AutosaveStatus, SaveError, UnsavedChangesDialog } from "./draftStatus";
 import {
   firstDayOfMonth,
   isISOMonth,
@@ -13,6 +13,7 @@ import {
   todayISO,
 } from "@/lib/domain/dates";
 import { slipEarningsSeed } from "@/lib/domain/hrContent";
+import { DELETE_DRAFT_CONSEQUENCE } from "@/lib/domain/registry";
 import type { StudioInfo } from "@/lib/domain/studio";
 import {
   DEFAULT_STIPEND_DEDUCTIONS_NOTE,
@@ -528,7 +529,7 @@ export default function SlipEditor({
     recipientId: employeeId,
     payload: buildPayload(liveValues),
   });
-  const { docId, serverError, setServerError } = autosave;
+  const { docId, setServerError } = autosave;
 
   const onFinalize = async () => {
     if (!docId) return;
@@ -587,7 +588,7 @@ export default function SlipEditor({
               size="form"
               options={eligible.map((e) => ({
                 value: e.id,
-                label: `${e.name} — ${e.role}`,
+                label: `${e.name} · ${e.role}`,
               }))}
               value={employeeId}
               onValueChange={onSelectEmployee}
@@ -848,14 +849,14 @@ export default function SlipEditor({
           </Field>
           </EditorSection>
 
-          <EditorSection title="Terms" description="The clauses printed at the foot">
+          <EditorSection title="Terms" description="The clauses at the foot" printed>
             <TermsFields
               terms={shown(content, resolved, "terms")}
               onChange={(terms) => patchContent({ terms })}
             />
           </EditorSection>
 
-          <EditorSection title="Heading" description="The printed title">
+          <EditorSection title="Heading" description="The slip's own title" printed>
             <ContentText
               id="stp-masthead"
               label="Masthead"
@@ -864,7 +865,7 @@ export default function SlipEditor({
             />
           </EditorSection>
 
-          <EditorSection title="Footer" description="QR caption and the closing line">
+          <EditorSection title="Footer" description="QR caption and the closing line" printed>
             <ContentText
               id="stp-qr-caption"
               label="QR caption"
@@ -879,11 +880,7 @@ export default function SlipEditor({
             />
           </EditorSection>
 
-          {serverError ? (
-            <Alert variant="destructive" role="alert">
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          ) : null}
+          <SaveError autosave={autosave} />
           <AutosaveStatus autosave={autosave} recipient="employee" />
 
           <div className="flex flex-wrap gap-2">
@@ -900,7 +897,7 @@ export default function SlipEditor({
                 <ConfirmActionButton
                   label="Delete draft"
                   title="Delete this draft?"
-                  description="This cannot be undone."
+                  description={DELETE_DRAFT_CONSEQUENCE}
                   confirmLabel="Delete"
                   variant="destructive"
                   confirmVariant="destructive"

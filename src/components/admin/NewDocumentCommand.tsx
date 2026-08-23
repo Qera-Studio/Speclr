@@ -56,7 +56,7 @@ export const newDocumentHref = (href: string) => href.replace('/docs/', '/docs/n
  * by hand — stealing that keystroke mid-clause would be a data-entry bug, not a
  * convenience.
  */
-function isTypingInto(target: EventTarget | null): boolean {
+export function isTypingInto(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
   const tag = target.tagName;
@@ -246,7 +246,7 @@ function NewDocumentCommand({
         {/* The key is a keycap, the gloss is text. Run together as plain glyphs
             ("↑↓ to move") the two read as one string and the arrows stop
             looking pressable — `Kbd` is the same cap the rows already use. */}
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <KbdGroup>
               <Kbd>↑</Kbd>

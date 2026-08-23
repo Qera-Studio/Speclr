@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Empty,
@@ -17,6 +17,7 @@ import { DOC_TYPES } from '@/lib/domain/registry';
 import { docHref } from '@/lib/profile';
 import { partyName } from '@/lib/domain/party';
 import type { AdminDocument } from '@/lib/domain/types';
+import { NIL } from '@/lib/utils';
 
 /**
  * The same documents as `DocumentsTable`, laid out as cards.
@@ -84,13 +85,11 @@ export default function DocumentsCards({
                     {DOC_TYPES[doc.type].label}
                   </span>
                 </div>
-                <Badge variant={doc.status === 'finalized' ? 'default' : 'secondary'}>
-                  {doc.status === 'finalized' ? 'Finalized' : 'Draft'}
-                </Badge>
+                <StatusBadge status={doc.status} />
               </CardContent>
 
               <CardContent className="flex flex-col gap-0.5">
-                <span className="truncate">{partyName(doc) || '—'}</span>
+                <span className="truncate">{partyName(doc) || NIL}</span>
                 <span className="text-muted-foreground">
                   {formatDisplayDate(doc.issueDate)}
                 </span>
@@ -98,7 +97,7 @@ export default function DocumentsCards({
 
               <CardContent className="relative mt-auto flex items-center justify-between gap-2">
                 <span className="font-medium">
-                  {hasMoney ? formatINR(totals.totalPaise) : '—'}
+                  {hasMoney ? formatINR(totals.totalPaise) : NIL}
                 </span>
                 <DocumentRowActions doc={doc} />
               </CardContent>

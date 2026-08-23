@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listEmployees } from '@/db/store';
 import EmployeeManager from '@/components/admin/employees/EmployeeManager';
+import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -28,8 +29,8 @@ export default async function EmployeesPage() {
   const employees = await listEmployees();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <PageBody>
       <EmployeeManager employees={employees} />
-    </div>
+    </PageBody>
   );
 }

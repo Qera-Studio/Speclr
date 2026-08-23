@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { numericField } from "@/components/form/inputFilters";
+import { NIL } from "@/lib/utils";
 
 /**
  * Line items for any form with a `lineItems` array of `LineItemFormValues` —
@@ -91,7 +92,7 @@ function summarize(
   const description = item?.description?.trim() || "Untitled item";
   const ratePaise = rupeesToPaise(item?.rate ?? "");
   const qty = item?.qty?.trim() || "0";
-  const amount = ratePaise === null ? "—" : formatMoney(ratePaise, currency);
+  const amount = ratePaise === null ? NIL : formatMoney(ratePaise, currency);
   return { description, detail: `${amount} × ${qty}` };
 }
 
@@ -164,7 +165,7 @@ export default function LineItemsEditor<T extends FieldValues>({
                 >
                   <ChevronRight
                     aria-hidden="true"
-                    className="size-3 shrink-0 mt-[4px] text-muted-foreground transition-transform duration-200 group-data-[open]/item:rotate-90"
+                    className="size-3 shrink-0 mt-[4px] text-muted-foreground transition-transform group-data-[open]/item:rotate-90"
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">

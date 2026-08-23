@@ -43,6 +43,22 @@ export interface NavLink {
    * gets pressed by muscle memory and opens the wrong document.
    */
   shortcut?: string;
+  /**
+   * Letter that, pressed after `g`, jumps to this page.
+   *
+   * Only the *destinations* carry one: the home, the records, the library and
+   * the two admin index pages. The document types already have `shortcut`,
+   * which creates rather than navigates, and giving one link both would be two
+   * bindings whose difference is a modifier nobody can see.
+   *
+   * Unique across both profiles, for the same reason `shortcut` is: `g` is a
+   * global sequence, and a letter that meant two things depending on which side
+   * you were looking at is the kind of binding that gets pressed by muscle
+   * memory and lands somewhere else. The one deliberate exception is `h`, which
+   * both homes carry: "home" means the side you are on, which is the answer a
+   * person pressing it wants either way.
+   */
+  jump?: string;
 }
 
 /** A labelled block of links in the rail, below the document types. */
@@ -128,33 +144,38 @@ const ADMIN_TOOLS: NavLink[] = [
   { href: '/admin/kit', label: 'UI Kit', icon: SwatchBook },
 ];
 
-const ADMIN_RECORDS: NavLink[] = [{ href: '/admin/employees', label: 'Employees', icon: IdCard }];
+const ADMIN_RECORDS: NavLink[] = [{ href: '/admin/employees', label: 'Employees', icon: IdCard, jump: 'E' }];
 
 export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
   client: {
     label: 'Client',
     icon: Handshake,
-    home: { href: '/client', label: 'Dashboard', icon: LayoutDashboard },
-    records: [{ href: '/client/clients', label: 'Clients', icon: Users }],
+    home: { href: '/client', label: 'Dashboard', icon: LayoutDashboard, jump: 'H' },
+    // "Clients", not "Records". The section name and the page's own heading
+    // were different words for one thing, so the rail, the breadcrumb and the
+    // h1 disagreed on what you were looking at. The client side holds exactly
+    // one kind of record, so the grouping name bought nothing.
+    records: [{ href: '/client/clients', label: 'Clients', icon: Users, jump: 'C' }],
     documents: [
       { href: '/client/docs/contract', label: 'Contract', icon: FileSignature, shortcut: 'C' },
       { href: '/client/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee, shortcut: 'I' },
       { href: '/client/docs/receipt', label: 'Receipt', icon: Receipt, shortcut: 'R' },
     ],
-    // Not "Tools" — every tool is the studio's own instrument and sits on the
-    // admin side. These two are contract *source material*: the Services a
-    // contract pulls in as Parts, and the clauses of the Master Agreement it is
-    // built from. They belong beside the contracts they feed.
+    // Contract *source material*: the Services a contract pulls in as Parts,
+    // and the clauses of the Master Agreement it is built from. They belong
+    // beside the contracts they feed. The label is unused — the client rail
+    // renders no section headings — but the group is what keeps them together
+    // below the records row.
     groups: [
       {
         label: 'Library',
         links: [
-          { href: '/client/services', label: 'Service catalogue', icon: Package },
-          { href: '/client/clauses', label: 'Clause library', icon: Scale },
+          { href: '/client/services', label: 'Service catalogue', icon: Package, jump: 'S' },
+          { href: '/client/clauses', label: 'Clause library', icon: Scale, jump: 'L' },
           // Not a tool of the studio's either: it is the list of what a client
           // has to hand over before a record can be filled in, so it sits with
           // the other source material a client engagement starts from.
-          { href: '/client/checklist', label: 'What to request', icon: ListChecks },
+          { href: '/client/checklist', label: 'Checklist', icon: ListChecks, jump: 'K' },
         ],
       },
     ],
@@ -162,22 +183,22 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
   admin: {
     label: 'Admin',
     icon: Briefcase,
-    home: { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    home: { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, jump: 'H' },
     records: ADMIN_RECORDS,
     documents: ADMIN_DOCUMENTS,
     groups: [{ label: 'Tools', links: ADMIN_TOOLS }],
     // The trial. Four rows, no headings, no buttons — see `rail` on
     // `ProfileNav` for what it replaces and how to undo it.
     rail: [
-      { link: { href: '/admin', label: 'Dashboard', icon: LayoutDashboard }, covers: [] },
+      { link: { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, jump: 'H' }, covers: [] },
       // Straight through to the one record page rather than an index of one
       // card, but named for the section it replaces.
       { link: { ...ADMIN_RECORDS[0], label: 'Records' }, covers: ADMIN_RECORDS },
       {
-        link: { href: '/admin/docs', label: 'Documents', icon: FileStack },
+        link: { href: '/admin/docs', label: 'Documents', icon: FileStack, jump: 'D' },
         covers: ADMIN_DOCUMENTS,
       },
-      { link: { href: '/admin/tools', label: 'Tools', icon: Wrench }, covers: ADMIN_TOOLS },
+      { link: { href: '/admin/tools', label: 'Tools', icon: Wrench, jump: 'T' }, covers: ADMIN_TOOLS },
     ],
   },
 };
@@ -227,3 +248,20 @@ export const SETTINGS_LINK: NavLink = {
   label: 'Settings',
   icon: Settings,
 };
+
+/**
+ * The `g`-then-letter destinations for one profile, in rail order.
+ *
+ * Derived from the nav rather than listed again, so a page that moves takes its
+ * binding with it and a page that is removed cannot leave a shortcut pointing
+ * at a 404. Deduped by letter because the admin rail restates its records row
+ * under a different label; first wins, which is the rail's own wording.
+ */
+export function jumpsForProfile(profile: Profile): NavLink[] {
+  const seen = new Set<string>();
+  return linksForProfile(profile).filter((link) => {
+    if (!link.jump || seen.has(link.jump)) return false;
+    seen.add(link.jump);
+    return true;
+  });
+}

@@ -64,7 +64,6 @@ export default function UpiQrUpload({ id, value, onValueChange }: UpiQrUploadPro
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={() => {
                   setError(null);
                   onValueChange('');

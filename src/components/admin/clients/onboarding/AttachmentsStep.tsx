@@ -420,7 +420,7 @@ export default function AttachmentsStep({
       icon={
         <Plus
           aria-hidden
-          className="size-5 text-muted-foreground transition-transform duration-300 group-hover/tray:rotate-90"
+          className="size-5 text-muted-foreground transition-transform group-hover/tray:rotate-90"
         />
       }
       label="Add anything else"

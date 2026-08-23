@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -125,8 +133,14 @@ export function useStepSave<T>(
  */
 export const StepActionsSlot = createContext<HTMLElement | null>(null);
 
-/** One step form is mounted at a time, so one id is enough. */
-const STEP_FORM_ID = 'client-onboarding-step';
+/**
+ * One step form is mounted at a time, so one id is enough.
+ *
+ * Exported because the wizard's own footer submits it too: the submit button is
+ * portalled out of the form (see `StepActionsSlot`) and "Save and close" is
+ * rendered by the shell and never enters the form at all.
+ */
+export const STEP_FORM_ID = 'client-onboarding-step';
 
 /**
  * Stops Enter in a text field from advancing the wizard.
@@ -149,6 +163,37 @@ function blockImplicitSubmit(event: React.KeyboardEvent<HTMLFormElement>) {
 }
 
 /**
+ * Puts the caret in the first field that has nothing in it.
+ *
+ * Every step remounts on arrival (`key` on the step in `ClientOnboarding`), so
+ * this runs once per step, which is exactly the moment the operator's hands are
+ * on the keyboard and the cursor is nowhere. Without it, arriving at a step
+ * meant a click before typing on all seven of them.
+ *
+ * **Nothing is focused when every field is already filled**, which is what
+ * going *back* to a finished step looks like. Focus is a claim that something
+ * needs attention; taking it to re-present a completed form would scroll the
+ * step and put a caret in a value the operator came to read, not edit.
+ *
+ * Inputs and textareas only. A combobox is a button, and focusing a button
+ * whose value is empty offers nothing to type into; readonly and disabled
+ * fields are skipped for the same reason, and `type=hidden` and the file input
+ * behind `UploadDropzone` are not fields anybody types into at all.
+ */
+function useFocusFirstEmpty(form: React.RefObject<HTMLFormElement | null>) {
+  useEffect(() => {
+    const fields = form.current?.querySelectorAll<
+      HTMLInputElement | HTMLTextAreaElement
+    >('input:not([type=hidden]):not([type=file]), textarea');
+    for (const field of fields ?? []) {
+      if (field.readOnly || field.disabled || field.value) continue;
+      field.focus();
+      return;
+    }
+  }, [form]);
+}
+
+/**
  * The frame every step shares: the fields, one error region, one submit.
  *
  * `noValidate` throughout, as everywhere else in this codebase — the browser's
@@ -160,6 +205,7 @@ export function StepForm({
   serverError,
   submitting,
   submitLabel,
+  allOptional,
   children,
 }: {
   onSubmit: (event: React.FormEvent) => void;
@@ -167,9 +213,24 @@ export function StepForm({
   submitting: boolean;
   /** Where the button goes, supplied by the shell. See `StepProps`. */
   submitLabel: string;
+  /**
+   * Every field on this step is optional, so say it once here instead of
+   * marking thirty labels.
+   *
+   * Which is not a shortcut: `domain/client.ts` states that the four groups are
+   * optional by design, because a step saves against a row that already exists
+   * and a half-filled client is a normal state. An operator cannot see that
+   * from the form, and the tax step in particular reads as a wall of
+   * identifiers they are being told to produce. One line up front is the
+   * difference between a step that can be skipped and a step that looks like a
+   * blocker. See `FieldInfo`'s `optional` for the other half of the rule.
+   */
+  allOptional?: boolean;
   children: ReactNode;
 }) {
   const slot = useContext(StepActionsSlot);
+  const form = useRef<HTMLFormElement>(null);
+  useFocusFirstEmpty(form);
 
   // `hover:bg-primary` cancels the button's own tint: the arrow is the whole
   // hover response, and a colour shift under it answers the same event twice.
@@ -177,23 +238,31 @@ export function StepForm({
     <Button
       type="submit"
       size="lg"
-      disabled={submitting}
+      pending={submitting}
       form={STEP_FORM_ID}
       className="group/tray hover:bg-primary"
     >
-      {submitting ? 'Saving…' : submitLabel}
+      {submitLabel}
       {submitting ? null : <CycleArrowIcon />}
     </Button>
   );
 
   return (
     <form
+      ref={form}
       id={STEP_FORM_ID}
       onSubmit={onSubmit}
       onKeyDown={blockImplicitSubmit}
       noValidate
       className="flex flex-col gap-4"
     >
+      {allOptional ? (
+        <p className="text-sm text-muted-foreground">
+          Nothing here is required. Fill in what you have and carry on; the rest
+          can wait.
+        </p>
+      ) : null}
+
       <FieldGroup size="form">
         {children}
       </FieldGroup>

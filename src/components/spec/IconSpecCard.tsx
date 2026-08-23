@@ -227,7 +227,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
       <CardContent className="flex flex-1 flex-col gap-4">
         <dl className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
-            <dt className="text-xs text-muted-foreground">Filename</dt>
+            <dt className="text-sm text-muted-foreground">Filename</dt>
             <dd className="flex items-center justify-between gap-1.5">
               <span className="truncate font-mono text-sm text-foreground" title={spec.filename}>
                 {spec.filename}
@@ -240,7 +240,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             </dd>
           </div>
           <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
-            <dt className="text-xs text-muted-foreground">Size</dt>
+            <dt className="text-sm text-muted-foreground">Size</dt>
             <dd className="text-sm text-foreground">
               {spec.acceptedDimensions.length > 0
                 ? spec.acceptedDimensions.map((d) => `${d.width}×${d.height}px`).join(' / ')

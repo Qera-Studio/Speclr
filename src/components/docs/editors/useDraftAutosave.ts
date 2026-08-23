@@ -19,6 +19,8 @@ export interface DraftAutosave {
   /** The draft's id once there is one — from the route, or from the first save. */
   docId: string | null;
   saveState: SaveState;
+  /** When the last successful write landed, in epoch ms. Null until one has. */
+  savedAt: number | null;
   /** The last refusal from the server, or null. */
   serverError: string | null;
   setServerError: (error: string | null) => void;
@@ -88,6 +90,7 @@ export function useDraftAutosave({
   const profile = useProfile();
   const [docId, setDocId] = useState<string | null>(initialDocId ?? null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
 
   /**
@@ -154,6 +157,7 @@ export function useDraftAutosave({
       window.history.replaceState(null, '', `/${profile}/docs/${result.id}`);
     }
     lastSaved.current = sending;
+    setSavedAt(Date.now());
     return true;
   };
 
@@ -183,6 +187,7 @@ export function useDraftAutosave({
   return {
     docId,
     saveState,
+    savedAt,
     serverError,
     setServerError,
     dirty,

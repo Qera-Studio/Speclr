@@ -41,6 +41,26 @@ export function usePagedRows<T>(rows: T[], pageSize: number = PAGE_SIZE) {
 }
 
 /**
+ * "24 clients", or "1–10 of 24 clients" while a page is showing part of them.
+ *
+ * The count belongs beside the pager rather than above the table: it is the
+ * answer to "is this all of them", which is a question you ask at the *end* of
+ * a list. The en dash is the correct character for a numeric range and is the
+ * one place the house rule allows it.
+ */
+export function rowCountLabel(
+  total: number,
+  noun: string,
+  start = 0,
+  shown = total,
+): string {
+  const word = total === 1 ? noun : `${noun}s`;
+  return shown < total
+    ? `${start + 1}–${start + shown} of ${total} ${word}`
+    : `${total} ${word}`;
+}
+
+/**
  * Prev / next with a page counter. Renders nothing at a single page — a pager
  * whose every control is disabled is noise under a short table.
  */

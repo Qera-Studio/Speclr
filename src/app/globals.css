@@ -30,6 +30,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -50,9 +51,42 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /*
+    The motion scale. Three tiers, and a transition belongs to exactly one:
+
+      75ms   state    hover, press, focus, a colour or a chevron
+      100ms  overlay  popover, dropdown, select, combobox, dialog
+      200ms  panel    sheet, sidebar, the editor rail
+
+    75ms is the default, set here rather than per call site, because the state
+    tier is the one nobody was writing: a bare `transition-colors` took
+    Tailwind's 150ms, so every hover in the app ran at twice the intended
+    speed and none of them said so. Setting the default fixes the whole class
+    at once and means the tier a component wants most is the one it gets for
+    free.
+
+    The other two stay written explicitly, since they are the exceptions.
+
+    One easing everywhere. It leaves immediately and settles slowly, which is
+    what makes a control feel like it responded to the click rather than
+    thought about it. The three signature animations keep their own curves and
+    say so in place: the tab indicator, the tray arrow, the reset spin.
+  */
+  --default-transition-duration: 75ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/*
+  `color-scheme` is the half of theming that is not ours to paint: the canvas
+  the browser fills before the first stylesheet lands, the native form controls,
+  the default scrollbar, the autofill sheet. Without it a dark session flashes a
+  white page on every hard load and then draws dark over it. next-themes' inline
+  script sets the class before paint, so this switches with it.
+*/
 :root {
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -64,10 +98,18 @@
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* 0.556 was 4.34:1 on --muted, which is where this colour most often
+     actually lands (hovered rows, tooltips, muted panels). It read as passing
+     because it was only ever measured against white. */
+  --muted-foreground: oklch(0.54 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* What sits *on* a solid destructive fill: the confirm button inside a
+     destructive dialog, and the offline bar. White is 4.76:1 on the light
+     fill and only 2.89:1 on the dark one, which is why this is a token and
+     not a hard-coded `text-white`. */
+  --destructive-foreground: oklch(1 0 0);
   /* Advisory / "needs attention" — the icon-spec checklist's third state,
      between pass (primary) and fail (destructive). Tuned per mode for AA
      contrast as body text: 4.88:1 on this background. Tailwind's amber-500
@@ -76,7 +118,9 @@
   --warning: oklch(0.555 0.14 70);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* The focus indicator, and the one token that has to clear 3:1 against the
+     surface behind it (WCAG 1.4.11). 0.708 was 2.59:1 on white. */
+  --ring: oklch(0.64 0 0);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -101,26 +145,47 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/*
+  Dark mode is its own design, not the light one inverted. Three consequences,
+  and all three are here rather than scattered through the components:
+
+  - **Text is 0.93, not 0.985.** Pure white on a near-black page haloes: the
+    glyph blooms into its own background and long labels get harder to read the
+    longer you look. 0.93 is still 13:1 against `--background`, well past AA,
+    and it is what stops a dense table reading as glare. Every foreground that
+    was 0.985 moved together, or text on a popover would sit brighter than the
+    same text on the page behind it.
+  - **Borders go up, not down.** A hairline that reads as an edge on white is
+    nearly gone on black, and with the table's fill removed the row rules are
+    now the only structure a list has.
+  - **Shadows do nothing here** and are not used to separate surfaces; the
+    border is the separation. That is a rule about what to reach for, so it
+    lives in `docs/design.md` rather than in a token.
+*/
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  --foreground: oklch(0.93 0 0);
   --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
+  --card-foreground: oklch(0.93 0 0);
   --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
+  --popover-foreground: oklch(0.93 0 0);
   --primary: oklch(0.424 0.199 265.638);
   --primary-foreground: oklch(0.97 0.014 254.604);
   --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
+  --secondary-foreground: oklch(0.93 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent-foreground: oklch(0.93 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  /* Near-black, not white: 6.84:1 on this fill against white's 2.89:1. */
+  --destructive-foreground: oklch(0.145 0 0);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  /* Up from 10% and 15%. See the note above the block. */
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 22%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
@@ -133,7 +198,7 @@
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
   --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent-foreground: oklch(0.93 0 0);
   --sidebar-hover: oklch(0.269 0 0);
   --sidebar-active: oklch(0.32 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
@@ -152,6 +217,94 @@
   }
 
   /*
+    Selection, said once.
+
+    The browser default is the OS accent, which is a colour this app has no
+    other use for and which lands on top of `--primary` blue in half the places
+    a person drags across. `--primary/25` is our own blue at a weight that
+    leaves the text underneath at full strength: selection marks a range, it
+    does not restate it. `color: inherit` because a fixed selection foreground
+    is how selected text in a destructive dialog comes out unreadable.
+  */
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+    color: inherit;
+  }
+
+  /*
+    Thin scrollbars, in the theme's own greys.
+
+    Every scrolling box here sits inside a dark chrome, and the platform's
+    default bar is a light slab that reads as a piece of another application.
+    `scrollbar-width: thin` and `scrollbar-color` are the standard properties
+    and are the whole implementation. There is no `::-webkit-scrollbar` block: it is
+    the non-standard spelling of the same thing and has to restate the track,
+    the thumb, the corner and the buttons to avoid drawing a default one.
+
+    The thumb is `--border`, which is the same hairline every panel edge uses,
+    so a scrollbar reads as an edge rather than a control. It sits on
+    `transparent` so the track takes whatever surface it is over: the rail, the
+    page and a popover all scroll and none of them share a background.
+  */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /*
+    The caret follows the text, not the accent.
+
+    Left alone a browser draws it in `color`, which is already right everywhere
+    except the one place it is overridden: the autofill rule above clips the
+    background to the glyphs and sets `-webkit-text-fill-color`, and Chrome
+    takes the caret from the *fill*, not from `color`. That rule sets
+    `caret-color` for exactly that reason. This is here so the next person to
+    read it knows the default is deliberate rather than unconsidered.
+  */
+
+  /*
+    Printing the chrome, as opposed to printing a document.
+
+    `styles/print.css` is the document sheets' A4 geometry and is loaded by them
+    alone. This is the other case: somebody hits ⌘P on the clients list or the
+    dashboard, wanting the table. The rails, the header, the toasts and the
+    floating controls are all navigation, so they go, and what is left is the
+    content region on white with its hairlines intact.
+
+    `data-print-hidden` rather than a class per component: it is an intent
+    ("this is chrome"), and an attribute says that without a component having to
+    import anything to say it.
+  */
+  @media print {
+    [data-print-hidden],
+    [data-slot="sidebar-wrapper"] > [data-slot="sidebar"],
+    [data-sonner-toaster] {
+      display: none !important;
+    }
+
+    /* The shell pins itself to the viewport and clips; on paper that means one
+       screenful and nothing after it. Unpin every ancestor so the content flows
+       onto as many pages as it needs. */
+    html,
+    body,
+    [data-slot="sidebar-wrapper"],
+    [data-slot="sidebar-inset"],
+    #main-content {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+    }
+
+    /* A sticky header repeats itself over every printed page in most engines,
+       and there is no scrolling on paper for it to answer. */
+    [data-slot="table-header"] {
+      position: static !important;
+    }
+  }
+
+  /*
     One icon weight, in screen pixels, at every size.
 
     `non-scaling-stroke` is what makes this number mean *screen* pixels. Lucide's
@@ -164,8 +317,16 @@
     tick, `tray-arrow-icon`, `SitemapChart`. The tick was thickened on purpose
     and wants a look if this weight settles.
   */
+  /*
+    1.5, down from 1.75. A button's label is 12px at weight 500, whose stems
+    land near 1.2px, and 1.75 beside that reads as a heavier icon next to a
+    lighter word — most visible on the create buttons, where the plus carries a
+    label rather than standing alone. This is the one place to fix it: a
+    `strokeWidth` on the plus alone would trade a mismatch inside one button for
+    a mismatch between that button and every other icon in the app.
+  */
   .lucide {
-    stroke-width: 1.75;
+    stroke-width: 1.5;
     vector-effect: non-scaling-stroke;
   }
 

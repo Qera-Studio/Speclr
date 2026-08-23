@@ -3,6 +3,7 @@ import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listDocumentsByProfile } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
 import NewDocumentButton from '@/components/admin/NewDocumentButton';
+import { PageBody, PageHeader } from '@/components/admin/Page';
 import type { Profile } from '@/lib/profile';
 
 /**
@@ -24,17 +25,16 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
   const documents = await listDocumentsByProfile(profile);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4">
-        {/* "Dashboard", matching the rail. This page browses every document
-            already issued; `/<profile>/docs` lists the *types* you can create.
-            Both were headed "Documents", which made them the same page twice. */}
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <PageBody>
+      {/* "Dashboard", matching the rail. This page browses every document
+          already issued; `/<profile>/docs` lists the *types* you can create.
+          Both were headed "Documents", which made them the same page twice. */}
+      <PageHeader title="Dashboard">
         {/* The one button trialling `raised` — see the variant's note in
             `button.tsx`. Every other create button is still `default`. */}
         <NewDocumentButton variant="raised" />
-      </div>
+      </PageHeader>
       <DocumentsBrowser documents={documents} />
-    </div>
+    </PageBody>
   );
 }

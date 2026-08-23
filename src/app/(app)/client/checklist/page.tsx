@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import ClientRequestChecklist from '@/components/tools/ClientRequestChecklist';
+import { PageBody, PageHeader } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'What to request — speclr',
@@ -28,16 +29,13 @@ export default async function ChecklistPage() {
   }
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">What to request</h1>
-        <p className="text-sm text-muted-foreground">
-          The details and documents to ask a new client for. Ticks are a
-          scratchpad kept for this tab only, not a record: what a client actually
-          supplied lives on their record.
-        </p>
-      </div>
+    // Width-capped: this one is read rather than scanned.
+    <PageBody className="max-w-5xl">
+      <PageHeader
+        title="What to request"
+        description="The details and documents to ask a new client for. Ticks are a scratchpad kept for this tab only, not a record: what a client actually supplied lives on their record."
+      />
       <ClientRequestChecklist />
-    </div>
+    </PageBody>
   );
 }

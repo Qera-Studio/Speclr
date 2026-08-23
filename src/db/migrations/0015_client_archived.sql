@@ -1,0 +1,15 @@
+-- Offboarding: the engagement is over, and the client leaves the working list.
+--
+-- Not a soft delete. A client that has ever been on a document cannot be
+-- deleted at all (`documents.client_id` is a foreign key) and a finalized
+-- document is retained 72 months under CGST s.36, so the rows that accumulate
+-- are precisely the ones there is no way to remove. This is how they get out of
+-- the way, and it is reversible, because work comes back.
+--
+-- It hides the client from the default list and from the *new* document picker.
+-- It does not hide them from a document already open, and it changes nothing
+-- that prints: a snapshot froze what an issued document says about them, and
+-- this column is not in it.
+--
+-- NOT NULL DEFAULT false, so every existing row reads as active.
+ALTER TABLE "clients" ADD COLUMN "archived" boolean DEFAULT false NOT NULL;

@@ -174,6 +174,7 @@ export default function CommercialStep({
       serverError={serverError}
       submitting={isSubmitting}
       submitLabel={submitLabel}
+      allOptional
     >
       <FieldRow columns={3}>
         <Field>

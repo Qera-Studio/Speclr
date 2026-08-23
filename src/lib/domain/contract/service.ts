@@ -23,6 +23,7 @@
  */
 
 import { z } from 'zod';
+import { sacSchema } from '../fields';
 import { codeSchema, multilineSchema, textSchema } from '../text';
 import type { ScheduleKey } from './schedules';
 
@@ -69,6 +70,48 @@ export interface ServiceContent {
   clientInputIds: string[];
   /** Fee, payment split, timeline, support — all blanks. */
   fee: ServiceRow[];
+  /**
+   * The Service Accounting Code this work is classified under for GST.
+   *
+   * A property of *what is sold*, not of any one contract, which is why it sits
+   * here rather than on a document: two clients buying Part 05 buy the same
+   * classification. All six digits, and all of them start `99` because Chapter
+   * 99 is services; the `9983` group this catalogue lands in is taxed at 18%.
+   *
+   * **This does not yet satisfy CGST Rule 46.** The rule wants the SAC printed
+   * against the line on the tax invoice, and invoice lines here are still free
+   * text that no Service feeds. This is the number the line will read when they
+   * do; until then it is catalogue data. See `ROADMAP.md`'s format freeze.
+   *
+   * Optional because the twenty-two rows predate it, exactly as the six fields
+   * `ClientSnapshot` gained were optional (CONTEXT.md §5d).
+   */
+  sacCode?: string;
+  /**
+   * The list price, in integer paise. Absent means "quoted per engagement".
+   *
+   * It is not the contract's Fee. The `fee` rows above are blanks a specific
+   * contract fills after a specific negotiation; this is the number the studio
+   * quotes from before there is a contract. Nothing reads it into a document,
+   * and a Part's Fee blank is still filled by hand.
+   *
+   * Per what is `rateUnitOf(scheduleKey)`, which is derived rather than stored:
+   * a Retainer is priced by the month and everything else is a fixed piece of
+   * work, and that follows from the Schedule the Service already belongs to.
+   */
+  ratePaise?: number;
+}
+
+/**
+ * What a Service's rate is *per*.
+ *
+ * Derived from the Schedule rather than stored beside the rate (rule 3): a
+ * Retainer is the Schedule under which work recurs monthly, so a Retainer
+ * Service's price is monthly by construction, and a second field saying so
+ * would be a second place for the record to disagree with itself.
+ */
+export function rateUnitOf(scheduleKey: ScheduleKey): string {
+  return scheduleKey === 'retainer' ? 'per month' : 'fixed';
 }
 
 /** A Service as the domain uses it: the row and its content in one object. */
@@ -103,6 +146,10 @@ export const serviceContentSchema = z.object({
   exclusionIds: z.array(refId).max(120),
   clientInputIds: z.array(refId).max(80),
   fee: z.array(row).max(12),
+  sacCode: sacSchema().optional(),
+  // A ceiling of ₹100 crore. Not a business rule — a bound, so a stray paste
+  // cannot land a number that overflows the arithmetic downstream of it.
+  ratePaise: z.number().int().min(0).max(10_000_000_000).optional(),
 });
 
 export const serviceInputSchema = serviceContentSchema.extend({

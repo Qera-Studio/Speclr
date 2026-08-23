@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { deleteDraftAction, finalizeDocument } from '@/server/actions/documents';
 import { computeTotals } from '@/lib/domain/money';
 import { contentOf, type DocContent } from '@/lib/domain/docContent';
-import { DOC_TYPES } from '@/lib/domain/registry';
+import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from '@/lib/domain/registry';
+import { DerivedNote } from '@/components/ui/derived-note';
 import { GST_PLACES, gstStateName } from '@/lib/domain/gstStates';
 import { placeOfSupplyOf, zeroRatingLabel } from '@/lib/domain/placeOfSupply';
 import { addDays } from '@/lib/domain/dates';
@@ -21,7 +22,6 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Combobox } from '@/components/ui/combobox';
 import { Switch } from '@/components/ui/switch';
 import FieldInfo, { InfoTip } from '@/components/form/FieldInfo';
@@ -47,7 +47,7 @@ import type { InvoiceOption, PaymentMethod } from '@/lib/domain/types';
 import type { StudioInfo } from '@/lib/domain/studio';
 import { toPayload, useDocumentForm, type EditorFormValues } from './useDocumentForm';
 import { useDraftAutosave } from './useDraftAutosave';
-import { AutosaveStatus, UnsavedChangesDialog } from './draftStatus';
+import { AutosaveStatus, SaveError, UnsavedChangesDialog } from './draftStatus';
 import { workspaceTitle } from '../workspaceTitle';
 import { numericField } from '@/components/form/inputFilters';
 import { useProfile } from '@/lib/useProfile';
@@ -232,6 +232,38 @@ export default function DocumentEditor({
    * Both are zero-rated supplies under IGST Act s.16 made under an LUT, which
    * is a different statement from "no GST" and is what `gstLabel` prints.
    */
+  /**
+   * The sentence under the due date, or nothing.
+   *
+   * Shown while the date still *agrees with* the client's terms rather than
+   * while it was seeded, which needs no flag and stays honest either way: an
+   * operator who moves the date loses the note, and one who happens to pick the
+   * same day it would have been gets it, because on that day the statement is
+   * true. The seeding effect only ever fills an empty field, so this is the
+   * only thing that knows the two match.
+   */
+  /**
+   * What `zeroRatingLabel` would say for this client, so the note under the GST
+   * note can tell "the app filled this in" from "somebody typed it". Recomputed
+   * rather than flagged, for the same reason the due date is: the answer stops
+   * being true the moment the text is edited, and no state has to remember it.
+   */
+  const zeroRatedLabel = selectedClient
+    ? zeroRatingLabel({
+        addressParts: selectedClient.addressParts,
+        sez: selectedClient.tax?.sez,
+      })
+    : undefined;
+
+  const paymentTerms = selectedClient?.commercial?.paymentTermsDays;
+  const derivedDueDate =
+    spec.hasDueDate &&
+    paymentTerms !== undefined &&
+    values.dueDate &&
+    values.dueDate === addDays(values.issueDate, paymentTerms)
+      ? `${paymentTerms} days from the issue date, which is this client's agreed payment terms.`
+      : null;
+
   const seededClientId = useRef<string | null>(doc ? (doc.clientId ?? null) : null);
   useEffect(() => {
     if (!selectedClient || seededClientId.current === selectedClient.id) return;
@@ -292,7 +324,7 @@ export default function DocumentEditor({
     recipientId: values.clientId,
     payload: toPayload(typeCode, values, content),
   });
-  const { docId, serverError, setServerError } = autosave;
+  const { docId, setServerError } = autosave;
 
   const onFinalize = async () => {
     if (!docId) return;
@@ -439,6 +471,7 @@ export default function DocumentEditor({
                     />
                   )}
                 />
+                {derivedDueDate ? <DerivedNote>{derivedDueDate}</DerivedNote> : null}
               </Field>
             ) : null}
           </FieldRow>
@@ -472,13 +505,14 @@ export default function DocumentEditor({
                 <FieldInfo
                   htmlFor="doc-place-of-supply"
                   label="Place of supply"
-                  /* The general rule, then where *this* document's answer came
-                     from — the reason used to sit under the field as standing
-                     text, but it explains the value rather than announcing
-                     anything, so it belongs with the explanation. */
-                  info={`Derived from the client — their GSTIN's first two digits, or the state on their address. It decides the CGST/SGST versus IGST split, so it is not typed by hand any more. Override it only where the law puts the supply somewhere else, and say why.${
-                    derivedPlaceOfSupply.reason ? ` — ${derivedPlaceOfSupply.reason}` : ''
-                  }`}
+                  /* The standing rule only. Where *this* document's answer
+                     came from goes under the field, in a `DerivedNote`: the
+                     tooltip explains the mechanism, which is the same on every
+                     invoice, and the note explains the value, which is not.
+                     Both used to be in here, which meant the one fact a reader
+                     was actually checking was the one they had to go looking
+                     for. */
+                  info="Derived from the client: their GSTIN's first two digits, or the state on their address. It decides the CGST/SGST versus IGST split, so it is not typed by hand any more. Override it only where the law puts the supply somewhere else, and say why."
                   infoLabel="Where does place of supply come from?"
                 />
                 {placeOfSupplyOverridden ? (
@@ -491,7 +525,7 @@ export default function DocumentEditor({
                         size="form"
                         options={GST_PLACES.map((state) => ({
                           value: state.code,
-                          label: `${state.code} — ${state.name}`,
+                          label: `${state.code} · ${state.name}`,
                         }))}
                         value={field.value}
                         onValueChange={field.onChange}
@@ -507,12 +541,19 @@ export default function DocumentEditor({
                     readOnly
                     value={
                       derivedPlaceOfSupply.code
-                        ? `${derivedPlaceOfSupply.code} — ${gstStateName(derivedPlaceOfSupply.code) ?? ''}`
+                        ? `${derivedPlaceOfSupply.code} · ${gstStateName(derivedPlaceOfSupply.code) ?? ''}`
                         : ''
                     }
                     placeholder="Pick a client first"
                   />
                 )}
+                {/* Only while it is derived. Under an override the value is
+                    the operator's own and the reason they recorded is in the
+                    field below, so a second explanation would be arguing with
+                    the one they wrote. */}
+                {!placeOfSupplyOverridden && derivedPlaceOfSupply.reason ? (
+                  <DerivedNote>{derivedPlaceOfSupply.reason}</DerivedNote>
+                ) : null}
               </Field>
             </FieldRow>
           ) : null}
@@ -555,6 +596,16 @@ export default function DocumentEditor({
             <Field>
               <FieldLabel htmlFor="doc-gst-label">GST note</FieldLabel>
               <Input id="doc-gst-label" size="form" {...register('gstLabel')} />
+              {/* The zero-rating wording arrives on its own when the recipient
+                  is an SEZ unit or overseas, and it is a legal claim about why
+                  the rate is nil, not a placeholder. A reader who does not know
+                  where it came from has no way to tell those apart. */}
+              {values.gstLabel && values.gstLabel === zeroRatedLabel ? (
+                <DerivedNote>
+                  Filled from the client record: this is a zero-rated supply
+                  under an LUT, not an exemption.
+                </DerivedNote>
+              ) : null}
             </Field>
           )}
           </EditorSection>
@@ -638,11 +689,11 @@ export default function DocumentEditor({
             </EditorSection>
           ) : null}
 
-          <EditorSection title="Terms" description="The clauses printed at the foot">
+          <EditorSection title="Terms" description="The clauses at the foot" printed>
             <TermsFields terms={shown(content, resolved, 'terms')} onChange={(terms) => patchContent({ terms })} />
           </EditorSection>
 
-          <EditorSection title="Heading" description="The printed title">
+          <EditorSection title="Heading" description="The document's own title" printed>
             <ContentText
               id="doc-masthead"
               label="Masthead"
@@ -653,7 +704,7 @@ export default function DocumentEditor({
 
           {/* No notes field: notes were retired from the sheet, and an input for
               something the document never prints is a trap. */}
-          <EditorSection title="Footer" description="QR caption and the closing line">
+          <EditorSection title="Footer" description="QR caption and the closing line" printed>
             <ContentText
               id="doc-qr-caption"
               label="QR caption"
@@ -672,11 +723,7 @@ export default function DocumentEditor({
 
         <TotalsPanel totals={totals} gstRatePercent={previewDoc.gstRatePercent} />
 
-        {serverError ? (
-          <Alert variant="destructive" role="alert">
-            <AlertDescription>{serverError}</AlertDescription>
-          </Alert>
-        ) : null}
+        <SaveError autosave={autosave} />
         <AutosaveStatus autosave={autosave} />
 
         <div className="flex flex-wrap gap-2">
@@ -695,7 +742,7 @@ export default function DocumentEditor({
               <ConfirmActionButton
                 label="Delete draft"
                 title="Delete this draft?"
-                description="This cannot be undone."
+                description={DELETE_DRAFT_CONSEQUENCE}
                 confirmLabel="Delete"
                 variant="destructive"
                 confirmVariant="destructive"

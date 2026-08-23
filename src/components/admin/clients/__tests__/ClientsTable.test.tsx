@@ -14,7 +14,7 @@ const clients = [
     email: 'a@b.com',
     phone: '999',
     gstin: '',
-    createdAt: 0,
+    createdAt: new Date(2026, 6, 21).getTime(),
     updatedAt: 0,
   },
 ] as ClientRecord[];
@@ -24,6 +24,9 @@ describe('ClientsTable', () => {
     render(<ClientsTable clients={clients} onDelete={onDelete} />);
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
     expect(screen.getByText('a@b.com')).toBeInTheDocument();
+    // Through the domain helper, so the list reads the same way documents do,
+    // and it is what the list is sorted by.
+    expect(screen.getByText('21 Jul 2026')).toBeInTheDocument();
   });
 
   it('links each row to that client’s onboarding page', () => {
@@ -58,13 +61,45 @@ describe('ClientsTable', () => {
   it('shows how much onboarding is done', () => {
     // A legacy client carries no entity type or sections, so only the address
     // half of identity is there — nothing counts as complete.
+    // Drawn as a ring, so the figures are in the accessible name: the column
+    // is scanned rather than read, and a screen reader still gets the count.
     render(<ClientsTable clients={clients} onDelete={onDelete} />);
-    expect(screen.getByText('0 of 7')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Onboarding: 0 of 7' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Offboarding, both ways, and without a dialog: it takes nothing away and the
+   * button beside it puts the row straight back.
+   */
+  it('archives a client, and restores one from the archived list', async () => {
+    const user = userEvent.setup();
+    const onArchive = jest.fn();
+    const { rerender } = render(
+      <ClientsTable clients={clients} onDelete={onDelete} onArchive={onArchive} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
+    expect(onArchive).toHaveBeenCalledWith(clients[0], true);
+
+    rerender(
+      <ClientsTable clients={clients} onDelete={onDelete} onArchive={onArchive} archived />,
+    );
+    await user.click(screen.getByRole('button', { name: /restore acme co\./i }));
+    expect(onArchive).toHaveBeenLastCalledWith(clients[0], false);
   });
 
   it('renders an empty state', () => {
     render(<ClientsTable clients={[]} onDelete={onDelete} />);
     expect(screen.getByText(/no clients yet/i)).toBeInTheDocument();
+  });
+
+  // An empty archive is not an app with no clients in it, and saying so would
+  // read as data loss on the one screen you go to looking for a missing row.
+  it('says something different when the archive is what is empty', () => {
+    render(<ClientsTable clients={[]} onDelete={onDelete} archived />);
+    expect(screen.getByText(/nothing archived/i)).toBeInTheDocument();
   });
 
   /**

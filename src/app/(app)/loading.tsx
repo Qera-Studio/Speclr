@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageBody, TableSkeleton } from '@/components/admin/Page';
 
 /**
  * The app's one loading boundary — and it is load-bearing for how the whole
@@ -25,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  */
 export default function AppLoading() {
   return (
-    <div className="flex flex-col gap-6 p-6" aria-busy="true">
+    <PageBody aria-busy>
       {/*
         Deliberately not a spinner and not a copy of any one page's layout. A
         spinner says "wait"; this says "something the shape of a page is
@@ -35,17 +36,36 @@ export default function AppLoading() {
       <span className="sr-only" role="status">
         Loading
       </span>
-      <div aria-hidden="true" className="flex flex-col gap-6">
+      {/*
+        Held back 150ms before it appears.
+
+        Most navigations here resolve well inside that, and a skeleton that
+        flashes for 80ms is worse than no skeleton at all: the eye registers
+        the movement, not the content, and the page arrives feeling *slower*
+        than if nothing had happened. Delayed, a fast route shows the previous
+        page's inset and then the new page; only a genuinely slow one ever
+        draws bars.
+
+        CSS, not a timer. `tw-animate-css`'s `fade-in` with a delay costs
+        nothing, cannot leak, and runs on the compositor.
+      */}
+      <div
+        aria-hidden="true"
+        className="flex flex-col gap-6 animate-in fade-in fill-mode-backwards delay-150 duration-100"
+      >
         <div className="flex items-center justify-between gap-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-9 w-36" />
         </div>
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
+        {/*
+          A stack of full-width bars was the wrong shape twice over: it was
+          neither the height of a row nor the width of a column, so the one
+          thing a skeleton exists to do (hold the space the content is about to
+          take) was the one thing it did not do. `TableSkeleton` is built from
+          the real table primitives, so it cannot drift from them.
+        */}
+        <TableSkeleton />
       </div>
-    </div>
+    </PageBody>
   );
 }

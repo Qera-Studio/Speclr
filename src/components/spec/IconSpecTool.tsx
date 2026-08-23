@@ -9,6 +9,7 @@ import ImportProgressControls from './ImportProgressControls';
 import ExportProgressButton from './ExportProgressButton';
 import ResetProgressButton from './ResetProgressButton';
 import IconSpecCard from './IconSpecCard';
+import { PageBody, PageHeader } from "@/components/admin/Page";
 
 export default function IconSpecTool() {
   const {
@@ -28,14 +29,11 @@ export default function IconSpecTool() {
   } = useIconSpecState();
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-foreground">Icon &amp; Logo Spec Checklist</h1>
-        <p className="text-sm text-muted-foreground">
-          Upload each asset variant, check it against the spec, and judge visual quality in a realistic context. Works
-          for any brand/client — not tied to Qera.
-        </p>
-      </header>
+    <PageBody className="mx-auto max-w-6xl">
+      <PageHeader
+        title={<>Icon &amp; Logo Spec Checklist</>}
+        description="Upload each asset variant, check it against the spec, and judge visual quality in a realistic context. Works for any brand or client, not tied to Qera."
+      />
 
       {/* Identity block — these two fields drive every preview mockup, so they
           lead the page rather than sitting inline with the progress meter. */}
@@ -79,6 +77,6 @@ export default function IconSpecTool() {
           <ResetProgressButton onReset={resetProgress} />
         </ButtonGroup>
       </div>
-    </div>
+    </PageBody>
   );
 }

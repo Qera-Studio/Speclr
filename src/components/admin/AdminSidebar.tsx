@@ -16,7 +16,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -173,7 +172,12 @@ function FlatNavBody({ nav, pathname }: { nav: ProfileNav; pathname: string }) {
   );
 }
 
-/** The grouped rail: home and a create button, then labelled sections. */
+/**
+ * The client rail: home, the create button, then every remaining link in one
+ * unbroken list. One `SidebarGroup`, not four — each carries `py-4`, so
+ * separate groups put 32px of nothing between rows that read as one column now
+ * that the section headings are gone.
+ */
 function GroupedNavBody({
   nav,
   pathname,
@@ -182,92 +186,58 @@ function GroupedNavBody({
   pathname: string;
 }) {
   return (
-    <>
-      {/* Dashboard, then the app's one job — alone at the top */}
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <MenuLink item={nav.home} active={pathname === nav.home.href} />
-          </SidebarMenu>
-          {/* Same rounding collapsed as expanded, and the same
-              `--radius-sm`-based squircle the icon rows use. A radius that
-              changes with the rail animates on its own clock — the button
-              went pill-shaped a beat before the sidebar had moved. */}
-          <NewDocumentButton
-            variant="ghost"
-            // `--sidebar-primary`, not `--primary`: the dark theme puts
-            // primary at L .424, which on the near-black rail reads as a
-            // disabled link. The sidebar's own blue is L .623 — the token
-            // exists for exactly this surface.
-            className="mt-1 h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-sidebar-primary hover:text-sidebar-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-          >
-            <span className="group-data-[collapsible=icon]:hidden">
-              New document
-            </span>
-            {/* Grey keycaps beside blue text read as disabled. Tinted with
-                the button's own accent so they belong to it. */}
-            <Shortcut
-              className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-sidebar-primary/10 [&_[data-slot=kbd]]:text-sidebar-primary/70"
-              keys={["mod", "D"]}
-            />
-          </NewDocumentButton>
-        </SidebarGroupContent>
-      </SidebarGroup>
+    <SidebarGroup>
+      <SidebarGroupContent>
+        {/* The app's one job, above every place you can go */}
+        {/* Same rounding collapsed as expanded, and the same
+            `--radius-sm`-based squircle the icon rows use. A radius that
+            changes with the rail animates on its own clock — the button
+            went pill-shaped a beat before the sidebar had moved. */}
+        <NewDocumentButton
+          variant="ghost"
+          // `--sidebar-primary`, not `--primary`: the dark theme puts
+          // primary at L .424, which on the near-black rail reads as a
+          // disabled link. The sidebar's own blue is L .623 — the token
+          // exists for exactly this surface.
+          className="h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-sidebar-primary hover:text-sidebar-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <span className="group-data-[collapsible=icon]:hidden">
+            New document
+          </span>
+          {/* Grey keycaps beside blue text read as disabled. Tinted with
+              the button's own accent so they belong to it. */}
+          <Shortcut
+            className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-sidebar-primary/10 [&_[data-slot=kbd]]:text-sidebar-primary/70"
+            keys={["mod", "D"]}
+          />
+        </NewDocumentButton>
 
-      {/* Records — a short list of *who* the documents are about, read before
-          the list of document kinds. */}
-      <SidebarGroup>
-        <SidebarGroupLabel className="text-sm">Records</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {nav.records.map((item) => (
+        {/*
+          Dashboard, records, then the library — one menu, no headings and no
+          gap.
+
+          The document types are not listed here any more: ⌘D and the button
+          above are the way in, and `nav.documents` still feeds both.
+        */}
+        <SidebarMenu className="mt-1">
+          {[nav.home, ...nav.records, ...nav.groups.flatMap((g) => g.links)].map(
+            (item) => (
               <MenuLink
                 key={item.href}
                 item={item}
-                active={isActiveHref(pathname, item.href)}
+                // Home matches exactly — every URL on this side starts with
+                // it, so the prefix rule would leave Dashboard always lit.
+                active={
+                  item.href === nav.home.href
+                    ? pathname === item.href
+                    : isActiveHref(pathname, item.href)
+                }
               />
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      {/* Document types — this profile's, flat */}
-      <SidebarGroup>
-        <SidebarGroupLabel className="text-sm">Documents</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {nav.documents.map((item) => (
-              <MenuLink
-                key={item.href}
-                item={item}
-                active={isActiveHref(pathname, item.href)}
-              />
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      {/* Client's Library, Admin's Tools. An empty list renders nothing on its
-          own, so there is no per-profile special case here. */}
-      {nav.groups.map((group) => (
-        <SidebarGroup key={group.label}>
-          <SidebarGroupLabel className="text-sm">
-            {group.label}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {group.links.map((item) => (
-                <MenuLink
-                  key={item.href}
-                  item={item}
-                  active={isActiveHref(pathname, item.href)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      ))}
-    </>
+            ),
+          )}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
@@ -325,7 +295,13 @@ export default function AdminSidebar({
           `px-3` every icon in this header sat 4px right of every icon in the
           rail below it. Expanded the wordmark keeps its wider inset. */}
       <SidebarHeader className="gap-2 px-3 py-2 group-data-[collapsible=icon]:px-2">
-        <div className="flex flex-row items-center justify-between">
+        {/* `h-10`, so the wordmark sits on the header's baseline rather than
+            six pixels above it. Both columns start 8px down (the inset gutter
+            on the rail, the `m-2` on the content frame) and the header is
+            `h-14`, so a 40px row under this block's own 8px of top padding puts
+            this text and the breadcrumb on the same centre line. They are the
+            two things a person reads first and they were not level. */}
+        <div className="flex h-10 flex-row items-center justify-between">
           <span className="text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
             speclr
           </span>

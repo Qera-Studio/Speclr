@@ -93,7 +93,7 @@ export function TermsFields({
               >
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[open]/term:rotate-90"
+                  className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[open]/term:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">
@@ -185,7 +185,7 @@ export function ClauseFields({
               >
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[open]/clause:rotate-90"
+                  className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[open]/clause:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">

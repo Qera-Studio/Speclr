@@ -3,6 +3,7 @@ import {
   emailSchema,
   gstinSchema,
   panSchema,
+  sacSchema,
   tanSchema,
 } from '../fields';
 
@@ -119,5 +120,27 @@ describe('the studio’s own registration still passes', () => {
   it('accepts Qera’s GSTIN and CIN', () => {
     expect(gstinSchema({ required: 'x' }).safeParse('09AABCQ2864Q1ZQ').success).toBe(true);
     expect(cinSchema({ required: 'x' }).safeParse('U62099UW2026PTC254312').success).toBe(true);
+  });
+});
+
+/**
+ * SAC. The rule is a shape, and the shape's one job is to catch a goods HSN
+ * typed into a services field: those do not start 99, and nothing else about a
+ * six-digit number distinguishes them.
+ */
+describe('sacSchema', () => {
+  it.each(['998314', '998315', '999799'])('accepts %s', (value) => {
+    expect(sacSchema().safeParse(value).success).toBe(true);
+  });
+
+  // 8471 is a goods HSN (computers); 99831 and 9983145 are the near misses.
+  it.each(['8471', '99831', '9983145', '123456', 'ABC123'])('refuses %s', (value) => {
+    expect(sacSchema().safeParse(value).success).toBe(false);
+  });
+
+  /** Blank-tolerant by default, like every other rule in this file. */
+  it('allows a blank unless the form says otherwise', () => {
+    expect(sacSchema().safeParse('').success).toBe(true);
+    expect(sacSchema({ required: 'A SAC is required.' }).safeParse('').success).toBe(false);
   });
 });

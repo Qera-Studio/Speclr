@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listClients } from '@/db/store';
 import ClientManager from '@/components/admin/clients/ClientManager';
+import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -28,8 +29,8 @@ export default async function ClientsPage() {
   const clients = await listClients();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <PageBody>
       <ClientManager clients={clients} />
-    </div>
+    </PageBody>
   );
 }

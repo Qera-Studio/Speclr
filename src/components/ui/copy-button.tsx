@@ -6,6 +6,39 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
+ * The copy itself, without an opinion about what is clicked to trigger it.
+ *
+ * Two things copy in this app: an icon button, and the value in a table cell
+ * (clicking the phone number copies the phone number, which is what anybody
+ * tries first). Both want the same "copied" flash and the same silence when
+ * the clipboard is unavailable, so the behaviour lives here once and each
+ * caller decides what it looks like.
+ */
+export function useCopy(value: string, revertAfterMs = 1500) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), revertAfterMs);
+    } catch {
+      // Clipboard unavailable (insecure context / denied) — no state change.
+    }
+  };
+
+  return { copied, copy };
+}
+
+/**
  * An icon button that copies `value` to the clipboard. On success the copy icon
  * swaps to a double-tick and the tooltip reads "Copied", reverting after
  * `revertAfterMs`. Reusable anywhere a value is worth copying (filenames,
@@ -27,25 +60,7 @@ export function CopyButton({
   revertAfterMs = 1500,
   className,
 }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), revertAfterMs);
-    } catch {
-      // Clipboard unavailable (insecure context / denied) — no state change.
-    }
-  };
+  const { copied, copy } = useCopy(value, revertAfterMs);
 
   const current = copied ? copiedLabel : label;
 
@@ -56,7 +71,7 @@ export function CopyButton({
           render={
             <button
               type="button"
-              onClick={handleCopy}
+              onClick={copy}
               aria-label={current}
               className={cn(
                 'inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

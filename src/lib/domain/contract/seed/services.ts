@@ -14,6 +14,38 @@
  *
  * `[bracketed]` values are blanks and are left exactly as drafted.
  *
+ * **`sacCode` is a proposal, not a ruling.** Every one is in the 9983 group, so
+ * every one is taxed at 18% and the choice between them does not move a rupee
+ * on any invoice; what it moves is the line the classification is filed under.
+ * They were assigned by reading the code descriptions against each Service:
+ * 998314 for design and development, 998315 for hosting and domains, 998313 for
+ * IT consulting and support, 998316 for operating a deployed system, 998391 for
+ * specialty design, 998361 for advertising, 998311 for management consulting.
+ *
+ * Three are worth a second look, in this order. **16 Community management** is
+ * the weakest: monitoring and replying to an audience is not advertising and
+ * not content, and it reads closer to 998593 (customer contact centre) or
+ * 998599 (other support services). **15 Content production** could be argued
+ * into 99838x photography or 999613 audiovisual post-production, though it is
+ * produced for promotion and from Client-supplied footage, which is what keeps
+ * it in advertising. **04 Social account setup** is filed as IT support and is
+ * not obviously IT.
+ *
+ * None of the three moves any money: 9983, 99838, 99859 and 99961 are all 18%.
+ * And below ₹5 crore aggregate turnover only **four** digits are required on a
+ * B2B invoice (Rule 46 read with notification 78/2020), at which point every
+ * Service here except possibly 16 is unarguably 9983.
+ *
+ * A CA signs these off; this file only records what was proposed.
+ *
+ * `ratePaise` is left unset here on purpose. A rate is typed into the catalogue
+ * and lives in the database from then on, and the seed's upsert replaces
+ * `content` wholesale — so a rate written into this file would be the version
+ * that won every time the seed was re-run, silently, over whatever the studio
+ * had actually priced the work at. **Re-running the seed after a rate is set
+ * clears it**, along with any name or description edited in the dialog. That has
+ * always been true of this script; it matters more now that the screen writes.
+ *
  * **Not carried here, deliberately.** The boundary rules in content §4e, §4i,
  * §4n, §4s, §4v, §4aa and §4ad are selection guidance for whoever builds the
  * contract ("does it sell through a cart? → Part 05"), not text a Client ever
@@ -27,6 +59,7 @@ import type { ContractService } from '../service';
 export const SERVICES: ContractService[] = [
   {
     code: '01',
+    sacCode: '998315',
     name: 'Domain and DNS',
     scheduleKey: 'setup',
     sortOrder: 1,
@@ -83,6 +116,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '02',
+    sacCode: '998315',
     name: 'Business email and workspace',
     scheduleKey: 'setup',
     sortOrder: 2,
@@ -142,6 +176,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '03',
+    sacCode: '998313',
     name: 'Analytics and tracking',
     scheduleKey: 'setup',
     sortOrder: 3,
@@ -203,6 +238,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '04',
+    sacCode: '998313',
     name: 'Social account setup and verification',
     scheduleKey: 'setup',
     sortOrder: 4,
@@ -266,6 +302,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '05',
+    sacCode: '998314',
     name: 'Shopify storefront',
     scheduleKey: 'build',
     sortOrder: 5,
@@ -342,6 +379,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '06',
+    sacCode: '998314',
     name: 'Custom web build',
     scheduleKey: 'build',
     sortOrder: 6,
@@ -425,6 +463,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '07',
+    sacCode: '998314',
     name: 'Webflow or Framer site',
     scheduleKey: 'build',
     sortOrder: 7,
@@ -503,6 +542,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '08',
+    sacCode: '998314',
     name: 'Landing page or funnel',
     scheduleKey: 'build',
     sortOrder: 8,
@@ -573,6 +613,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '09',
+    sacCode: '998391',
     name: 'Brand identity',
     scheduleKey: 'build',
     sortOrder: 9,
@@ -649,6 +690,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '10',
+    sacCode: '998391',
     name: 'Design system',
     scheduleKey: 'build',
     sortOrder: 10,
@@ -717,6 +759,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '11',
+    sacCode: '998314',
     name: 'Conversion optimisation build',
     scheduleKey: 'build',
     sortOrder: 11,
@@ -784,6 +827,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '12',
+    sacCode: '998314',
     name: 'Automation build',
     scheduleKey: 'build',
     sortOrder: 12,
@@ -848,6 +892,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '13',
+    sacCode: '998314',
     name: 'AI assistant build',
     scheduleKey: 'build',
     sortOrder: 13,
@@ -918,6 +963,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '14',
+    sacCode: '998314',
     name: 'Generative content system',
     scheduleKey: 'build',
     sortOrder: 14,
@@ -986,6 +1032,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '15',
+    sacCode: '998361',
     name: 'Content production',
     scheduleKey: 'retainer',
     sortOrder: 15,
@@ -1055,6 +1102,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '16',
+    sacCode: '998361',
     name: 'Community management',
     scheduleKey: 'retainer',
     sortOrder: 16,
@@ -1121,6 +1169,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '17',
+    sacCode: '998361',
     name: 'Paid social management',
     scheduleKey: 'retainer',
     sortOrder: 17,
@@ -1188,6 +1237,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '18',
+    sacCode: '998313',
     name: 'Website maintenance',
     scheduleKey: 'retainer',
     sortOrder: 18,
@@ -1254,6 +1304,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '19',
+    sacCode: '998313',
     name: 'Conversion optimisation retainer',
     scheduleKey: 'retainer',
     sortOrder: 19,
@@ -1318,6 +1369,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '20',
+    sacCode: '998316',
     name: 'AI system operation',
     scheduleKey: 'retainer',
     sortOrder: 20,
@@ -1381,6 +1433,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '21',
+    sacCode: '998313',
     name: 'Audit or teardown',
     scheduleKey: 'audit',
     sortOrder: 21,
@@ -1442,6 +1495,7 @@ export const SERVICES: ContractService[] = [
   },
   {
     code: '22',
+    sacCode: '998311',
     name: 'Strategy sprint',
     scheduleKey: 'audit',
     sortOrder: 22,

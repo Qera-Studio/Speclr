@@ -16,7 +16,7 @@ export default function AdminHeader() {
   const crumbs = breadcrumbForPath(pathname);
 
   return (
-    <header data-print-hidden className="z-30 flex h-14 shrink-0 items-center gap-3 rounded-t-md border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header data-print-hidden className="z-30 flex h-14 shrink-0 items-center gap-3 rounded-t-md border-b border-border bg-background/95 px-9 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <nav aria-label="Breadcrumb" className="min-w-0">
         <ol className="flex items-center gap-1.5 text-sm text-muted-foreground">
           {crumbs.map((crumb, i) => {

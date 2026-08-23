@@ -100,6 +100,7 @@ export default function AccessStep({
       serverError={serverError}
       submitting={submitting}
       submitLabel={submitLabel}
+      allOptional
     >
       {/* `variant="warning"`, not `note`: this one is a rule, and breaking it
           turns a document tool into a breach. */}

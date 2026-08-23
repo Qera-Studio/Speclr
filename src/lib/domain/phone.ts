@@ -34,13 +34,31 @@ export interface PhoneCountry {
   flag: string;
 }
 
-/** Dial codes layered onto the shared country list — see countries.ts. */
-export const COUNTRIES: PhoneCountry[] = COUNTRY_SEED.map(({ iso2, name, flag }) => ({
-  iso2: iso2 as CountryCode,
-  name,
-  dialCode: getCountryCallingCode(iso2 as CountryCode),
-  flag,
-}));
+/**
+ * Dial codes layered onto the shared country list — see countries.ts.
+ *
+ * **`dialCode` is a getter, so libphonenumber is not touched at import time.**
+ * That is not a performance nicety: this module is reached from
+ * `domain/fields.ts`, which every schema in the app imports, which means it is
+ * reached by anything that loads a schema — including `scripts/seed-contract.ts`
+ * under `tsx`, where libphonenumber's CJS build fails its own metadata check on
+ * load and takes the whole process with it. Nothing outside the browser reads a
+ * dial code, so nothing outside the browser now pays for one.
+ *
+ * Read once and cached, because the field renders 243 of these in a picker.
+ */
+export const COUNTRIES: PhoneCountry[] = COUNTRY_SEED.map(({ iso2, name, flag }) => {
+  let dialCode: string | undefined;
+  return {
+    iso2: iso2 as CountryCode,
+    name,
+    get dialCode() {
+      dialCode ??= getCountryCallingCode(iso2 as CountryCode);
+      return dialCode;
+    },
+    flag,
+  };
+});
 
 export const DEFAULT_COUNTRY: CountryCode = 'IN';
 

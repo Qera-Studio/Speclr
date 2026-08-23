@@ -444,7 +444,7 @@ describe('IdentityStep, for an individual', () => {
 
     await fillPerson(user);
     await pickEntityType(user, /^individual$/i);
-    await user.type(screen.getByLabelText(/^designation$/i), 'Consultant');
+    await user.type(screen.getByLabelText(/^designation, optional$/i), 'Consultant');
     await user.click(screen.getByRole('button', { name: /^tax$/i }));
 
     expect(saveClientSection).toHaveBeenCalledWith('new-id', 'contacts', {

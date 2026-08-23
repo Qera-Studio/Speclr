@@ -13,7 +13,13 @@ import { ENTITY_TYPE_VALUES } from '@/lib/domain/entityType';
 import type { ActionResult, ClientRecord } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { del } from '@vercel/blob';
-import { clientHasDocuments, deleteClient, getClient, saveClient } from '@/db/store';
+import {
+  clientHasDocuments,
+  deleteClient,
+  getClient,
+  saveClient,
+  setClientArchived,
+} from '@/db/store';
 import { logger } from '@/lib/logger';
 import { withComposedAddress } from './address';
 import { invalidInput } from './validation';
@@ -234,6 +240,38 @@ export async function deleteClientAction(id: unknown): Promise<ActionResult> {
   } catch (err) {
     logger.error({ action: 'deleteClient', event: 'delete_failed', error: err });
     return { success: false, error: 'Failed to delete client.' };
+  }
+
+  revalidatePath('/client/clients');
+  return { success: true, id };
+}
+
+/**
+ * Offboard a client, or bring them back.
+ *
+ * Unconditional in both directions: unlike deleting, archiving takes nothing
+ * away and breaks nothing that points at the row, so there is no state it has
+ * to refuse. A client with an open draft can be archived — the draft still
+ * resolves them, and the picker on that draft still offers them.
+ */
+export async function setClientArchivedAction(
+  id: unknown,
+  archived: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0 || typeof archived !== 'boolean') {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  try {
+    await setClientArchived(id, archived);
+  } catch (err) {
+    logger.error({ action: 'setClientArchived', event: 'update_failed', error: err });
+    return { success: false, error: 'Failed to update client.' };
   }
 
   revalidatePath('/client/clients');

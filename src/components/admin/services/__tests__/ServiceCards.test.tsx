@@ -1,58 +1,86 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ServiceCards from '../ServiceCards';
 import { SERVICES } from '@/lib/domain/contract/seed/services';
 import { SCHEDULES } from '@/lib/domain/contract/schedules';
+import { createService, updateServiceDetails } from '@/server/actions/services';
 
-/**
- * The tabs and the scroll-spy write the same state, and clicking a tab starts a
- * scroll the spy then reports on. Before the guard, clicking Audit from Setup
- * slid the pill to Audit and the arriving scroll dragged it back through Build
- * and Retainer on the way.
- *
- * jsdom has no layout, so every group's `offsetLeft` is 0 and the spy resolves
- * any scroll to the *last* schedule. That is enough to prove the guard: a
- * scroll during the settle window must change nothing, and the same scroll
- * after it must be obeyed.
- */
-
-const scrollRow = () => {
-  // The row is the sections' shared parent — it has no role of its own, and a
-  // test id here would only name a div the component already reaches by ref.
-  const row = screen.getByRole('region', { name: 'Setup' }).parentElement!;
-  fireEvent.scroll(row);
-};
-
-const selected = () =>
-  screen.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true')
-    ?.textContent;
-
-const lastSchedule = SCHEDULES[SCHEDULES.length - 1].name;
+// The dialog reaches for the Server Actions, which pull `next/cache` into
+// jsdom. Mocked here rather than in the dialog's own test alone, because the
+// import lands as soon as the board renders.
+jest.mock('@/server/actions/services', () => ({
+  updateServiceDetails: jest.fn(async () => ({ success: true })),
+  createService: jest.fn(async () => ({ success: true })),
+}));
+jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh: jest.fn() }) }));
 
 describe('ServiceCards', () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
-
-  it('holds the clicked tab while its own scroll is still running', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  /**
+   * Every Schedule is a column and every Service is on screen. This replaced a
+   * scrolling row where three of the four groups started off-screen behind a
+   * tab strip, a scroll-spy and a settle timer.
+   */
+  it('gives every schedule a column', () => {
     render(<ServiceCards services={SERVICES} />);
 
-    await user.click(screen.getByRole('tab', { name: 'Build' }));
-    expect(selected()).toBe('Build');
-
-    scrollRow();
-    expect(selected()).toBe('Build');
+    for (const schedule of SCHEDULES) {
+      expect(screen.getByRole('region', { name: schedule.name })).toBeInTheDocument();
+    }
+    expect(screen.getByText('Domain and DNS')).toBeInTheDocument();
   });
 
-  it('follows the row again once the scroll has settled', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  /**
+   * The edit affordance is revealed on hover, which jsdom cannot simulate and
+   * which is not what is worth pinning anyway: `opacity-0` keeps the button in
+   * the tree and in the tab order the whole time, so what matters is that it is
+   * reachable, named, and opens the dialog on the Service it belongs to.
+   *
+   * The rate goes in as rupees and must leave as paise. That conversion is the
+   * one thing in this dialog that can be wrong without looking wrong.
+   */
+  it('edits a service, and posts the rate in paise', async () => {
+    const user = userEvent.setup();
     render(<ServiceCards services={SERVICES} />);
 
-    await user.click(screen.getByRole('tab', { name: 'Build' }));
-    jest.advanceTimersByTime(700);
+    await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
 
-    scrollRow();
-    expect(selected()).toBe(lastSchedule);
+    const sac = screen.getByLabelText('SAC');
+    await user.clear(sac);
+    await user.type(sac, '998314');
+    await user.type(screen.getByLabelText('Rate'), '45000.50');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(updateServiceDetails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: '05',
+        name: 'Shopify storefront',
+        scheduleKey: 'build',
+        sacCode: '998314',
+        ratePaise: 4500050,
+      }),
+    );
+  });
+
+  /**
+   * The column *is* the answer to "which Schedule", so the add card carries it
+   * into the dialog. Posting the wrong one would file the new Part under terms
+   * it was not written for, and no code is sent at all: the server assigns it.
+   */
+  it('adds a service into the column its card was clicked in', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCards services={SERVICES} />);
+
+    const retainer = screen.getByRole('region', { name: 'Retainer' });
+    await user.click(within(retainer).getByRole('button', { name: /Add to Retainer/ }));
+    await user.type(screen.getByLabelText('Title'), 'Newsletter operation');
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+
+    expect(createService).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Newsletter operation', scheduleKey: 'retainer' }),
+    );
+    expect(createService).toHaveBeenCalledWith(
+      expect.not.objectContaining({ code: expect.anything() }),
+    );
   });
 
   it('says so when the library is empty', () => {

@@ -83,5 +83,5 @@ export function currencyForCountry(iso2: string | undefined): CurrencyCode {
 /** 'USD' → 'USD — US Dollar ($)', for the picker. */
 export function currencyLabel(code: CurrencyCode): string {
   const currency = currencyByCode(code);
-  return currency ? `${currency.code} — ${currency.name} (${currency.symbol})` : code;
+  return currency ? `${currency.code} · ${currency.name} (${currency.symbol})` : code;
 }

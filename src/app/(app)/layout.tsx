@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { currentUser } from '@clerk/nextjs/server';
 import AdminShell from '@/components/admin/AdminShell';
+import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -30,8 +31,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const collapsed = (await cookies()).get('sidebar_state')?.value === 'false';
 
   return (
-    <AdminShell user={cardUser} defaultOpen={!collapsed}>
-      {children}
-    </AdminShell>
+    <>
+      <AdminShell user={cardUser} defaultOpen={!collapsed}>
+        {children}
+      </AdminShell>
+      {/* Outside the shell so a toast is never clipped by its `overflow-clip`. */}
+      <Toaster />
+    </>
   );
 }

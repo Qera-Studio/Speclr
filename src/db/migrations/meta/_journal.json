@@ -106,6 +106,13 @@
       "when": 1786874533268,
       "tag": "0014_client_billing_address",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787385475442,
+      "tag": "0015_client_archived",
+      "breakpoints": true
     }
   ]
 }

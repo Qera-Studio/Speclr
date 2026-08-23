@@ -53,6 +53,11 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
+    // First blur, then every keystroke, the same rule the onboarding steps
+    // run under, and for the same reason: a form that stays silent until submit
+    // reports every mistake at once, at the moment the operator has decided
+    // they are finished. See the note in `CommercialStep`.
+    mode: 'onTouched',
     resolver: zodResolver(studioInputSchema),
     defaultValues: {
       brandMark: studio.brandMark,
@@ -178,7 +183,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
                   size="form"
                   options={GST_STATES.map((state) => ({
                     value: state.code,
-                    label: `${state.code} — ${state.name}`,
+                    label: `${state.code} · ${state.name}`,
                   }))}
                   value={field.value}
                   onValueChange={field.onChange}
@@ -301,8 +306,8 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="self-start" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : 'Save settings'}
+      <Button type="submit" size="lg" className="self-start" pending={isSubmitting}>
+        Save settings
       </Button>
     </form>
   );

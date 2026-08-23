@@ -75,15 +75,45 @@ describe('AdminSidebar', () => {
   });
 
   describe('client profile', () => {
-    it('shows its records and document types', () => {
+    /**
+     * Five rows, no headings: Dashboard, the records page (named for the
+     * section, like admin's rail row), then the three library pages.
+     */
+    it('shows five rows and nothing else', () => {
       renderSidebar({ profile: 'client' });
-      for (const label of ['Dashboard', 'Clients', 'Contract', 'Invoice', 'Receipt']) {
-        expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
-      }
-      expect(screen.getByRole('link', { name: 'Contract' })).toHaveAttribute(
+      const labels = within(liveNav('client'))
+        .getAllByRole('link')
+        .map((link) => link.textContent);
+      expect(labels).toEqual([
+        'Dashboard',
+        'Clients',
+        'Service catalogue',
+        'Clause library',
+        'Checklist',
+      ]);
+    });
+
+    it('sends Records to the clients page', () => {
+      renderSidebar({ profile: 'client' });
+      expect(within(liveNav('client')).getByRole('link', { name: 'Clients' })).toHaveAttribute(
         'href',
-        '/client/docs/contract',
+        '/client/clients',
       );
+    });
+
+    /**
+     * The document types are still in `nav.ts` — the ⌘D palette and the ⌥
+     * shortcuts read them — just not in the rail. The create button stays,
+     * which is what the client rail has that admin's does not.
+     */
+    it('does not list the document types itself', () => {
+      renderSidebar({ profile: 'client' });
+      for (const label of ['Contract', 'Invoice', 'Receipt']) {
+        expect(screen.queryByRole('link', { name: label })).not.toBeInTheDocument();
+      }
+      expect(
+        within(liveNav('client')).getByRole('button', { name: /new document/i }),
+      ).toBeInTheDocument();
     });
 
     /** The two halves are sealed: nothing admin-side is reachable from here. */
@@ -95,15 +125,16 @@ describe('AdminSidebar', () => {
     });
 
     /**
-     * Every tool is the studio's own instrument, so Client has no Tools group.
-     * What it has instead is a Library: the Services a contract pulls in as
-     * Parts, and the clauses it is built from.
+     * Every tool is the studio's own instrument, so Client has none of admin's.
+     * What it has instead is the contract source material: the Services a
+     * contract pulls in as Parts, and the clauses it is built from.
      */
-    it('has a Library group and no Tools group', () => {
+    it('links the library pages and names no section', () => {
       renderSidebar({ profile: 'client' });
       const nav = liveNav('client');
-      expect(within(nav).getByText('Library')).toBeInTheDocument();
-      expect(within(nav).queryByText('Tools')).not.toBeInTheDocument();
+      expect(within(nav).queryByText('Library')).not.toBeInTheDocument();
+      expect(within(nav).queryByText('Documents')).not.toBeInTheDocument();
+      expect(within(nav).queryByText('Records', { selector: 'div' })).not.toBeInTheDocument();
       expect(within(nav).getByRole('link', { name: 'Service catalogue' })).toHaveAttribute(
         'href',
         '/client/services',
@@ -111,6 +142,10 @@ describe('AdminSidebar', () => {
       expect(within(nav).getByRole('link', { name: 'Clause library' })).toHaveAttribute(
         'href',
         '/client/clauses',
+      );
+      expect(within(nav).getByRole('link', { name: 'Checklist' })).toHaveAttribute(
+        'href',
+        '/client/checklist',
       );
     });
   });
@@ -211,11 +246,11 @@ describe('AdminSidebar', () => {
     });
   });
 
-  it('keeps the document links reachable when the rail is collapsed', () => {
+  it('keeps the links reachable when the rail is collapsed', () => {
     renderSidebar({ open: false, profile: 'client' });
-    expect(screen.getByRole('link', { name: 'Invoice' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Clause library' })).toHaveAttribute(
       'href',
-      '/client/docs/invoice',
+      '/client/clauses',
     );
   });
 
@@ -226,24 +261,13 @@ describe('AdminSidebar', () => {
 
   it('marks the active route with aria-current', () => {
     renderSidebar({ profile: 'client', at: '/client/clients' });
-    expect(screen.getByRole('link', { name: 'Clients' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(liveNav('client')).getByRole('link', { name: 'Clients' }),
+    ).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute(
       'aria-current',
       'page',
     );
-  });
-
-  /**
-   * Records is the shorter, more-often-scanned list — it reads first. Asserted
-   * on the client, which is the profile that still has section headings; admin
-   * is trialling the flat rail and has none.
-   */
-  it('lists Records above Documents above the trailing group', () => {
-    renderSidebar({ profile: 'client' });
-    const groups = within(liveNav('client'))
-      .getAllByText(/^(Records|Documents|Library)$/)
-      .map((el) => el.textContent);
-    expect(groups).toEqual(['Records', 'Documents', 'Library']);
   });
 
   /**

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { PageBody, PageHeader } from "@/components/admin/Page";
 
 export const metadata: Metadata = {
   title: "Kit — speclr",
@@ -78,14 +79,13 @@ const BUTTON_VARIANTS = [
 
 /** Every size the Button actually ships. `xs` and `icon-lg` were removed as dead. */
 const BUTTON_SIZES = [
-  { size: "sm", note: "24px — dense table rows" },
-  { size: "default", note: "28px — the app default" },
-  { size: "lg", note: "32px — page-level actions" },
-  { size: "form", note: "36px — matches Input/Combobox/DatePicker inline" },
+  { size: "default", note: "28px, the app default and its dense height" },
+  { size: "lg", note: "32px, a form's own submit" },
+  { size: "form", note: "38px, matches Input/Combobox/DatePicker inline" },
 ] as const;
 
 const ICON_SIZES = [
-  { cls: "size-3", note: 'Inside size="sm" buttons' },
+  { cls: "size-3", note: "Inside icon-sm buttons" },
   {
     cls: "size-3.5",
     note: "Inside default buttons — one of the two workhorses",
@@ -123,15 +123,11 @@ export default async function KitPage() {
   }
 
   return (
-    <div className="flex max-w-4xl flex-col gap-10 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">UI Kit</h1>
-        <p className="text-sm text-muted-foreground">
-          Everything the UI is allowed to use. Small on purpose — a short menu
-          is what keeps screens consistent without anyone policing them. Toggle
-          the theme to check both modes.
-        </p>
-      </div>
+    <PageBody className="max-w-4xl gap-10">
+      <PageHeader
+        title="UI Kit"
+        description="Everything the UI is allowed to use. Small on purpose: a short menu is what keeps screens consistent without anyone policing them. Toggle the theme to check both modes."
+      />
 
       <Section
         title="Colour"
@@ -192,9 +188,6 @@ export default async function KitPage() {
             icon
           </code>
           <div className="flex items-center gap-2">
-            <Button size="icon-xs" variant="ghost" aria-label="Edit">
-              <Pencil />
-            </Button>
             <Button size="icon-sm" variant="ghost" aria-label="Add">
               <Plus />
             </Button>
@@ -291,6 +284,6 @@ export default async function KitPage() {
           </p>
         </div>
       </Section>
-    </div>
+    </PageBody>
   );
 }

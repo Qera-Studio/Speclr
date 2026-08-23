@@ -20,6 +20,9 @@ jest.mock('next/navigation', () => ({
   redirect: (u: string) => redirect(u),
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
 }));
+jest.mock('@/server/actions/services', () => ({
+  updateServiceDetails: jest.fn(),
+}));
 jest.mock('@/server/actions/clauses', () => ({
   updateClause: jest.fn(),
   addClause: jest.fn(),

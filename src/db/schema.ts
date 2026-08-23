@@ -115,6 +115,20 @@ export const clients = pgTable('clients', {
   attachments: jsonb('attachments').$type<ClientAttachment[]>(),
   /** Where credentials live. Never a credential — see `client.ts`. */
   access: jsonb('access').$type<ClientAccessRef[]>(),
+  /**
+   * Offboarded: the engagement is over, and the row leaves the working list.
+   *
+   * Not a soft delete. A client that has been on a document cannot be deleted
+   * at all (`documents.client_id` is a foreign key), and a finalized document
+   * is retained 72 months under CGST s.36, so the rows that pile up are exactly
+   * the ones that cannot be removed. This is the only way to get them out of
+   * the way, and it is reversible: work comes back.
+   *
+   * It hides the client from the *new* document picker and from the default
+   * list. It never hides them from an open document, and it changes nothing
+   * that prints.
+   */
+  archived: boolean('archived').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

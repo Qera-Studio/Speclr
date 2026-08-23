@@ -20,7 +20,22 @@ export const metadata: Metadata = {
   title: 'speclr',
   description: 'Internal tool.',
   robots: { index: false, follow: false },
+  // What an installed shortcut or a pinned tab is called. Left unset, both take
+  // the `<title>` of whatever page was open when it was pinned, so the same app
+  // ends up on the home screen as "speclr", "Dashboard" or "Clients".
+  appleWebApp: { title: 'speclr' },
 };
+
+/*
+ * No `themeColor`, deliberately. It would paint the mobile address bar to match
+ * `--background`, which is a real improvement on a phone and this is a desktop
+ * tool nobody signs into on one. The cost is the part that decides it: the
+ * viewport API takes a colour string, not a CSS variable, so it means a second
+ * copy of the background in hex with nothing to keep it in step the day the
+ * palette moves. `design-tokens.test.ts` refuses hex literals for exactly that
+ * reason and refused these. `color-scheme` in `globals.css` already stops the
+ * white flash on load, which was the part that mattered here.
+ */
 
 export default function RootLayout({
   children,

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireAuthorizedUser } from "@/lib/auth/session";
 import { listServices } from "@/db/store";
 import ClientOnboarding from "@/components/admin/clients/onboarding/ClientOnboarding";
+import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: "speclr",
@@ -33,9 +34,10 @@ export default async function NewClientPage() {
 
   return (
     // Full height, so the flow can pin its step row and its button to the top
-    // and bottom of the card and scroll only the fields between them.
-    <div className="flex h-full flex-col p-6">
+    // and bottom of the card and scroll only the fields between them. No gap:
+    // the flow spaces its own three regions.
+    <PageBody className="h-full gap-0">
       <ClientOnboarding services={services} />
-    </div>
+    </PageBody>
   );
 }

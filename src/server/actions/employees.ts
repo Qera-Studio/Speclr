@@ -7,7 +7,12 @@ import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { ActionResult } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { claimEmployeeCode } from '@/db/counter';
-import { deleteEmployee, getEmployee, saveEmployee } from '@/db/store';
+import {
+  deleteEmployee,
+  employeeHasDocuments,
+  getEmployee,
+  saveEmployee,
+} from '@/db/store';
 import { logger } from '@/lib/logger';
 import { withComposedAddress } from './address';
 
@@ -140,6 +145,22 @@ export async function deleteEmployeeAction(id: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
 
   if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+
+  /**
+   * The same refusal `deleteClientAction` gives, for the same reason.
+   *
+   * The foreign key already forbade this; all that was missing was the sentence
+   * saying why. A finalized slip is a wage record the employer is required to
+   * keep, and it reads its own snapshot, so the employee would survive the
+   * deletion anyway. Surviving is not a reason to cut the link.
+   */
+  const existing = await getEmployee(id);
+  if (existing && (await employeeHasDocuments(id))) {
+    return {
+      success: false,
+      error: `${existing.name} has documents and cannot be deleted. Delete their drafts first; finalized documents are permanent.`,
+    };
+  }
 
   try {
     await deleteEmployee(id);

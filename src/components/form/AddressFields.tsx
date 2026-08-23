@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { FieldSpinner } from "@/components/ui/spinner";
 import { useMinimumDuration } from "@/lib/useMinimumDuration";
-import FieldInfo from "./FieldInfo";
+import FieldInfo, { OptionalMark } from "./FieldInfo";
 import { formatPostcode, isLookupPostcode } from "@/lib/domain/address";
 import { COUNTRIES_BY_CONTINENT, COUNTRY_SEED } from "@/lib/domain/countries";
 
@@ -318,7 +318,12 @@ export default function AddressFields<T extends FieldValues>({
         </Field>
 
         <Field>
-          <FieldLabel htmlFor={`${idPrefix}-line2`}>Street / area</FieldLabel>
+          {/* The one line of an address that is genuinely allowed to be
+              empty, and the only field here that says so. See `FieldInfo`. */}
+          <FieldLabel htmlFor={`${idPrefix}-line2`}>
+            Street / area
+            <OptionalMark />
+          </FieldLabel>
           <Input
             id={`${idPrefix}-line2`}
             size={size}

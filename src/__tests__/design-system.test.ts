@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   policedFiles,
   violations,
@@ -21,6 +23,25 @@ import {
  * **Adding a rule here is cheap and is the point.** When a primitive becomes
  * the house answer for something, ban the thing it replaced in the same commit.
  */
+
+/**
+ * An icon-only button with nothing to announce.
+ *
+ * A `size="icon"` button draws a glyph and no text, so unless it says its own
+ * name it reaches a screen reader as "button" and nothing else. Every one of
+ * them in this app already had a name when the rule was written; the rule
+ * exists because the *next* one is written in a hurry, the glyph is obvious to
+ * whoever picked it, and nothing on screen looks wrong.
+ *
+ * A name can arrive three ways and all three count: `aria-label` on the button,
+ * a visually hidden `<span className="sr-only">` inside it, or a `label` prop
+ * on one of the wrappers that turns a label into both (`RemoveButton`,
+ * `ConfirmActionButton`, `EditButton`). The window is generous on purpose.
+ * This is a guard against a forgotten label, not a parser, and a rule that
+ * argues with formatting is a rule people delete.
+ */
+const ICON_BUTTON = /size=\{?["']icon(-sm)?["']/g;
+const NAMES_ITSELF = /aria-label|sr-only|\blabel=/;
 
 /**
  * Standing muted text under a field.
@@ -122,6 +143,184 @@ const HAND_ROLLED_PHONE_RULE = /(?:phone|mobile)\s*:\s*z\s*\.string\(\)/gi;
  */
 const UTC_DATE_SLICE = /toISOString\(\)\s*\.\s*(?:slice|substring|substr|split)\(/g;
 
+/**
+ * A hand-typed page inset.
+ *
+ * `p-9` is the page inset and nothing else uses it. It was re-typed in thirteen
+ * files, which is thirteen chances for one page to end up a step off its
+ * neighbours — and that drift is invisible as a bug report, because a screen
+ * inset 24px where the rest are 36px does not look broken, it looks vaguely
+ * wrong on a page nobody can point at. One of the thirteen had already been
+ * missed: `/client/checklist` was still `p-6` after the pass that set the rest.
+ *
+ * `PageBody` owns it. A page that genuinely differs passes `className`, which
+ * is an override with a reason attached rather than a second inset.
+ */
+const HAND_ROLLED_PAGE_INSET = /className="[^"]*\bp-9\b[^"]*"/g;
+
+/**
+ * A hand-typed page title.
+ *
+ * Same rule one element down: `text-2xl font-semibold` is the page `h1`, it
+ * appeared in nine files, and the sizes had already begun to disagree with each
+ * other elsewhere. `PageHeader` owns the title, the optional description and
+ * where the actions sit, so a new page cannot invent a fourth arrangement of
+ * the three.
+ *
+ * Scoped to an `h1` rather than to the classes: `text-2xl font-semibold` is
+ * also what the CTC calculator's result figure is, and a number is not a page
+ * title. It is the heading that has one house arrangement, not the type size.
+ */
+const HAND_ROLLED_PAGE_TITLE = /<h1[^>]*\btext-2xl\b/g;
+
+/** `PageBody` and `PageHeader` are the primitives these two rules point at. */
+const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
+
+/**
+ * A transition duration outside the three-tier scale.
+ *
+ * 75ms state, 100ms overlay, 200ms panel — defined in `globals.css`, where 75
+ * is also the default, so the tier most components want costs nothing to ask
+ * for. The audit that produced these numbers found the state tier was never
+ * written down at all: a bare `transition-colors` took Tailwind's 150ms, so
+ * every hover in the app ran at twice the intended speed and nothing said so.
+ *
+ * Two animations are deliberately outside the scale: the tray arrow's 420ms
+ * and the reset button's 500ms spin. Both are one-off icon performances with
+ * their own curve rather than state changes, and both explain themselves in
+ * place. They are listed by file rather than exempted by pattern, so a third
+ * cannot join them quietly.
+ *
+ * The sliding pill indicator is what this rule was worth writing for. It is
+ * drawn by three components — `Tabs`, the browser's view toggle, the profile
+ * switcher — and they ran it at 500ms, 300ms and 300ms, with the tab *panel*
+ * sliding at 1500ms. Nobody chose those; they are shadcn defaults that were
+ * never read. One control, three speeds, and no test that could see it.
+ */
+const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b)\[?[0-9]+m?s?\]?/g;
+const SIGNATURE_MOTION = [
+  'src/components/ui/tray-arrow-icon.tsx',
+  'src/components/spec/ResetProgressButton.tsx',
+];
+
+/**
+ * A table drawn straight onto the page background.
+ *
+ * `TableCard` is the surface every list sits on: one border, the card fill, and
+ * a footer rule holding the row count and the pager. Without it a table has no
+ * edges at all: its header row, its last row and the page run together, and the
+ * count and the pager end up floating under it in a different place on every
+ * screen.
+ *
+ * File-scoped rather than token-scoped, because what is wrong is not any one
+ * class: it is a `<Table>` with nothing around it.
+ */
+const TABLE_TAG = /<Table>/;
+const TABLE_CARD = /<TableCard[\s>]/;
+
+/**
+ * A stored phone number printed straight into the page.
+ *
+ * Phones are stored E.164 (`+919876543210`) and shown grouped.
+ * `formatPhoneForDisplay` has existed and been tested since phones were added,
+ * and until this rule nothing outside its own test called it. Every list in the
+ * app printed the raw stored string, which is the one form nobody writes a
+ * phone number in.
+ *
+ * A JSX *prop* is exempt (the lookbehind on `=`), because the stored form is
+ * the right value to hand to something that is not printing it: `CopyCell`
+ * copies E.164 to the clipboard while showing the grouped form beside it. What
+ * this rule is about is the string that reaches the reader.
+ */
+const RAW_PHONE_PRINT = /(?<!=)\{\s*[\w.]+\.phone\s*\}/g;
+
+/**
+ * A dash typed in as "there is no value here".
+ *
+ * The dashboard printed an em dash for a letter with no total and the clients
+ * list printed nothing at all, which is the `DateCell` lesson again: a value
+ * that appears in more than one place gets one thing that decides how it
+ * looks. `NIL` in `lib/utils.ts` is that thing, and it is a hyphen, because
+ * the house rule bans the em dash and the en dash belongs to numeric ranges.
+ *
+ * Only a *bare* quoted dash matches, so an en dash inside 'April-March' is
+ * untouched. The document sheets are exempt here as everywhere: they are
+ * printed artifacts with their own typographic conventions.
+ */
+const HAND_TYPED_NIL = /['"][\u2014\u2013]['"]/g;
+
+/**
+ * A date formatted inside a table.
+ *
+ * This is the rule the *user* caught, not the test suite: the dashboard printed
+ * a document's date at full strength and the clients list printed a client's
+ * muted, one page apart, because each table formatted its own. Neither weight
+ * was chosen — the second table simply had nothing to copy from, and the same
+ * fact ended up looking like two different kinds of fact.
+ *
+ * `DateCell` in `admin/Page.tsx` owns the format and the weight, the same way
+ * `PageBody` owns the inset. A table that calls `formatDisplayDate` itself is
+ * a third opinion waiting to happen.
+ *
+ * Scoped to files that render table cells: a sheet, an editor heading and a
+ * picker hint all print dates legitimately and none of them is a column.
+ */
+const TABLE_CELL_TAG = /<TableCell[\s/>]/;
+const HAND_FORMATTED_DATE = /formatDisplayDate\(/;
+
+/**
+ * A document's status, decided by whoever is rendering it.
+ *
+ * The same lesson as `DateCell`, one column over. The table and the card view
+ * each wrote `status === 'finalized' ? 'Finalized' : 'Draft'` with their own
+ * badge variant, which is two places to disagree about a fact with legal weight:
+ * finalized means immutable, retained 72 months, correctable only by
+ * duplication. `ui/status-badge.tsx` owns the word, the icon and the fill, and
+ * the icon is why the rule is worth enforcing rather than merely tidy: colour
+ * alone was carrying "sealed" and colour alone is not a message.
+ *
+ * The comparison itself is fine; what is banned is turning it into a label
+ * here. Matching the quoted status beside a ternary catches exactly that and
+ * leaves `if (doc.status === 'finalized') return …` alone.
+ */
+const HAND_ROLLED_STATUS_BADGE = /status === ['"]finalized['"]\s*\?/g;
+
+/**
+ * "Optional" written into a label or a placeholder by hand.
+ *
+ * `OptionalMark` (in `form/FieldInfo.tsx`) is the one way a field says it can
+ * be left empty, reachable as the `optional` prop on `FieldInfo`. It exists
+ * because three sites had said it three ways: `label="CIN (optional)"`, a
+ * placeholder reading "Optional" where the placeholder's job is to name the
+ * kind of value, and a sentence at the end of an info tip. All three said the
+ * same thing at a different weight, in a different place, and two of them said
+ * it on a step where every single field was optional, which marks nothing.
+ *
+ * The rule catches the two written forms. The third, prose in an info tip, is
+ * not greppable and is not meant to be: an explanation may fairly *mention*
+ * that a field is optional, and this bans claiming it as a label.
+ */
+/**
+ * `uppercase` as a way to make a label look like a heading.
+ *
+ * Small caps at 11px was how a table header, a group heading and a stat label
+ * each said "this is a name, not a value", and all-caps is the worst available
+ * way to say it: it removes the word shapes a reader recognises without
+ * looking, it costs ~10% of the reading speed of the same word in sentence
+ * case, and it is the one type treatment that cannot be undone by a screen
+ * reader, which reads some of them out letter by letter. Sentence case at
+ * 12px muted carries the same hierarchy through colour, which is what
+ * everything else here already does.
+ *
+ * The sheets are exempt through `EXEMPT`, and correctly: "DESCRIPTION" and
+ * "TERMS" are the printed document\'s own typography and several of the
+ * headings are wanted verbatim by Rule 46.
+ */
+const SHOUTED_LABEL = /\buppercase\b/g;
+
+const HAND_WRITTEN_OPTIONAL =
+  /(label|title)=["'][^"']*\(optional\)["']|placeholder=["']Optional["']/gi;
+
 describe('design system', () => {
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
@@ -162,6 +361,73 @@ describe('design system', () => {
     // `dates.ts` is exempt because it is the primitive, and because its own
     // warning against this spells the offending expression out.
     expect(violations(UTC_DATE_SLICE, ['src/lib/domain/dates.ts'], /\.tsx?$/)).toEqual([]);
+  });
+
+  it('takes the page inset from PageBody, never a hand-typed one', () => {
+    expect(violations(HAND_ROLLED_PAGE_INSET, PAGE_PRIMITIVE)).toEqual([]);
+  });
+
+  it('takes the page title from PageHeader, never a hand-typed one', () => {
+    expect(violations(HAND_ROLLED_PAGE_TITLE, PAGE_PRIMITIVE)).toEqual([]);
+  });
+
+  it('takes every duration from the three-tier motion scale', () => {
+    expect(violations(OFF_SCALE_DURATION, SIGNATURE_MOTION)).toEqual([]);
+  });
+
+  it('puts every table in a TableCard', () => {
+    const root = join(__dirname, '..', '..');
+    const bare = policedFiles(UI_PRIMITIVES).filter((file) => {
+      const source = readFileSync(join(root, file), 'utf8');
+      return TABLE_TAG.test(source) && !TABLE_CARD.test(source);
+    });
+    expect(bare).toEqual([]);
+  });
+
+  it('takes every date in a table from DateCell, never formatting its own', () => {
+    const root = join(__dirname, '..', '..');
+    const own = policedFiles(PAGE_PRIMITIVE).filter((file) => {
+      const source = readFileSync(join(root, file), 'utf8');
+      return TABLE_CELL_TAG.test(source) && HAND_FORMATTED_DATE.test(source);
+    });
+    expect(own).toEqual([]);
+  });
+
+  it('gives every icon-only button a name to announce', () => {
+    const root = join(__dirname, '..', '..');
+    const unnamed: string[] = [];
+    for (const file of policedFiles(UI_PRIMITIVES)) {
+      const source = readFileSync(join(root, file), 'utf8');
+      for (const match of source.matchAll(ICON_BUTTON)) {
+        const from = Math.max(0, match.index - 300);
+        if (!NAMES_ITSELF.test(source.slice(from, match.index + 700))) {
+          unnamed.push(`${file}: ${match[0]}`);
+        }
+      }
+    }
+    expect(unnamed).toEqual([]);
+  });
+
+  it('sets labels in sentence case, never uppercase', () => {
+    // `form/inputFilters.ts` owns `uppercaseField`, which uppercases a *value*
+    // (an IFSC, a PAN) rather than a label, and is a `.ts` besides.
+    expect(violations(SHOUTED_LABEL, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('marks an optional field through OptionalMark, never in the label text', () => {
+    expect(violations(HAND_WRITTEN_OPTIONAL, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('says a document’s status through StatusBadge, never a ternary label', () => {
+    expect(violations(HAND_ROLLED_STATUS_BADGE, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('prints one nil glyph, from NIL, never a hand-typed dash', () => {
+    expect(violations(HAND_TYPED_NIL, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('formats every phone on the way out, never printing the stored form', () => {
+    expect(violations(RAW_PHONE_PRINT, UI_PRIMITIVES)).toEqual([]);
   });
 
   it('polices .ts as well as .tsx (the schemas are not .tsx)', () => {

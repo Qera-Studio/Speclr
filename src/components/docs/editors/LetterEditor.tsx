@@ -7,9 +7,9 @@ import {
   finalizeDocument,
 } from "@/server/actions/documents";
 import { useDraftAutosave } from "./useDraftAutosave";
-import { AutosaveStatus, UnsavedChangesDialog } from "./draftStatus";
+import { AutosaveStatus, SaveError, UnsavedChangesDialog } from "./draftStatus";
 import { formatDisplayDate, todayISO } from "@/lib/domain/dates";
-import { DOC_TYPES } from "@/lib/domain/registry";
+import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from "@/lib/domain/registry";
 import type { StudioInfo } from "@/lib/domain/studio";
 import { defaultLetterContent } from "@/lib/domain/hrContent";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
@@ -23,7 +23,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
 import { RemoveButton } from "@/components/ui/remove-button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Spinner } from "@/components/ui/spinner";
@@ -247,7 +246,7 @@ export default function LetterEditor({
     recipientId: employeeId,
     payload: buildPayload(),
   });
-  const { docId, serverError, setServerError } = autosave;
+  const { docId, setServerError } = autosave;
 
   const onFinalize = async () => {
     if (!docId) return;
@@ -349,7 +348,7 @@ export default function LetterEditor({
                 size="form"
                 options={employees.map((e) => ({
                   value: e.id,
-                  label: `${e.name} — ${e.role}`,
+                  label: `${e.name} · ${e.role}`,
                 }))}
                 value={employeeId}
                 onValueChange={onSelectEmployee}
@@ -373,6 +372,7 @@ export default function LetterEditor({
             title="Letter"
             description="Subject and body"
             defaultOpen
+            printed
           >
             <ContentText
               id="letter-subject"
@@ -460,7 +460,7 @@ export default function LetterEditor({
             </EditorSection>
           ) : null}
 
-          <EditorSection title="Heading" description="Masthead and sub-heading">
+          <EditorSection title="Heading" description="Masthead and sub-heading" printed>
             <ContentText
               id="letter-masthead"
               label="Masthead"
@@ -480,6 +480,7 @@ export default function LetterEditor({
           <EditorSection
             title="Signature"
             description="Acknowledgement and signatory"
+            printed
           >
             {type === "OFR" ? (
               <ContentText
@@ -537,11 +538,7 @@ export default function LetterEditor({
             />
           </EditorSection>
 
-          {serverError ? (
-            <Alert variant="destructive" role="alert">
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
-          ) : null}
+          <SaveError autosave={autosave} />
           <AutosaveStatus autosave={autosave} recipient="employee" />
 
           <div className="flex flex-wrap gap-2">
@@ -558,7 +555,7 @@ export default function LetterEditor({
                 <ConfirmActionButton
                   label="Delete draft"
                   title="Delete this draft?"
-                  description="This cannot be undone."
+                  description={DELETE_DRAFT_CONSEQUENCE}
                   confirmLabel="Delete"
                   variant="destructive"
                   confirmVariant="destructive"

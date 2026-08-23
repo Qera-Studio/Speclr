@@ -13,7 +13,7 @@ import {
   deleteDraftAction,
   duplicateDocument,
 } from '@/server/actions/documents';
-import { isSlip } from '@/lib/domain/registry';
+import { DELETE_DRAFT_CONSEQUENCE, isSlip } from '@/lib/domain/registry';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import { docHref } from '@/lib/profile';
 import type { AdminDocument } from '@/lib/domain/types';
@@ -137,7 +137,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
           label="Delete draft"
           tooltip="Delete"
           confirmTitle="Delete this draft?"
-          confirmDescription="This cannot be undone."
+          confirmDescription={DELETE_DRAFT_CONSEQUENCE}
           onConfirm={onDelete}
         />
       ) : DEV_UNLIMITED ? (

@@ -68,7 +68,13 @@ export default async function NewDocumentRoute({
   }
 
   // ── Client-based documents ─────────────────────────────────────
-  const clients = await listClients();
+  //
+  // Archived clients are offboarded, so they are not offered on a *new*
+  // document. `DocumentRoute` deliberately does not filter: an open draft whose
+  // client was archived afterwards must still find them in its own picker, or
+  // the next save silently loses the client the draft was written for. Same
+  // rule as a saved registration type staying on offer (`CONTEXT.md` §5d-ii).
+  const clients = (await listClients()).filter((c) => !c.archived);
   if (spec.code === 'CON') {
     const [services, exclusions, clientInputs, clauses] = await Promise.all([
       listServices(),

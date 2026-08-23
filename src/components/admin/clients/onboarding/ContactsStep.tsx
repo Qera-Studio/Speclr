@@ -164,6 +164,7 @@ export default function ContactsStep({
       serverError={serverError}
       submitting={isSubmitting}
       submitLabel={submitLabel}
+      allOptional
     >
       <ContactGroup
         name="primary"

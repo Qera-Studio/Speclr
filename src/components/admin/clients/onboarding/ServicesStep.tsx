@@ -183,6 +183,7 @@ export default function ServicesStep({
       serverError={serverError ?? rateError}
       submitting={isSubmitting}
       submitLabel={submitLabel}
+      allOptional
     >
       {/*
         `min-w-0` because a `<fieldset>` carries `min-inline-size: min-content`
@@ -302,7 +303,7 @@ export default function ServicesStep({
                               ) : (
                                 // A quarter turn on hover, so the mark answers
                                 // the pointer before the click does.
-                                <Plus className="size-3 transition-transform duration-200 group-hover/service:rotate-90" />
+                                <Plus className="size-3 transition-transform group-hover/service:rotate-90" />
                               )}
                             </span>
                           </span>

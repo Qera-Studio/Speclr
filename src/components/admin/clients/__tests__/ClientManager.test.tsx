@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ClientManager from '../ClientManager';
 import type { ClientRecord } from '@/lib/domain/types';
@@ -6,14 +6,20 @@ import type { ClientRecord } from '@/lib/domain/types';
 const refresh = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 
+const toast = jest.fn();
+jest.mock('sonner', () => ({ toast: (...args: unknown[]) => toast(...args) }));
+
 const deleteClientAction = jest.fn();
+const setClientArchivedAction = jest.fn();
 jest.mock('@/server/actions/clients', () => ({
   deleteClientAction: (...args: unknown[]) => deleteClientAction(...args),
+  setClientArchivedAction: (...args: unknown[]) => setClientArchivedAction(...args),
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
   deleteClientAction.mockResolvedValue({ success: true });
+  setClientArchivedAction.mockResolvedValue({ success: true });
 });
 
 /**
@@ -32,6 +38,7 @@ const clients: ClientRecord[] = [
     address: '1 Acme Way',
     email: 'a@acme.test',
     phone: '+91 90000 00001',
+    createdAt: new Date(2026, 6, 21).getTime(),
   },
   {
     id: 'c2',
@@ -39,6 +46,7 @@ const clients: ClientRecord[] = [
     address: '2 Beta Road',
     email: 'b@beta.test',
     phone: '+91 90000 00002',
+    createdAt: new Date(2026, 6, 20).getTime(),
   },
 ] as ClientRecord[];
 
@@ -80,6 +88,28 @@ describe('ClientManager', () => {
     );
   });
 
+  /**
+   * Offboarding. The archived rows leave the default list and are reachable
+   * behind the toggle, which is the whole point: a client that has been on a
+   * document can never be deleted, so without this the list only ever grows.
+   */
+  it('keeps archived clients out of the list, and behind the toggle', async () => {
+    const user = userEvent.setup();
+    const withArchived = [clients[0], { ...clients[1], archived: true }];
+    render(<ClientManager clients={withArchived} />);
+
+    expect(screen.getByText('Acme Co.')).toBeInTheDocument();
+    expect(screen.queryByText('Beta Ltd')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /show archived clients/i }));
+    expect(screen.getByText('Beta Ltd')).toBeInTheDocument();
+    expect(screen.queryByText('Acme Co.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /restore beta ltd/i }));
+    expect(setClientArchivedAction).toHaveBeenCalledWith('c2', false);
+    expect(refresh).toHaveBeenCalled();
+  });
+
   async function deleteFirstClient(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: /delete acme co\./i }));
     await user.click(screen.getByRole('button', { name: /^remove$/i }));
@@ -110,5 +140,38 @@ describe('ClientManager', () => {
     await deleteFirstClient(user);
     expect(await screen.findByRole('alert')).toHaveTextContent(/has documents and cannot be deleted/i);
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Archiving takes the row out of the list you are reading, so the way back
+   * has to travel with the confirmation. Without the undo the only route is
+   * finding the archive toggle and hunting for the row again.
+   */
+  it('offers an undo on the toast when a client is archived', async () => {
+    const user = userEvent.setup();
+    render(<ClientManager clients={clients} />);
+
+    await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
+
+    expect(setClientArchivedAction).toHaveBeenCalledWith('c1', true);
+    const [message, options] = toast.mock.calls[0] as [string, { action: { label: string; onClick: () => void } }];
+    expect(message).toBe('Acme Co. archived');
+    expect(options.action.label).toBe('Undo');
+
+    // The undo is a real inverse, not a dismiss.
+    setClientArchivedAction.mockClear();
+    await act(async () => options.action.onClick());
+    expect(setClientArchivedAction).toHaveBeenCalledWith('c1', false);
+  });
+
+  it('says nothing on the toast when the archive is refused', async () => {
+    const user = userEvent.setup();
+    setClientArchivedAction.mockResolvedValue({ success: false, error: 'Nope.' });
+    render(<ClientManager clients={clients} />);
+
+    await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nope.');
+    expect(toast).not.toHaveBeenCalled();
   });
 });

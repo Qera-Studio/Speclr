@@ -83,6 +83,11 @@ export interface ClientRecord {
   attachments?: ClientAttachment[];
   /** Where credentials live. Never a credential. See `client.ts`. */
   access?: ClientAccessRef[];
+  /**
+   * Offboarded — out of the working list and out of the new-document picker.
+   * Absent means active, which is every row written before this existed.
+   */
+  archived?: boolean;
   createdAt: number;
   updatedAt: number;
 }

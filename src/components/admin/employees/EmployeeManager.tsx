@@ -8,6 +8,7 @@ import EmployeeForm from './EmployeeForm';
 import EmployeesTable from './EmployeesTable';
 import { deleteEmployeeAction } from '@/server/actions/employees';
 import type { EmployeeRecord } from '@/lib/domain/employee';
+import { PageHeader } from '@/components/admin/Page';
 
 export default function EmployeeManager({ employees }: { employees: EmployeeRecord[] }) {
   const router = useRouter();
@@ -31,10 +32,11 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
     <div className="flex flex-col gap-4">
       {/* The create CTA lives here whether or not the list is empty — a control
           that moves depending on state is a control you have to look for. */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Employees</h1>
-        <AddButton onClick={() => guardedSelect(null)}>Add employee</AddButton>
-      </div>
+      <PageHeader title="Employees">
+        <AddButton variant="outline" onClick={() => guardedSelect(null)}>
+          Add employee
+        </AddButton>
+      </PageHeader>
 
       <EmployeesTable
         employees={employees}

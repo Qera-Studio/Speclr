@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
 import type { ClientRecord } from "@/lib/domain/types";
 import { COUNTRY_SEED } from "@/lib/domain/countries";
 import { onboardingSteps, stepIndex, type OnboardingStep } from "./steps";
-import { StepActionsSlot } from "./stepKit";
+import { StepActionsSlot, STEP_FORM_ID } from "./stepKit";
 import KindChooser from "./KindChooser";
 import CountryChooser from "./CountryChooser";
 import IdentityStep from "./IdentityStep";
@@ -117,6 +117,15 @@ export default function ClientOnboarding({
    * step below needs to hear about the node in order to render into it.
    */
   const [actions, setActions] = useState<HTMLElement | null>(null);
+  /**
+   * "Save and close" was the button pressed, so `onSaved` leaves instead of
+   * advancing.
+   *
+   * A ref rather than state: it is set during the click that submits the form
+   * and read in the callback that same submit produces, and a state update
+   * would not have landed by then. Nothing renders from it.
+   */
+  const closing = useRef(false);
 
   const goTo = useCallback(
     (index: number, id = client?.id) => {
@@ -144,6 +153,12 @@ export default function ClientOnboarding({
     (saved: ClientRecord) => {
       const created = !client;
       setClient(saved);
+      // "Save and close" pressed. The step has just written its section, so
+      // leaving now loses nothing, which is the whole claim the button makes.
+      if (closing.current) {
+        router.push(`/client/clients`);
+        return;
+      }
       if (created || active < steps.length - 1) {
         goTo(created ? 1 : active + 1, saved.id);
         return;
@@ -321,7 +336,7 @@ export default function ClientOnboarding({
             <div
               key={step.key}
               className={cn(
-                "animate-in fade-in duration-300",
+                "animate-in fade-in duration-200",
                 forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
               )}
             >
@@ -372,7 +387,41 @@ export default function ClientOnboarding({
             <ArrowLeft aria-hidden />
           </Button>
         ) : null}
-        <div ref={setActions} className="contents" />
+        {/* Any *other* submit clears the flag, so a failed save-and-close does
+            not quietly turn the next ordinary save into an exit. The wrapper
+            is `display:contents` and still sees the click: events bubble
+            through the tree whatever the box model does with it. */}
+        <div
+          ref={setActions}
+          className="contents"
+          onClickCapture={() => {
+            closing.current = false;
+          }}
+        />
+
+        {/*
+          The flow saves a section at a time and always did. Nothing said so,
+          so the only visible way out was the browser's back button, which
+          looks like abandoning the form — and a wizard people are afraid to
+          leave is a wizard they finish in one sitting or not at all.
+
+          A real submit, not a link: it writes this step first, so the claim in
+          the label is true even for what was typed in the last thirty seconds.
+        */}
+        {!finishing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="absolute right-0 text-muted-foreground"
+            onClick={() => {
+              closing.current = true;
+              document.forms.namedItem(STEP_FORM_ID)?.requestSubmit();
+            }}
+          >
+            Save and close
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -396,9 +445,9 @@ function FinishPanel({ name }: { name?: string }) {
   return (
     <div
       role="status"
-      className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-3 py-16 text-center duration-500"
+      className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-3 py-16 text-center duration-200"
     >
-      <span className="animate-in zoom-in-50 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground duration-500">
+      <span className="animate-in zoom-in-50 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground duration-200">
         <Check className="size-6" aria-hidden />
       </span>
       <p className="text-base font-medium">
@@ -507,7 +556,7 @@ function StepNav({
                     // is what makes the pop play exactly once, on the square
                     // that earned it, with no state tracking which.
                     <Check
-                      className="animate-in zoom-in-50 fill-mode-backwards size-3.5 duration-300"
+                      className="animate-in zoom-in-50 fill-mode-backwards size-3.5 duration-200"
                       style={finishing ? { animationDelay: delay } : undefined}
                       aria-hidden
                     />

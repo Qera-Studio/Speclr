@@ -284,9 +284,10 @@ describe('the sorting toggle', () => {
     render(<DocumentsBrowser documents={documents} />);
 
     const arrow = screen.getByRole('columnheader', { name: 'Date' }).querySelectorAll('svg');
-    // The column's own icon, plus the reserved arrow.
-    expect(arrow).toHaveLength(2);
-    expect(arrow[1]).toHaveClass('invisible');
+    // The reserved arrow, and only that: the column's decorative icon was
+    // removed with the rest of the header icons.
+    expect(arrow).toHaveLength(1);
+    expect(arrow[0]).toHaveClass('invisible');
   });
 
   it('reports its state to assistive tech', async () => {

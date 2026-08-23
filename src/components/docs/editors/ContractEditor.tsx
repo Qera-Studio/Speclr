@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { deleteDraftAction, finalizeDocument } from "@/server/actions/documents";
 import { formatDisplayDate, todayISO } from "@/lib/domain/dates";
-import { DOC_TYPES } from "@/lib/domain/registry";
+import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from "@/lib/domain/registry";
 import { assemble } from "@/lib/domain/contract/assembly";
 import {
   blanksOf,
@@ -70,7 +70,7 @@ import {
   type ContentPatch,
 } from "./ContentFields";
 import { useDraftAutosave } from "./useDraftAutosave";
-import { UnsavedChangesDialog } from "./draftStatus";
+import { SaveError, UnsavedChangesDialog } from "./draftStatus";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { workspaceTitle } from "../workspaceTitle";
 import { useProfile } from '@/lib/useProfile';
@@ -181,7 +181,7 @@ export default function ContractEditor({
     recipientId: clientId,
     payload: buildPayload(),
   });
-  const { docId, saveState, serverError, setServerError } = autosave;
+  const { docId, saveState, setServerError } = autosave;
 
   const client = clients.find((c) => c.id === clientId);
   const heading = workspaceTitle(title, DOC_TYPES.CON.label, client?.name);
@@ -477,7 +477,7 @@ export default function ContractEditor({
           icon={<Trash2 />}
           size="icon"
           title="Delete this draft?"
-          description="This cannot be undone."
+          description={DELETE_DRAFT_CONSEQUENCE}
           confirmLabel="Delete"
           confirmVariant="destructive"
           className="shrink-0 text-destructive hover:text-destructive"
@@ -607,11 +607,7 @@ export default function ContractEditor({
                 </Alert>
               ) : null}
 
-              {serverError ? (
-                <Alert variant="destructive" role="alert">
-                  <AlertDescription>{serverError}</AlertDescription>
-                </Alert>
-              ) : null}
+              <SaveError autosave={autosave} />
               {/*
                 The draft writes itself, so this is the only thing that says a
                 change has landed. It is a status region, not a control.

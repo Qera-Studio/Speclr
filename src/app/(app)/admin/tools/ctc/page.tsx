@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import CtcCalculator from '@/components/tools/CtcCalculator';
+import { PageBody, PageHeader } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'CTC calculator — speclr',
@@ -28,16 +29,18 @@ export default async function CtcPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">CTC calculator</h1>
-        <p className="text-sm text-muted-foreground">
-          What an annual CTC works out to as monthly basic, HRA and allowance —
-          the figures a pay slip&rsquo;s earnings should carry. Nothing is saved;
-          copy the numbers onto the slip.
-        </p>
-      </div>
+    <PageBody>
+      <PageHeader
+        title="CTC calculator"
+        description={
+          <>
+            What an annual CTC works out to as monthly basic, HRA and allowance:
+            the figures a pay slip&rsquo;s earnings should carry. Nothing is saved;
+            copy the numbers onto the slip.
+          </>
+        }
+      />
       <CtcCalculator />
-    </div>
+    </PageBody>
   );
 }

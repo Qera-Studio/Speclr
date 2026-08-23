@@ -26,12 +26,26 @@ import { cn } from "@/lib/utils";
  *    is reachable by keyboard. Where the message is also *news* (a field that
  *    just became read-only, say), the caller should still put it in a
  *    `role="status"` region — a tooltip is not announced.
+ *
+ * `optional` is the one marker a field carries, and it is deliberately the
+ * *minority* mark rather than the conventional required asterisk. Which
+ * minority that is depends on the form: on the identity step roughly half the
+ * fields are required, so the handful that are not say so; on the tax, contacts,
+ * commercial and access steps **every field is optional** (`domain/client.ts`
+ * says so at the top and means it), and there the marker would land on all of
+ * them, which is no marker at all. Those steps say it once, in prose, at the
+ * top. So: mark the few, never the many, and never both ways in one app.
+ *
+ * The word sits *inside* the `<label>`, unlike the icon beside it. It is part
+ * of what the field is, so "Phone, optional" is the correct announcement; an
+ * icon in there would rename the field with something unreadable instead.
  */
 export default function FieldInfo({
   htmlFor,
   label,
   info,
   infoLabel,
+  optional,
 }: {
   htmlFor: string;
   label: string;
@@ -39,12 +53,30 @@ export default function FieldInfo({
   info?: string;
   /** Accessible name for the icon button, e.g. "Why is this required?". */
   infoLabel?: string;
+  /** Say so, on a form where most fields are not. See above. */
+  optional?: boolean;
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
+      <FieldLabel htmlFor={htmlFor}>
+        {label}
+        {optional ? <OptionalMark /> : null}
+      </FieldLabel>
       <InfoTip info={info} label={infoLabel ?? `About ${label}`} />
     </div>
+  );
+}
+
+/**
+ * The marker itself, for the few labels that are not a `FieldInfo`: a
+ * `FieldLabel` written out by hand beside a switch, say.
+ *
+ * Muted and at rest: it is a permission, not an instruction, and a field that
+ * asks for nothing should not be the loudest thing in the column.
+ */
+export function OptionalMark() {
+  return (
+    <span className="font-normal text-muted-foreground">, optional</span>
   );
 }
 

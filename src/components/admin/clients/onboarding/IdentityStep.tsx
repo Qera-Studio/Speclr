@@ -416,11 +416,16 @@ export default function IdentityStep({
               infoLabel={
                 individual ? 'What is a trading name?' : 'Why is the legal name separate?'
               }
+              /* A company's legal name is required and a person's trading name
+                 is not, and the same field is both. The placeholder used to
+                 carry that by saying 'Optional', which named the rule instead
+                 of the value. */
+              optional={individual}
             />
             <Input
               id="client-company-name"
               size="form"
-              placeholder={individual ? 'Optional' : 'Registered name'}
+              placeholder={individual ? 'Trading name' : 'Registered name'}
               {...register('companyName')}
             />
             <FieldError errors={[errors.companyName]} />
@@ -472,8 +477,9 @@ export default function IdentityStep({
             <FieldInfo
               htmlFor="client-designation"
               label="Designation"
-              info="How they describe themselves, printed under their name in a contract's signature block. Optional — a signature works without one."
+              info="How they describe themselves, printed under their name in a contract's signature block. A signature works without one."
               infoLabel="Where does the designation print?"
+              optional
             />
             <Input
               id="client-designation"

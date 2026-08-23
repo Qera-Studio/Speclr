@@ -58,6 +58,7 @@ export async function saveClient(client: ClientRecord): Promise<void> {
     commercial: client.commercial ?? null,
     attachments: client.attachments ?? null,
     access: client.access ?? null,
+    archived: client.archived ?? false,
     createdAt: new Date(client.createdAt),
     updatedAt: new Date(client.updatedAt),
   };
@@ -84,6 +85,7 @@ function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
     commercial: r.commercial ?? undefined,
     attachments: r.attachments ?? undefined,
     access: r.access ?? undefined,
+    archived: r.archived,
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
   };
@@ -115,6 +117,36 @@ export async function clientHasDocuments(id: string): Promise<boolean> {
     .where(eq(documents.clientId, id))
     .limit(1);
   return rows.length > 0;
+}
+
+/**
+ * The same question for an employee, and it had been missed.
+ *
+ * `documents.employee_id` is a foreign key with no `onDelete`, so Postgres
+ * already refuses to delete an employee who has been on a slip or a letter.
+ * Without this the refusal reached the operator as "Failed to delete employee",
+ * which names no cause and suggests a fault. Same reason the client one exists:
+ * turn a constraint violation into a sentence.
+ */
+export async function employeeHasDocuments(id: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(eq(documents.employeeId, id))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/**
+ * Offboard a client, or bring them back.
+ *
+ * A column write rather than a `saveClient` round trip: archiving is one flag
+ * and re-saving the whole row to set it would re-compose the address and
+ * re-write every group, which is a lot of chances to change something nobody
+ * asked to change.
+ */
+export async function setClientArchived(id: string, archived: boolean): Promise<void> {
+  await db.update(clients).set({ archived, updatedAt: new Date() }).where(eq(clients.id, id));
 }
 
 export async function deleteClient(id: string): Promise<void> {
@@ -247,6 +279,19 @@ export async function saveService(svc: ContractService): Promise<void> {
     .insert(services)
     .values(row)
     .onConflictDoUpdate({ target: services.code, set: row });
+}
+
+/**
+ * Adds a service, refusing to land on a code that already exists.
+ *
+ * Not `saveService`: that upserts, which is right for an edit and wrong here.
+ * Two adds that resolved the same next code would have the second silently
+ * replace the first, and a code is cited by every contract that used it. A
+ * plain insert turns that collision into an error instead.
+ */
+export async function insertService(svc: ContractService): Promise<void> {
+  const { code, name, scheduleKey, sortOrder, archived, ...content } = svc;
+  await db.insert(services).values({ code, name, scheduleKey, sortOrder, archived, content });
 }
 
 export async function getService(code: string): Promise<ContractService | null> {

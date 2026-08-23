@@ -100,6 +100,26 @@ function IdentifierField<T extends FieldValues>({
 }) {
   const { field, fieldState } = useController({ control, name });
 
+  /**
+   * Read on **every** render, not only when it is about to be shown.
+   *
+   * This line is a bug fix, and the bug was invisible in the ordinary case.
+   * `formState` is a proxy that records which keys a component reads and
+   * re-renders it only for those; a controller that has never read `errors` is
+   * never told when its own error arrives. The display used to be written
+   * `errors={showError ? [fieldState.error] : []}`, so a field that had not yet
+   * been left or filled never read it, never subscribed, and afterwards
+   * rendered off a snapshot taken before the error existed.
+   *
+   * What that looked like: on the tax step, once **any** identifier was showing
+   * an error, none of the others would ever show theirs. React Hook Form had
+   * them all, correctly, and the form still refused to submit; the reader was
+   * simply never told which field was wrong. Reproduced by blurring an empty
+   * GSTIN (whose "a registered client has a GSTIN" lands immediately) and then
+   * typing a bad TAN or PAN. Pinned in `fields.test.tsx`.
+   */
+  const error = fieldState.error;
+
   const value = String(field.value ?? '');
 
   /**
@@ -181,7 +201,7 @@ function IdentifierField<T extends FieldValues>({
         <FieldCheck control={control} name={name} kind={kind} ref={trailing} />
       </div>
       {children}
-      <FieldError errors={showError ? [fieldState.error] : []} />
+      <FieldError errors={showError ? [error] : []} />
     </Field>
   );
 }
@@ -252,6 +272,50 @@ export function CinField<T extends FieldValues>(props: IdentifierProps<T>) {
       kind="cin"
       {...props}
     />
+  );
+}
+
+/**
+ * SAC — the GST classification of a thing sold.
+ *
+ * Digits only, and filtered on the way into react-hook-form rather than
+ * complained about afterwards, per the standing rule for numeric inputs: a
+ * value that only *looks* clean while holding something else is the worse of
+ * the two failures.
+ *
+ * **No tick.** `sacSchema` checks that this is six digits beginning 99, which
+ * is a shape and not a classification — the code could be well-formed and still
+ * be the wrong one for the work. A mark here would claim the app had confirmed
+ * something it cannot see, which is the one thing `FieldCheck` exists not to do.
+ */
+export function SacField<T extends FieldValues>({
+  control,
+  name,
+  id,
+  label = 'SAC',
+  info = 'The Service Accounting Code this work is classified under. Six digits, always beginning 99, and the 9983 group is taxed at 18%. Which code fits is a judgement for whoever signs the return.',
+  infoLabel = 'What is a SAC?',
+  placeholder = '998314',
+}: IdentifierProps<T>) {
+  const { field, fieldState } = useController({ control, name });
+
+  return (
+    <Field>
+      <FieldInfo htmlFor={id} label={label} info={info} infoLabel={infoLabel} />
+      <Input
+        id={id}
+        size="form"
+        inputMode="numeric"
+        maxLength={6}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck={false}
+        {...field}
+        value={String(field.value ?? '')}
+        onChange={(event) => field.onChange(event.target.value.replace(/\D/g, ''))}
+      />
+      <FieldError errors={[fieldState.error]} />
+    </Field>
   );
 }
 

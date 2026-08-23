@@ -1,7 +1,6 @@
 'use client';
 
-import { Briefcase, Handshake, IdCard, Mail, User } from 'lucide-react';
-import ColumnLabel from '../ColumnLabel';
+import { IdCard } from 'lucide-react';
 import {
   Empty,
   EmptyDescription,
@@ -9,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { Pagination, rowCountLabel, usePagedRows } from '@/components/ui/pagination';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { EditButton, RowActions } from '../RowActions';
 import {
@@ -20,6 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TableCard, TruncCell } from '../Page';
+import { CopyCell } from '../CopyCell';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 export default function EmployeesTable({
@@ -31,6 +33,8 @@ export default function EmployeesTable({
   onEdit: (employee: EmployeeRecord) => void;
   onDelete: (employee: EmployeeRecord) => void;
 }) {
+  const { page, pageCount, visible, setPage, start } = usePagedRows(employees);
+
   if (employees.length === 0) {
     return (
       <Empty className="border">
@@ -46,49 +50,61 @@ export default function EmployeesTable({
   }
 
   return (
-    <Table>
-      <TableCaption className="sr-only">Saved employees, newest first</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-            <ColumnLabel icon={User}>Name</ColumnLabel>
-          </TableHead>
-          <TableHead>
-            <ColumnLabel icon={Mail}>Email</ColumnLabel>
-          </TableHead>
-          <TableHead>
-            <ColumnLabel icon={Briefcase}>Role</ColumnLabel>
-          </TableHead>
-          <TableHead>
-            <ColumnLabel icon={Handshake}>Engagement</ColumnLabel>
-          </TableHead>
-          <TableHead className="w-0 text-right">
-            <span className="sr-only">Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {employees.map((employee) => (
-          <TableRow key={employee.id} className="group/row">
-            <TableCell>{employee.name}</TableCell>
-            <TableCell>{employee.email}</TableCell>
-            <TableCell>{employee.role}</TableCell>
-            <TableCell>{employee.engagementType}</TableCell>
-            <TableCell className="py-0 text-right">
-              <RowActions>
-                <EditButton label={`Edit ${employee.name}`} onClick={() => onEdit(employee)} />
-                <RemoveButton
-                  label={`Delete ${employee.name}`}
-                  tooltip="Delete"
-                  confirmTitle="Delete employee"
-                  confirmDescription={`This will permanently remove ${employee.name}. This action cannot be undone.`}
-                  onConfirm={() => onDelete(employee)}
-                />
-              </RowActions>
-            </TableCell>
+    <TableCard
+      count={rowCountLabel(employees.length, 'employee', start, visible.length)}
+      pagination={
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          onPageChange={setPage}
+          label="employees"
+        />
+      }
+    >
+      <Table>
+        <TableCaption className="sr-only">Saved employees, newest first</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              Name
+            </TableHead>
+            <TableHead>
+              Email
+            </TableHead>
+            <TableHead>
+              Role
+            </TableHead>
+            <TableHead>
+              Engagement
+            </TableHead>
+            <TableHead className="w-0 text-right">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {visible.map((employee) => (
+            <TableRow key={employee.id} className="group/row">
+              <TruncCell value={employee.name} />
+              <CopyCell value={employee.email} label="Copy email" width="16rem" />
+              <TruncCell value={employee.role} width="12rem" />
+              <TableCell>{employee.engagementType}</TableCell>
+              <TableCell className="relative py-0 text-right">
+                <RowActions>
+                  <EditButton label={`Edit ${employee.name}`} onClick={() => onEdit(employee)} />
+                  <RemoveButton
+                    label={`Delete ${employee.name}`}
+                    tooltip="Delete"
+                    confirmTitle="Delete employee"
+                    confirmDescription={`This removes ${employee.name} and everything recorded about them. An employee who has been on a slip or a letter can’t be deleted.`}
+                    onConfirm={() => onDelete(employee)}
+                  />
+                </RowActions>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }

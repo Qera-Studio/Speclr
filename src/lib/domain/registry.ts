@@ -343,6 +343,23 @@ export const letterFinalizeSchema = z.object({
 export const DEFAULT_STIPEND_DEDUCTIONS_NOTE =
   'No statutory deductions (PF, ESI, TDS) are applicable.';
 
+/**
+ * What deleting a draft actually costs, said in the confirmation.
+ *
+ * Five dialogs said "This cannot be undone." between them, which is true of
+ * almost every button in the app and tells the reader nothing they can weigh.
+ * The two facts that decide the answer are that the typing goes and the
+ * *numbering does not move*, because a number is claimed at finalize and a
+ * draft has never held one. Somebody hesitating over this button is usually
+ * hesitating over exactly that.
+ *
+ * Here rather than in a component because it is a statement about the numbering
+ * rule this file owns, and because five copies of a sentence is five sentences
+ * that can drift. Same reason as the note above it.
+ */
+export const DELETE_DRAFT_CONSEQUENCE =
+  'Everything typed into it goes. No number was ever claimed for a draft, so the issued sequence is unaffected.';
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 
 /** Editable field-set of a document (everything except identity/status). */

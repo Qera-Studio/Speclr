@@ -61,13 +61,23 @@ function TabsList({
  * and the list/card toggle in `DocumentsBrowser`) — and they had already
  * drifted apart.
  *
- * In dark mode the list sits on `bg-muted` (L .269) and the old `bg-input/30`
- * resolved to roughly L .28, so the pill read as a bare outline with nothing
- * inside it. The fill is now genuinely lighter than the trough and carries a
- * real drop shadow: a border alone cannot say "this one is on".
+ * **Fill and shadow, in both themes. No stroke in either.** Light mode raises
+ * the pill by making it lighter than the trough (white on `--muted`) and adds a
+ * shadow; dark mode does the same thing in the same direction, because lighter
+ * is what "nearer" means under a light source and that does not invert with the
+ * theme. What dark mode cannot do is inherit light's *values*: `--background`
+ * there is darker than `--muted`, so painting the pill `bg-background` would
+ * push it into the trough. Hence a white overlay instead.
+ *
+ * The stroke is gone. It was added when the fill was `bg-input/30` (L .28
+ * against a trough at L .269), which is to say the border was compensating for
+ * a fill that did not read; with a fill that does, an outline only makes the
+ * one component in the app that is drawn two visibly different ways. The shadow
+ * stays slight, since it does little over a dark ground and the fill is now
+ * carrying the elevation.
  */
 const tabPillSurface =
-  "bg-background shadow-sm dark:border dark:border-input dark:bg-input/65 dark:shadow-[0_1px_3px_oklch(0_0_0/0.55)]";
+  "bg-background shadow-sm dark:bg-input/85 dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
@@ -78,7 +88,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         // Same surface as `tabPillSurface`, spelled with `data-active:` since
         // it paints on the trigger itself. Keep the two in step.
-        "data-active:bg-background data-active:shadow-sm data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/65 dark:data-active:text-foreground dark:data-active:shadow-[0_1px_3px_oklch(0_0_0/0.55)]",
+        "data-active:bg-background data-active:shadow-sm data-active:text-foreground dark:data-active:bg-input/85 dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -100,7 +110,7 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
     <TabsPrimitive.Indicator
       data-slot="tabs-indicator"
       className={cn(
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md transition-[translate,width] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md transition-[translate,width] duration-200 ease-standard",
         tabPillSurface,
         className,
       )}
@@ -153,7 +163,7 @@ function TabsContent({
       keepMounted={keepMounted}
       className={cn(
         "flex-1 text-xs/relaxed outline-none",
-        "transition-[translate] duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+        "transition-[translate] duration-200 ease-standard motion-reduce:transition-none",
         "data-[activation-direction=right]:data-[starting-style]:translate-x-full data-[activation-direction=right]:data-[ending-style]:-translate-x-full",
         "data-[activation-direction=left]:data-[starting-style]:-translate-x-full data-[activation-direction=left]:data-[ending-style]:translate-x-full",
         className,

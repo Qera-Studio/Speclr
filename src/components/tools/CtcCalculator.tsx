@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatINR, rupeesToPaise } from '@/lib/domain/money';
+import { NIL } from '@/lib/utils';
 import {
   computeSalaryStructure,
   DEFAULT_STRUCTURE_INPUT,
@@ -34,7 +35,7 @@ import { InfoTip } from '@/components/form/FieldInfo';
 
 /** '94.4%' — a part as a share of the total it belongs to. */
 function pct(part: number, whole: number): string {
-  if (!whole) return '—';
+  if (!whole) return NIL;
   return `${((part / whole) * 100).toFixed(1)}%`;
 }
 
@@ -126,7 +127,7 @@ function Headline({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-xs tracking-[0.01em] text-muted-foreground">{label}</span>
       <span
         className={`text-2xl font-semibold tabular-nums ${muted ? 'text-muted-foreground' : ''}`}
       >

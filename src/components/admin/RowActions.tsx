@@ -13,10 +13,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
  * for anyone arriving by keyboard.
  *
  * Requires `group/row` on the owning `TableRow`.
+ *
+ * **The buttons are 28px and their targets are 28×40.** The extra height is an
+ * absolutely-positioned pseudo-element, so it costs no layout and nothing
+ * moves. It grows upward and downward only, because that is the axis with room:
+ * these sit 2px apart, and a target widened sideways would overlap its
+ * neighbour, which turns "hard to hit" into "hits the wrong one" (deleting a
+ * row instead of editing it). Vertical is also the axis you approach a row from
+ * in a list.
+ *
+ * 40 rather than 44: the row is 44px tall and a taller target would spill into
+ * the row above. WCAG 2.1 AA sets no target size at all (2.5.5 is AAA); 2.2's
+ * AA floor is 24px, which this clears with room.
  */
 export function RowActions({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+    <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100 [&_button]:relative [&_button]:before:absolute [&_button]:before:inset-x-0 [&_button]:before:-inset-y-1.5 [&_button]:before:content-['']">
       {children}
     </div>
   );

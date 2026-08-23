@@ -74,7 +74,15 @@ export default function EditorSidebar() {
         panel, and two back arrows stacked with nothing between them read as one
         control that has been drawn twice.
       */}
-      <SidebarHeader className="flex-row items-center justify-between gap-2 border-b px-3 py-2 group-data-[collapsible=icon]:border-b-0">
+      {/*
+        `h-14`, matching the page header and the wordmark row on the far side.
+        The three sit at the top of the three columns and were on three
+        different centre lines, which is the sort of thing nobody reports and
+        everybody sees. The toggle stays *here* rather than moving into the page
+        header: it belongs to the rail it opens, and that is also the only place
+        it can be found once the rail is collapsed to a strip.
+      */}
+      <SidebarHeader className="h-14 flex-row items-center justify-between gap-2 border-b px-3 py-0 group-data-[collapsible=icon]:border-b-0">
         {/*
           A back arrow, left of the title. There is rarely anywhere to go "back"
           to in a single-page editor, but people reach for one before they reach

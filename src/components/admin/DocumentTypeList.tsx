@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { shortcutForSlug } from "./nav";
 import DocumentsBrowser from "./DocumentsBrowser";
+import { PageBody, PageHeader } from "./Page";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
 import { isHrDocType, type DocTypeSpec } from "@/lib/domain/registry";
 import type { AdminDocument } from "@/lib/domain/types";
@@ -41,29 +42,30 @@ export default function DocumentTypeList({
   const shortcut = shortcutForSlug(spec.slug);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{spec.label}s</h1>
-        <div className="flex flex-wrap items-start gap-2">
-          {latestInvoice?.number ? (
-            <ReceiptForInvoiceButton
-              invoiceId={latestInvoice.id}
-              invoiceNumber={latestInvoice.number}
-            />
-          ) : null}
-          {shortcut ? (
-            <Tooltip>
-              <TooltipTrigger render={<AddLink href={newHref}>{newLabel}</AddLink>} />
-              <TooltipContent>
+    <PageBody>
+      <PageHeader title={`${spec.label}s`}>
+        {latestInvoice?.number ? (
+          <ReceiptForInvoiceButton
+            invoiceId={latestInvoice.id}
+            invoiceNumber={latestInvoice.number}
+          />
+        ) : null}
+        {shortcut ? (
+          <Tooltip>
+            <TooltipTrigger render={<AddLink href={newHref} variant="outline">
                 {newLabel}
-                <Shortcut keys={["alt", shortcut]} />
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <AddLink href={newHref}>{newLabel}</AddLink>
-          )}
-        </div>
-      </div>
+              </AddLink>} />
+            <TooltipContent>
+              {newLabel}
+              <Shortcut keys={["alt", shortcut]} />
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <AddLink href={newHref} variant="outline">
+                {newLabel}
+              </AddLink>
+        )}
+      </PageHeader>
 
       <DocumentsBrowser
         documents={documents}
@@ -73,6 +75,6 @@ export default function DocumentTypeList({
         hideTypeFilter
         partyLabel={isHrDocType(spec.code) ? "Employee" : "Client"}
       />
-    </div>
+    </PageBody>
   );
 }

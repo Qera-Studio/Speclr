@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { NavLink } from './nav';
+import { PageBody, PageHeader } from './Page';
 
 /**
  * An index page for a nav section: the rows that used to sit inline under a
@@ -21,11 +22,8 @@ export default function NavIndex({
   links: NavLink[];
 }) {
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-      </div>
+    <PageBody>
+      <PageHeader title={title} description={description} />
 
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {links.map((link) => {
@@ -52,6 +50,6 @@ export default function NavIndex({
           );
         })}
       </ul>
-    </div>
+    </PageBody>
   );
 }

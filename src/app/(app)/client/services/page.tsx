@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listServices } from '@/db/store';
 import ServiceCards from '@/components/admin/services/ServiceCards';
+import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -34,8 +35,10 @@ export default async function ServiceCataloguePage() {
   const services = await listServices();
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    // `h-full` so the board can fill the inset and scroll inside its columns
+    // rather than making the whole page scroll for one long Schedule.
+    <PageBody className="h-full min-h-0">
       <ServiceCards services={services} />
-    </div>
+    </PageBody>
   );
 }

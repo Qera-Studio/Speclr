@@ -167,7 +167,26 @@ function AlertDialogAction({
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-action"
       className={cn(className)}
-      render={<Button variant={variant} size={size} />}
+      render={
+        <Button
+          variant={variant}
+          size={size}
+          /**
+           * Destructive is a tinted, quiet button everywhere it sits among
+           * other controls, and a solid red one only here. The tint is right
+           * on a row, where a filled red block would pull the eye to the one
+           * action nobody came to perform; solid is right in the dialog,
+           * because by then the destruction is the only thing on screen and
+           * the button that does it should not look like the one that does
+           * not.
+           */
+          className={
+            variant === "destructive"
+              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              : undefined
+          }
+        />
+      }
       {...props}
     />
   )

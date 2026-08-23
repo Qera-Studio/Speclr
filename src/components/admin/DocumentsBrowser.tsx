@@ -19,7 +19,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Pagination, usePagedRows } from "@/components/ui/pagination";
+import {
+  Pagination,
+  rowCountLabel,
+  usePagedRows,
+} from "@/components/ui/pagination";
 import {
   Tooltip,
   TooltipContent,
@@ -155,7 +159,7 @@ export default function DocumentsBrowser({
         className={cn(
           "pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md",
           tabPillSurface,
-          "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          "transition-transform duration-200 ease-standard motion-reduce:transition-none",
           view === "cards" && "translate-x-full",
         )}
       />
@@ -276,7 +280,13 @@ export default function DocumentsBrowser({
 
   // Paged so a long list cannot push whatever follows it off the page — on the
   // contract list, that is the services section.
-  const { page, pageCount, visible: pageRows, setPage } = usePagedRows(visible);
+  const {
+    page,
+    pageCount,
+    visible: pageRows,
+    setPage,
+    start,
+  } = usePagedRows(visible);
 
   // A new filter set is a new list; page 3 of the old one means nothing.
   const onFiltersChange = (next: FilterRow[]) => {
@@ -349,7 +359,16 @@ export default function DocumentsBrowser({
       ) : (
         <>
           {view === "cards" ? (
-            <DocumentsCards documents={pageRows} />
+            <>
+              <DocumentsCards documents={pageRows} />
+              {/* Cards have no card to sit in, so the pager stays under them. */}
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                onPageChange={setPage}
+                label="documents"
+              />
+            </>
           ) : (
             <DocumentsTable
               documents={pageRows}
@@ -357,14 +376,22 @@ export default function DocumentsBrowser({
               // Omitted while the toggle is off — the headers then render as plain
               // text, which is `DocumentsTable`'s existing unsortable mode.
               onSortChange={showSort ? onSortChange : undefined}
+              count={rowCountLabel(
+                visible.length,
+                "document",
+                start,
+                pageRows.length,
+              )}
+              pagination={
+                <Pagination
+                  page={page}
+                  pageCount={pageCount}
+                  onPageChange={setPage}
+                  label="documents"
+                />
+              }
             />
           )}
-          <Pagination
-            page={page}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            label="documents"
-          />
         </>
       )}
     </div>
