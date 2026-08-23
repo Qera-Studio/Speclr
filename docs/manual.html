@@ -1,0 +1,1139 @@
+<title>The speclr Field Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* TOKENS. Light is the base; both dark states redefine only these.
+   No colour is declared anywhere outside this block. */
+:root {
+  --ground:#EEF1F5; --surface:#FFFFFF; --sunken:#E4E9F0;
+  --rule:#D2DAE4; --rule-soft:#E2E8EF;
+  --text:#10161F; --text-mid:#414D5E; --text-dim:#6B7889;
+  --indigo:#2E4A8C; --indigo-w:#E7ECF7;
+  --seal:#A8352A; --seal-w:#F8E9E7;
+  --ledger:#2A6249; --ledger-w:#E4F0EA;
+  --amber:#8A6413; --amber-w:#F7EEDA;
+  --shadow:0 1px 2px rgba(16,22,31,.05), 0 8px 24px -12px rgba(16,22,31,.15);
+  --f-display:'Newsreader','Iowan Old Style',Georgia,serif;
+  --f-body:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --measure:68ch;
+  --pad:clamp(1.1rem,4vw,2.5rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#0B1017; --surface:#131A24; --sunken:#0F151E;
+    --rule:#26313F; --rule-soft:#1C2530;
+    --text:#DDE4ED; --text-mid:#A3AFBF; --text-dim:#788595;
+    --indigo:#8AA6E8; --indigo-w:#1A2440;
+    --seal:#E28374; --seal-w:#2E1B18;
+    --ledger:#67B08A; --ledger-w:#14261E;
+    --amber:#D9AF52; --amber-w:#2A2113;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#0B1017; --surface:#131A24; --sunken:#0F151E;
+  --rule:#26313F; --rule-soft:#1C2530;
+  --text:#DDE4ED; --text-mid:#A3AFBF; --text-dim:#788595;
+  --indigo:#8AA6E8; --indigo-w:#1A2440;
+  --seal:#E28374; --seal-w:#2E1B18;
+  --ledger:#67B08A; --ledger-w:#14261E;
+  --amber:#D9AF52; --amber-w:#2A2113;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--f-body);
+  font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:500;text-wrap:balance;line-height:1.16;margin:0}
+p{margin:0}
+a{color:var(--indigo);text-underline-offset:2px}
+strong{font-weight:600;color:var(--text)}
+code,.mono{font-family:var(--f-mono);font-size:.87em}
+code{background:var(--sunken);padding:.1em .35em;border-radius:3px}
+:focus-visible{outline:2px solid var(--indigo);outline-offset:2px;border-radius:3px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--pad)}
+.prose{max-width:var(--measure);display:flex;flex-direction:column;gap:.85rem}
+.prose p{color:var(--text-mid)}
+
+.mast{border-bottom:1px solid var(--rule);background:var(--ground);
+  padding:clamp(2.6rem,7vw,5rem) 0 clamp(1.6rem,4vw,2.6rem);position:relative;overflow:hidden}
+.mast::before{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(to right,var(--rule-soft) 1px,transparent 1px),
+                   linear-gradient(to bottom,var(--rule-soft) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(120% 80% at 78% 0%,#000 0%,transparent 68%);
+  mask-image:radial-gradient(120% 80% at 78% 0%,#000 0%,transparent 68%);
+  pointer-events:none}
+.mast .wrap{position:relative}
+.eyebrow{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--text-dim)}
+.mast h1{font-size:clamp(2.7rem,8vw,5.1rem);letter-spacing:-.02em;margin:.5rem 0 .1rem}
+.mast h1 em{font-style:italic;color:var(--indigo)}
+.mast .deck{font-size:clamp(1.02rem,2.2vw,1.22rem);color:var(--text-mid);max-width:56ch;margin-top:.9rem}
+.stamp{display:inline-flex;align-items:center;gap:.55rem;border:1px solid var(--seal);
+  color:var(--seal);background:var(--seal-w);font-family:var(--f-mono);font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;padding:.38rem .7rem;border-radius:2px;margin-top:1.6rem}
+.factbar{margin-top:2.4rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.factbar div{background:var(--surface);padding:.8rem .9rem}
+.factbar .n{font-family:var(--f-mono);font-weight:600;font-size:1.32rem;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;display:block}
+.factbar .l{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-top:.1rem}
+
+.levelbar{position:sticky;top:0;z-index:40;background:var(--ground);border-bottom:1px solid var(--rule)}
+.levelbar .wrap{display:flex;align-items:center;gap:1rem;padding-top:.55rem;padding-bottom:.55rem;flex-wrap:wrap}
+.levelbar .lbl{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-dim)}
+.seg{display:flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--surface)}
+.seg button{font-family:var(--f-body);font-size:.8rem;font-weight:500;padding:.42rem .82rem;
+  border:0;background:transparent;color:var(--text-mid);cursor:pointer;white-space:nowrap;
+  border-right:1px solid var(--rule);transition:background .12s,color .12s}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--sunken)}
+.seg button[aria-pressed="true"]{background:var(--indigo);color:var(--surface)}
+.levelbar .hint{font-size:.78rem;color:var(--text-dim);margin-left:auto}
+
+[data-lv]{display:none}
+:root[data-level="1"] [data-lv~="1"],
+:root[data-level="2"] [data-lv~="2"],
+:root[data-level="3"] [data-lv~="3"]{display:block}
+
+section{padding:clamp(3rem,8vw,5.5rem) 0;border-bottom:1px solid var(--rule)}
+section:nth-of-type(even){background:var(--sunken)}
+.shead{display:flex;align-items:baseline;gap:.9rem;margin-bottom:1.7rem;flex-wrap:wrap}
+.shead .num{font-family:var(--f-mono);font-size:.72rem;font-weight:600;color:var(--indigo);
+  letter-spacing:.1em;border:1px solid var(--indigo);border-radius:2px;padding:.12rem .4rem;flex:none}
+.shead h2{font-size:clamp(1.75rem,4.2vw,2.5rem);letter-spacing:-.015em}
+.shead .sub{color:var(--text-dim);font-size:.92rem;width:100%;max-width:var(--measure)}
+h3.rubric{font-size:1.3rem;margin-top:2.4rem;margin-bottom:.7rem;padding-bottom:.4rem;
+  border-bottom:1px solid var(--rule)}
+
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+  padding:1.2rem 1.3rem;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1rem}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}
+.note{border-left:3px solid var(--indigo);background:var(--indigo-w);padding:.85rem 1.1rem;
+  border-radius:0 4px 4px 0;font-size:.93rem;color:var(--text-mid)}
+.note.warn{border-left-color:var(--seal);background:var(--seal-w)}
+.note.good{border-left-color:var(--ledger);background:var(--ledger-w)}
+.note b{color:var(--text)}
+.pill{display:inline-flex;align-items:center;gap:.35rem;font-family:var(--f-mono);font-size:.66rem;
+  font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:.16rem .46rem;
+  border-radius:3px;white-space:nowrap}
+.pill.free{background:var(--ledger-w);color:var(--ledger)}
+.pill.paid{background:var(--seal-w);color:var(--seal)}
+.pill.soon{background:var(--amber-w);color:var(--amber)}
+.pill.core{background:var(--indigo-w);color:var(--indigo)}
+
+.map{display:flex;flex-direction:column}
+.tier{border:1px solid var(--rule);background:var(--surface);border-radius:6px;padding:.9rem 1rem 1rem}
+.connector{height:26px;display:flex;justify-content:center}
+.connector span{width:1px;height:100%;background:var(--rule);position:relative}
+.connector span::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid var(--rule)}
+.tier .tlabel{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-dim);margin-bottom:.6rem;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.nodes{display:flex;flex-wrap:wrap;gap:.5rem}
+.node{border:1px solid var(--rule);border-radius:4px;padding:.5rem .7rem;background:var(--ground);
+  font-size:.84rem;line-height:1.3;min-width:0}
+.node b{display:block;font-size:.87rem}
+.node em{font-style:normal;color:var(--text-dim);font-size:.74rem;font-family:var(--f-mono)}
+.node.acc{border-color:var(--indigo);background:var(--indigo-w)}
+.node.ext{border-style:dashed}
+
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:.55rem}
+.step{display:grid;grid-template-columns:2.1rem 1fr;gap:.85rem;background:var(--surface);
+  border:1px solid var(--rule);border-radius:5px;padding:.8rem .95rem}
+.step .k{counter-increment:s;font-family:var(--f-mono);font-size:.78rem;font-weight:600;
+  color:var(--indigo);padding-top:.12rem}
+.step .k::before{content:counter(s,decimal-leading-zero)}
+.step b{font-size:.95rem;display:block}
+.step p{font-size:.89rem;color:var(--text-mid);margin-top:.15rem}
+.step .file{font-family:var(--f-mono);font-size:.74rem;color:var(--text-dim)}
+
+.tech{background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+  margin-bottom:1.1rem;overflow:hidden;box-shadow:var(--shadow)}
+.tech > summary{list-style:none;cursor:pointer;padding:.95rem 1.15rem;display:flex;align-items:center;
+  gap:.7rem;flex-wrap:wrap;border-left:3px solid var(--indigo)}
+.tech > summary::-webkit-details-marker{display:none}
+.tech > summary:hover{background:var(--sunken)}
+.tech > summary h4{font-family:var(--f-body);font-weight:600;font-size:1.02rem}
+.tech > summary .role{font-size:.84rem;color:var(--text-dim)}
+.tech > summary .chev{margin-left:auto;color:var(--text-dim);font-family:var(--f-mono);
+  font-size:.8rem;display:inline-block;transition:transform .15s}
+.tech[open] > summary{border-bottom:1px solid var(--rule)}
+.tech[open] > summary .chev{transform:rotate(90deg)}
+.tbody{padding:.3rem 1.15rem 1.2rem}
+.q{border-top:1px solid var(--rule-soft);padding-top:.85rem;margin-top:.85rem}
+.q:first-child{border-top:0;margin-top:0}
+.q .qh{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-dim);display:flex;gap:.5rem;align-items:baseline;margin-bottom:.35rem}
+.q .qh .qn{color:var(--indigo);font-weight:600}
+.q p{color:var(--text-mid);font-size:.94rem;max-width:var(--measure)}
+
+.tscroll{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.89rem;min-width:540px}
+th,td{text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-dim);background:var(--sunken);border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:0}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.meters{display:flex;flex-direction:column;gap:.7rem}
+.meter{display:grid;grid-template-columns:minmax(130px,190px) 1fr 3.1rem;gap:.8rem;align-items:center}
+.meter .mn{font-size:.87rem}
+.meter .track{height:8px;background:var(--sunken);border-radius:99px;
+  border:1px solid var(--rule-soft);overflow:hidden}
+.meter .fill{display:block;height:100%;border-radius:99px;background:var(--indigo)}
+.meter .fill.lo{background:var(--seal)}
+.meter .fill.mid{background:var(--amber)}
+.meter .fill.hi{background:var(--ledger)}
+.meter .mv{font-family:var(--f-mono);font-size:.8rem;text-align:right;
+  font-variant-numeric:tabular-nums;color:var(--text-mid)}
+
+.gloss{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.8rem}
+.term{background:var(--surface);border:1px solid var(--rule);border-radius:5px;
+  padding:.8rem .95rem;margin:0}
+.term dt{font-weight:600;font-size:.95rem;font-family:var(--f-body)}
+.term dd{margin:.25rem 0 0;font-size:.88rem;color:var(--text-mid)}
+.term .here{margin-left:0;margin-top:.45rem;font-size:.8rem;color:var(--text-dim);
+  border-top:1px dashed var(--rule);padding-top:.4rem}
+.term .here b{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--indigo)}
+
+.verdict{display:flex;flex-direction:column;gap:.55rem;background:var(--surface);
+  border:1px solid var(--rule);border-radius:6px;padding:1rem 1.15rem;margin-bottom:.8rem}
+.verdict .vh{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.verdict .vh h4{font-family:var(--f-body);font-weight:600;font-size:1rem}
+.verdict .vh .tag{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.08em;
+  text-transform:uppercase;padding:.16rem .45rem;border-radius:3px}
+.verdict .vh .cat{font-size:.8rem;color:var(--text-dim)}
+.tag.yes{background:var(--ledger-w);color:var(--ledger)}
+.tag.later{background:var(--amber-w);color:var(--amber)}
+.tag.no{background:var(--sunken);color:var(--text-dim)}
+.verdict p{font-size:.92rem;color:var(--text-mid);max-width:var(--measure)}
+.verdict .swap{font-size:.85rem;color:var(--text-dim);font-family:var(--f-mono);display:block}
+
+ul.tick{margin:0;padding-left:1.15rem;display:flex;flex-direction:column;gap:.4rem}
+ul.tick li{color:var(--text-mid);font-size:.93rem}
+ul.tick li::marker{color:var(--indigo)}
+
+.foot{padding:2.5rem 0 3.5rem;color:var(--text-dim);font-size:.85rem;background:var(--ground)}
+.foot .wrap{display:flex;flex-direction:column;gap:.4rem;max-width:var(--measure)}
+
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+@media (max-width:620px){
+  .meter{grid-template-columns:1fr;gap:.25rem}
+  .meter .mv{text-align:left}
+  .levelbar .hint{display:none}
+}
+</style>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="eyebrow">Qera Studio &middot; internal &middot; written 20 August 2026</div>
+    <h1>The speclr<br><em>Field Manual</em></h1>
+    <p class="deck">Everything this project is, how each piece works, why it was chosen over the alternative, and what a real engineering organisation would put around it. Written so you can read it three ways.</p>
+    <div class="stamp"><b>Status</b> &middot; pre-release &middot; no document has been issued yet</div>
+    <div class="factbar">
+      <div><span class="n">28</span><span class="l">days old</span></div>
+      <div><span class="n">196</span><span class="l">commits</span></div>
+      <div><span class="n">1</span><span class="l">author</span></div>
+      <div><span class="n">70,610</span><span class="l">lines of code</span></div>
+      <div><span class="n">1,777</span><span class="l">tests</span></div>
+      <div><span class="n">79.2%</span><span class="l">line coverage</span></div>
+      <div><span class="n">9</span><span class="l">database tables</span></div>
+      <div><span class="n">8</span><span class="l">document types</span></div>
+      <div><span class="n">0</span><span class="l">users but you</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="levelbar">
+  <div class="wrap">
+    <span class="lbl">Explain to me like</span>
+    <div class="seg" role="group" aria-label="Explanation level">
+      <button type="button" data-set="1" aria-pressed="false">I'm new to this</button>
+      <button type="button" data-set="2" aria-pressed="true">I'm an engineer</button>
+      <button type="button" data-set="3" aria-pressed="false">I've done this 20 years</button>
+    </div>
+    <span class="hint">One switch re-levels every explanation on the page.</span>
+  </div>
+</div>
+
+<section id="story">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">01</span>
+      <h2>What this is, and how it got here</h2>
+      <p class="sub">The honest version. Not the pitch.</p>
+    </div>
+
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <h3 style="font-size:1.15rem">Where it started</h3>
+        <div class="prose" style="margin-top:.6rem">
+          <p>On <strong>23 July 2026</strong> the first commit scaffolded a Next.js project. But speclr did not start there. It started as two hidden corners of the <strong>qera.studio marketing site</strong>: a route called <code>/kessler-admin</code> that produced invoices, and <code>/kessler-spec</code> that checked whether a favicon was the right size.</p>
+          <p>Neither had any business living inside a marketing website. One handled money; the other was a developer utility. So they were lifted out into their own application, rebuilt on a real database with real authentication. That extraction <em>is</em> speclr.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:1.15rem">What it became</h3>
+        <div class="prose" style="margin-top:.6rem">
+          <p>Bigger than the thing it replaced. Today it is <strong>two applications sharing one shell</strong>. The <strong>client side</strong> issues invoices, receipts and contracts, and holds the client records they derive from. The <strong>admin side</strong> issues stipend slips, pay slips and HR letters, and holds the employee records behind them.</p>
+          <p>Eight document types. A master agreement assembled clause by clause from a library. A seven-step onboarding flow that verifies a GST number against its own check character. It is no longer an invoice generator. It is a small operations system.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="rubric">Who it is for</h3>
+    <div class="grid3">
+      <div class="card">
+        <span class="pill core">Today</span>
+        <p style="margin-top:.55rem;font-size:.93rem;color:var(--text-mid)"><strong>One person: you.</strong> Every design decision assumes a single trusted operator who knows the domain. There are no roles, no permissions and no tenant separation, because there is nobody to separate from.</p>
+      </div>
+      <div class="card">
+        <span class="pill soon">Next</span>
+        <p style="margin-top:.55rem;font-size:.93rem;color:var(--text-mid)"><strong>Qera's clients and staff, as readers.</strong> A portal where a client sees their own documents, and another for employees and their letters and slips. These are external users, which changes the security posture entirely.</p>
+      </div>
+      <div class="card">
+        <span class="pill soon">Eventually</span>
+        <p style="margin-top:.55rem;font-size:.93rem;color:var(--text-mid)"><strong>Indian studios and freelancers</strong> who issue GST documents and contracts and are currently doing it in Word. Not accountants, not enterprises. People whose paperwork is real but small.</p>
+      </div>
+    </div>
+
+    <h3 class="rubric">What it is actually worth</h3>
+
+    <div data-lv="1"><div class="prose">
+      <p>There is free software that makes invoices. Plenty of it. So the honest question is not "is this good", it is "why would anyone use this instead".</p>
+      <p>The answer is that most invoice tools get one thing quietly wrong: when you update a client's address, they change the invoice you sent last year too. Yours does not. Once a document is issued here it keeps a frozen photograph of everything on it, for ever. Indian law requires you to keep that document unchanged for six years, and yours actually does.</p>
+      <p>The second answer is that nothing else does contracts, invoices and HR letters as one connected thing. You onboard a client once, and the invoice already knows their tax state, their payment terms and who signs.</p>
+      <p><strong>The honest caveat:</strong> none of that is worth anything until someone other than you uses it. Right now the value is real but unproven.</p>
+    </div></div>
+
+    <div data-lv="2"><div class="prose">
+      <p>The market is crowded at the invoice layer: Zoho Invoice, Refrens, Vyapar, and every accountant's Tally install. Competing there on features is neither winnable nor interesting.</p>
+      <p>What is genuinely differentiated is <strong>three correctness guarantees most competitors ship wrong</strong>:</p>
+      <ul class="tick">
+        <li><strong>Snapshotting.</strong> At finalize, the document freezes a JSONB copy of the client, of Qera's own identity block, and of every word of resolved document content. Editing a client next year cannot rewrite an invoice issued this year. CGST s.36 requires 72 months of unaltered retention; most tools resolve the client live and violate this without noticing.</li>
+        <li><strong>Atomic financial-year numbering.</strong> Numbers like <code>QS-INV-2627-001</code> are claimed under a row lock at finalize, per document type per financial year. Abandoned drafts never burn a number. GST Rule 46 forbids duplicates; a gap is legal, a collision is not.</li>
+        <li><strong>Immutability at the persistence layer</strong>, not in the UI. The store refuses to overwrite a finalized row. Hiding the edit button is not the same thing.</li>
+      </ul>
+      <p>Add a domain layer that is pure TypeScript with zero framework coupling, so the whole core is portable, and a 1,777-test suite at 79% line coverage.</p>
+      <p><strong>The caveat that outweighs all of it:</strong> zero external users. Architecture does not kill projects; the absence of anyone who wants the thing does.</p>
+    </div></div>
+
+    <div data-lv="3"><div class="prose">
+      <p>The defensible asset is not the app; it is the <strong>domain model and the enforcement layer around it</strong>. Snapshot-at-finalize, atomic per-FY sequence claims, persistence-level immutability, and <code>materialiseContent</code> freezing resolved copy so that revising a boilerplate clause next year cannot retroactively alter an issued instrument. That is a correctly modelled append-only ledger with a document projection, and it is the part that survives a total rewrite of the UI.</p>
+      <p>Second-order asset: the enforcement mechanism itself. <code>design-system.test.ts</code> and <code>design-tokens.test.ts</code> walk the source tree and fail the build when a primitive is bypassed or a validation rule is hand-written. <code>PRINCIPLES.md</code> is a five-rule domain-modelling law with <em>logged deviations</em>. That is governance most Series B engineering organisations do not run.</p>
+      <p>The liability is equally clear and worth naming out loud. Craft roughly 8/10 against operational maturity roughly 1.5/10: no CI, no observability, no tenancy model, <code>counters</code> keyed globally so two tenants would collide on one invoice sequence, bus factor 1. None of it is debt, because none of it was built badly; it simply does not exist. But it is the entire gap between a very good internal tool and a product, and closing it is a different discipline from the one that got it here.</p>
+      <p>The strategic risk is not technical. It is 28 days of unusually disciplined solo building against a market where the buyer has a free alternative that is 80% as good and already installed.</p>
+    </div></div>
+  </div>
+</section>
+
+<section id="map">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">02</span>
+      <h2>The whole system on one page</h2>
+      <p class="sub">Read top to bottom. Each layer only talks to the one below it. Dashed boxes are somebody else's computer.</p>
+    </div>
+
+    <div class="map">
+      <div class="tier">
+        <div class="tlabel"><span>Layer 1 &middot; the person</span><span>your laptop</span></div>
+        <div class="nodes">
+          <div class="node acc"><b>Browser</b><em>Chrome / Safari</em></div>
+          <div class="node"><b>The operator</b><em>one signed-in human</em></div>
+          <div class="node"><b>Printer / PDF</b><em>A4, via print.css</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 2 &middot; the edge</span><span>Vercel, worldwide</span></div>
+        <div class="nodes">
+          <div class="node ext"><b>Vercel CDN</b><em>static assets, cached</em></div>
+          <div class="node ext"><b>Middleware</b><em>Clerk session check</em></div>
+          <div class="node ext"><b>Security headers</b><em>CSP &middot; HSTS &middot; COOP</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 3 &middot; the application</span><span>Next.js 16 &middot; React 19 &middot; TypeScript</span></div>
+        <div class="nodes">
+          <div class="node acc"><b>Server Components</b><em>render on the server</em></div>
+          <div class="node"><b>Client Components</b><em>only where interactive</em></div>
+          <div class="node acc"><b>Server Actions</b><em>10 modules &middot; the write path</em></div>
+          <div class="node"><b>Route handlers</b><em>4 &middot; pincode, IFSC, files, sitemap</em></div>
+          <div class="node"><b>Document sheets</b><em>pure data &rarr; markup</em></div>
+          <div class="node"><b>Paginator</b><em>packs blocks into A4</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 4 &middot; the gates</span><span>nothing passes without both</span></div>
+        <div class="nodes">
+          <div class="node acc"><b>requireAuthorizedUser()</b><em>Clerk session + allowlist</em></div>
+          <div class="node acc"><b>Zod schemas</b><em>every write validated</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 5 &middot; the domain core</span><span>pure TypeScript &middot; no framework &middot; no UI</span></div>
+        <div class="nodes">
+          <div class="node"><b>money</b><em>integer paise</em></div>
+          <div class="node"><b>registry</b><em>the 8 doc-type specs</em></div>
+          <div class="node"><b>docNumber</b><em>QS-INV-2627-001</em></div>
+          <div class="node"><b>placeOfSupply</b><em>derived, not typed</em></div>
+          <div class="node"><b>taxIds</b><em>GSTIN, PAN, VAT, ABN, EIN</em></div>
+          <div class="node"><b>text / fields</b><em>one rule per field</em></div>
+          <div class="node"><b>contract</b><em>MSA, schedules, services</em></div>
+          <div class="node"><b>dates</b><em>"10th June 2026"</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 6 &middot; data access</span><span>Drizzle ORM &middot; typed SQL</span></div>
+        <div class="nodes">
+          <div class="node acc"><b>schema.ts</b><em>9 tables, one file</em></div>
+          <div class="node"><b>14 migrations</b><em>checked into git</em></div>
+          <div class="node"><b>store.ts</b><em>refuses to overwrite finalized</em></div>
+        </div>
+      </div>
+      <div class="connector"><span></span></div>
+      <div class="tier">
+        <div class="tlabel"><span>Layer 7 &middot; storage and third parties</span><span>everything here is a vendor</span></div>
+        <div class="nodes">
+          <div class="node ext acc"><b>Neon Postgres</b><em>the system of record</em></div>
+          <div class="node ext acc"><b>Clerk</b><em>identity, invite-only</em></div>
+          <div class="node ext"><b>Vercel Blob</b><em>private &middot; attachments</em></div>
+          <div class="node ext"><b>Zippopotam</b><em>world postcodes</em></div>
+          <div class="node ext"><b>postcodes.io</b><em>UK postcodes</em></div>
+          <div class="node ext"><b>Razorpay IFSC</b><em>bank branch lookup</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:1.5rem" data-lv="1"><b>The one idea to take from this diagram:</b> each layer can be replaced without touching the layer above it. The rules about money and tax live in Layer 5, which knows nothing about websites, databases or Next.js. If you threw away everything else, that layer would still be correct.</div>
+    <div class="note" style="margin-top:1.5rem" data-lv="2"><b>Note the direction of dependency.</b> Layer 5 imports nothing from Layers 3, 4, 6 or 7. That is what makes the domain tests portable, and it is why they were lifted verbatim from the source project and still pass unchanged. Sheets are pure <code>data &rarr; markup</code>, which keeps a future server-side PDF renderer additive rather than a rewrite.</div>
+    <div class="note" style="margin-top:1.5rem" data-lv="3"><b>What is missing from this diagram, deliberately:</b> a cache tier, a queue, a job runner, a search index, a message bus, and any horizontal partition. Each is absent because the workload is one operator issuing single-digit documents per month. The one structural gap worth naming is that Layer 7's <code>counters</code> table is keyed <code>(doc_type, fy_code)</code> with no tenant discriminator, so multi-tenancy is a schema change, not a config change.</div>
+  </div>
+</section>
+
+<section id="lifecycle">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">03</span>
+      <h2>What happens when you click Finalize</h2>
+      <p class="sub">The most important path in the codebase, traced end to end. This is the one that turns a draft into a legal record.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><span class="k"></span><div>
+        <b>The browser posts, but not as an API call</b>
+        <p>React sends a Server Action invocation. There is no URL you could hit by hand, no JSON envelope you wrote, and no fetch call in the component. Next.js generates the wire format.</p>
+        <span class="file">src/server/actions/documents.ts</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>Identity is checked on the server, again</b>
+        <p><code>requireAuthorizedUser()</code> asks Clerk for a valid session, then checks that email against <code>SPECLR_ALLOWED_EMAILS</code>. Fail-closed: an empty allowlist admits nobody. The layout that rendered the button is <em>not</em> treated as a security boundary.</p>
+        <span class="file">src/server/actions/authGate.ts</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>The payload is validated by shape, not trusted</b>
+        <p>A Zod schema parses the incoming object. Every JSONB payload gets this. A malformed line item never reaches SQL.</p>
+        <span class="file">src/server/actions/validation.ts</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>Domain guards run</b>
+        <p>GST above zero with no place of supply? Refused. A pay slip for an intern? Refused. Negative net pay? Refused. These are legal rules expressed as code, and they run before anything is written.</p>
+        <span class="file">src/lib/domain/registry.ts</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>A number is claimed atomically</b>
+        <p>Postgres takes a row lock on the <code>counters</code> row for this document type and financial year, increments it, and returns. Two simultaneous finalizes cannot receive the same number. This is the single most correctness-critical operation in the project.</p>
+        <span class="file">counters &middot; per FY, April&ndash;March</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>Three snapshots are frozen</b>
+        <p>The client record, Qera's own identity block, and every resolved word of document content are copied into JSONB columns on the document. From this instant the document reads nothing live, ever again.</p>
+        <span class="file">snapshot &middot; studioSnapshot &middot; materialiseContent</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>The row is written and sealed</b>
+        <p>Status becomes <code>finalized</code>. The persistence layer will now refuse every future attempt to update or delete this row. A correction has to be a new document.</p>
+        <span class="file">src/db/store.ts</span>
+      </div></div>
+      <div class="step"><span class="k"></span><div>
+        <b>The page revalidates and the sheet renders</b>
+        <p>The sheet reads only the snapshot, never the live client. The Paginator measures each atomic block and packs them into A4 frames, breaking only between blocks so a clause heading never separates from its body.</p>
+        <span class="file">components/docs/sheets &middot; styles/print.css</span>
+      </div></div>
+    </div>
+
+    <div class="note warn" style="margin-top:1.4rem"><b>The step with no undo is step 5.</b> Once a number is claimed it is spent. That is why no document may be finalized until every format has been audited against its governing statute and frozen. An invoice issued under an incomplete format stays incomplete for the 72 months the law requires it be retained.</div>
+  </div>
+</section>
+
+<section id="data">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">04</span>
+      <h2>The nine tables</h2>
+      <p class="sub">Real columns for anything you query or report on. JSONB for the parts that vary by document type. Every JSONB payload is validated by Zod on the way in.</p>
+    </div>
+
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Table</th><th>Holds</th><th>Why it exists</th></tr></thead>
+        <tbody>
+          <tr><td><code>clients</code></td><td>Identity, tax registration, contacts, commercial terms, services, attachments, access references</td><td>The source of truth documents derive from. Onboarded once, in seven steps.</td></tr>
+          <tr><td><code>employees</code></td><td>People, engagement type, payroll, assigned employee codes</td><td>Interns and employees are legally different; the record carries which.</td></tr>
+          <tr><td><code>documents</code></td><td>Every invoice, receipt, contract, slip and letter, draft or finalized</td><td>The ledger. Carries its own frozen snapshots.</td></tr>
+          <tr><td><code>counters</code></td><td>One row per document type per financial year</td><td>The atomic sequence. Also issues employee codes.</td></tr>
+          <tr><td><code>services</code></td><td>The catalogue of what Qera sells, numbered by schedule</td><td>Contracts are assembled from ticked services.</td></tr>
+          <tr><td><code>clauses</code></td><td>The master agreement's clause library</td><td>Moved out of code so clauses are editable. A contract copies it once, at draft.</td></tr>
+          <tr><td><code>exclusions</code></td><td>What a contract explicitly does not cover</td><td>The other half of scope.</td></tr>
+          <tr><td><code>client_inputs</code></td><td>What a client must supply for work to proceed</td><td>Prints into the contract's schedules.</td></tr>
+          <tr><td><code>studio_settings</code></td><td>Qera's own address, bank, GSTIN, CIN</td><td>Editable, and snapshotted onto every document at finalize.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note" style="margin-top:1.3rem" data-lv="1"><b>Why the split between real columns and JSONB:</b> a real column is a labelled drawer, fast to search through. JSONB is a sealed envelope inside that drawer: you can put anything in it, but you cannot easily search across all the envelopes at once. Things you sort and total by get drawers. Things that vary by document type get envelopes.</div>
+    <div class="note" style="margin-top:1.3rem" data-lv="2"><b>The rule:</b> real columns for anything indexed, filtered, sorted or reported (number, status, dates, totals, foreign keys); JSONB for doc-type-specific payloads (line items, letter bodies, the frozen snapshot). Every JSONB write is Zod-parsed. Money is integer paise throughout, dates are ISO strings, and there is a partial unique index on <code>payroll-&gt;&gt;'employeeCode'</code>.</div>
+    <div class="note" style="margin-top:1.3rem" data-lv="3"><b>Where the model is deliberately unfashionable:</b> there is no event store and no separate audit log. Immutability-at-finalize plus snapshot columns give the audit properties without the read-model complexity, which is the right call at this volume. The soft spot is that the correction path is duplicate-as-new-draft, so the relationship between a corrected document and its replacement is not modelled as a foreign key. Fine until someone has to reconcile a sequence during an assessment.</div>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">05</span>
+      <h2>Every piece of the stack</h2>
+      <p class="sub">Each entry answers the same five questions. Open one, then use the level switch at the top of the page to change the register of every answer at once.</p>
+    </div>
+
+    <details class="tech" open>
+      <summary><h4>Next.js 16</h4><span class="role">The framework everything is built inside</span><span class="pill free">free &middot; open source</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">A kit for building websites that do things, rather than websites that sit there. It handles the boring universal parts, what happens when someone types a web address, how a page reaches a browser, how a button talks back to the server, so you only write the parts specific to your idea.</p>
+          <p data-lv="2">A full-stack React framework. It owns file-system routing, server-side rendering, React Server Components, bundling via Turbopack, image optimisation, middleware, and the Server Actions RPC layer. You write React; it decides what runs on the server and what ships to the browser.</p>
+          <p data-lv="3">The App Router incarnation: an RSC-first framework where the default execution context is the server and <code>'use client'</code> is an opt-out marking a hydration boundary. Server Actions are a compiler-generated RPC transport with automatic serialisation and revalidation semantics. Version 16 on React 19, with Turbopack and the React Compiler enabled.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">The folders inside <code>src/app</code> literally become the web addresses. A folder called <code>clients</code> becomes the page at <code>/clients</code>. When you fill in a form and hit save, Next.js quietly carries that to the server and back without you writing any of the plumbing.</p>
+          <p data-lv="2">Routes live under <code>src/app/(app)/{client,admin}/</code>, with shared route bodies in <code>_routes/</code> and thin per-profile wrappers on top. Pages are Server Components by default and read directly through Drizzle. Writes go through the ten Server Action modules. Only four true route handlers exist, all proxies or file streams.</p>
+          <p data-lv="3">The interesting choice is that almost nothing is a route handler. Reads happen inside RSCs with direct database access; writes happen through Server Actions. So there is no hand-written API surface to secure, version or document, and no client-side fetch state machine. The cost is that a <code>'use server'</code> function is a network endpoint whether you think of it as one or not, which is exactly why <code>requireAuthorizedUser()</code> is called inside every one rather than in a layout.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">The rivals are Remix and TanStack Start. Next.js was picked because far more people use it, so when something breaks at midnight there is an answer online, and because it is made by the same company that hosts the app, so the two fit together with no glue.</p>
+          <p data-lv="2">Against <strong>Remix / React Router 7</strong>: better nested-data ergonomics, smaller RSC story, smaller hiring and answer pool. Against <strong>TanStack Start</strong>: genuinely nicer type inference and routing, but immature at the time of choosing and a bet on one maintainer's roadmap. Against <strong>SvelteKit / Nuxt</strong>: rejected because the sheets and the existing code are React and a rewrite buys nothing.</p>
+          <p data-lv="3">The decision was maturity plus zero-config Vercel deployment plus the existing Server Actions in the source project, and it was logged rather than re-litigated. The trade actually accepted was lock-in of a specific kind: Server Actions have no portable equivalent, so leaving Next means rewriting the whole write path as HTTP handlers. That is a bounded, well-understood cost, roughly a week, and it was priced in.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">The framework itself is free for ever. What costs money is the company that hosts it, and that is a separate decision.</p>
+          <p data-lv="2">MIT-licensed, free at any scale. Cost enters only via the host. Next.js runs on any Node server, in Docker, on AWS, on Cloudflare, or self-hosted, so the framework is never the thing you pay for.</p>
+          <p data-lv="3">Free. The commercial gravity is that a few features (ISR semantics, image optimisation, edge middleware) are best supported on Vercel and materially rougher self-hosted. That is the lock-in to watch, not the licence.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It sits in the middle of everything: takes the request from the browser, checks with Clerk that you are allowed in, asks the database for what it needs, sends back a page.</p>
+          <p data-lv="2">Upstream: Vercel's edge and CDN. Sideways: Clerk middleware for sessions, React 19 for rendering, Tailwind for styling. Downstream: the domain layer, then Drizzle, then Neon. It never talks to Postgres directly.</p>
+          <p data-lv="3">It is Layers 2 through 4 of the map, and the only layer that knows about all the others. That is by design and it is also the concentration risk: replacing Next means touching routing, rendering, the write path and the deploy target simultaneously.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>React 19 + TypeScript</h4><span class="role">The language and the rendering model</span><span class="pill free">free &middot; open source</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">React is a way of describing a screen as reusable blocks, letting the computer work out what to redraw when something changes. TypeScript is ordinary web code plus labels saying what kind of thing each value is, so mistakes get caught while you type instead of when a client opens an invoice.</p>
+          <p data-lv="2">React is a declarative UI library with a component model and a reconciler. TypeScript is a typed superset of JavaScript, compiled away before it runs, configured here in <code>strict</code> mode. React 19 adds Actions, <code>useOptimistic</code> and first-class Server Components.</p>
+          <p data-lv="3">React 19 with the React Compiler enabled, which changes how you write code: the compiler memoises automatically, so a function called impurely during render has its first result cached for the component's lifetime. TypeScript is strict with no <code>any</code> escape hatches in the domain layer, which is what lets a discriminated union over eight document types be exhaustively checked.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">Most screens are drawn on the server and arrive already finished. Only the parts that genuinely need to react to you, a form, a dropdown, the swipe between the two halves of the app, run in the browser.</p>
+          <p data-lv="2">Server Components by default; <code>'use client'</code> only for genuine browser APIs or interactivity. Types flow end to end: the Drizzle schema infers row types, the domain types extend them, the components consume them, so a renamed column is a compile error in the sheet that prints it.</p>
+          <p data-lv="3">The type system does load-bearing domain work rather than decoration. <code>DocTypeCode</code> drives a registry of specs, each with its own Zod schema and numbering format, and the sheets narrow on it. That is why adding a ninth document type is a small guided change rather than an archaeology exercise, and it is the single highest-leverage design decision in the codebase.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">Vue and Svelte are the main rivals and both are genuinely good. React won because the existing code was already React, and because more people know it than any other option, which matters when you eventually hire.</p>
+          <p data-lv="2">Against <strong>Vue</strong>: comparable ergonomics, smaller ecosystem in this domain. Against <strong>Svelte</strong>: less runtime overhead and nicer syntax, but a far smaller component ecosystem and no shadcn equivalent of this quality. TypeScript against plain JavaScript is not a real contest for financial software.</p>
+          <p data-lv="3">The honest reason is path dependence plus talent liquidity, and both are legitimate. The interesting counterfactual is Svelte 5 with runes, which would have produced less code, but you would have hand-rolled every primitive that <code>src/components/ui/</code> gives you for free, and the design-system enforcement tests would have had nothing to police.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Both free, for ever.</p>
+          <p data-lv="2">MIT and Apache licensed, free at any scale. No paid tier exists for either.</p>
+          <p data-lv="3">Free. The only cost is the type-check step in CI, measured in seconds.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">React draws what the framework tells it to. TypeScript checks all of it, everywhere, including the database code.</p>
+          <p data-lv="2">React is consumed by Next.js and renders the shadcn primitives. TypeScript spans every layer including migrations and tests; <code>tsc --noEmit</code> is the whole-project check.</p>
+          <p data-lv="3">TypeScript is the only thing in the stack touching all seven layers, which makes it the de facto contract between them. Losing it would not break the app; it would break the ability to change the app safely.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Neon Postgres</h4><span class="role">The system of record</span><span class="pill soon">free now &middot; paid before go-live</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">The filing cabinet where everything is actually kept: every client, every invoice, every employee. Postgres is the cabinet itself, a very old and very well-tested piece of software. Neon is a company that runs one for you so you never touch a server.</p>
+          <p data-lv="2">PostgreSQL is a relational database with strong ACID guarantees, rich types including JSONB, and real transactional DDL. Neon is serverless Postgres: storage separated from compute, so it scales to zero and supports instant database branching.</p>
+          <p data-lv="3">Neon's storage/compute separation gives copy-on-write branching, which is the operationally interesting property: a per-preview-deploy database, and a staging branch forked from production for migration rehearsal, are both effectively free. The trade is connection handling, which is why the app uses the serverless HTTP driver rather than raw <code>pg</code>.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">Nine tables hold everything. The most important is a tiny one called <code>counters</code>, which does a single job: hand out the next invoice number, one at a time, so two invoices can never get the same one.</p>
+          <p data-lv="2">Nine tables, JSONB for doc-type-specific payloads, integer paise for money, ISO strings for dates. <code>counters</code> is the concurrency-critical piece: a row lock per document type per financial year, claimed inside the finalize transaction. Fourteen migrations, checked into git, applied through drizzle-kit.</p>
+          <p data-lv="3">The correctness posture is unusually good for the stage: FK-backed refusal to delete a referenced client, a partial unique index on a JSONB path for employee codes, and a two-pass renumbering migration written specifically because <code>code</code> is a primary key and a single UPDATE would collide. Two of the fourteen migrations are irreversible, a <code>DROP TABLE CASCADE</code> and a PK renumber, and both carry a comment stating the precondition that makes them safe.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">The previous version of this tool stored things in Redis, which is brilliant at being fast and bad at answering questions like "show me every invoice from last March". For financial records you want something that can answer questions. That is Postgres.</p>
+          <p data-lv="2">Against the incumbent <strong>Upstash Redis</strong>: replaced deliberately, because a key-value store cannot express the queries financial records need. Against <strong>Supabase</strong>: excellent, but bundles auth already solved by Clerk. Against <strong>PlanetScale/MySQL</strong>: no JSONB of this quality and no transactional DDL. Against <strong>MongoDB</strong>: the data is intensely relational, so a document store would be a category error.</p>
+          <p data-lv="3">Postgres over anything else is barely a decision in 2026; Neon over <strong>Supabase</strong> and over <strong>RDS/Aurora</strong> is the real one. Neon wins on branching and scale-to-zero for a bursty workload. RDS wins the moment you need VPC isolation, a compliance boundary, or predictable sustained throughput, and that is the migration trigger to watch. It is standard Postgres either way, so the exit is a <code>pg_dump</code>, not a rewrite.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free today. But the free version only lets you rewind mistakes for 24 hours, and the law says these records must survive six years. So this is one of the things that has to be paid for before the first real invoice.</p>
+          <p data-lv="2">Free tier today. <strong>Launch is roughly $19/month</strong> and buys longer point-in-time recovery, which is the actual reason to upgrade: 24 hours of PITR against a 72-month statutory retention obligation is not a backup strategy. Scale runs into the low hundreds.</p>
+          <p data-lv="3">$19 is not the interesting number; the interesting number is what a restore drill costs in time, and it is currently untested. An untested backup is a hope. Budget the paid tier and one rehearsed restore before go-live, not after.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">Only one thing talks to it: Drizzle. Nothing else in the app is allowed to.</p>
+          <p data-lv="2">Reached exclusively through Drizzle over the Neon serverless HTTP driver. Server Components read it; Server Actions write to it. Credentials live in <code>DATABASE_URL</code>, never prefixed <code>NEXT_PUBLIC_</code>.</p>
+          <p data-lv="3">It is the only stateful component in the system and therefore the only one whose loss is unrecoverable. Everything else, the app, the blobs, the sessions, is rebuildable from git or re-obtainable. That asymmetry should drive where operational spending goes first.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Drizzle ORM</h4><span class="role">How the code talks to the database</span><span class="pill free">free &middot; open source</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">A translator. Databases speak a language called SQL; your app speaks TypeScript. Drizzle lets you write TypeScript and turns it into SQL, while checking that the columns you asked for actually exist.</p>
+          <p data-lv="2">A TypeScript ORM whose query builder mirrors SQL closely rather than hiding it. Schema is declared in TypeScript, row types are inferred from it, and <code>drizzle-kit</code> generates SQL migration files from schema diffs.</p>
+          <p data-lv="3">A thin, compile-time-only mapping layer. No runtime metadata, no lazy proxies, no identity map, no change tracking. You get inferred types and parameterised SQL and keep full control of the query shape, which is precisely the property that makes N+1 problems visible rather than emergent.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">All nine tables are described in one file. Change that file, run one command, and it writes out the instructions to change the real database. Those instructions are saved into the project's history, so you can always see how the database got to be the way it is.</p>
+          <p data-lv="2"><code>src/db/schema.ts</code> is the single source of truth. <code>drizzle-kit</code> generates numbered SQL files into <code>src/db/migrations/</code>, all fourteen checked in. The database is never edited by hand. <code>store.ts</code> wraps Drizzle and is where the refusal to overwrite a finalized document lives.</p>
+          <p data-lv="3">Note that the immutability guarantee sits in <code>store.ts</code>, a layer above Drizzle, rather than in a database trigger. That is a deliberate trade of enforcement strength for legibility: a trigger would be unbypassable but invisible, and here exactly one process writes. It should become a trigger the day a second writer exists, and that is worth writing down now rather than discovering later.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">The main rival, Prisma, is more popular and easier to start with, but hides more of what is really happening. For code that handles money, seeing the actual database instruction matters more than convenience.</p>
+          <p data-lv="2">Against <strong>Prisma</strong>: better tooling and a nicer studio, but it ships a Rust engine binary, adds cold-start weight on serverless, and abstracts the SQL further from you. Against <strong>Kysely</strong>: a superb pure query builder with no migration story. Against <strong>raw SQL</strong>: you lose inferred types across nine tables and every refactor becomes manual.</p>
+          <p data-lv="3">Drizzle over Prisma is mostly about the serverless execution profile and about keeping generated SQL predictable in the one place that matters, the numbering claim. Drizzle's weakness is a younger migration tool, less clever than Prisma's, occasionally requiring a hand-edited SQL file, which is exactly what migrations 0010 and 0011 are. An acceptable trade when migrations are rare and consequential rather than frequent and routine.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free.</p>
+          <p data-lv="2">Free and open source. Drizzle Studio has a paid hosted tier this project does not use.</p>
+          <p data-lv="3">Free. The real cost is ecosystem maturity relative to Prisma, paid in occasional hand-written migrations rather than in money.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It sits between the app and the database, and nothing crosses it.</p>
+          <p data-lv="2">Below the Server Actions and Server Components, above Neon. Its inferred types feed the domain types, which feed the sheets.</p>
+          <p data-lv="3">It is the one seam where a database swap would be absorbed, and because it emits ordinary parameterised SQL against standard Postgres, that swap is genuinely cheap. A well-placed abstraction: thin enough not to lie, thick enough to be a seam.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Clerk</h4><span class="role">Who is allowed in</span><span class="pill soon">free tier &middot; paid past 10k users</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">The bouncer. It handles signing in, remembering you are signed in, and proving to the app on every single request that you are who you say. Building this yourself is where most small apps get broken into.</p>
+          <p data-lv="2">A hosted authentication and user-management service: sign-in UI, session management, JWT issuance, route-protecting middleware, and organisation primitives. Invite-only mode is set in the dashboard, not in code.</p>
+          <p data-lv="3">Managed identity with a session-token model and edge-verifiable JWTs. The architecturally relevant fact is that Clerk emits its own script tag without a nonce, which is why the CSP here allows inline script rather than running a nonce plus <code>strict-dynamic</code> policy. That was measured against a real server, not assumed, and it is a real, named security concession.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">Two separate locks, both of which must open. First, you cannot sign up at all unless invited. Second, even signed in, your email has to be on a list, and if the list is empty nobody gets in. Someone who signs in without being on it lands on a page showing nothing.</p>
+          <p data-lv="2">Lock one: Clerk sign-up is Restricted, so accounts exist only by invitation. Lock two: <code>requireAuthorizedUser()</code> checks the session <em>and</em> the email against <code>SPECLR_ALLOWED_EMAILS</code>, fail-closed. Called inside every Server Action and protected route, never only in a layout.</p>
+          <p data-lv="3">Defence in depth with two independent failure modes, and the second is app-owned, which matters: a Clerk misconfiguration alone does not grant data access. The rule worth preserving is that a layout is explicitly not treated as a boundary, which is the mistake behind most IDOR findings in App Router codebases.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">The alternative considered was a single shared password. Rejected because a shared password cannot be taken away from one person, and leaves no trace of who did what.</p>
+          <p data-lv="2">Against <strong>NextAuth/Auth.js</strong>: free and unopinionated, but you own session storage, account recovery and the UI, which is unpaid security work. Against <strong>Supabase Auth</strong>: good, but pulls in a second platform. Against <strong>Auth0</strong>: mature and enterprise-grade, but pricier and heavier for a two-person allowlist.</p>
+          <p data-lv="3">The right frame is that authentication is a liability you rent, not an asset you build. Clerk over Auth0 is developer experience and price at this scale; Clerk over Auth.js is not wanting to own credential storage and recovery flows. The concession is the CSP one above; the lock-in is moderate, since user records export cleanly but session handling and middleware are Clerk-shaped.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free for a long time. It only starts costing money at ten thousand users, which is a problem worth having.</p>
+          <p data-lv="2">Free to 10,000 monthly active users, then roughly $25/month plus per-user pricing. For an internal tool with two operators it is permanently free.</p>
+          <p data-lv="3">Free at current scale. The cost curve matters in the client-portal future, where every client becomes a monthly active user, and at that point per-MAU pricing on an internal tool's economics deserves a fresh comparison against Auth.js.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It sits in front of everything. Nothing in the app runs before it has said yes.</p>
+          <p data-lv="2">Middleware at the edge, and <code>authGate.ts</code> inside every action. Its secret key is an env var, never <code>NEXT_PUBLIC_</code>.</p>
+          <p data-lv="3">It is Layer 4's first half, with Zod as the second. Note the live blocker: the keys are <code>pk_test_</code> dev-instance keys that only work on localhost, so production login does not work today regardless of what else is deployed.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Vercel</h4><span class="role">Where it runs, and how it gets there</span><span class="pill paid">Pro required before go-live</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">The company that takes your code and turns it into a real website on the internet, automatically, every time you save your work to GitHub. You never touch a server, configure a machine, or renew a certificate.</p>
+          <p data-lv="2">A managed platform for frontend and serverless applications: git-connected builds, a global CDN, serverless and edge execution, preview deployments per branch, environment-variable management, and managed TLS and DNS.</p>
+          <p data-lv="3">A PaaS layer over AWS with a Next.js-optimised build and runtime. What you buy is the elimination of an ops function: no autoscaling policy, no certificate rotation, no ingress config, no image pipeline. What you sell is portability of a handful of framework features, plus per-seat pricing that does not amortise.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">The project is already linked to a Vercel account. Pushing to the main branch would build and publish it. Every other branch gets its own private preview link, which is genuinely useful for checking something before it counts.</p>
+          <p data-lv="2">Git-linked to this repo. Pushing <code>main</code> triggers a production deployment; other branches produce preview URLs. Environment variables are per-environment in the dashboard, pulled locally with <code>vercel env pull</code>. There is no migration step in the build, so schema changes are applied deliberately, by hand.</p>
+          <p data-lv="3">The absent CI is the important observation. Vercel builds, it does not verify: <code>next build</code> runs, the 1,777 tests do not. So the pipeline today publishes whatever compiles. A GitHub Actions check plus an ignored-build-step guard is the smallest change that turns this from a publishing pipeline into a delivery pipeline.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">Netlify, Cloudflare and Amazon all do similar things. Vercel makes Next.js, so nothing has to be configured to fit. That saves days.</p>
+          <p data-lv="2">Against <strong>Netlify</strong>: comparable, but Next.js support is a port rather than the native target. Against <strong>Cloudflare Pages/Workers</strong>: cheaper with a better network, but the Next.js runtime story has sharper edges. Against <strong>a self-hosted VPS</strong>: half the price and total control, in exchange for owning TLS, deployment, scaling and uptime yourself.</p>
+          <p data-lv="3">Vercel over Cloudflare is buying first-party framework support at a meaningful premium; the honest counter-argument is that Workers plus R2 plus Neon would run this workload for a fraction of the price, and the migration is not exotic. The reason to stay is that ops attention is the scarcest resource on a one-person team, and Vercel converts it into money at a good exchange rate. Revisit when a second engineer exists or the bill crosses roughly $100/month.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free right now, but the free plan is not allowed to be used for commercial work, and issuing real invoices is commercial work. So this is a required purchase before going live, about &#8377;1,700 a month.</p>
+          <p data-lv="2"><strong>Hobby is free but prohibits commercial use.</strong> Pro is $20 per seat per month, a go-live requirement rather than an optimisation. Bandwidth and function-invocation overages sit on top and are negligible at this volume.</p>
+          <p data-lv="3">$20/seat is the headline; the number to watch is per-seat scaling on a team with no revenue, plus the historical volatility of function pricing. Enterprise starts in the tens of thousands. Strategically, Vercel Pro plus Neon Launch plus Sentry is roughly $65/month supporting one user, which is fine as a professionalism cost and indefensible as a per-user cost, so understand it as the former.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It hosts the app, holds the secrets, and stores the uploaded files.</p>
+          <p data-lv="2">Hosts the Next.js app, terminates TLS, serves the CDN, holds environment variables, provides Blob storage. It does not host the database; Neon is separate.</p>
+          <p data-lv="3">Vercel and Neon being separate vendors is a good structural property: the stateful component is not coupled to the compute vendor, so leaving Vercel does not touch the data. Keep it that way, and specifically do not migrate to Vercel Postgres.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Tailwind CSS v4 + shadcn/ui</h4><span class="role">How it looks, and what stops it drifting</span><span class="pill free">free &middot; you own the code</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">Tailwind styles things by writing short labels directly on the element, instead of keeping a separate styling file that slowly rots. shadcn is a set of well-made, accessible building blocks, buttons, dropdowns, dialogs, that you copy into your own project and then own outright rather than installing from someone else.</p>
+          <p data-lv="2">Tailwind v4 is a utility-first CSS framework with CSS-native configuration and a much faster engine than v3. shadcn/ui is not a dependency: it is a generator that writes component source into <code>src/components/ui/</code>, built on Base UI primitives for accessibility and behaviour.</p>
+          <p data-lv="3">The shadcn model, source vendored rather than versioned, is the correct trade for a design system you intend to enforce: you can add a rule to a primitive and then police its use, which an npm-versioned library does not permit. The cost is that upstream fixes become a manual diff, which is real but small at this component count.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">The interesting part is not the styling, it is the enforcement. Two test files walk every file in the project and fail the build if someone uses a raw colour, or reaches for a plain browser date box when the project already has a proper date picker. The design rules are not a document people ignore; they are a test that stops the build.</p>
+          <p data-lv="2">Theme tokens only, never ad-hoc hex. <code>design-tokens.test.ts</code> bans raw palette classes and hex literals; <code>design-system.test.ts</code> bans five specific bypasses that actually happened: native date inputs, visible file inputs, hand-written field schemas, hand-rolled email rules and hand-rolled phone rules. Both walk the tree through one shared file, so their exemption lists cannot drift apart.</p>
+          <p data-lv="3">This is the most transferable idea in the codebase and deserves naming as a practice: <em>when a primitive becomes the house answer, ban the thing it replaced in the same commit.</em> It converts convention, which decays, into a build failure, which does not. Most organisations attempt this with lint rules and a wiki page and get neither. Every rule here was written after the violation occurred, which is why none of them are speculative.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">The alternatives are big ready-made kits like Material UI, where everything looks like Google, or writing all the styling by hand, which is slow and drifts.</p>
+          <p data-lv="2">Against <strong>MUI/Chakra</strong>: faster to start, but you inherit their look and their runtime, and you cannot police primitives you do not own. Against <strong>CSS Modules/SCSS</strong>: the source project used SCSS and it was replaced deliberately. Against <strong>vanilla-extract</strong>: better type safety, far smaller ecosystem.</p>
+          <p data-lv="3">The decisive property is ownership. Enforcement tests over vendored source are only possible because the source is in the repo. A versioned component library would have made the design-system test unwriteable, and that test is worth more than the convenience it costs.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Both free. shadcn is not even something you install, it is code written into your project.</p>
+          <p data-lv="2">Both free and MIT. Tailwind Plus sells templates, which are not used here.</p>
+          <p data-lv="3">Free. The ongoing cost is manual upstream diffing of vendored components, a maintenance line item rather than a licence.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">Everything you can see, including the printed documents, which use the same system plus a small extra file for the paper-specific rules.</p>
+          <p data-lv="2">All React components, and the document sheets, which pair Tailwind with <code>src/styles/print.css</code> for A4 sizing, page breaks and colour-adjust, the things Tailwind cannot express.</p>
+          <p data-lv="3">Worth flagging: the sheets are the one surface where the test suite is blind. jsdom cannot see print layout, pagination or clipping, and a clipping bug has already shipped through a green suite. That is a Playwright-shaped hole, not a Tailwind one.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Zod + react-hook-form</h4><span class="role">Making sure bad data never gets in</span><span class="pill free">free &middot; open source</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">Zod is a way of writing down what a valid piece of information looks like, "a GSTIN is fifteen characters and the last one must match a calculation of the others", and then checking anything against that description. react-hook-form makes the form on screen fast and puts the error next to the right field.</p>
+          <p data-lv="2">Zod is a TypeScript-first schema validation library that infers static types from runtime schemas, so one definition gives both. react-hook-form is an uncontrolled-input form library with minimal re-renders, wired to Zod through <code>@hookform/resolvers</code>.</p>
+          <p data-lv="3">One schema, two enforcement points, client for feedback and server for trust, with only the server one counting. The <code>superRefine</code> choice over <code>.refine</code> matters: it preserves the specific finding the validator made rather than collapsing every failure into one generic message, which is the difference between a reader fixing one character and retyping fifteen.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">Every field with a real rule is defined in exactly two places and only two: one file holds the rule, another holds the matching input box. Before this, the rule for a PAN number was written three times with two different error messages, and Qera's own GST number was not being checked at all, on the document the law requires be kept unaltered for six years.</p>
+          <p data-lv="2"><code>domain/fields.ts</code> holds the rules (PAN, GSTIN, TAN, CIN, email, phone, IFSC, UPI); <code>components/form/fields.tsx</code> holds the matching inputs. <code>domain/text.ts</code> covers everything else, roughly ninety fields that used to be <code>z.string().trim().max(n)</code>. The identifier checks are real: GSTIN mod-36 check character, ABN mod-89, UK VAT mod-97.</p>
+          <p data-lv="3">Two subtleties worth reading. First, the invisible-versus-visible split: bidirectional overrides and zero-width characters are <em>stripped</em>, because they cannot be seen and therefore cannot be fixed by whoever has to fix them, while a digit in a person's name is <em>refused</em> with the offending character named. U+200C and U+200D are deliberately preserved, because they are load-bearing in Devanagari. Second, and this gets misunderstood constantly: none of this is what prevents SQL injection or XSS. Drizzle parameterises and React escapes. Validation is the second lock, and a plan that starts "tighten validation so nobody can inject SQL" has the model backwards.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">Other libraries do the same job. Zod is the one nearly everyone in this ecosystem uses, so everything else already fits it.</p>
+          <p data-lv="2">Against <strong>Yup</strong>: weaker type inference, older API. Against <strong>Valibot</strong>: genuinely smaller bundle and a good design, much smaller ecosystem. Against <strong>ArkType</strong>: faster, more novel, less proven. react-hook-form against <strong>Formik</strong>: fewer re-renders, smaller API surface.</p>
+          <p data-lv="3">Zod's real advantage is gravitational: <code>@hookform/resolvers</code>, Drizzle-Zod and every Next.js example already assume it. Valibot's bundle-size win is irrelevant on a server-validated internal tool. A case where picking the ecosystem default is the correct engineering answer rather than a failure of imagination.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free.</p>
+          <p data-lv="2">Both free and MIT.</p>
+          <p data-lv="3">Free. The only cost is schema-parse overhead per request, immeasurable at this volume.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It sits between the form on your screen and the database, and nothing gets past it.</p>
+          <p data-lv="2">Forms feed it in the browser; Server Actions run it again on the server; Drizzle receives only what passed. It also validates every JSONB payload before it is written.</p>
+          <p data-lv="3">It is Layer 4's second half and the only defence running on both sides of the wire. Its enforcement is itself tested: <code>design-system.test.ts</code> fails the build on a hand-written <code>z.string().trim()</code> outside the two rule files.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="tech">
+      <summary><h4>Jest + React Testing Library</h4><span class="role">The proof that it works</span><span class="pill free">free &middot; open source</span><span class="chev">&rsaquo;</span></summary>
+      <div class="tbody">
+        <div class="q"><div class="qh"><span class="qn">01</span> What it is</div>
+          <p data-lv="1">A robot that clicks through the app thousands of times and shouts if anything behaves differently from before. There are 1,777 of these checks and they run in about thirty seconds.</p>
+          <p data-lv="2">Jest is the test runner and assertion library; React Testing Library renders components and queries them the way a user or a screen reader would, by role and accessible name rather than by internal structure.</p>
+          <p data-lv="3">1,777 tests across 162 suites, 79.2% line and 73.7% branch coverage, with a 3.6-point statement-to-branch gap indicating conditionals are genuinely exercised rather than incidentally covered. 37 tests per thousand lines puts it in the top decile against the 10 to 30 band considered well tested.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">02</span> How it works here</div>
+          <p data-lv="1">Tests sit next to the code they test. The rule is that they check what a person would actually experience, not how the code is written inside, so you can rewrite the insides freely without breaking a single test.</p>
+          <p data-lv="2">Tests live in <code>__tests__/</code> beside their subject. House rules: prefer <code>getByRole</code> over test IDs, use <code>userEvent</code> not <code>fireEvent</code>, test behaviour visible to users and assistive tech. The domain tests were lifted verbatim from the source project and must pass unchanged, which is how the core proved it survived the move.</p>
+          <p data-lv="3">The role-first convention doubles as an accessibility audit, 75 files assert by ARIA role, which is why a11y scores well without a separate pass. Two structural notes: the suite also contains the design-system enforcement tests, so the runner polices architecture as well as behaviour; and each of those rules was verified to fail when the thing it guards is removed, because a rule that matches nothing is a test that passes for ever.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">03</span> Why this over the alternatives</div>
+          <p data-lv="1">Vitest is the newer, faster rival. Jest was kept because the tests were already written for it and they all pass, and rewriting working tests to save a few seconds is not a good trade.</p>
+          <p data-lv="2">Against <strong>Vitest</strong>: meaningfully faster with better ESM support, but the existing suite is Jest-shaped and the domain tests must pass unchanged. Against <strong>Playwright component testing</strong>: real browser fidelity, much slower per test.</p>
+          <p data-lv="3">Jest versus Vitest is not the live question; jsdom versus a real browser is. jsdom has no layout engine, so print, pagination and clipping are entirely untested, and a clipping bug shipped through this green suite once already. No assertion count closes that gap. Playwright does.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">04</span> Cost, now and at scale</div>
+          <p data-lv="1">Free. And running them automatically on every change is also free, it is just not switched on yet.</p>
+          <p data-lv="2">Free and MIT. GitHub Actions gives 2,000 free minutes a month on private repos; this suite runs in about 30 seconds.</p>
+          <p data-lv="3">Free, and the cheapest unclaimed quality improvement available anywhere in the project. Today a green suite is a fact about one laptop, not a property of the repository.</p>
+        </div>
+        <div class="q"><div class="qh"><span class="qn">05</span> What it connects to</div>
+          <p data-lv="1">It covers everything: the money rules, the forms, the database logic, even the design rules.</p>
+          <p data-lv="2">Runs against every layer. Domain tests are pure; component tests use jsdom; the design-system tests walk the source tree as text.</p>
+          <p data-lv="3">Its one blind spot is the print pipeline, which is also the only output a client ever sees. That asymmetry, best-tested layer and least-tested output, is the single most important thing to know about this test suite.</p>
+        </div>
+      </div>
+    </details>
+
+    <h3 class="rubric">The supporting cast</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>What</th><th>Job</th><th>Chosen over</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Vercel Blob</strong></td><td>Stores client attachments: PAN cards, GST certificates, signed contracts</td><td>S3 (more setup), Cloudflare R2 (cheaper, another vendor)</td><td>Free tier, then usage. The 4.5&nbsp;MB upload ceiling is a live blocker</td></tr>
+          <tr><td><strong>Lucide</strong></td><td>Every icon, at one consistent weight</td><td>Heroicons (smaller set), Font Awesome (licensing)</td><td>Free</td></tr>
+          <tr><td><strong>Base UI</strong></td><td>Accessible behaviour under the shadcn components</td><td>Radix (its predecessor), Headless UI</td><td>Free</td></tr>
+          <tr><td><strong>Motion</strong></td><td>The profile swipe and panel transitions</td><td>CSS alone, not expressive enough for gestures</td><td>Free</td></tr>
+          <tr><td><strong>libphonenumber-js</strong></td><td>Validating phone numbers per country</td><td>A regex, which is wrong in every country</td><td>Free</td></tr>
+          <tr><td><strong>Zippopotam</strong></td><td>Postcode to city and state, worldwide</td><td>Google Geocoding (better, needs a key and billing)</td><td>Free, unofficial, no SLA</td></tr>
+          <tr><td><strong>postcodes.io</strong></td><td>UK postcodes specifically</td><td>Royal Mail PAF, which is licensed and costs money</td><td>Free. Has no post town, a known limit</td></tr>
+          <tr><td><strong>Razorpay IFSC</strong></td><td>Indian bank branch from an IFSC code</td><td>RBI's own file, a manual download</td><td>Free, unofficial</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn" style="margin-top:1rem"><b>The three free APIs at the bottom have no service agreement.</b> They are somebody's side project or a company's goodwill endpoint. They are used for convenience, filling a city from a postcode, never for correctness, and every field they fill stays editable. That is the right dependency posture for an unpaid API: <em>helpful when up, harmless when down.</em></div>
+  </div>
+</section>
+
+<section id="standing">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">06</span>
+      <h2>Where it actually stands</h2>
+      <p class="sub">Measured on 17 August 2026, from commands rather than impressions. The headline is a sentence worth memorising.</p>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--seal)">
+      <p style="font-family:var(--f-display);font-size:clamp(1.3rem,3.4vw,1.9rem);line-height:1.3">An engine built to a high standard, in a shed, with no factory around it.</p>
+    </div>
+
+    <div class="grid2" style="margin-top:1.6rem;align-items:start">
+      <div class="card">
+        <h3 style="font-size:1.05rem;margin-bottom:.9rem">Engineering craft &middot; about 8/10</h3>
+        <div class="meters">
+          <div class="meter"><span class="mn">Domain modelling</span><span class="track"><span class="fill hi" style="width:90%"></span></span><span class="mv">9/10</span></div>
+          <div class="meter"><span class="mn">Design-system discipline</span><span class="track"><span class="fill hi" style="width:90%"></span></span><span class="mv">9/10</span></div>
+          <div class="meter"><span class="mn">Documentation</span><span class="track"><span class="fill hi" style="width:90%"></span></span><span class="mv">9/10</span></div>
+          <div class="meter"><span class="mn">Data integrity</span><span class="track"><span class="fill hi" style="width:80%"></span></span><span class="mv">8/10</span></div>
+          <div class="meter"><span class="mn">Accessibility</span><span class="track"><span class="fill hi" style="width:80%"></span></span><span class="mv">8/10</span></div>
+          <div class="meter"><span class="mn">Test quality</span><span class="track"><span class="fill mid" style="width:70%"></span></span><span class="mv">7/10</span></div>
+          <div class="meter"><span class="mn">Security fundamentals</span><span class="track"><span class="fill mid" style="width:60%"></span></span><span class="mv">6/10</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:1.05rem;margin-bottom:.9rem">Operational maturity &middot; about 1.5/10</h3>
+        <div class="meters">
+          <div class="meter"><span class="mn">CI / CD</span><span class="track"><span class="fill lo" style="width:2%"></span></span><span class="mv">0/10</span></div>
+          <div class="meter"><span class="mn">Observability</span><span class="track"><span class="fill lo" style="width:10%"></span></span><span class="mv">1/10</span></div>
+          <div class="meter"><span class="mn">Reliability engineering</span><span class="track"><span class="fill lo" style="width:10%"></span></span><span class="mv">1/10</span></div>
+          <div class="meter"><span class="mn">Multi-tenancy</span><span class="track"><span class="fill lo" style="width:2%"></span></span><span class="mv">0/10</span></div>
+          <div class="meter"><span class="mn">Compliance posture</span><span class="track"><span class="fill lo" style="width:2%"></span></span><span class="mv">0/10</span></div>
+          <div class="meter"><span class="mn">Team process</span><span class="track"><span class="fill lo" style="width:20%"></span></span><span class="mv">2/10</span></div>
+        </div>
+        <p style="margin-top:.9rem;font-size:.88rem;color:var(--text-dim)">Bus factor: <strong>1</strong>. Nobody else reviews a change.</p>
+      </div>
+    </div>
+
+    <div class="note good" style="margin-top:1.4rem"><b>Read that gap correctly.</b> Every item on the right is <em>absent</em>, not badly built. None of it is technical debt, and most of it is correctly unbuilt at this stage: operations only start compounding once other people depend on you. The number that should bother you is not 1.5, it is that the gap is invisible from inside the code.</div>
+
+    <h3 class="rubric">Against the industry, by the numbers</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Measure</th><th>Industry benchmark</th><th>speclr</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td>Line coverage</td><td>Google: 60% acceptable, 75% commendable, 90% exemplary</td><td class="num">79.2%</td><td>Commendable. Well above the 20&ndash;40% typical of funded early-stage products.</td></tr>
+          <tr><td>Tests per 1,000 lines</td><td>10&ndash;30 counts as well tested</td><td class="num">37</td><td>Top decile. Many small focused tests, not a few big ones.</td></tr>
+          <tr><td>Test lines to source lines</td><td>1:1 ideal, 0.3&ndash;0.5 commercial median</td><td class="num">0.48</td><td>Median by volume, well above it by test count.</td></tr>
+          <tr><td>Statement-to-branch gap</td><td>Under 5 points means conditionals are really exercised</td><td class="num">3.6 pts</td><td>Tight. The tests are not just walking happy paths.</td></tr>
+          <tr><td>Documentation to code</td><td>Most startups ship a README</td><td class="num">24%</td><td>Unusual outside infrastructure projects.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="future">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">07</span>
+      <h2>What is coming, and what is deliberately not</h2>
+      <p class="sub">A roadmap is only honest if it also says what has been refused, and why.</p>
+    </div>
+
+    <h3 class="rubric">Must happen before a single real document is issued</h3>
+    <div class="grid2">
+      <div class="card"><span class="pill paid">Blocker</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>The format freeze.</strong> Every document type audited against its governing statute, then declared closed. Two Rule 46 gaps are already known: no HSN/SAC code anywhere, and no reverse-charge declaration. A finalized document cannot be edited, so an invoice issued under an incomplete format stays incomplete for 72 months.</p></div>
+      <div class="card"><span class="pill paid">Blocker</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>One browser pass over every sheet at real A4.</strong> jsdom cannot see print, pagination or clipping. The pay slip already shipped a clipping bug through a green suite. Not recoverable afterwards: the first finalize claims a number and freezes.</p></div>
+      <div class="card"><span class="pill paid">Blocker</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>Rotate the blob token.</strong> The read-write token for the store holding clients' PAN cards was pasted into a chat transcript and must be treated as disclosed. Nothing is exposed until the store holds real client files, which is why it is a blocker rather than an incident.</p></div>
+      <div class="card"><span class="pill paid">Blocker</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>Clerk production keys, Vercel Pro, a paid Neon tier, and CI running the tests.</strong> Dev keys only work on localhost; Hobby forbids commercial use; 24 hours of recovery against a 72-month retention obligation is not a backup.</p></div>
+      <div class="card"><span class="pill soon">Known bug</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>Attachments over 4.5 MB fail in production.</strong> They upload through a Server Action, and Vercel rejects a body over 4.5 MB before Next even runs. The fix is a client-direct upload with a one-shot token. Until then a large scan silently fails.</p></div>
+      <div class="card"><span class="pill core">Definition</span>
+        <p style="margin-top:.5rem;font-size:.93rem;color:var(--text-mid)"><strong>"Ready" is already defined and does not move:</strong> a client onboarded end to end, a contract issued and signed and stored, three invoices and three receipts, an employee hired, a salary slip issued, and every document type in the registry used at least once. Officially, with real money.</p></div>
+    </div>
+
+    <h3 class="rubric">Planned, in rough order of weight</h3>
+    <div class="tscroll">
+      <table>
+        <thead><tr><th>Feature</th><th>What it changes</th><th>The catch</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Client profile page</strong></td><td>A read-only view of a client per group, with an edit link into the step that owns it</td><td>Small. Deferred only because onboarding was still moving.</td></tr>
+          <tr><td><strong>Invoice honours the billing block</strong></td><td>The separate billing address and named billing contact already collected start printing</td><td>Must land before the format freeze, or it becomes a post-issue format change.</td></tr>
+          <tr><td><strong>Roles and permissions</strong></td><td>A tier below full access, so "admin" means something</td><td>An admin role with nothing beneath it is a label with no teeth. Scope the non-admin tier first.</td></tr>
+          <tr><td><strong>Public access to the icon tool</strong></td><td>The spec validator becomes usable without signing in</td><td>Must be a separate route group sharing no layout, middleware or auth surface. Structural isolation, never a flag.</td></tr>
+          <tr><td><strong>Client portal</strong></td><td>Clients see their own documents</td><td>The largest item here and a different security posture entirely: external users, and a sharper test of the snapshot pattern.</td></tr>
+          <tr><td><strong>Server-side PDF renderer</strong></td><td>A real downloadable file instead of the print dialog</td><td>Needs headless Chromium behind a route. Sheets are already pure <code>data &rarr; markup</code>, so it lands additively.</td></tr>
+          <tr><td><strong>Hiring flow</strong></td><td>An onboarding checklist, then an employee portal</td><td>Depends on roles.</td></tr>
+          <tr><td><strong>The jurisdiction seam</strong></td><td>India becomes a swappable pack instead of being spelled inline</td><td>Costs about 15% more than inline. That 15% is the entire budget, and it does not authorise a country selector.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="rubric">Refused on purpose</h3>
+    <ul class="tick" style="max-width:var(--measure)">
+      <li><strong>A payroll engine.</strong> EPF needs 20+ employees, ESI needs 10+ and gross under &#8377;21,000, and Uttar Pradesh has no professional tax. For Qera today the only live statutory deduction is TDS, so deductions stay a free list.</li>
+      <li><strong>A country selector, a second jurisdiction pack, multi-currency invoices, VAT logic, e-invoicing.</strong> One interface, one implementation. Adding UAE later should be writing <code>packs/ae/</code>, not a remodel.</li>
+      <li><strong>A per-country adaptive address form.</strong> Read Google's own address metadata for 200 countries and every one reduces to the six fields already held. What varies is the labels, not the slots.</li>
+      <li><strong>Aadhaar, anywhere.</strong> The Aadhaar Act restricts who may store the number and for what purpose, and a design studio has no authorised purpose. PAN is the appropriate KYC document.</li>
+      <li><strong>Storing credentials.</strong> The delivery-and-access step records <em>where</em> a credential lives, never the credential. There is no secret storage, no envelope encryption and no rotation, so a password typed there would sit in plain text in Postgres and in every backup.</li>
+      <li><strong>Any visible AI.</strong> And behind the scenes, a language model must never compute a total. Payment follow-ups and finance rollups are SQL over a status column, not a model.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="toolbox">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">08</span>
+      <h2>The enterprise toolbox</h2>
+      <p class="sub">The tools you hear named in every serious engineering conversation. What each one is, what problem it solves, and an honest verdict on whether speclr needs it. Most of these answers are no, and knowing <em>why</em> is worth more than adopting them.</p>
+    </div>
+
+    <div class="note" style="margin-bottom:1.6rem"><b>The principle underneath every verdict below:</b> each of these tools exists to solve a <em>coordination</em> or <em>scale</em> problem. Kubernetes solves "fifty services and twelve teams". Kafka solves "systems that must not lose an event". GraphQL solves "six client apps and four backend teams". You have one service, one team and one user. Adopting a tool whose problem you do not have does not make you look professional; being able to say precisely why you have not adopted it does.</div>
+
+    <h3 class="rubric">Adopt now</h3>
+
+    <div class="verdict">
+      <div class="vh"><h4>GitHub Actions</h4><span class="tag yes">Adopt &middot; free</span><span class="cat">Continuous integration</span></div>
+      <p data-lv="1">A robot that runs all 1,777 of your tests every time you save work to GitHub, and refuses the change if any fail. Right now the tests only run when you remember to run them.</p>
+      <p data-lv="2">A CI runner built into GitHub. One YAML file at <code>.github/workflows/ci.yml</code> running <code>npm test</code> and <code>tsc --noEmit</code> on push and pull request. 2,000 free minutes a month on private repos; this suite takes about 30 seconds.</p>
+      <p data-lv="3">The alternatives (CircleCI, Buildkite, GitLab CI) all win on specific axes, and none of those matter until you have a matrix worth parallelising. The point is not the runner, it is converting "the suite passed on my laptop" into a repository invariant. This is the single highest-leverage unclaimed change in the project and it costs nothing.</p>
+      <span class="swap">Replaces: you, remembering.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Playwright</h4><span class="tag yes">Adopt &middot; free</span><span class="cat">Browser testing</span></div>
+      <p data-lv="1">Drives a real browser, so it can see things your current tests physically cannot: whether the invoice fits on the page, whether text got cut off, whether printing works.</p>
+      <p data-lv="2">Cross-browser end-to-end testing with real rendering engines. The specific gap it closes here is print and pagination: jsdom has no layout engine, so the entire A4 pipeline is untested, and a clipping bug has already shipped through a green suite because of it.</p>
+      <p data-lv="3">Against Cypress: better multi-browser support, better parallelism, a far better trace viewer. The high-value use here is not general end-to-end coverage, it is screenshot-diffing every sheet at A4 in headless Chromium, which turns "verify in a real browser before every finalize" from a discipline into a check.</p>
+      <span class="swap">Closes: the one blind spot in an otherwise strong suite.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Sentry</h4><span class="tag yes">Adopt &middot; free tier is enough</span><span class="cat">Error tracking</span></div>
+      <p data-lv="1">When something breaks for a user, this tells you immediately, with enough detail to fix it. Without it you find out when someone complains, or never.</p>
+      <p data-lv="2">Error tracking and performance monitoring. Captures unhandled exceptions server- and client-side with stack traces, breadcrumbs and release tagging. There is a <code>logger</code> in the codebase with nothing downstream of it, which is the gap.</p>
+      <p data-lv="3">The maturity document prices Sentry Team at $26; the free tier's 5,000 errors a month is ample for a single-operator tool, so take that. What you actually want is not the dashboard, it is knowing a Server Action threw before you notice an invoice was never saved. Alternatives: Highlight, Bugsnag, or OpenTelemetry into Grafana Cloud if you want vendor neutrality early.</p>
+      <span class="swap">Replaces: silence.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Cloudflare</h4><span class="tag yes">Adopt selectively &middot; mostly free</span><span class="cat">DNS, WAF, rate limiting</span></div>
+      <p data-lv="1">Sits in front of your website and blocks bad traffic before it ever reaches you: bots, floods, people hammering the same page ten thousand times. The useful parts are free.</p>
+      <p data-lv="2">DNS, CDN, a web application firewall, DDoS protection, bot management and rate-limiting rules. The relevant piece here is rate limiting on the auth surface and the two upstream proxy routes (<code>/api/pincode</code>, <code>/api/ifsc</code>), which the security checklist already asks for and which nothing currently provides.</p>
+      <p data-lv="3">Note you already have a CDN via Vercel, so this is not about caching. It is about an edge policy layer Vercel does not give you at Pro, and about not letting an authenticated user walk a third party's unpaid quota. Akamai and Fastly are the enterprise equivalents, sales-led and priced accordingly, and neither is remotely appropriate here. The adjacent option worth knowing is R2: S3-compatible, zero egress fees, and the eventual replacement for Vercel Blob.</p>
+      <span class="swap">Adds: the rate limiting that is currently missing entirely.</span>
+    </div>
+
+    <h3 class="rubric">Later, when a specific trigger fires</h3>
+
+    <div class="verdict">
+      <div class="vh"><h4>Docker</h4><span class="tag later">Later</span><span class="cat">Containers</span></div>
+      <p data-lv="1">A way of packing your app together with everything it needs to run, so it behaves identically on your laptop, on a colleague's, and on a server. You do not need it because Vercel handles all of that.</p>
+      <p data-lv="2">Operating-system-level containerisation: a reproducible image containing the app and its runtime dependencies. Vercel builds and runs the app for you, so there is no image to manage today.</p>
+      <p data-lv="3">Three triggers make it real, and one is already on the roadmap. First, <strong>the PDF renderer</strong>: headless Chromium is exactly the heavy binary dependency that wants a container. Second, leaving Vercel. Third, a second engineer needing an identical local environment. Until one fires, a Dockerfile is a file to maintain that nothing reads.</p>
+      <span class="swap">Currently replaced by: Vercel's build pipeline.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Redis / Upstash</h4><span class="tag later">Later, narrowly</span><span class="cat">In-memory store</span></div>
+      <p data-lv="1">A very fast temporary memory, for things that must be quick and need not survive: counting how many times someone hit a page in the last minute, remembering a session.</p>
+      <p data-lv="2">An in-memory key-value store used for caching, sessions, rate-limit counters and lightweight queues. The one genuinely applicable use here is rate limiting, and Upstash's serverless Redis has a generous free tier plus a ready-made rate-limit library.</p>
+      <p data-lv="3">Worth remembering the history: the source project used Upstash Redis as its <em>primary store</em> and it was deliberately replaced by Postgres, because a key-value store cannot answer the queries financial records need. Bringing Redis back as a cache would be a mistake at this read volume; bringing it back as a rate-limit counter is defensible, and Cloudflare's edge rules may make even that unnecessary.</p>
+      <span class="swap">Competes with: Cloudflare rate limiting, which needs no new vendor.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>A job queue (Inngest, QStash, Trigger.dev)</h4><span class="tag later">Later</span><span class="cat">Background work</span></div>
+      <p data-lv="1">A way to say "do this later, and keep trying if it fails", for jobs too slow to make someone wait: generating a PDF, sending a payment reminder.</p>
+      <p data-lv="2">Durable background execution with retries, scheduling and observability. Becomes real with two roadmap items: the PDF renderer (too slow for a request) and payment follow-ups (scheduled, and must survive a failure).</p>
+      <p data-lv="3">The right shape for the follow-up feature, and worth being precise about what that feature actually needs: not a model, but a <code>paid</code> state that does not currently exist anywhere in <code>DocStatus</code>. The queue is the easy half; the missing domain fact is the real work. Prefer Inngest or QStash over raw SQS plus Lambda, for the same reason Vercel was chosen: no infrastructure to own.</p>
+      <span class="swap">Currently replaced by: nothing, because nothing runs in the background.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>AWS (raw)</h4><span class="tag later">Later, if ever</span><span class="cat">Cloud infrastructure</span></div>
+      <p data-lv="1">The biggest cloud provider, renting you individual pieces, servers, storage, databases, that you assemble yourself. Cheaper per piece, far more work. Worth knowing: you are already on AWS, because Vercel and Neon both run on it.</p>
+      <p data-lv="2">The full infrastructure menu: EC2, ECS/Fargate, Lambda, S3, RDS, CloudFront, VPC, IAM. Vercel and Neon are both managed layers over AWS, so moving to raw AWS trades roughly 60&ndash;70% of the bill for a permanent operations workload.</p>
+      <p data-lv="3">Two triggers, and neither is cost. First, <strong>a compliance boundary</strong>: a client or an audit requiring your own VPC, your own KMS keys, or data-residency guarantees your platform vendors will not sign for. Second, sustained predictable throughput where serverless pricing inverts. Absent those, raw AWS for a one-person team is buying a second job. The intermediate step, if the bill ever bites, is Cloudflare Workers plus R2 plus Neon, not a VPC.</p>
+      <span class="swap">Currently replaced by: Vercel and Neon, which are AWS with the ops removed.</span>
+    </div>
+
+    <h3 class="rubric">Almost certainly never, and here is why</h3>
+
+    <div class="verdict">
+      <div class="vh"><h4>Kubernetes</h4><span class="tag no">No</span><span class="cat">Container orchestration</span></div>
+      <p data-lv="1">A system for running hundreds of copies of many different programs across many machines, restarting them when they die and moving them when a machine fails. You have one program and no machines.</p>
+      <p data-lv="2">Declarative orchestration for containerised workloads: scheduling, service discovery, rolling deploys, autoscaling, self-healing. It solves multi-service operations at a scale where manual coordination fails, typically dozens of services and a dedicated platform team.</p>
+      <p data-lv="3">The honest industry read is that Kubernetes is adopted below its threshold more often than any other tool on this list, and the cost is a permanent platform burden and a much slower feedback loop. speclr is a single Next.js application with one stateful dependency. If it ever ran on Kubernetes, that would be a symptom rather than an achievement.</p>
+      <span class="swap">Replaced permanently by: one managed platform.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>GraphQL</h4><span class="tag no">No</span><span class="cat">API query language</span></div>
+      <p data-lv="1">A way for an app to ask a server for exactly the data it wants in one request. It shines when many different apps, a website, an iPhone app, a partner integration, all need different slices of the same data. You have one app, and the server already knows what the page needs.</p>
+      <p data-lv="2">A typed query language and runtime over a schema. It solves over-fetching and under-fetching across many clients with divergent needs. React Server Components already fetch precisely what a page renders, where it renders it, with full type inference and no network round trip at all.</p>
+      <p data-lv="3">Adopting GraphQL here would add a schema layer, a resolver layer, an N+1 problem to solve with DataLoader, and an entire authorisation surface, in exchange for solving a problem the RSC model has already eliminated. The one scenario that revives it is a public partner API with third-party consumers, and even then tRPC or plain typed REST is usually the better answer at this size.</p>
+      <span class="swap">Replaced by: Server Components and Server Actions.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Kafka</h4><span class="tag no">No</span><span class="cat">Event streaming</span></div>
+      <p data-lv="1">A pipeline carrying a huge continuous stream of events between systems without ever losing one. Built for companies processing millions of things a minute. You process a handful of documents a month.</p>
+      <p data-lv="2">A distributed, partitioned, replicated commit log for high-throughput event streaming with durable replay. It decouples many producers from many consumers at volume.</p>
+      <p data-lv="3">Postgres is a perfectly good queue and a perfectly good event log at any volume this workload will ever see, and <code>SELECT &hellip; FOR UPDATE SKIP LOCKED</code> covers the pattern if it is ever needed. Kafka's operational surface is enormous, and the interesting observation is that the append-only replayable property people reach for Kafka to get is already provided here by immutability-at-finalize.</p>
+      <span class="swap">Replaced by: Postgres, which is already there.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Akamai</h4><span class="tag no">No</span><span class="cat">Enterprise CDN</span></div>
+      <p data-lv="1">The oldest and one of the largest content-delivery networks, used by banks and broadcasters. Sales-led, expensive, aimed at problems of enormous scale. Vercel already gives you a CDN, and Cloudflare gives you a better one free.</p>
+      <p data-lv="2">Enterprise CDN, WAF and edge compute with global point-of-presence coverage and negotiated contracts. Chosen for regulatory posture, contractual guarantees and traffic measured in petabytes.</p>
+      <p data-lv="3">The only path to Akamai or Fastly is a client-side procurement requirement, and speclr's traffic profile makes even that hard to justify. Cloudflare covers the same functional ground at this scale for nothing.</p>
+      <span class="swap">Replaced by: Vercel's CDN, plus Cloudflare if edge policy is wanted.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Terraform / infrastructure as code</h4><span class="tag no">Not yet</span><span class="cat">Provisioning</span></div>
+      <p data-lv="1">Describing your servers and services in a file so they can be rebuilt identically from scratch. Valuable when your setup is large enough that nobody remembers how it was built. Yours is three dashboards.</p>
+      <p data-lv="2">Declarative provisioning with state tracking and plan-then-apply semantics. It earns its keep when infrastructure has enough moving parts that clicking through dashboards drifts undetectably.</p>
+      <p data-lv="3">Three managed vendors configured through their dashboards is genuinely below the threshold. What <em>is</em> worth doing now is 10% of the benefit at 1% of the cost: a checked-in document recording every vendor, every environment variable and what it is for. That already exists here as <code>docs/vendors.md</code>, which is a better return than a Terraform state file nobody applies.</p>
+      <span class="swap">Replaced by: a written-down vendor register.</span>
+    </div>
+
+    <div class="verdict">
+      <div class="vh"><h4>Datadog / Grafana / OpenTelemetry</h4><span class="tag later">After Sentry</span><span class="cat">Full observability</span></div>
+      <p data-lv="1">Dashboards showing how fast everything is running and where time is being spent. Genuinely useful when many things happen at once. With one user, an error alert is worth more than any dashboard.</p>
+      <p data-lv="2">Metrics, logs and distributed traces in one place. Datadog is the market leader and priced accordingly; Grafana Cloud has a workable free tier; OpenTelemetry is the vendor-neutral instrumentation standard underneath both.</p>
+      <p data-lv="3">Instrument with OpenTelemetry if you instrument at all, so the backend stays a swap rather than a rewrite. But sequence it correctly: error tracking first, because with one user the failure mode is a silent exception, not a p99 regression. Tracing earns its keep when a request crosses three services, and yours crosses none.</p>
+      <span class="swap">Sequenced after: Sentry, which answers the question you actually have.</span>
+    </div>
+
+    <h3 class="rubric">The three gaps a real audit would find</h3>
+    <div class="grid3">
+      <div class="card"><span class="pill paid">Gap</span><p style="margin-top:.5rem;font-size:.92rem;color:var(--text-mid)"><strong>Rate limiting.</strong> Nothing, anywhere. Both proxy routes are session-gated, which is most of the protection, but an authenticated user can still walk a third party's unpaid quota.</p></div>
+      <div class="card"><span class="pill paid">Gap</span><p style="margin-top:.5rem;font-size:.92rem;color:var(--text-mid)"><strong>An audit log.</strong> <code>grep -ril "auditLog"</code> returns nothing. Immutability records <em>what</em> a document became; nothing records <em>who</em> did it or when. For financial software with more than one operator, that is the next security item after rate limiting.</p></div>
+      <div class="card"><span class="pill paid">Gap</span><p style="margin-top:.5rem;font-size:.92rem;color:var(--text-mid)"><strong>A tested restore.</strong> Backups exist as a vendor feature, not as a rehearsed procedure. An untested backup is a hope, and the database is the only component whose loss is unrecoverable.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="language">
+  <div class="wrap">
+    <div class="shead">
+      <span class="num">09</span>
+      <h2>Speaking the language</h2>
+      <p class="sub">The terms that come up in real engineering conversations, each anchored to something that already exists in your codebase. Knowing the word is worth little; knowing where it lives in your own project is what makes it stick.</p>
+    </div>
+
+    <div class="gloss">
+      <dl class="term"><dt>Idempotent</dt><dd>Doing it twice has the same effect as doing it once.</dd><dd class="here"><b>Here &middot;</b> Finalize is deliberately <em>not</em> idempotent, which is why it claims its number under a lock.</dd></dl>
+      <dl class="term"><dt>Race condition</dt><dd>Two things happening at once, where the outcome depends on which wins.</dd><dd class="here"><b>Here &middot;</b> Two simultaneous finalizes both wanting invoice 001. The <code>counters</code> row lock is the answer.</dd></dl>
+      <dl class="term"><dt>Row lock</dt><dd>Telling the database one row is being changed, so everyone else waits.</dd><dd class="here"><b>Here &middot;</b> The mechanism behind atomic numbering.</dd></dl>
+      <dl class="term"><dt>ACID</dt><dd>Atomic, Consistent, Isolated, Durable: the four guarantees a real database makes about a transaction.</dd><dd class="here"><b>Here &middot;</b> Why Postgres and not Redis.</dd></dl>
+      <dl class="term"><dt>Migration</dt><dd>A recorded, replayable change to the database's shape.</dd><dd class="here"><b>Here &middot;</b> Fourteen of them in <code>src/db/migrations/</code>. Two are irreversible.</dd></dl>
+      <dl class="term"><dt>ORM</dt><dd>The translator between your code's objects and the database's tables.</dd><dd class="here"><b>Here &middot;</b> Drizzle. Thin by choice.</dd></dl>
+      <dl class="term"><dt>N+1 query</dt><dd>Fetching a list, then querying once more per item. The classic silent performance bug.</dd><dd class="here"><b>Here &middot;</b> Drizzle makes these visible, because you write the query shape yourself.</dd></dl>
+      <dl class="term"><dt>IDOR</dt><dd>Insecure Direct Object Reference: changing an id in a URL and seeing someone else's data.</dd><dd class="here"><b>Here &middot;</b> Why attachments resolve by attachment id scoped to their client, never by file path.</dd></dl>
+      <dl class="term"><dt>Fail-closed</dt><dd>When something is misconfigured, deny rather than allow.</dd><dd class="here"><b>Here &middot;</b> An empty <code>SPECLR_ALLOWED_EMAILS</code> admits nobody.</dd></dl>
+      <dl class="term"><dt>Defence in depth</dt><dd>Several independent locks, so one failing does not open the door.</dd><dd class="here"><b>Here &middot;</b> Clerk invite-only <em>and</em> the app's own allowlist.</dd></dl>
+      <dl class="term"><dt>CSP</dt><dd>Content Security Policy: a header telling the browser which code it may run.</dd><dd class="here"><b>Here &middot;</b> In <code>next.config.ts</code>, deliberately without a nonce because Clerk's script carries none.</dd></dl>
+      <dl class="term"><dt>Blast radius</dt><dd>How much breaks when this one thing fails.</dd><dd class="here"><b>Here &middot;</b> Losing Neon is unrecoverable; losing Vercel is a redeploy.</dd></dl>
+      <dl class="term"><dt>Bus factor</dt><dd>How many people would have to be hit by a bus before the project stalls.</dd><dd class="here"><b>Here &middot;</b> One. The most honest number in the maturity document.</dd></dl>
+      <dl class="term"><dt>YAGNI</dt><dd>You Aren't Gonna Need It. Do not build for a future you are guessing at.</dd><dd class="here"><b>Here &middot;</b> An entire roadmap section is the refused list, with reasons kept.</dd></dl>
+      <dl class="term"><dt>Technical debt</dt><dd>A shortcut taken knowingly, that will cost interest later. Note: something never built is not debt.</dd><dd class="here"><b>Here &middot;</b> The operational gaps are absences, not debt. The distinction matters.</dd></dl>
+      <dl class="term"><dt>Source of truth</dt><dd>The one place a fact lives. Two places means they will eventually disagree.</dd><dd class="here"><b>Here &middot;</b> The client record. Place of supply is derived from it, never typed.</dd></dl>
+      <dl class="term"><dt>Denormalisation</dt><dd>Deliberately storing a copy, for speed or for history.</dd><dd class="here"><b>Here &middot;</b> The snapshot. Not a shortcut, a legal requirement.</dd></dl>
+      <dl class="term"><dt>Immutability</dt><dd>Once written, never changed. Corrections become new records.</dd><dd class="here"><b>Here &middot;</b> Enforced in <code>store.ts</code>, not in the UI.</dd></dl>
+      <dl class="term"><dt>SSR / RSC / hydration</dt><dd>Rendering on the server; components that only ever run there; the browser waking up server-rendered HTML.</dd><dd class="here"><b>Here &middot;</b> Server Components by default, <code>'use client'</code> as the exception.</dd></dl>
+      <dl class="term"><dt>p95 / p99 latency</dt><dd>The speed the slowest 5% or 1% of requests see. Averages hide the pain.</dd><dd class="here"><b>Here &middot;</b> Unmeasured, because there is no observability yet.</dd></dl>
+      <dl class="term"><dt>SLO / SLA / error budget</dt><dd>A target you set yourself; a promise with money behind it; how much failure the target still allows.</dd><dd class="here"><b>Here &middot;</b> None. Correct at zero users, required at the first paying one.</dd></dl>
+      <dl class="term"><dt>MTTR</dt><dd>Mean time to recovery: how long from breaking to fixed. Usually more useful than how often you break.</dd><dd class="here"><b>Here &middot;</b> Currently gated on you noticing at all.</dd></dl>
+      <dl class="term"><dt>Runbook / postmortem</dt><dd>Written steps for handling a known failure; a blameless write-up after an incident.</dd><dd class="here"><b>Here &middot;</b> The launch-readiness gate is a runbook. No incident has happened yet.</dd></dl>
+      <dl class="term"><dt>Canary / blue-green</dt><dd>Releasing to a small slice of users first; or keeping two environments and switching traffic between them.</dd><dd class="here"><b>Here &middot;</b> Vercel preview deployments are the lightweight version of this.</dd></dl>
+      <dl class="term"><dt>Feature flag</dt><dd>A switch turning a feature on for some people without a new deploy.</dd><dd class="here"><b>Here &middot;</b> Deliberately absent. Public access must be structural isolation, never a flag.</dd></dl>
+      <dl class="term"><dt>Horizontal vs vertical scaling</dt><dd>More machines, versus a bigger machine.</dd><dd class="here"><b>Here &middot;</b> Vercel scales horizontally for free; Neon scales vertically and is the real ceiling.</dd></dl>
+      <dl class="term"><dt>Connection pooling</dt><dd>Reusing database connections, because opening one is expensive and databases cap them.</dd><dd class="here"><b>Here &middot;</b> Why the Neon serverless HTTP driver exists, and why <code>DATABASE_URL_UNPOOLED</code> is a separate variable.</dd></dl>
+      <dl class="term"><dt>Eventual consistency</dt><dd>Everyone agrees on the answer, just not immediately.</dd><dd class="here"><b>Here &middot;</b> Refused. Financial numbering requires strong consistency, and that shaped the database choice.</dd></dl>
+      <dl class="term"><dt>Lock-in</dt><dd>How expensive it would be to leave a vendor.</dd><dd class="here"><b>Here &middot;</b> Low for Neon (standard Postgres), moderate for Clerk, highest for Server Actions.</dd></dl>
+      <dl class="term"><dt>Observability vs monitoring</dt><dd>Monitoring watches things you knew to watch; observability lets you ask a question you had not thought of.</dd><dd class="here"><b>Here &middot;</b> Scored 1/10, and the fix starts with error tracking.</dd></dl>
+      <dl class="term"><dt>Multi-tenancy</dt><dd>One system serving many customers whose data must never mix.</dd><dd class="here"><b>Here &middot;</b> Not built. <code>counters</code> is keyed globally, so two tenants would share one invoice sequence.</dd></dl>
+    </div>
+
+    <div class="note good" style="margin-top:1.7rem"><b>The thing that actually makes you sound like you belong</b> is not vocabulary; it is the shape of your answers. Engineers judge each other on whether you can say what you <em>did not</em> build and why, whether you quote a number instead of an impression, and whether you name the trade-off you accepted rather than claiming there was not one. You already have all three: a refused list with reasons, a measured maturity document, and logged deviations. Answer from those and the vocabulary takes care of itself.</div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><strong>The speclr Field Manual</strong> &middot; written 20 August 2026 &middot; a point-in-time reading.</p>
+    <p>Numbers come from <code>docs/maturity.md</code> (measured 17 August 2026) and from the repository at commit <span class="mono">83453b8</span>. Vendor prices are list prices as understood on 16 August 2026 and are planning numbers, not quotes.</p>
+    <p>Sources in the repo: <code>CONTEXT.md</code> (domain rules), <code>PRINCIPLES.md</code> (the five modelling rules), <code>AGENTS.md</code> (standards), <code>ROADMAP.md</code> (unbuilt work), <code>docs/vendors.md</code>, <code>docs/maturity.md</code>, and the eight master checklists in <code>dev/</code>.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll('.seg button');
+  function set(level) {
+    root.setAttribute('data-level', level);
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute('aria-pressed',
+        String(buttons[i].getAttribute('data-set') === level));
+    }
+  }
+  for (var i = 0; i < buttons.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () { set(b.getAttribute('data-set')); });
+    })(buttons[i]);
+  }
+  set('2');
+})();
+</script>

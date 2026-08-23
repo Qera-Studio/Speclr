@@ -167,6 +167,19 @@ issued document would *survive* the deletion, but surviving is not a reason to
 sever the link. **The attachments go with the row, blobs first** — same erasure
 rule as above, and the other order orphans a file nothing points at.
 
+**So offboarding is archiving, and it is the only way a finished client leaves
+the list.** `clients.archived` follows the `services` and `clauses` precedent: a
+boolean, reversible, hiding the row from the default list and from the **new**
+document picker. Three things it deliberately is not. It is **not a soft
+delete**: delete still exists, still refuses a client with documents, and still
+erases the attachments, because DPDP Act 2023 erasure means the bytes are gone,
+not flagged. It **never touches an open document** — `DocumentRoute` passes
+every client to the editor while `NewDocumentRoute` filters, so a draft whose
+client was archived afterwards still finds them in its own picker rather than
+losing the client it was written for (the §5d-ii rule, one level up). And it
+**prints nothing**: a finalized document reads its snapshot, and `archived` is
+not in `ClientSnapshot`, which is rule 4 working as intended.
+
 **Delivery & access records where a credential lives, never the credential.**
 speclr has no secret storage, no envelope encryption and no rotation. A password
 typed into that step would sit in plain text in Postgres and in every backup. If
@@ -449,7 +462,7 @@ classes, no hex literals. Its sibling `design-system.test.ts` polices **which
 primitive was reached for**, and exists because the failure that actually
 happened was not a stray hex code: `ui/date-picker.tsx` says in its own
 docstring that it replaces the browser's native date input, and an onboarding
-step used `type="date"` anyway. Five rules today, all of them ones that were
+step used `type="date"` anyway. Every rule below is one that was actually
 broken:
 
 | Banned outside `ui/` | Use instead |
@@ -459,6 +472,21 @@ broken:
 | a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
 | `register('pan' / 'gstin' / 'tan' / 'cin')` | the matching component in `form/fields.tsx` |
 | `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
+| `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
+| a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
+| `status === 'finalized' ? …` as a label | `StatusBadge` from `ui/status-badge.tsx` |
+| a `size="icon"` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+
+**The last row is the one a person caught before the suite did**, and it is the
+general lesson rather than a rule about dates. The dashboard printed a
+document's date at full strength; the clients list printed a client's muted, one
+page apart. Neither weight was chosen: the second table had nothing to copy
+from, so it decided for itself, and the same fact came to look like two
+different kinds of fact. **A value that appears in more than one place gets one
+component that decides how it looks**, and the rule banning the hand-written
+version lands in the same commit. That is `PRINCIPLES.md` rule 1 (used by more
+than one caller, so it gets its own home) applied to presentation instead of
+data.
 
 Both walk the tree through `src/__tests__/policedSource.ts`, so their exemption
 lists cannot drift apart. **When a primitive becomes the house answer for
@@ -478,6 +506,42 @@ container* — the user cannot scroll it but the browser can, and focusing
 anything inside triggers a scroll-into-view that walks up every ancestor scroll
 box. That pushed the header off the top of the shell with no way to bring it
 back. `clip` creates no scroll container at all. Don't change it back.
+
+**One rule of the same kind lives in its own file, because it is arithmetic
+rather than a grep.** `src/__tests__/contrast.test.ts` parses the OKLCH tokens
+out of `globals.css`, converts them and measures every foreground against every
+background the app actually puts it on, in both themes. It exists because a
+contrast audit performed once is a contrast audit that *was* true once, and
+every one of these is a number somebody can change in a single line without
+anything looking wrong afterwards.
+
+It found three failures on the day it was written, and all three have the same
+shape: **a colour was checked against the wrong background.**
+`--muted-foreground` cleared 4.5:1 on white and missed it on `--muted`, which is
+where it most often lands (hovered rows, tooltips, muted panels).  `--ring` was
+2.59:1 on the light background, under 1.4.11's 3:1 floor, on the one piece of UI
+a keyboard user has no fallback for. And white on `--destructive` was 2.89:1 in
+dark mode, on the offline bar and on the confirm button of every destructive
+dialog, which is what `--destructive-foreground` was added for.
+
+`--border` and `--input` are 1.26:1 on the light background and are deliberately
+**not** asserted: 1.4.11 governs boundaries required to *identify* a control,
+and every input here is identified by a visible `<Label>` above it. Raising them
+would redraw every form as a grid of hard boxes, which is a design decision, not
+a compliance one. It is written down in the test rather than silently skipped.
+
+**A field must read its own error whether or not it is about to show it.** That
+sentence is a bug fix and the bug was silent. `formState` is a proxy that
+subscribes a component to the keys it *reads*, so `errors={showError ?
+[fieldState.error] : []}` never subscribed a field that had not yet been left
+or filled, and afterwards rendered off a snapshot taken before its error
+existed. What that looked like on the tax step: once **any** identifier was
+showing an error, none of the others would ever show theirs. React Hook Form
+had them all and the form still refused to submit; the reader was simply never
+told which field was wrong. Pinned in `form/__tests__/fields.test.tsx`, which
+was confirmed to fail without the fix. The general form of the rule is that a
+conditional read of a tracked proxy is a conditional *subscription*, and the
+condition is almost never the one you meant.
 
 ### 5f. A field is declared twice, and only twice
 
@@ -600,6 +664,47 @@ a hand-written phone rule — and the walker now polices `.ts` as well as `.tsx`
 `security-headers.test.ts` reads the real config, and `ui/__tests__/autofill.test.tsx`
 pins the default. Both were confirmed to fail when the thing they guard is
 removed; a rule that matches nothing is a test that passes forever.
+
+### 5h. A Service carries its SAC and its list price, and neither prints yet
+
+The catalogue at `/client/services` is editable now: a pencil on each card opens
+a dialog of five fields (section, title, description, rate, SAC). Four things
+about it are decisions rather than defaults.
+
+**The dialog posts five fields; the server reads the row.** A Service also
+carries sixty-odd lines of scope, exclusions and client inputs that this screen
+never shows, and a form that posted the whole record back would be a form that
+could blank what it did not render. `updateServiceDetails` loads the stored row
+and overwrites exactly the five. This is safe for the same reason the clause
+library is safe: a contract copies a Part when the Service is ticked and freezes
+it at finalize, so an edit reaches the *next* contract and nothing already open
+or signed (§5c).
+
+**`sacCode` does not close the Rule 46 gap.** CGST Rule 46 wants the SAC printed
+against the *line* on a tax invoice, and invoice lines here are still free text
+that no Service feeds. This is the number a line will read once they do. All 22
+seeded codes sit in the 9983 group, so every one is 18% and the choice between
+them moves no money, only the line the classification is filed under. They are a
+proposal for a CA to sign off, and `seed/services.ts` records the reasoning and
+names 15 to 17 as the arguable ones.
+
+**`ratePaise` is not the contract's Fee.** The `fee` rows on a Service are
+blanks a specific contract fills after a specific negotiation; the rate is what
+the studio quotes *from* before there is a contract. Nothing reads it into a
+document. What it is *per* is `rateUnitOf(scheduleKey)` and is derived, not
+stored: a Retainer is the Schedule under which work recurs monthly (rule 3).
+
+**Re-running `scripts/seed-contract.ts` clears every rate.** Its upsert replaces
+`content` wholesale, so anything typed into the dialog goes with it. Always true
+of that script; it only started mattering when the screen began to write. That is
+also why no rate is written into the seed file.
+
+**One unrelated bug fell out of it.** `service.ts` importing `domain/fields.ts`
+put `domain/phone.ts` in the seed script's import graph, and libphonenumber's CJS
+build fails its own metadata check on load under `tsx`, taking the process with
+it. `COUNTRIES[].dialCode` is a cached getter now, so nothing outside the browser
+touches libphonenumber at all.
+
 
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:

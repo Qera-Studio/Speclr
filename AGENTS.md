@@ -61,6 +61,11 @@ These checklists travel to every Qera project. When one's floor changes, update 
 ## Coding rules
 
 - **Server Components by default.** Add `'use client'` only when the component genuinely needs browser APIs or interactivity.
+- **[`docs/design.md`](docs/design.md) is the design law.** Read it before
+  building any new surface: colour, spacing, radius, type, icons, motion,
+  elevation, and the rules per primitive. A value it does not cover is a value
+  you are inventing, which means a new row there in the same commit. Where a
+  rule is mechanically enforced, breaking it fails `npm test`.
 - **shadcn first.** Never hand-roll a `button`/`input`/`select`/`dialog`/`table` when a shadcn primitive exists. Compose from `src/components/ui/`. Use `AlertDialog` (not `Dialog`) for destructive confirmations. Style with theme tokens (`bg-background`, `text-foreground`, `border-border`), not ad-hoc hex.
 - **The document sheets are pixel-faithful artifacts.** They reproduce the finalized designs exactly. Do not redesign them. They use Tailwind + `src/styles/print.css` (the print-specific rules Tailwind can't express: A4 sizing, `break-before: page`, `print-color-adjust`).
 - **Keep components small and focused** — one clear responsibility. Split when a file grows unwieldy.

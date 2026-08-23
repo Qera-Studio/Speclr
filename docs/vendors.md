@@ -259,6 +259,17 @@ that is about correctness rather than comfort.**
 | **Substitute / cost** | All free (MIT/ISC). Paid icon sets (**Phosphor Pro ~$39 one-off**, **Font Awesome Pro $99/year**) buy more glyphs and weights; Lucide's ~1,600 icons have not run out. |
 | **Note** | Most of speclr's motion is CSS, not Motion, including `CycleArrowIcon` and `animate-fill-flash`. Prefer that: it costs no bundle and no JS. |
 
+### 4.4 Toasts: sonner
+
+| | |
+|---|---|
+| **Today** | `sonner` 2.x, wrapped once in `ui/sonner.tsx` and mounted once in the `(app)` layout. Bottom-right, 4s, three at a time. Added 22 August 2026. |
+| **Why** | It is the toast shadcn ships against, so it is the house answer rather than a choice. The reason a toast exists here at all is narrow: one action (archiving a client) takes the row out of the list you are reading, so the confirmation has to carry the undo with it. Everything else in speclr confirms itself by changing on screen. |
+| **Industry substitute** | **react-hot-toast** or **Radix Toast** (now Base UI Toast, which we already depend on). |
+| **Cost** | All free (MIT). |
+| **Beats its two closest competitors** | vs **Base UI Toast**, which would have added no dependency at all: it is a primitive, so the stack, the timers, the swipe-to-dismiss, the pause-on-hover and the max-visible cap would all be ours to write and to keep accessible. That is the one place a dependency is worth it. vs **react-hot-toast**: comparable size, but its theming is props-per-toast rather than CSS variables, so the palette would be re-stated at every call site instead of once in the wrapper. |
+| **Note** | ~5KB gzipped and client-only. The escape hatch, if it ever matters, is Base UI Toast plus about a hundred lines. |
+
 ---
 
 ## 5. Data, forms and validation
