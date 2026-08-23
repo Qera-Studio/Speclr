@@ -324,10 +324,27 @@ that is about correctness rather than comfort.**
 | **Cost** | All free (MIT/Apache). Playwright on CI is compute only. **Paid tier: Playwright + a visual-regression service. Chromatic from $149/month, Percy from $99/month.** |
 | **Beats its two closest competitors** | Jest vs **Vitest**: Vitest is meaningfully faster and would be the choice for a new project, but the lifted domain tests are the reason this codebase exists in its current shape, and "must pass unchanged" is a hard constraint. Migrate only if the suite gets slow enough to hurt. |
 
-**The real gap here is not the runner.** `CONTEXT.md` says it in four places:
-**jsdom cannot validate print layout, pagination or clipping**, and the pay slip
-shipped a clipping bug through a green suite. **Playwright is free and closes
-exactly that gap**, and it is the highest-value unpaid upgrade on this entire list.
+**The real gap here was not the runner**, and it is now closed. See §6.1a.
+
+### 6.1a Playwright
+
+| | |
+|---|---|
+| **Why** | jsdom measures every box as zero, so it cannot see a page break, a clipped row or a page that does not fit. That is a property of the renderer, not a gap in the tests, and the pay slip shipped a clipping bug through a fully green suite because of it. Playwright measures real boxes in a real Chromium. |
+| **Industry substitute** | **Cypress** for the same job; **Chromatic / Percy** for visual regression on top of either. |
+| **Cost** | **Free** (Apache 2.0). One ~95MB Chromium download per machine. On CI it is compute only. A visual-regression service on top is **Chromatic from $149/month, Percy from $99/month**. |
+| **Beats its two closest competitors** | vs **Cypress**: Playwright drives the browser out of process, which is what makes `page.pdf()` and `emulateMedia({ media: 'print' })` available — and the print pipeline is the entire reason this dependency exists. Cypress runs inside the page and has neither. vs **a visual-regression service**: a screenshot diff would catch the clipping too, but it catches it as "these pixels changed", which is a question for a human on every legitimate design edit. Measuring the box asserts the actual rule (nothing is hidden), costs nothing, and never needs a baseline approved. |
+
+**Nine tests, three files, one dev-only route.** `e2e/paper.ts` holds the one
+measurement that matters: the worst thing `overflow: hidden` is hiding inside a
+frame. `/preview/<fixture>` renders a sheet from a fixture with no session and
+no database (it `notFound()`s in production), because the sheets are pure
+`data → markup` and reaching a real document would mean a Clerk session and
+whatever happens to be in Neon.
+
+**What it is deliberately not.** Not a second place to test behaviour: the
+interaction tests stay in Jest, where they are faster and where roles are
+already the idiom. Anything that is not a *measurement* does not belong here.
 
 ### 6.2 drizzle-kit, tsx, ts-node, dotenv
 
@@ -375,7 +392,7 @@ because they close real gaps for nothing.
 | # | Change | Cost/month | What it buys |
 |---|---|---|---|
 | 1 | **GitHub Actions CI** | £0 | The test suite actually gates a deploy. |
-| 2 | **Playwright** | £0 | The print, pagination and clipping bugs jsdom is structurally blind to. |
+| ~~2~~ | ~~**Playwright**~~ | ~~£0~~ | **Done, 23 August 2026.** See §6.1a. The print, pagination and clipping bugs jsdom is structurally blind to. |
 | 3 | **Neon Launch** | $19 | 7-day point-in-time recovery on records the law says keep for 72 months. |
 | 4 | **Sentry Team** | $26 | Knowing a Server Action failed before the operator tells you. |
 | 5 | **Vercel Pro** | $20/user | Already required: Hobby excludes commercial use. |
@@ -383,4 +400,6 @@ because they close real gaps for nothing.
 | 7 | **Google Geocoding** | ~$0 within credit | One postcode vendor instead of two, with an SLA and full coverage. |
 | 8 | **Resend** | $20 | The day speclr delivers a document rather than printing it. |
 
-**Items 1 and 2 are free and should not be waiting on a budget.**
+**Item 2 is done. Item 1 is still free and still not waiting on a budget** —
+and it is worth more now than it was, because there are two suites to run and
+only one of them is habit.

@@ -741,6 +741,21 @@ Three guards, all load-bearing:
 
 **The pay slip is not paginated.** It shares the stipend slip's fixed single A4 frame, which *clips*. Earnings and deductions print side by side (the conventional Indian form) precisely so a realistic run fits — roughly 6 earnings against 5 deductions. Beyond that a row is silently cut. If a slip ever needs a second page, flow it through the `Paginator` as the contract and letters already do. **Verify any change to this sheet in a real browser** — jsdom cannot see clipping, and this bug got through the test suite once already.
 
+**That verification has a home now: `npm run test:e2e`.** `e2e/payslip.spec.ts`
+pins both sides of the ceiling — 6 earnings against 5 deductions must fit with
+nothing hidden, and a crowded slip must still be seen to clip, because that
+limit is deliberate and the day it stops being true is the day the slip should
+have gone through the `Paginator`. The measurement is `worstClip` in
+`e2e/paper.ts`: it walks every `overflow: hidden` ancestor rather than the page
+frame alone, because the slip clips at an inner flex column a long way above
+the edge of the paper, and measuring the sheet finds nothing at all. The
+fixtures render at `/preview/<fixture>`, a route that `notFound()`s in
+production.
+
+Worth knowing when the sheet next changes: the real ceiling measured at 9
+earnings against 7 deductions, not 6 against 5. The written figure is
+conservative, which is the right direction for it to be wrong in.
+
 ### 7. Ordinal dates everywhere
 Documents show dates as **"10th June 2026"** (ordinal), never `10/06/2026`. Use the `dates` domain helpers; don't format dates ad hoc.
 

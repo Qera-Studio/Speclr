@@ -158,16 +158,23 @@ These checklists travel to every Qera project. When one's floor changes, update 
 
 ## Testing rules (mandatory)
 
-Stack: **Jest + React Testing Library** (`npm test`).
+Two halves, and the split is what each can see. **Jest + React Testing Library**
+(`npm test`) owns behaviour; **Playwright** (`npm run test:e2e`) owns geometry.
 
 - Every component and every non-trivial module has tests in a `__tests__/` dir beside it.
 - Prefer `screen.getByRole` over `getByTestId` — roles reflect real accessibility.
 - Use `userEvent.setup()` (imported statically at the top), not `fireEvent`.
 - Test **behaviour visible to users and assistive tech**, not implementation details.
 - **Domain-logic tests are lifted verbatim from the source project and must pass unchanged** — they prove the core survived the move. Do not weaken them.
-- **jsdom cannot validate print/pagination layout** — verify those in a real browser.
+- **jsdom measures every box as zero**, so it cannot see a page break, a clipped
+  row or a column that does not fit. That is not a gap in the tests; it is a
+  property of the renderer. Anything that is a *measurement* goes in `e2e/`,
+  against a fixture served by the dev-only `/preview/<fixture>` route.
+- **A Playwright test that has never been seen to fail proves nothing.** Break
+  the thing it guards, watch it go red, then put it back. The suite exists
+  because a clipping bug shipped through 1,900 green tests.
 
-**A task is not complete until:** the code is implemented, tests are written, and `npm test` passes with no failures. If tests fail, fix them before proceeding.
+**A task is not complete until:** the code is implemented, tests are written, and `npm test` passes with no failures. If tests fail, fix them before proceeding. **A task that changed a sheet, a page frame or the print pipeline is not complete until `npm run test:e2e` passes too.**
 
 ---
 
