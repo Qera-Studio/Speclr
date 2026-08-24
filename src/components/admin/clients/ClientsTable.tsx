@@ -10,11 +10,10 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Pagination, rowCountLabel, usePagedRows } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { RowActions } from '../RowActions';
-import { DateCell, TableCard } from '../Page';
+import { DateCell, SortableHead, TableCard } from '../Page';
 import { CopyCell } from '../CopyCell';
 import {
   Table,
@@ -29,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { countryName } from '@/lib/domain/countries';
 import { formatPhoneForDisplay } from '@/lib/domain/phone';
 import type { ClientRecord } from '@/lib/domain/types';
+import type { ClientSortColumn, ClientSortState } from './clientQuery';
 
 /** `circle-dot-dashed` from Lucide, minus its centre dot. */
 const DASHED_RING = [
@@ -108,20 +108,45 @@ function OnboardingRing({ done, total }: { done: number; total: number }) {
   );
 }
 
+/**
+ * The sortable columns, in the order they are drawn. The onboarding ring and
+ * the actions cell are headed by an `sr-only` span instead: a ring has no
+ * heading worth reading, and neither is a column you order the list by.
+ */
+const COLUMNS: { column: ClientSortColumn; label: string }[] = [
+  { column: 'name', label: 'Name' },
+  { column: 'email', label: 'Email' },
+  { column: 'phone', label: 'Phone' },
+  { column: 'country', label: 'Country' },
+  { column: 'added', label: 'Added' },
+];
+
 export default function ClientsTable({
   clients,
   onDelete,
   onArchive,
   archived = false,
+  sort,
+  onSortChange,
+  count,
+  pagination,
 }: {
   clients: ClientRecord[];
   onDelete: (client: ClientRecord) => void;
   onArchive?: (client: ClientRecord, archived: boolean) => void;
   /** Showing the offboarded list, which changes the empty copy and the action. */
   archived?: boolean;
+  /**
+   * Sorting is opt-in, as on the documents table: pass both and the headings
+   * become buttons, omit them and they stay plain text.
+   */
+  sort?: ClientSortState | null;
+  onSortChange?: (column: ClientSortColumn) => void;
+  /** Card footer: the row count on the left, the pager on the right. Both are
+      the caller's, because the caller is what filters and pages the list. */
+  count?: React.ReactNode;
+  pagination?: React.ReactNode;
 }) {
-  const { page, pageCount, visible, setPage, start } = usePagedRows(clients);
-
   if (clients.length === 0) {
     return (
       <Empty className="border">
@@ -139,26 +164,22 @@ export default function ClientsTable({
   }
 
   return (
-    <TableCard
-      count={rowCountLabel(clients.length, 'client', start, visible.length)}
-      pagination={
-        <Pagination
-          page={page}
-          pageCount={pageCount}
-          onPageChange={setPage}
-          label="clients"
-        />
-      }
-    >
+    <TableCard count={count} pagination={pagination}>
       <Table>
-        <TableCaption className="sr-only">Saved clients, newest first</TableCaption>
+        {/* Not "newest first" any more: the list can be sorted and filtered by
+            the page around it, and a caption that names an order the table no
+            longer has is worse than one that names none. */}
+        <TableCaption className="sr-only">Saved clients</TableCaption>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Country</TableHead>
-            <TableHead>Added</TableHead>
+            {COLUMNS.map((col) => (
+              <SortableHead
+                key={col.column}
+                {...col}
+                sort={sort}
+                onSortChange={onSortChange}
+              />
+            ))}
             {/*
               The ring names itself per row; a heading over it would be a word
               explaining a glyph that already carries a tooltip.
@@ -172,7 +193,7 @@ export default function ClientsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {visible.map((client) => {
+          {clients.map((client) => {
             // Out of *this* client's steps: an individual has six, not seven.
             const done = completedSteps(client);
             const total = onboardingStepsFor(client).length;

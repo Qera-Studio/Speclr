@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { formatDisplayDate, localDateToISO } from "@/lib/domain/dates";
 import {
   Table,
@@ -283,5 +284,103 @@ export function PageHeader({
         <div className="flex flex-wrap items-start gap-2">{children}</div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A column heading that can sort, and looks identical when it can't.
+ *
+ * Shared by the documents and clients tables, so the two lists sort with one
+ * set of rules rather than two that drift. Sorting is opt-in per table: pass
+ * `onSortChange` and the heading becomes a button, omit it and it stays plain
+ * text, which is what keeps a table renderable with no client state.
+ */
+export function SortableHead<C extends string>({
+  column,
+  label,
+  right,
+  sort,
+  onSortChange,
+}: {
+  column: C;
+  label: string;
+  /** Right-aligned, as a money column is. Reverses the arrow's side too. */
+  right?: boolean;
+  sort?: { column: C; direction: "asc" | "desc" } | null;
+  onSortChange?: (column: C) => void;
+}) {
+  const active = sort?.column === column;
+  const SortIcon = !active
+    ? ArrowUpDown
+    : sort.direction === "asc"
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <TableHead
+      className={cn(right && "text-right")}
+      // Announced only for the column actually sorted; the rest are 'none',
+      // which is what tells a screen reader they're sortable.
+      aria-sort={
+        !onSortChange
+          ? undefined
+          : active
+            ? sort.direction === "asc"
+              ? "ascending"
+              : "descending"
+            : "none"
+      }
+    >
+      {/*
+        Both branches lay out identically: label, gap, then a 3.5 arrow slot
+        that is merely `invisible` when sorting is off. Dropping the arrow
+        instead would change the header's width, and with `table-auto` that
+        re-measures every column: toggling the control shifted the whole table
+        sideways.
+
+        They share `text-muted-foreground` for the same reason: `TableHead`
+        defaults to `text-foreground`, so leaving the unsortable branch to that
+        default darkened every heading the moment sorting was switched off.
+      */}
+      {onSortChange ? (
+        <button
+          type="button"
+          onClick={() => onSortChange(column)}
+          className={cn(
+            "group/sort inline-flex items-center gap-1 transition-colors hover:text-foreground",
+            right && "flex-row-reverse",
+            !active && "text-muted-foreground",
+          )}
+        >
+          {label}
+          {/*
+            The arrow is permanent on the column actually sorted and appears on
+            hover or keyboard focus on the others. A standing arrow on every
+            header is that many invitations of equal weight, and none of them is
+            the answer to "how is this sorted". `opacity`, not conditional
+            rendering, so the slot keeps its width and the columns do not
+            re-measure.
+          */}
+          <SortIcon
+            className={cn(
+              "size-3.5 transition-opacity",
+              !active &&
+                "opacity-0 group-hover/sort:opacity-100 group-focus-visible/sort:opacity-100",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      ) : (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 text-muted-foreground",
+            right && "flex-row-reverse",
+          )}
+        >
+          {label}
+          <SortIcon className="invisible size-3.5" aria-hidden="true" />
+        </span>
+      )}
+    </TableHead>
   );
 }

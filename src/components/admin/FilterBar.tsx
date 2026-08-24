@@ -1,16 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import {
-  Calendar,
-  CircleDot,
-  FileText,
-  FilterX,
-  IndianRupee,
-  ListFilter,
-  User,
-  X,
-} from 'lucide-react';
+import { FilterX, ListFilter, X, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -27,16 +18,16 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { groupRupeeInput, normalizeRupeeInput } from '@/lib/domain/money';
-import {
-  FILTER_FIELDS,
-  FILTER_FIELD_LIST,
-  type FilterField,
-  type FilterRow,
-} from '@/lib/domain/documentQuery';
+import type { FieldSpec, FilterOption, FilterRow } from '@/lib/domain/filters';
 
 /**
  * The filter builder: one `field / operator / value` pill per condition, added
  * on demand, all inline in a single toolbar row.
+ *
+ * Generic over the field names, because the documents list and the clients list
+ * filter different things in exactly the same way. What a field *means* stays
+ * with its own list (`documentQuery`, `clients/clientQuery`); this knows only
+ * the grammar in `domain/filters.ts`.
  *
  * Pills read as a sentence ("Type is Invoice"), and conditions AND together.
  * **One condition per field** — a field already in play drops out of the
@@ -49,28 +40,19 @@ import {
  * add instead — one less menu, and no half-valid rows.
  */
 
-const FIELD_ICONS: Record<FilterField, typeof FileText> = {
-  type: FileText,
-  party: User,
-  status: CircleDot,
-  date: Calendar,
-  total: IndianRupee,
-};
-
-export interface FilterOption {
-  value: string;
-  label: string;
-}
-
-export interface DocumentFiltersProps {
-  rows: FilterRow[];
-  onChange: (rows: FilterRow[]) => void;
-  /** Choices for the multi-select fields, built from the documents on screen. */
-  options: Record<'type' | 'party' | 'status', FilterOption[]>;
+export interface FilterBarProps<F extends string> {
+  rows: FilterRow<F>[];
+  onChange: (rows: FilterRow<F>[]) => void;
+  /** This list's fields, in the order Add filter offers them. */
+  fields: Record<F, FieldSpec>;
+  /** One per field. Lucide lives here rather than in the domain module. */
+  icons: Record<F, LucideIcon>;
+  /** Choices for the multi-select fields, built from what is on screen. */
+  options: Partial<Record<F, FilterOption[]>>;
   /** Fields that make no sense for this list (party on nothing, total on letters). */
-  hiddenFields?: FilterField[];
-  /** Overrides the party field's label: "Client" on client docs, "Employee" on HR. */
-  partyLabel?: string;
+  hiddenFields?: F[];
+  /** Per-field label override: "Client" on client docs, "Employee" on HR. */
+  labels?: Partial<Record<F, string>>;
   /**
    * Rendered at the left end of the bar, before Add filter. A slot rather than
    * a named prop so this component stays a filter builder — the sorting toggle
@@ -149,41 +131,43 @@ function AmountInput({
   );
 }
 
-export default function DocumentFilters({
+export default function FilterBar<F extends string>({
   rows,
   onChange,
+  fields,
+  icons,
   options,
   hiddenFields = [],
-  partyLabel,
+  labels,
   leading,
   trailing,
-}: DocumentFiltersProps) {
-  const labelOf = (field: FilterField) =>
-    field === 'party' ? (partyLabel ?? FILTER_FIELDS.party.label) : FILTER_FIELDS[field].label;
+}: FilterBarProps<F>) {
+  const fieldList = Object.keys(fields) as F[];
+  const labelOf = (field: F) => labels?.[field] ?? fields[field].label;
 
   // One condition per field. A second "Status is…" row could only ever narrow
   // to nothing (the rows AND), and the date range that used to need two rows
   // now has its own `between` operator.
-  const available = FILTER_FIELD_LIST.filter(
+  const available = fieldList.filter(
     (f) => !hiddenFields.includes(f) && !rows.some((row) => row.field === f),
   );
 
   // Prepended, so the newest condition lands next to the button you just used
   // and older ones move away to the right. `matchesFilters` ANDs the rows, so
   // their order is presentation only.
-  const addRow = (field: FilterField) =>
+  const addRow = (field: F) =>
     onChange([
       // The field itself is the id: one condition per field, so it's unique.
-      { id: field, field, operator: FILTER_FIELDS[field].operators[0].value, value: [] },
+      { id: field, field, operator: fields[field].operators[0].value, value: [] },
       ...rows,
     ]);
 
-  const patch = (id: string, next: Partial<FilterRow>) =>
+  const patch = (id: string, next: Partial<FilterRow<F>>) =>
     onChange(rows.map((row) => (row.id === id ? { ...row, ...next } : row)));
 
   const removeRow = (id: string) => onChange(rows.filter((row) => row.id !== id));
 
-  const toggleValue = (row: FilterRow, value: string) =>
+  const toggleValue = (row: FilterRow<F>, value: string) =>
     patch(row.id, {
       value: row.value.includes(value)
         ? row.value.filter((v) => v !== value)
@@ -191,25 +175,25 @@ export default function DocumentFilters({
     });
 
   /** Replaces one end of a date range, leaving the other alone. */
-  const setDateAt = (row: FilterRow, index: number, value: string) => {
+  const setDateAt = (row: FilterRow<F>, index: number, value: string) => {
     const next = [row.value[0] ?? '', row.value[1] ?? ''];
     next[index] = value;
     patch(row.id, { value: next });
   };
 
   /** What the value segment reads when closed. */
-  const valueSummary = (row: FilterRow): string => {
-    const spec = FILTER_FIELDS[row.field];
+  const valueSummary = (row: FilterRow<F>): string => {
+    const spec = fields[row.field];
     if (spec.kind === 'amount') return row.value[0] ? `₹${row.value[0]}` : 'Any amount';
     if (row.value.length === 0) return 'Select…';
     if (row.value.length === 1) {
-      const choices = options[row.field as 'type' | 'party' | 'status'] ?? [];
+      const choices = options[row.field] ?? [];
       return choices.find((o) => o.value === row.value[0])?.label ?? row.value[0];
     }
     return `${row.value.length} selected`;
   };
 
-  const datePicker = (row: FilterRow, index: number, label: string) => (
+  const datePicker = (row: FilterRow<F>, index: number, label: string) => (
     <DatePicker
       value={row.value[index] ?? ''}
       onValueChange={(value) => setDateAt(row, index, value)}
@@ -242,9 +226,9 @@ export default function DocumentFilters({
               </Button>
             }
           />
-          <DropdownMenuContent align="start" className="min-w-max">
+          <DropdownMenuContent align="start">
             {available.map((field) => {
-              const Icon = FIELD_ICONS[field];
+              const Icon: LucideIcon = icons[field];
               return (
                 <DropdownMenuItem
                   key={field}
@@ -297,8 +281,8 @@ export default function DocumentFilters({
         )}
       >
         {rows.map((row) => {
-          const spec = FILTER_FIELDS[row.field];
-          const Icon = FIELD_ICONS[row.field];
+          const spec = fields[row.field];
+          const Icon: LucideIcon = icons[row.field];
           const operator = spec.operators.find((o) => o.value === row.operator) ?? spec.operators[0];
           const name = labelOf(row.field);
 
@@ -328,7 +312,7 @@ export default function DocumentFilters({
                       </Button>
                     }
                   />
-                  <DropdownMenuContent align="start" className="min-w-max">
+                  <DropdownMenuContent align="start">
                     <DropdownMenuRadioGroup
                       value={row.operator}
                       onValueChange={(value) => patch(row.id, { operator: String(value) })}
@@ -365,8 +349,8 @@ export default function DocumentFilters({
                       </Button>
                     }
                   />
-                  <DropdownMenuContent align="start" className="max-h-72 min-w-max overflow-y-auto">
-                    {(options[row.field as 'type' | 'party' | 'status'] ?? []).map((option) => (
+                  <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+                    {(options[row.field] ?? []).map((option) => (
                       <DropdownMenuCheckboxItem
                         key={option.value}
                         checked={row.value.includes(option.value)}

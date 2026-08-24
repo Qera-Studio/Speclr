@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Eye,
-  EyeOff,
   FilterX,
   LayoutGrid,
   Rows3,
+  Calendar,
+  CircleDot,
+  FileText,
+  IndianRupee,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,20 +27,18 @@ import {
   rowCountLabel,
   usePagedRows,
 } from "@/components/ui/pagination";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import DocumentFilters, { type FilterOption } from "./DocumentFilters";
+import SortToggle, { useShowSort } from "./SortToggle";
+import FilterBar from "./FilterBar";
 import DocumentsCards from "./DocumentsCards";
 import DocumentsTable from "./DocumentsTable";
 import {
+  FILTER_FIELDS,
   hasTotal,
   matchesFilters,
   sortDocuments,
   type FilterField,
+  type FilterOption,
   type FilterRow,
   type SortColumn,
   type SortState,
@@ -59,17 +60,22 @@ import type { AdminDocument } from "@/lib/domain/types";
  * — conflating them would make an over-narrow filter look like data loss.
  */
 /**
- * Where the "show sorting" preference is remembered. Off by default: sorting is
- * an occasional need, and an arrow on all six headers competes with the column
- * names for anyone who never sorts. Whoever does sort turns it on once.
- */
-const SHOW_SORT_KEY = "speclr:show-sort";
-
-/**
  * Where the table-or-cards choice is remembered. Table by default: it is the
  * denser of the two and the one this tool was built around.
  */
 const VIEW_KEY = "speclr:doc-view";
+
+/**
+ * An icon per filter field. Here rather than beside `FILTER_FIELDS`, because
+ * that table is domain code and Lucide is UI.
+ */
+const FIELD_ICONS: Record<FilterField, LucideIcon> = {
+  type: FileText,
+  party: User,
+  status: CircleDot,
+  date: Calendar,
+  total: IndianRupee,
+};
 
 type View = "table" | "cards";
 
@@ -99,15 +105,13 @@ export default function DocumentsBrowser({
 }) {
   const [rows, setRows] = useState<FilterRow[]>([]);
   const [sort, setSort] = useState<SortState | null>(null);
-  const [showSort, setShowSort] = useState(false);
+  const [showSort, toggleShowSort] = useShowSort();
   const [view, setView] = useState<View>("table");
 
   // Read on mount, not in a lazy initializer: this component server-renders,
   // and reading localStorage during the first render would mismatch hydration.
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (localStorage.getItem(SHOW_SORT_KEY) === "1") setShowSort(true);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (localStorage.getItem(VIEW_KEY) === "cards") setView("cards");
     } catch {
@@ -182,57 +186,6 @@ export default function DocumentsBrowser({
         </button>
       ))}
     </div>
-  );
-
-  // Hiding the controls keeps whatever order they applied. The eye shows and
-  // hides the *controls*, not the sort — clearing the order on hide meant the
-  // only way to read a list sorted by total was to leave the arrows on all six
-  // headers. Turning the eye back on reveals the current sort, and a third
-  // click on that column clears it.
-  const toggleShowSort = () => {
-    const next = !showSort;
-    setShowSort(next);
-    try {
-      localStorage.setItem(SHOW_SORT_KEY, next ? "1" : "0");
-    } catch {
-      // As above — the toggle still works, it just won't survive a reload.
-    }
-  };
-
-  // An eye, open or shut: this shows and hides a control, it does not sort
-  // anything itself — an ArrowUpDown here would read as "sort by this".
-  //
-  // The word carries the meaning and the eye carries the state, so the button's
-  // accessible name is just "Sort" and `aria-pressed` says which way it is set.
-  // An aria-label restating the state would fight the visible text (WCAG 2.5.3,
-  // Label in Name) and leave voice control with nothing to say.
-  const sortToggle = (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={toggleShowSort}
-            aria-pressed={showSort}
-            className={cn(
-              "shrink-0 whitespace-nowrap transition-colors",
-              showSort ? "text-foreground" : "text-muted-foreground",
-            )}
-          />
-        }
-      >
-        Sort
-        {showSort ? (
-          <Eye className="size-3.5" aria-hidden="true" />
-        ) : (
-          <EyeOff className="size-3.5" aria-hidden="true" />
-        )}
-      </TooltipTrigger>
-      <TooltipContent>
-        {showSort ? "Hide sorting" : "Show sorting"}
-      </TooltipContent>
-    </Tooltip>
   );
 
   // Choices come from what is actually on screen — a filter value that can only
@@ -315,15 +268,21 @@ export default function DocumentsBrowser({
 
   return (
     <div className="flex flex-col gap-4">
-      <DocumentFilters
+      <FilterBar
         rows={rows}
         onChange={onFiltersChange}
+        fields={FILTER_FIELDS}
+        icons={FIELD_ICONS}
         options={options}
         hiddenFields={hiddenFields}
-        partyLabel={partyLabel}
+        labels={{ party: partyLabel }}
         // The sort control's only UI is the column headers, which cards don't
         // have — offering it there would toggle nothing.
-        leading={view === "table" ? sortToggle : null}
+        leading={
+          view === "table" ? (
+            <SortToggle showSort={showSort} onToggle={toggleShowSort} />
+          ) : null
+        }
         // Right-hand end: this picks how the whole list is drawn, so it sits
         // apart from the controls that decide what is in it.
         trailing={viewToggle}

@@ -174,4 +174,64 @@ describe('ClientManager', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Nope.');
     expect(toast).not.toHaveBeenCalled();
   });
+  /**
+   * The filter bar is the documents list's, generic over its fields. Its
+   * choices come from what is on screen, so a country nobody is in is never
+   * offered.
+   */
+  it('filters the list by country', async () => {
+    const user = userEvent.setup();
+    const abroad = [
+      clients[0],
+      { ...clients[1], addressParts: { country: 'GB' } },
+    ] as ClientRecord[];
+    render(<ClientManager clients={abroad} />);
+
+    await user.click(screen.getByRole('button', { name: /add filter/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /country/i }));
+    await user.click(screen.getByRole('button', { name: /country value/i }));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: 'United Kingdom' }));
+
+    expect(screen.getByText('Beta Ltd')).toBeInTheDocument();
+    expect(screen.queryByText('Acme Co.')).not.toBeInTheDocument();
+  });
+
+  /** Over-narrow filters must not read as data loss, so they say so. */
+  it('says when the filters hide everything', async () => {
+    const user = userEvent.setup();
+    render(<ClientManager clients={clients} />);
+
+    await user.click(screen.getByRole('button', { name: /add filter/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /onboarding/i }));
+    await user.click(screen.getByRole('button', { name: /onboarding value/i }));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: /complete/i }));
+
+    expect(screen.getByText(/no clients match these filters/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear filters/i }));
+    expect(screen.getByText('Acme Co.')).toBeInTheDocument();
+  });
+
+  /**
+   * Sorting is behind the eye, as it is on the dashboard: the headings are
+   * plain text until it is on, and then they sort.
+   */
+  it('sorts by a column once sorting is shown', async () => {
+    const user = userEvent.setup();
+    render(<ClientManager clients={clients} />);
+
+    expect(screen.queryByRole('button', { name: 'Name' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^sort$/i }));
+    await user.click(screen.getByRole('button', { name: 'Name' }));
+
+    const names = screen.getAllByRole('row').slice(1).map((r) => r.textContent);
+    expect(names[0]).toContain('Acme Co.');
+
+    // asc → desc → unsorted, so a column can always be put back.
+    await user.click(screen.getByRole('button', { name: 'Name' }));
+    expect(
+      screen.getAllByRole('row').slice(1).map((r) => r.textContent)[0],
+    ).toContain('Beta Ltd');
+  });
 });

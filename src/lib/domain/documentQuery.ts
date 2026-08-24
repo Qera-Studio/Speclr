@@ -1,6 +1,14 @@
+import {
+  isEmptyRow,
+  matchesDate,
+  matchesMulti,
+  sortByKey,
+  type FilterRow as FilterRowOf,
+} from './filters';
 import { computeTotals, rupeesToPaise, slipTotals } from './money';
 import { partyName } from './party';
 import { DOC_TYPES } from './registry';
+import type { FieldSpec } from './filters';
 import type { AdminDocument } from './types';
 
 /**
@@ -17,27 +25,17 @@ import type { AdminDocument } from './types';
 
 export type FilterField = 'type' | 'party' | 'status' | 'date' | 'total';
 
-export interface FilterRow {
-  /** Stable key for React and for removal; rows of the same field coexist. */
-  id: string;
-  field: FilterField;
-  operator: string;
-  /** Always a list, even for single-valued fields — one shape to render. */
-  value: string[];
-}
+/** Re-exported so callers of this list's filters need one import, not two. */
+export type { FilterOption } from './filters';
+
+/** A filter row belonging to *this* list — the generic one, pinned to its fields. */
+export type FilterRow = FilterRowOf<FilterField>;
 
 export type SortColumn = 'number' | 'type' | 'party' | 'date' | 'total' | 'status';
 
 export interface SortState {
   column: SortColumn;
   direction: 'asc' | 'desc';
-}
-
-interface FieldSpec {
-  label: string;
-  /** `multi` picks from a list; `date` and `amount` take one typed value. */
-  kind: 'multi' | 'date' | 'amount';
-  operators: { value: string; label: string }[];
 }
 
 export const FILTER_FIELDS: Record<FilterField, FieldSpec> = {
@@ -98,39 +96,18 @@ export function totalPaiseOf(doc: AdminDocument): number | null {
   return computeTotals(doc.lineItems, doc.gstRatePercent).totalPaise;
 }
 
-/** A new row has no value yet; until it does it must not hide anything. */
-function isEmpty(row: FilterRow): boolean {
-  return row.value.length === 0 || row.value.every((v) => v.trim() === '');
-}
-
 function matchesRow(doc: AdminDocument, row: FilterRow): boolean {
-  if (isEmpty(row)) return true;
+  if (isEmptyRow(row)) return true;
 
   switch (row.field) {
-    case 'type': {
-      const hit = row.value.includes(doc.type);
-      return row.operator === 'isNot' ? !hit : hit;
-    }
-    case 'party': {
-      const hit = row.value.includes(partyName(doc));
-      return row.operator === 'isNot' ? !hit : hit;
-    }
+    case 'type':
+      return matchesMulti(row, doc.type);
+    case 'party':
+      return matchesMulti(row, partyName(doc));
     case 'status':
       return row.value.includes(doc.status);
-    case 'date': {
-      // Both sides are 'YYYY-MM-DD', so a string compare is a date compare.
-      if (row.operator === 'between') {
-        // Inclusive at both ends, and one-sided while only half the range is
-        // filled in — it takes two clicks to pick a range, and the list must
-        // not blank out between them.
-        const [from = '', to = ''] = row.value;
-        if (from && doc.issueDate < from) return false;
-        if (to && doc.issueDate > to) return false;
-        return true;
-      }
-      const when = row.value[0];
-      return row.operator === 'onOrBefore' ? doc.issueDate <= when : doc.issueDate >= when;
-    }
+    case 'date':
+      return matchesDate(row, doc.issueDate);
     case 'total': {
       // Rupees → integer paise. A half-typed entry parses to null, which reads
       // as "no constraint" so the list doesn't thrash while you type.
@@ -167,28 +144,11 @@ function sortKey(doc: AdminDocument, column: SortColumn): string | number | null
 }
 
 /**
- * A stable sort — `Array.prototype.sort` is required to be stable, so equal
- * rows keep the server's newest-first order. `null` (an unnumbered draft, a
- * contract with no total) always sinks to the bottom rather than sorting as an
- * empty string, which would bury it under ascending and float it under
- * descending for no reason a reader could explain.
+ * Newest-first order is the server's, so an unsorted list is left alone.
+ * Everything else is `sortByKey`, which is where the null and stability rules
+ * are written down.
  */
 export function sortDocuments(docs: AdminDocument[], sort: SortState | null): AdminDocument[] {
   if (!sort) return docs;
-
-  const factor = sort.direction === 'asc' ? 1 : -1;
-
-  return [...docs].sort((a, b) => {
-    const left = sortKey(a, sort.column);
-    const right = sortKey(b, sort.column);
-
-    if (left === null && right === null) return 0;
-    if (left === null) return 1;
-    if (right === null) return -1;
-
-    if (typeof left === 'number' && typeof right === 'number') {
-      return (left - right) * factor;
-    }
-    return String(left).localeCompare(String(right)) * factor;
-  });
+  return sortByKey(docs, (doc) => sortKey(doc, sort.column), sort.direction);
 }
