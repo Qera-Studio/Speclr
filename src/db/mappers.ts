@@ -5,14 +5,17 @@ import { isHrDocType } from '@/lib/domain/registry';
 import type {
   Actor,
   AdminDocument,
+  ClientRecord,
   ClientSnapshot,
   ContractDocument,
+  CreditNoteDocument,
   EmployeeSnapshot,
   InvoiceDocument,
   LetterDocument,
   ReceiptDocument,
   SlipDocument,
 } from '@/lib/domain/types';
+import type { clients } from './schema';
 import type { DocumentData } from './schema';
 
 /**
@@ -65,6 +68,85 @@ function actorFrom(userId: string | null, email: string | null): Actor | undefin
   return userId && email ? { userId, email } : undefined;
 }
 
+// ─── Clients ──────────────────────────────────────────────────────────────────
+
+/** The `clients` row shape, as Drizzle selects it. */
+export type ClientRow = typeof clients.$inferSelect;
+
+/**
+ * The client's GSTIN, from whichever of the two places holds one.
+ *
+ * `tax.gstin` is where onboarding writes and validates it; the top-level column
+ * is what `ClientSnapshot`, `placeOfSupplyOf` and every sheet read, and what
+ * queries can reach. Nothing reconciled them, so a client onboarded through the
+ * Tax step read back as *unregistered*: their invoice printed a PAN where Rule
+ * 46(e) wants a GSTIN, and place of supply fell back to deriving from the
+ * address instead of the registration.
+ *
+ * Resolving it here rather than in the readers fixes every existing row on read,
+ * which is why this needed no migration. The tax group wins because it is the
+ * validated half; the column tail catches rows written before it existed.
+ */
+function gstinOf(client: Pick<ClientRecord, 'tax' | 'gstin'>): string | undefined {
+  return client.tax?.gstin || client.gstin || undefined;
+}
+
+/** Split a `ClientRecord` into its row. Values are explicitly null, never omitted. */
+export function clientToRow(client: ClientRecord) {
+  return {
+    id: client.id,
+    name: client.name,
+    companyName: client.companyName ?? null,
+    address: client.address,
+    // Explicitly null rather than omitted: this same object is the
+    // `onConflictDoUpdate` set, so leaving the key out would keep stale parts
+    // on the row after an edit that cleared them.
+    addressParts: client.addressParts ?? null,
+    billingAddressParts: client.billingAddressParts ?? null,
+    email: client.email,
+    phone: client.phone,
+    gstin: gstinOf(client) ?? null,
+    // Same rule as `addressParts` above, and it matters more here: clearing a
+    // whole section must null the column, not leave the previous section's JSON
+    // behind for a sheet or a derivation to read.
+    entityType: client.entityType ?? null,
+    tax: client.tax ?? null,
+    contacts: client.contacts ?? null,
+    commercial: client.commercial ?? null,
+    attachments: client.attachments ?? null,
+    access: client.access ?? null,
+    archived: client.archived ?? false,
+    createdAt: new Date(client.createdAt),
+    updatedAt: new Date(client.updatedAt),
+  };
+}
+
+/** Rebuild a `ClientRecord` from its row. */
+export function clientFromRow(r: ClientRow): ClientRecord {
+  return {
+    id: r.id,
+    name: r.name,
+    companyName: r.companyName ?? undefined,
+    address: r.address,
+    addressParts: r.addressParts ?? undefined,
+    billingAddressParts: r.billingAddressParts ?? undefined,
+    email: r.email,
+    phone: r.phone,
+    gstin: gstinOf({ tax: r.tax ?? undefined, gstin: r.gstin ?? undefined }),
+    entityType: r.entityType ?? undefined,
+    tax: r.tax ?? undefined,
+    contacts: r.contacts ?? undefined,
+    commercial: r.commercial ?? undefined,
+    attachments: r.attachments ?? undefined,
+    access: r.access ?? undefined,
+    archived: r.archived,
+    createdAt: r.createdAt.getTime(),
+    updatedAt: r.updatedAt.getTime(),
+  };
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
 /** Value written for a document's insert/update (id + timestamps handled by the store). */
 export type DocumentInsert = Omit<DocumentRow, 'createdAt' | 'updatedAt'> & {
   createdAt: Date;
@@ -85,6 +167,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
     gstLabel: doc.gstLabel,
     notes: doc.notes,
     placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason,
+    gstOverrideReason: doc.gstOverrideReason,
     terms: doc.terms,
     studioSnapshot: doc.studioSnapshot,
     content: doc.content,
@@ -104,6 +187,14 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
       data.payment = doc.payment;
+      break;
+    case 'CRN':
+      clientId = doc.clientId;
+      snapshot = doc.clientSnapshot ?? null;
+      data.againstInvoiceNumber = doc.against.invoiceNumber;
+      data.againstInvoiceDate = doc.against.invoiceDate;
+      data.againstInvoiceId = doc.against.invoiceId;
+      data.creditReason = doc.reason;
       break;
     case 'CON':
       clientId = doc.clientId;
@@ -178,6 +269,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
     placeOfSupplyStateCode: row.placeOfSupplyStateCode ?? undefined,
     gstLabel: row.data.gstLabel,
     placeOfSupplyOverrideReason: row.data.placeOfSupplyOverrideReason,
+    gstOverrideReason: row.data.gstOverrideReason,
     notes: row.data.notes,
     terms: row.data.terms,
     studioSnapshot: row.data.studioSnapshot,
@@ -238,6 +330,18 @@ export function fromRow(row: DocumentRow): AdminDocument {
       type: 'REC',
       payment: row.data.payment as ReceiptDocument['payment'],
     } satisfies ReceiptDocument;
+  }
+  if (row.type === 'CRN') {
+    return {
+      ...clientBase,
+      type: 'CRN',
+      against: {
+        invoiceNumber: row.data.againstInvoiceNumber,
+        invoiceDate: row.data.againstInvoiceDate,
+        invoiceId: row.data.againstInvoiceId,
+      },
+      reason: row.data.creditReason,
+    } satisfies CreditNoteDocument;
   }
   return {
     ...clientBase,

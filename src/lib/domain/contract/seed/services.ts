@@ -54,7 +54,7 @@
  * different matrices. Both are their own features; neither is service data.
  */
 
-import type { ContractService } from '../service';
+import type { ContractService } from '../../service';
 
 export const SERVICES: ContractService[] = [
   {

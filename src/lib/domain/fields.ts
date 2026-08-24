@@ -227,6 +227,73 @@ export function upiSchema(max = 120, { required }: FieldOptions = {}) {
   });
 }
 
+/**
+ * A BIC, which everybody calls a SWIFT code: ISO 9362.
+ *
+ * Four letters for the institution, two for the country, two alphanumerics for
+ * the location, and an optional three-character branch. Eight or eleven
+ * characters, never nine or ten, which is the mistake a reader makes when they
+ * drop 'XXX' from an eleven-character code and keep one character of it.
+ *
+ * Structure only. There is no offline way to know a well-formed BIC is a bank
+ * that exists, and this file does not pretend otherwise (the same honesty as
+ * `panHolderTypeError`).
+ */
+const SWIFT_RE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+
+export const SWIFT_MAX = 11;
+
+export function swiftSchema({ required }: FieldOptions = {}) {
+  return identifier({
+    max: SWIFT_MAX,
+    error: (value) =>
+      SWIFT_RE.test(value.toUpperCase())
+        ? null
+        : 'Expected a SWIFT/BIC of 8 or 11 characters, like KKBKINBB.',
+    required,
+  });
+}
+
+export const IBAN_MAX = 34;
+
+/**
+ * An IBAN, checked on its mod-97 remainder: ISO 13616 / ISO 7064.
+ *
+ * The same class of check as the GSTIN's mod-36 and UK VAT's mod-97, and worth
+ * having for the same reason: this is where a client's money is being sent, and
+ * a transposed pair of characters is the ordinary failure. Length varies by
+ * country (15 to 34) and the country table is not duplicated here — the check
+ * digits catch a transposition regardless.
+ *
+ * The algorithm: move the first four characters to the end, replace each letter
+ * with its position in the alphabet plus 9, and the resulting number mod 97
+ * must be 1. Computed digit by digit because the number exceeds `Number`.
+ */
+function ibanMod97(value: string): number {
+  const rearranged = value.slice(4) + value.slice(0, 4);
+  let remainder = 0;
+  for (const char of rearranged) {
+    const code = char.charCodeAt(0);
+    const part = code >= 65 && code <= 90 ? String(code - 55) : char;
+    for (const digit of part) remainder = (remainder * 10 + Number(digit)) % 97;
+  }
+  return remainder;
+}
+
+const IBAN_RE = /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/;
+
+export function ibanSchema({ required }: FieldOptions = {}) {
+  return identifier({
+    max: IBAN_MAX,
+    error: (value) => {
+      const upper = value.toUpperCase();
+      if (!IBAN_RE.test(upper)) return 'Expected an IBAN like GB29NWBK60161331926819.';
+      return ibanMod97(upper) === 1 ? null : 'This IBAN’s check digits do not match.';
+    },
+    required,
+  });
+}
+
 // ─── Phone ────────────────────────────────────────────────────────────────────
 
 /** E.164 caps at 15 digits; the cap is loose so a pasted value still reaches

@@ -15,7 +15,7 @@ import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
 import {
   rateUnitOf,
   type ContractService,
-} from "@/lib/domain/contract/service";
+} from "@/lib/domain/service";
 import { formatINR } from "@/lib/domain/money";
 import { NIL } from "@/lib/utils";
 import { PageHeader } from "@/components/admin/Page";

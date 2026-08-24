@@ -18,13 +18,13 @@
  * Client-safe: pure, no framework imports, no database.
  */
 
-import { gstStateCodeByName } from './gstStates';
-import { gstinStateCode, GSTIN_RE } from './taxIds/india';
+import { gstStateCodeByName } from "./gstStates";
+import { gstinStateCode, GSTIN_RE } from "./taxIds/india";
 
 /** Place of supply for an export of services — the recipient is outside India. */
-export const PLACE_OF_SUPPLY_EXPORT = '96';
+export const PLACE_OF_SUPPLY_EXPORT = "96";
 
-export type PlaceOfSupplySource = 'gstin' | 'address' | 'export' | 'unknown';
+export type PlaceOfSupplySource = "gstin" | "address" | "export" | "unknown";
 
 export interface DerivedPlaceOfSupply {
   /** The 2-digit code, or null when nothing on the record establishes one. */
@@ -48,14 +48,17 @@ export interface PlaceOfSupplyInput {
  * typed; the address is the fallback for an unregistered client; and a
  * recipient outside India is an export, which has no Indian state at all.
  */
-export function placeOfSupplyOf(client: PlaceOfSupplyInput): DerivedPlaceOfSupply {
-  const country = client.addressParts?.country?.trim().toUpperCase() || 'IN';
+export function placeOfSupplyOf(
+  client: PlaceOfSupplyInput,
+): DerivedPlaceOfSupply {
+  const country = client.addressParts?.country?.trim().toUpperCase() || "IN";
 
-  if (country !== 'IN') {
+  if (country !== "IN") {
     return {
       code: PLACE_OF_SUPPLY_EXPORT,
-      source: 'export',
-      reason: 'The recipient is outside India, so this is an export of services.',
+      source: "export",
+      reason:
+        "The recipient is outside India, so this is an export of services.",
     };
   }
 
@@ -63,8 +66,8 @@ export function placeOfSupplyOf(client: PlaceOfSupplyInput): DerivedPlaceOfSuppl
   if (gstin && GSTIN_RE.test(gstin)) {
     return {
       code: gstinStateCode(gstin),
-      source: 'gstin',
-      reason: 'Taken from the first two digits of the client’s GSTIN.',
+      source: "gstin",
+      reason: "Taken from the first two digits of the client’s GSTIN.",
     };
   }
 
@@ -72,15 +75,17 @@ export function placeOfSupplyOf(client: PlaceOfSupplyInput): DerivedPlaceOfSuppl
   if (fromAddress) {
     return {
       code: fromAddress,
-      source: 'address',
-      reason: 'The client is unregistered, so this comes from the state on their address.',
+      source: "address",
+      reason:
+        "The client is unregistered, so this comes from the state on their address.",
     };
   }
 
   return {
     code: null,
-    source: 'unknown',
-    reason: 'This client has neither a GSTIN nor a recognised state on their address.',
+    source: "unknown",
+    reason:
+      "This client has neither a GSTIN nor a recognised state on their address.",
   };
 }
 
@@ -92,7 +97,10 @@ export function placeOfSupplyOf(client: PlaceOfSupplyInput): DerivedPlaceOfSuppl
  * the IGST branch rather than to an error. That is the wrong default to build
  * more on: an unknown place of supply is unknown, not inter-state.
  */
-export function isIntraState(placeCode: string | null | undefined, studioStateCode: string): boolean {
+export function isIntraState(
+  placeCode: string | null | undefined,
+  studioStateCode: string,
+): boolean {
   return Boolean(placeCode) && placeCode === studioStateCode;
 }
 
@@ -106,16 +114,53 @@ export function isIntraState(placeCode: string | null | undefined, studioStateCo
  * for exactly this, so this is a default for that field and nothing more; no
  * sheet learns a new concept.
  */
+/**
+ * The endorsements CGST Rule 46's third proviso prescribes, **verbatim and in
+ * capitals**, on an invoice for a zero-rated supply.
+ *
+ * The rule does not ask for a description of the position, it asks for these
+ * words. `zeroRatingLabel` states what the treatment *is*, in a sentence a
+ * reader can follow, and that is the right thing in the totals column; this is
+ * the statutory endorsement, and it is what a refund claim under IGST s.16(3)
+ * is checked against. Both print, because they are two different jobs.
+ *
+ * Qera exports under a Letter of Undertaking, so it is always the
+ * without-payment form. The on-payment variant is not written down here: it
+ * would be a sentence nothing in the app can currently produce, and a legal
+ * string nobody selects is a legal string nobody maintains.
+ */
+export const EXPORT_ENDORSEMENT =
+  "SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX";
+
+/** The same proviso's wording for a supply to an SEZ unit or developer. */
+export const SEZ_ENDORSEMENT =
+  "SUPPLY MEANT FOR SUPPLY TO SEZ UNIT OR SEZ DEVELOPER FOR AUTHORISED OPERATIONS UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX";
+
+/**
+ * The endorsement this client's zero-rated supply carries, or null when the
+ * supply is not zero-rated. Same shape and same source as `zeroRatingLabel`,
+ * deliberately: the two must never disagree about which case this is.
+ */
+export function zeroRatingEndorsement(client: {
+  addressParts?: { country?: string };
+  sez?: boolean;
+}): string | null {
+  const country = client.addressParts?.country?.trim().toUpperCase() || "IN";
+  if (country !== "IN") return EXPORT_ENDORSEMENT;
+  if (client.sez) return SEZ_ENDORSEMENT;
+  return null;
+}
+
 export function zeroRatingLabel(client: {
   addressParts?: { country?: string };
   sez?: boolean;
 }): string | null {
-  const country = client.addressParts?.country?.trim().toUpperCase() || 'IN';
-  if (country !== 'IN') {
-    return 'Export of services under LUT — zero rated, IGST not charged (IGST Act s.16).';
+  const country = client.addressParts?.country?.trim().toUpperCase() || "IN";
+  if (country !== "IN") {
+    return "Export of services under LUT, IGST not charged (IGST Act s.16).";
   }
   if (client.sez) {
-    return 'Supply to an SEZ unit under LUT — zero rated, IGST not charged (IGST Act s.16).';
+    return "Supply to an SEZ unit under LUT, zero rated, IGST not charged (IGST Act s.16).";
   }
   return null;
 }

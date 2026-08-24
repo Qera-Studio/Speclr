@@ -17,7 +17,7 @@ import { BlankSection } from '@/components/contract/BlankFields';
 import { blanksOf, isUnfilled, type BlankValues } from '@/lib/domain/contract/blanks';
 import { contractScopes, type BlankScope } from '@/lib/domain/contract/completeness';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
-import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
+import type { ContractService, LibraryLine } from '@/lib/domain/service';
 
 interface ServiceDialogProps {
   /** The library Service. Its lists are what can be ticked back on. */

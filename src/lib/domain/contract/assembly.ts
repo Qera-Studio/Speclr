@@ -23,7 +23,7 @@
 
 import { scheduleLetter } from '../scheduleLetter';
 import { SCHEDULES, type Schedule, type ScheduleKey } from './schedules';
-import type { ContractService } from './service';
+import type { ContractService } from '../service';
 
 /**
  * A service as it exists **on a contract**: a detached copy, taken when the

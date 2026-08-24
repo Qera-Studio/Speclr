@@ -17,7 +17,7 @@ import type { MsaClause } from "@/lib/domain/contract/msa";
 import type {
   ContractService,
   LibraryLine,
-} from "@/lib/domain/contract/service";
+} from "@/lib/domain/service";
 import type { StudioInfo } from "@/lib/domain/studio";
 import {
   clientSnapshotOf,

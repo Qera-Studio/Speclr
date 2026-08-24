@@ -27,7 +27,7 @@ const validInvoiceFields = {
 describe('DOC_TYPES registry', () => {
   it('contains the Phase 1 + Phase 2 + Phase 3 types', () => {
     expect(Object.keys(DOC_TYPES).sort()).toEqual([
-      'CON', 'EXIT', 'EXP', 'INV', 'OFR', 'PAY', 'REC', 'STP',
+      'CON', 'CRN', 'EXIT', 'EXP', 'INV', 'OFR', 'PAY', 'REC', 'STP',
     ]);
   });
 
@@ -36,6 +36,65 @@ describe('DOC_TYPES registry', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
     expect(DOC_TYPE_BY_SLUG['invoice'].code).toBe('INV');
     expect(DOC_TYPE_BY_SLUG['receipt'].code).toBe('REC');
+    expect(DOC_TYPE_BY_SLUG['credit-note'].code).toBe('CRN');
+  });
+
+  /**
+   * CGST s.34 is the only lawful way to reduce an invoice that has already been
+   * issued, and speclr's finalized documents are immutable, so without this
+   * type there is no way to correct one at all.
+   *
+   * Three things about it are load-bearing rather than incidental.
+   */
+  describe('the credit note', () => {
+    /**
+     * Its own consecutive series. s.34 wants a credit note to carry a serial
+     * number of its own; sharing the invoice series would break both, because
+     * the invoice series must be consecutive too (Rule 46(b)).
+     */
+    it('numbers in its own series', () => {
+      expect(DOC_TYPES.CRN.slug).toBe('credit-note');
+      expect(DOC_TYPES.CRN.code).toBe('CRN');
+      expect(DOC_TYPES.CRN.kind).toBe('financial');
+    });
+
+    /**
+     * A credit note reverses tax that was *actually charged* on a named
+     * invoice. Defaulting to the studio's usual 18% would put a plausible
+     * figure on a document whose whole job is to match another one.
+     */
+    it('starts at no GST, unlike an invoice', () => {
+      expect(DOC_TYPES.CRN.defaultFields('2026-08-24').gstRatePercent).toBe(0);
+      expect(DOC_TYPES.INV.defaultFields('2026-08-24').gstRatePercent).toBe(18);
+    });
+
+    /** Rule 53(1A)(f): the invoice's number *and* date, or it reduces nothing. */
+    it('refuses to finalize without the invoice it credits', () => {
+      const fields = {
+        issueDate: '2026-08-24',
+        lineItems: [{ description: 'Credit', ratePaise: 1000, qty: 1 }],
+        gstRatePercent: 18,
+        placeOfSupplyStateCode: '07',
+      };
+
+      expect(DOC_TYPES.CRN.finalizeSchema.safeParse(fields).success).toBe(false);
+      expect(
+        DOC_TYPES.CRN.finalizeSchema.safeParse({
+          ...fields,
+          againstInvoiceNumber: 'QS-INV-2627-001',
+          againstInvoiceDate: '2026-07-01',
+        }).success,
+      ).toBe(true);
+      // A draft may be half-written, like every other draft here.
+      expect(DOC_TYPES.CRN.draftSchema.safeParse(fields).success).toBe(true);
+    });
+
+    /** It is not a demand, so it carries no due date. */
+    it('has no due date and no payment block', () => {
+      expect(DOC_TYPES.CRN.hasDueDate).toBe(false);
+      expect(DOC_TYPES.CRN.hasPayment).toBe(false);
+      expect(DOC_TYPES.CRN.creditsInvoice).toBe(true);
+    });
   });
 
   it('every entry has a non-empty masthead and label', () => {
@@ -50,14 +109,26 @@ describe('DOC_TYPES registry', () => {
       expect(spec.fixedTerms.length).toBeGreaterThan(0);
       for (const term of spec.fixedTerms) {
         expect(term.title.length).toBeGreaterThan(0);
-        expect(term.body.length).toBeGreaterThan(0);
       }
     }
   });
 
-  it('the invoice carries the 6-clause terms set, the receipt the 3-clause set', () => {
+  it('the invoice carries the 6-clause terms set, the receipt the 4-clause set', () => {
     expect(DOC_TYPES.INV.fixedTerms).toHaveLength(6);
-    expect(DOC_TYPES.REC.fixedTerms).toHaveLength(3);
+    expect(DOC_TYPES.REC.fixedTerms).toHaveLength(4);
+  });
+
+  /**
+   * CGST Rule 46(q). It is a clause with no body rather than a line of its own
+   * on the sheet, so it is editable and frozen by the same route as every other
+   * printed word, and the whole sentence prints bold because the title does.
+   */
+  it('both tax documents close on the computer-generated statement', () => {
+    for (const spec of [DOC_TYPES.INV, DOC_TYPES.REC]) {
+      const last = spec.fixedTerms[spec.fixedTerms.length - 1];
+      expect(last.title).toMatch(/does not require a physical signature/);
+      expect(last.body).toBe('');
+    }
   });
 
   it('only the receipt carries a payment block, only the invoice a due date', () => {
@@ -216,19 +287,14 @@ describe('clientInputSchema', () => {
     );
   });
 
-  it('accepts an optional gstin', () => {
-    // `...1Z2`, not the `...1Z5` this fixture used to carry. This column was
-    // `z.string().max(20)` and took any string; it now runs the same mod-36
-    // check as `tax.gstin`, and the old value's check character was invented.
-    expect(
-      clientInputSchema.safeParse({ ...validClient, gstin: '09AAACQ1234A1Z2' }).success,
-    ).toBe(true);
-  });
-
-  it('refuses a gstin whose check character does not match', () => {
-    expect(
-      clientInputSchema.safeParse({ ...validClient, gstin: '09AAACQ1234A1Z5' }).success,
-    ).toBe(false);
+  it('does not take a gstin from the identity form at all', () => {
+    // The identity step used to submit this alongside the name and address,
+    // which made it a second writer of a fact the Tax step owns. Worse: since
+    // it submitted an empty string, it blanked it. The GSTIN is typed once,
+    // on the Tax step, and `db/mappers.ts` reconciles it with the column.
+    const parsed = clientInputSchema.safeParse({ ...validClient, gstin: '09AAACQ1234A1Z2' });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && 'gstin' in parsed.data).toBe(false);
   });
 
   describe('clientInputSchema — content rules, not just length', () => {

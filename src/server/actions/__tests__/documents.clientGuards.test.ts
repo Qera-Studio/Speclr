@@ -1,7 +1,7 @@
 import type { AdminDocument, ClientRecord } from '@/lib/domain/types';
 
 /**
- * The two finalize guards the client record made possible.
+ * The finalize guards the client record made possible.
  *
  * Both live in the action rather than in a Zod schema for the same reason the
  * intern/pay-slip refusal does: the answer comes from the *client record*,
@@ -113,6 +113,10 @@ describe('the place-of-supply override guard', () => {
   });
 
   it('does not apply when GST does not apply', async () => {
+    // Overseas, which is what actually makes GST not apply. A *domestic*
+    // recipient's supply is taxed whether or not the document says so, so a nil
+    // rate on one is the tax-treatment guard's business, tested below.
+    getClient.mockResolvedValue(client({ addressParts: { ...client().addressParts!, country: 'GB' } }));
     getDocument.mockResolvedValue(
       invoice({ gstRatePercent: 0, placeOfSupplyStateCode: '29', gstLabel: 'Export of services' }),
     );
@@ -167,6 +171,72 @@ describe('the purchase-order guard', () => {
     getDocument.mockResolvedValue(
       invoice({ type: 'REC', payment: { date: '2026-06-10', method: 'Bank Transfer' } } as Partial<AdminDocument>),
     );
+
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(true);
+  });
+});
+
+/**
+ * The third guard, and the same rule as the first applied to the rate.
+ *
+ * Whether GST applies and at what rate were editable fields on every invoice.
+ * For a domestic recipient neither is a choice: the tax is charged under CGST
+ * s.9 whatever the invoice says, and the rate follows how the service is
+ * classified. So a departure is either a genuine exemption, which can be
+ * stated, or a mistake, and this is where the two are told apart.
+ */
+describe('the tax-treatment guard', () => {
+  it('finalizes a domestic invoice charging the derived rate', async () => {
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(true);
+  });
+
+  it('refuses a domestic invoice that drops the tax with no reason recorded', async () => {
+    getDocument.mockResolvedValue(invoice({ gstRatePercent: 0 }));
+
+    const result = await finalizeDocument('doc-1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/taxed at 18%/i);
+    expect(result.error).toMatch(/Record why before finalizing/i);
+    expect(saveDocument).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rate that is neither the derived one nor explained', async () => {
+    getDocument.mockResolvedValue(invoice({ gstRatePercent: 5 }));
+
+    const result = await finalizeDocument('doc-1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/says 5%/i);
+  });
+
+  it('allows the departure once it says why', async () => {
+    getDocument.mockResolvedValue(
+      invoice({
+        gstRatePercent: 0,
+        gstOverrideReason: 'Exempt under Notification 12/2017, entry 66.',
+      }),
+    );
+
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(true);
+  });
+
+  it('says nothing about an export, whatever it charges', async () => {
+    // Nothing in Indian law fixes what a foreign invoice charges, and the
+    // recipient's own regime may want a line this derivation cannot know about.
+    getClient.mockResolvedValue(client({ addressParts: { ...client().addressParts!, country: 'AE' } }));
+    getDocument.mockResolvedValue(invoice({ gstRatePercent: 0, placeOfSupplyStateCode: '96' }));
+
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(true);
+  });
+
+  it('does not fire for an SEZ unit, whose nil rate is itself derived', async () => {
+    getClient.mockResolvedValue(client({ tax: { sez: true } }));
+    getDocument.mockResolvedValue(invoice({ gstRatePercent: 0 }));
 
     const result = await finalizeDocument('doc-1');
     expect(result.success).toBe(true);

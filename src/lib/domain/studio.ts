@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { addressPartsSchema, type AddressParts } from './address';
-import { cinSchema, emailSchema, gstinSchema, ifscSchema, phoneSchema, upiSchema } from './fields';
+import {
+  cinSchema,
+  emailSchema,
+  gstinSchema,
+  ibanSchema,
+  ifscSchema,
+  phoneSchema,
+  swiftSchema,
+  upiSchema,
+} from './fields';
 import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
 
 /**
@@ -39,6 +48,20 @@ export interface StudioInfo {
     /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
     branch?: string;
     upiId: string;
+    /**
+     * The wire-transfer details a foreign client's bank asks for.
+     *
+     * All optional, and all only printed on a document whose recipient is
+     * outside India: an IFSC and a UPI handle are useless to a bank in London,
+     * and a SWIFT code is noise on a domestic invoice. Optional in the type as
+     * well as the form because the settings row predates them, and a studio
+     * with no foreign clients never needs to fill them in.
+     */
+    accountName?: string;
+    swift?: string;
+    iban?: string;
+    /** The branch address a correspondent bank wants, as printed lines. */
+    bankAddress?: string;
   };
 }
 
@@ -127,5 +150,11 @@ export const studioInputSchema = z.object({
     /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
     branch: textSchema(120).optional(),
     upiId: upiSchema(120, { required: 'A UPI ID is required.' }),
+    // The wire block. Optional throughout: it prints only on a foreign
+    // recipient's invoice, and a studio with none never fills it in.
+    accountName: orgNameSchema(160).optional(),
+    swift: swiftSchema().optional(),
+    iban: ibanSchema().optional(),
+    bankAddress: multilineSchema(300).optional(),
   }),
 });

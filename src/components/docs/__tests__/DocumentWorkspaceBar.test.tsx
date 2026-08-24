@@ -45,11 +45,22 @@ describe('DocumentWorkspaceBar', () => {
     expect(screen.getByRole('button', { name: /previous page/i })).toBeEnabled();
   });
 
-  it('disables both arrows for a single-page document', () => {
+  /**
+   * Every invoice, receipt, credit note and slip is one page, so this is the
+   * ordinary case rather than the edge one. Two dead arrows and a counter that
+   * counts to one are a control whose only content is that it has nothing to
+   * do.
+   */
+  it('shows no pager at all for a single-page document', () => {
     setup({ currentPage: 0, pageCount: 1 });
-    expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
-    expect(screen.getByText('Page 1 / 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /next page/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Page 1 / 1')).not.toBeInTheDocument();
+  });
+
+  it('renders the autosave status beside the pager', () => {
+    setup({ status: <p>Saved 14:32</p> });
+    expect(screen.getByText('Saved 14:32')).toBeInTheDocument();
   });
 
   it('navigates with the arrows', async () => {

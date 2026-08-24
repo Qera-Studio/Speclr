@@ -46,6 +46,7 @@ export default function FieldInfo({
   info,
   infoLabel,
   optional,
+  className,
 }: {
   htmlFor: string;
   label: string;
@@ -55,9 +56,17 @@ export default function FieldInfo({
   infoLabel?: string;
   /** Say so, on a form where most fields are not. See above. */
   optional?: boolean;
+  /**
+   * Extra classes on the label row. `flex-1` is the one that matters: inside a
+   * horizontal `Field` a bare `FieldLabel` already grows and pushes its switch
+   * to the far edge, and this wrapper does not, so two switches one under the
+   * other landed in two different places. Passing it here keeps them in a
+   * column.
+   */
+  className?: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div className={cn("flex items-center gap-1.5", className)}>
       <FieldLabel htmlFor={htmlFor}>
         {label}
         {optional ? <OptionalMark /> : null}

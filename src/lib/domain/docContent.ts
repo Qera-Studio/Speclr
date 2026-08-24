@@ -4,6 +4,10 @@ import { flattenAddress } from './address';
 import { exitMasthead, payslipTerms, stipendTerms } from './hrContent';
 import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_CLAUSES, type MsaClause } from './contract/msa';
 import { studioOf, type StudioInfo } from './studio';
+import {
+  EXPORT_ENDORSEMENT,
+  PLACE_OF_SUPPLY_EXPORT,
+} from './placeOfSupply';
 import type { DocTypeCode, EngagementType } from './types';
 
 /**
@@ -61,6 +65,12 @@ export const docContentSchema = z.object({
   qrCaption: textSchema(60).optional(),
   thanksLine: textSchema(200).optional(),
 
+  // Tax invoice, the statements Rule 46 wants in words rather than figures
+  reverseChargeLine: textSchema(300).optional(),
+  currencyLine: textSchema(200).optional(),
+  exportEndorsement: textSchema(200).optional(),
+  copyMarking: textSchema(60).optional(),
+
   // HR letters
   subject: textSchema(300).optional(),
   subheading: textSchema(200).optional(),
@@ -90,6 +100,13 @@ export interface ContentSpec {
 export interface ContentSource {
   type: DocTypeCode;
   content?: DocContent;
+  /**
+   * Read only to *default* the three Rule 46 statements below, never to compute
+   * money. `contentOf` stays pure and stays free of the client record: what a
+   * document says about itself is decided by what the document already carries.
+   */
+  gstRatePercent?: number;
+  placeOfSupplyStateCode?: string;
   studioSnapshot?: StudioInfo;
   deductionsNote?: string;
   employeeSnapshot?: { engagementType: EngagementType };
@@ -100,6 +117,10 @@ export interface ResolvedContent {
   terms: TermItem[];
   qrCaption: string;
   thanksLine: string;
+  reverseChargeLine: string;
+  currencyLine: string;
+  exportEndorsement: string;
+  copyMarking: string;
   subject: string;
   subheading: string;
   closingLine: string;
@@ -171,6 +192,90 @@ function defaultTerms(doc: ContentSource, spec: ContentSpec): TermItem[] {
   return [...left, ...right];
 }
 
+/** Only a tax invoice and its receipt carry the Rule 46 statements. */
+function isTaxDocument(doc: ContentSource): boolean {
+  return doc.type === 'INV' || doc.type === 'REC';
+}
+
+/**
+ * CGST Rule 46(p): a tax invoice must state *whether tax is payable on reverse
+ * charge*. Nothing printed it, on any invoice, domestic or foreign.
+ *
+ * The answer is No on everything Qera issues today: reverse charge under s.9(3)
+ * applies to notified supplies, and design services are not among them, while
+ * s.9(4) is a registered recipient's liability on an *unregistered* supplier's
+ * supply and Qera is registered. An export adds a sentence rather than changing
+ * the answer, because the recipient's own regime is a separate question from
+ * India's and their accountant is the one who has to see it stated.
+ *
+ * Editable, like every other line here: it is a claim about a specific supply,
+ * and the day one of them is notified this is where it gets corrected.
+ */
+function defaultReverseChargeLine(doc: ContentSource): string {
+  if (!isTaxDocument(doc)) return '';
+  if (doc.placeOfSupplyStateCode === PLACE_OF_SUPPLY_EXPORT) {
+    return 'Tax payable on reverse charge: No. Zero-rated export of services; the recipient may be liable to account for tax in their own jurisdiction.';
+  }
+  return 'Tax payable on reverse charge: No.';
+}
+
+/**
+ * What currency the figures are in, said once in words.
+ *
+ * Every amount on the sheet is already an INR-formatted string, which is
+ * unambiguous to an Indian reader and not to anyone else: '₹' and a lakh-grouped
+ * number are exactly what a foreign accounts department has to guess at. This
+ * says it. It is not a conversion and there is no second currency in the
+ * arithmetic — see `currency.ts` for why a GST document stays in rupees.
+ */
+function defaultCurrencyLine(doc: ContentSource): string {
+  return isTaxDocument(doc) ? 'All amounts are in Indian Rupees (INR).' : '';
+}
+
+/**
+ * CGST Rule 46, third proviso: an invoice for a zero-rated supply carries a
+ * prescribed endorsement, in those words.
+ *
+ * Only the **export** case can be defaulted here, and that is not an oversight.
+ * `contentOf` is pure and sees the document, never the client record, so the
+ * one zero-rated case the document states about itself is the one it can
+ * default: place of supply 96 is an export. An SEZ supply is zero-rated because
+ * the *client* is an SEZ unit, which is a fact the record holds, so
+ * `DocumentEditor` seeds that wording when the client is picked, exactly as it
+ * already seeds `gstLabel` from `zeroRatingLabel`.
+ */
+function defaultExportEndorsement(doc: ContentSource): string {
+  if (!isTaxDocument(doc)) return '';
+  return doc.placeOfSupplyStateCode === PLACE_OF_SUPPLY_EXPORT
+    ? EXPORT_ENDORSEMENT
+    : '';
+}
+
+/**
+ * CGST Rule 48(1): an invoice for a *supply of services* is prepared in
+ * duplicate, the original for the recipient and the duplicate for the supplier,
+ * and each copy is marked as such. (Goods want triplicate; Qera supplies
+ * neither goods nor a transporter's copy.)
+ *
+ * speclr issues one PDF, which is the recipient's, so the marking it prints is
+ * "ORIGINAL FOR RECIPIENT". The duplicate is the record retained under CGST
+ * s.36, and the same document reprinted from this app is that record.
+ *
+ * The receipt gets none: Rule 48 governs the tax invoice, and a receipt voucher
+ * is Rule 50's, which prescribes no copy marking.
+ */
+function defaultCopyMarking(doc: ContentSource): string {
+  return doc.type === 'INV' ? 'ORIGINAL FOR RECIPIENT' : '';
+}
+
+/*
+ * Rule 46(q)'s statement is not here. It is a TERMS clause on the invoice and
+ * the receipt (`DOC_TYPES.<code>.fixedTerms`), which makes it editable and
+ * snapshotted by the same route as every other printed clause, and puts it
+ * where a reader looks for the document's standing statements rather than
+ * alone on a line above the footer.
+ */
+
 /** Where the sheet breaks a term list into its two printed columns. */
 export function splitTerms(terms: TermItem[]): { left: TermItem[]; right: TermItem[] } {
   const at = Math.floor(terms.length / 2);
@@ -192,6 +297,10 @@ export function contentOf(doc: ContentSource, spec: ContentSpec): ResolvedConten
     terms: c.terms ?? defaultTerms(doc, spec),
     qrCaption: c.qrCaption ?? 'Scan to pay',
     thanksLine: c.thanksLine ?? studio.thanksLine,
+    reverseChargeLine: c.reverseChargeLine ?? defaultReverseChargeLine(doc),
+    currencyLine: c.currencyLine ?? defaultCurrencyLine(doc),
+    exportEndorsement: c.exportEndorsement ?? defaultExportEndorsement(doc),
+    copyMarking: c.copyMarking ?? defaultCopyMarking(doc),
 
     subject: c.subject ?? '',
     subheading: c.subheading ?? (doc.type === 'OFR' ? '' : 'TO WHOMSOEVER IT MAY CONCERN'),
@@ -222,6 +331,10 @@ export function materialiseContent(doc: ContentSource, spec: ContentSpec): DocCo
     terms: r.terms,
     qrCaption: r.qrCaption,
     thanksLine: r.thanksLine,
+    reverseChargeLine: r.reverseChargeLine,
+    currencyLine: r.currencyLine,
+    exportEndorsement: r.exportEndorsement,
+    copyMarking: r.copyMarking,
     subject: r.subject,
     subheading: r.subheading,
     closingLine: r.closingLine,

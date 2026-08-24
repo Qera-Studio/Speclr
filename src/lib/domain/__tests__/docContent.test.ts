@@ -3,6 +3,11 @@ import type { ContentSpec, ContentSource } from '../docContent';
 import { DOC_TYPES } from '../registry';
 import { MSA_CLAUSES } from '../contract/msa';
 import { stipendTerms } from '../hrContent';
+import {
+  PLACE_OF_SUPPLY_EXPORT,
+  zeroRatingEndorsement,
+  zeroRatingLabel,
+} from '../placeOfSupply';
 
 const invoiceSpec: ContentSpec = DOC_TYPES.INV;
 const stipendSpec: ContentSpec = DOC_TYPES.STP;
@@ -116,5 +121,85 @@ describe('splitTerms', () => {
 
     expect(split.left).toEqual(left);
     expect(split.right).toEqual(right);
+  });
+});
+
+/**
+ * The two CGST statements that were missing from the sheet entirely. Both are
+ * content, so both are editable per document and frozen at finalize; what is
+ * asserted here is that the *default* is the prescribed wording rather than a
+ * paraphrase of it, because the wording is the requirement.
+ */
+describe('Rule 46 and Rule 48 markings', () => {
+  it('endorses an export in the exact words the third proviso prescribes', () => {
+    const resolved = contentOf(
+      { type: 'INV', placeOfSupplyStateCode: PLACE_OF_SUPPLY_EXPORT },
+      invoiceSpec,
+    );
+
+    expect(resolved.exportEndorsement).toBe(
+      'SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX',
+    );
+  });
+
+  /** A domestic supply is not zero-rated, so the endorsement prints nothing. */
+  it('endorses nothing on a domestic supply', () => {
+    expect(contentOf({ type: 'INV', placeOfSupplyStateCode: '07' }, invoiceSpec).exportEndorsement).toBe('');
+  });
+
+  /**
+   * Rule 48(1) governs the tax invoice and asks for the copy to say which it
+   * is. Rule 50's receipt voucher prescribes no such marking, so the receipt
+   * deliberately carries none.
+   */
+  it('marks the invoice as the recipient\'s copy, and the receipt not at all', () => {
+    expect(contentOf(invoice, invoiceSpec).copyMarking).toBe('ORIGINAL FOR RECIPIENT');
+    expect(contentOf({ type: 'REC' }, DOC_TYPES.REC).copyMarking).toBe('');
+  });
+
+  /** Both freeze, like every other printed word (`CONTEXT.md` §5b). */
+  it('freezes both onto the document at finalize', () => {
+    const frozen = materialiseContent(
+      { type: 'INV', placeOfSupplyStateCode: PLACE_OF_SUPPLY_EXPORT },
+      invoiceSpec,
+    );
+
+    expect(frozen.copyMarking).toBe('ORIGINAL FOR RECIPIENT');
+    expect(frozen.exportEndorsement).toContain('WITHOUT PAYMENT OF INTEGRATED TAX');
+    expect(docContentSchema.safeParse(frozen).success).toBe(true);
+  });
+
+  /** Cleared to empty is an override, not a reset: it prints nothing. */
+  it('prints nothing when cleared', () => {
+    const resolved = contentOf(
+      { type: 'INV', content: { copyMarking: '', exportEndorsement: '' } },
+      invoiceSpec,
+    );
+
+    expect(resolved.copyMarking).toBe('');
+    expect(resolved.exportEndorsement).toBe('');
+  });
+});
+
+/**
+ * The endorsement and the explanation are two jobs, and they must agree about
+ * which zero-rated case this is. An SEZ supply cannot be defaulted by
+ * `contentOf` — the fact lives on the client record — so this pins the pair
+ * that `DocumentEditor` seeds from.
+ */
+describe('zeroRatingEndorsement', () => {
+  it('matches zeroRatingLabel case for case', () => {
+    const foreign = { addressParts: { country: 'GB' } };
+    const sez = { addressParts: { country: 'IN' }, sez: true };
+    const domestic = { addressParts: { country: 'IN' } };
+
+    expect(zeroRatingEndorsement(foreign)).toContain('EXPORT');
+    expect(zeroRatingLabel(foreign)).toBeTruthy();
+
+    expect(zeroRatingEndorsement(sez)).toContain('SEZ');
+    expect(zeroRatingLabel(sez)).toBeTruthy();
+
+    expect(zeroRatingEndorsement(domestic)).toBeNull();
+    expect(zeroRatingLabel(domestic)).toBeNull();
   });
 });

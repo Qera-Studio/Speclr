@@ -15,9 +15,10 @@ import type { AdminDocument, DocTypeCode, PaymentMethod } from '@/lib/domain/typ
 
 export interface LineItemFormValues {
   description: string;
-  detail: string;
   rate: string; // decimal rupees, e.g. '1500.50'
   qty: string;
+  /** Six digits beginning 99. Empty on a line nothing has classified yet. */
+  sacCode: string;
 }
 
 export interface EditorFormValues {
@@ -39,6 +40,7 @@ export interface EditorFormValues {
    * this is required whenever the picked code differs from the derived one.
    */
   placeOfSupplyOverrideReason: string;
+  gstOverrideReason: string;
   notes: string;
   paymentDate: string;
   paymentMethod: PaymentMethod;
@@ -51,10 +53,18 @@ export interface EditorFormValues {
    * disagreeing with the printed number would be worse than no id at all.
    */
   againstInvoiceId: string;
+  /**
+   * The credited invoice's own date. Rule 53(1A)(f) wants the credit note to
+   * name the invoice by serial number *and* date, and the receipt has never
+   * needed it: a receipt points at an invoice, a credit note identifies it.
+   */
+  againstInvoiceDate: string;
+  /** Why the credit is issued. CRN only; see `CreditNoteDocument.reason`. */
+  creditReason: string;
 }
 
 export function emptyLineItem(): LineItemFormValues {
-  return { description: '', detail: '', rate: '', qty: '1' };
+  return { description: '', rate: '', qty: '1', sacCode: '' };
 }
 
 function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorFormValues {
@@ -65,20 +75,33 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
       dueDate: doc.type === 'INV' ? (doc.dueDate ?? '') : '',
       lineItems: doc.lineItems.map((item) => ({
         description: item.description,
-        detail: item.detail ?? '',
         rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : '',
         qty: String(item.qty),
+        sacCode: item.sacCode ?? '',
       })),
       gstRatePercent: String(doc.gstRatePercent),
       gstLabel: doc.gstLabel ?? '',
       placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? '',
       placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason ?? '',
+      gstOverrideReason: doc.gstOverrideReason ?? '',
       notes: doc.notes ?? '',
       paymentDate: doc.type === 'REC' ? doc.payment.date : '',
       paymentMethod: doc.type === 'REC' ? doc.payment.method : 'Bank Transfer',
       paymentReference: doc.type === 'REC' ? (doc.payment.reference ?? '') : '',
-      againstInvoiceNumber: doc.type === 'REC' ? (doc.payment.againstInvoiceNumber ?? '') : '',
-      againstInvoiceId: doc.type === 'REC' ? (doc.payment.againstInvoiceId ?? '') : '',
+      againstInvoiceNumber:
+        doc.type === 'REC'
+          ? (doc.payment.againstInvoiceNumber ?? '')
+          : doc.type === 'CRN'
+            ? (doc.against.invoiceNumber ?? '')
+            : '',
+      againstInvoiceId:
+        doc.type === 'REC'
+          ? (doc.payment.againstInvoiceId ?? '')
+          : doc.type === 'CRN'
+            ? (doc.against.invoiceId ?? '')
+            : '',
+      againstInvoiceDate: doc.type === 'CRN' ? (doc.against.invoiceDate ?? '') : '',
+      creditReason: doc.type === 'CRN' ? (doc.reason ?? '') : '',
     };
   }
 
@@ -92,12 +115,15 @@ function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorF
     gstLabel: fields.gstLabel ?? '',
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode ?? '',
     placeOfSupplyOverrideReason: '',
+    gstOverrideReason: '',
     notes: fields.notes ?? '',
     paymentDate: fields.payment?.date ?? '',
     paymentMethod: fields.payment?.method ?? 'Bank Transfer',
     paymentReference: fields.payment?.reference ?? '',
     againstInvoiceNumber: '',
     againstInvoiceId: '',
+    againstInvoiceDate: '',
+    creditReason: '',
   };
 }
 
@@ -112,14 +138,18 @@ export function toPayload(
     issueDate: values.issueDate,
     lineItems: values.lineItems.map((item) => ({
       description: item.description,
-      detail: item.detail || undefined,
+      /* No `detail`. Nothing collects one and no sheet prints one; a draft
+         written while the field existed keeps whatever it holds in the
+         database and simply stops printing it. */
       ratePaise: rupeesToPaise(item.rate) ?? 0,
       qty: Number(item.qty) || 0,
+      sacCode: item.sacCode || undefined,
     })),
     gstRatePercent: Number(values.gstRatePercent) || 0,
     gstLabel: values.gstLabel || undefined,
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
     placeOfSupplyOverrideReason: values.placeOfSupplyOverrideReason || undefined,
+    gstOverrideReason: values.gstOverrideReason || undefined,
     notes: values.notes || undefined,
     content,
   };
@@ -135,6 +165,12 @@ export function toPayload(
       againstInvoiceNumber: values.againstInvoiceNumber || undefined,
       againstInvoiceId: values.againstInvoiceId || undefined,
     };
+  }
+  if (DOC_TYPES[typeCode].creditsInvoice) {
+    fields.againstInvoiceNumber = values.againstInvoiceNumber || undefined;
+    fields.againstInvoiceDate = values.againstInvoiceDate || undefined;
+    fields.againstInvoiceId = values.againstInvoiceId || undefined;
+    fields.creditReason = values.creditReason || undefined;
   }
   return fields;
 }

@@ -14,6 +14,7 @@ import {
   FileSignature,
   ReceiptIndianRupee,
   Receipt,
+  Undo2,
   FileText,
   Wallet,
   Banknote,
@@ -160,6 +161,10 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
       { href: '/client/docs/contract', label: 'Contract', icon: FileSignature, shortcut: 'C' },
       { href: '/client/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee, shortcut: 'I' },
       { href: '/client/docs/receipt', label: 'Receipt', icon: Receipt, shortcut: 'R' },
+      // Last, and deliberately so: a credit note only exists to reduce an
+      // invoice that has already been issued, so it is never the document you
+      // reach for first. 'N' because 'C' is the contract's.
+      { href: '/client/docs/credit-note', label: 'Credit note', icon: Undo2, shortcut: 'N' },
     ],
     // Contract *source material*: the Services a contract pulls in as Parts,
     // and the clauses of the Master Agreement it is built from. They belong

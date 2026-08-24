@@ -11,10 +11,10 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema } from './address';
 import { CLIENT_ENTITY_TYPES } from './client';
-import { emailSchema, gstinSchema, phoneSchema } from './fields';
+import { emailSchema, phoneSchema, sacSchema } from './fields';
 import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
 import { contractComplete } from './contract/completeness';
-import { serviceInputSchema } from './contract/service';
+import { serviceInputSchema } from './service';
 import { docContentSchema, type DocContent, type TermItem } from './docContent';
 import { CURRENCY_CODES, type CurrencyCode } from './currency';
 import { slipTotals } from './money';
@@ -36,17 +36,32 @@ const qtySchema = z
 
 export const lineItemSchema = z.object({
   description: textSchema(300, { required: 'A description is required.' }),
+  /**
+   * @deprecated Nothing collects one and no sheet prints one. Rule 46(g) asks
+   * for the description of the service, which is the field above; this was a
+   * second, longer account of the same supply. Kept in the schema, and only
+   * here, so drafts written while it existed still parse.
+   */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
   qty: qtySchema.refine((q) => q > 0, { message: 'Quantity must be positive.' }),
+  /**
+   * Optional even at finalize. Rule 46(g) requires it, but a document written
+   * before the column existed must still be finalizable, and refusing here
+   * would strand one. The field is prefilled from the catalogue and the gap is
+   * visible on the sheet, which is where an operator can act on it.
+   */
+  sacCode: sacSchema().optional(),
 });
 
 /** Draft line items may be half-filled — only shape/limits are enforced. */
 export const draftLineItemSchema = z.object({
   description: textSchema(300),
+  /** @deprecated See `lineItemSchema`. */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
   qty: qtySchema.refine((q) => q >= 0, { message: 'Quantity cannot be negative.' }),
+  sacCode: sacSchema().optional(),
 });
 
 export const clientInputSchema = z.object({
@@ -85,16 +100,16 @@ export const clientInputSchema = z.object({
    * once it is fixed. That is the correct behaviour for a required field.
    */
   phone: phoneSchema({ required: 'A phone number is required.' }),
-  /**
-   * Legacy, and now validated rather than merely tolerated.
+  /*
+   * `gstin` is deliberately absent from this schema.
    *
-   * The real GSTIN is `tax.gstin` on the client record, which every form writes
-   * and every cross-check reads. This column predates that group and nothing
-   * renders it, so two places can hold one fact — the shape that produced the
-   * place-of-supply bug. It wants deleting, which is a migration; until then it
-   * is at least held to the same rule as its replacement.
+   * The identity form used to submit it, which made the identity step a second
+   * writer of a fact the Tax step owns. Worse: because it submitted an empty
+   * string, it *blanked* it. The column still exists and is still what every
+   * document reads; `db/mappers.ts` now fills it from `tax.gstin` on
+   * every read and write, so there is exactly one place the value is typed and
+   * exactly one place the two are reconciled. Do not add it back here.
    */
-  gstin: gstinSchema().optional(),
   /**
    * Optional here even though onboarding's first step requires it: clients
    * created before entity types existed have none, and a required field would
@@ -139,6 +154,16 @@ const baseFieldsShape = {
    * meaningful only alongside the code it explains.
    */
   placeOfSupplyOverrideReason: textSchema(300).optional(),
+  /**
+   * Why the tax charged is not what the client record implies: a different
+   * rate, or none on a domestic supply.
+   *
+   * Separate from `placeOfSupplyOverrideReason` on purpose. The two overrides
+   * are separately lawful (s.12(3) moves the place of supply; an exemption
+   * changes the rate) and one reason standing for both would be a justification
+   * for something nobody wrote it about.
+   */
+  gstOverrideReason: textSchema(300).optional(),
   notes: multilineSchema(2000).optional(),
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
@@ -180,6 +205,34 @@ export const invoiceFinalizeSchema = baseFinalizeSchema
 export const invoiceDraftSchema = baseDraftSchema.extend({
   dueDate: isoDate.optional(),
 });
+
+/**
+ * CGST s.34 / Rule 53(1A): a credit note names the tax invoice it credits, by
+ * serial number *and* date. Both are required at finalize, because a credit
+ * note that does not identify what it reduces reduces nothing that can be
+ * matched in a return.
+ *
+ * The id is not required and never will be: it is the app's link, not the
+ * statute's, and a credit note may legitimately be raised against an invoice
+ * issued before speclr existed.
+ */
+const againstInvoiceShape = {
+  againstInvoiceNumber: codeSchema(40).optional(),
+  againstInvoiceDate: isoDate.optional(),
+  againstInvoiceId: textSchema(64).optional(),
+  creditReason: textSchema(300).optional(),
+};
+
+export const creditNoteDraftSchema = baseDraftSchema.extend(againstInvoiceShape);
+export const creditNoteFinalizeSchema = baseFinalizeSchema
+  .extend({
+    ...againstInvoiceShape,
+    againstInvoiceNumber: codeSchema(40, {
+      required: 'Name the invoice this credit note reduces.',
+    }),
+    againstInvoiceDate: isoDate,
+  })
+  .superRefine(requirePlaceOfSupplyWithGst);
 
 export const receiptFinalizeSchema = baseFinalizeSchema
   .extend({
@@ -370,11 +423,17 @@ export interface DocFields {
   gstLabel?: string;
   placeOfSupplyStateCode?: string;
   placeOfSupplyOverrideReason?: string;
+  gstOverrideReason?: string;
   notes?: string;
   /** Legacy — terms are fixed per doc type now; kept so old drafts round-trip. */
   terms?: string;
   dueDate?: string;
   payment?: ReceiptDocument['payment'];
+  // CRN — the invoice this credit note reduces, and why
+  againstInvoiceNumber?: string;
+  againstInvoiceDate?: string;
+  againstInvoiceId?: string;
+  creditReason?: string;
   contract?: ContractData;
   // HR — the slips (stipend + pay)
   employeeId?: string;
@@ -425,6 +484,13 @@ export interface DocTypeSpec {
   kind: 'financial' | 'contract' | 'hr-slip' | 'hr-letter';
   hasPayment: boolean;
   hasDueDate: boolean;
+  /**
+   * This type names an already-issued invoice and reduces it. The credit note
+   * alone, today. A flag rather than a `code === 'CRN'` test for the reason
+   * `isHrDocType` gives: the same question was being answered by hand in four
+   * places once, and they drifted.
+   */
+  creditsInvoice?: boolean;
   draftSchema: z.ZodTypeAny;
   finalizeSchema: z.ZodTypeAny;
   /** Initial field values for a fresh draft. */
@@ -455,10 +521,6 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
         body: 'Due within 7 days of invoice date. Overdue balances accrue interest at 1.5% per month.',
       },
       {
-        title: 'Suspension.',
-        body: 'Qera may pause all work and withhold deliverables on any overdue payment.',
-      },
-      {
         title: 'Ownership.',
         body: 'All deliverables, designs, code and IP remain the property of Qera Studio until payment is received in full.',
       },
@@ -473,6 +535,19 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       {
         title: 'Jurisdiction.',
         body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+      },
+      /*
+        CGST Rule 46(q) wants the supplier's signature; the proviso excuses an
+        invoice issued electronically, and the practice is to say so on its
+        face. It is a clause rather than a line of its own above the footer, so
+        it is editable and frozen by the same route as every other printed word
+        (`CONTEXT.md` §5b). No body: the whole statement is the title, which is
+        what prints it bold.
+      */
+      {
+        title:
+          'This is a computer-generated document and does not require a physical signature.',
+        body: '',
       },
     ],
   },
@@ -504,6 +579,66 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       {
         title: 'Jurisdiction.',
         body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+      },
+      /*
+        CGST Rule 46(q) wants the supplier's signature; the proviso excuses an
+        invoice issued electronically, and the practice is to say so on its
+        face. It is a clause rather than a line of its own above the footer, so
+        it is editable and frozen by the same route as every other printed word
+        (`CONTEXT.md` §5b). No body: the whole statement is the title, which is
+        what prints it bold.
+      */
+      {
+        title:
+          'This is a computer-generated document and does not require a physical signature.',
+        body: '',
+      },
+    ],
+  },
+  CRN: {
+    code: 'CRN',
+    slug: 'credit-note',
+    label: 'Credit note',
+    masthead: 'CREDIT NOTE',
+    kind: 'financial',
+    hasPayment: false,
+    /*
+      No due date: a credit note is not a demand, it is a reduction of one. What
+      it has instead is the invoice it credits, which `creditsInvoice` says.
+    */
+    hasDueDate: false,
+    creditsInvoice: true,
+    draftSchema: creditNoteDraftSchema,
+    finalizeSchema: creditNoteFinalizeSchema,
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      lineItems: [{ description: '', ratePaise: 0, qty: 1 }],
+      /*
+        Zero, not 18. A credit note reverses the tax that was actually charged
+        on the invoice it names, and that rate arrives with the invoice when one
+        is picked. Defaulting to the studio's usual rate would put a plausible
+        figure on a document whose whole job is to match another one.
+      */
+      gstRatePercent: 0,
+    }),
+    fixedTerms: [
+      {
+        title: 'Effect.',
+        body: 'This credit note reduces the amount payable under the invoice named above. It is not a demand for payment and no payment is due under it.',
+      },
+      {
+        title: 'Tax.',
+        body: 'Issued under section 34 of the CGST Act 2017. The corresponding reduction in output tax liability is claimed in the return for the period in which this note is declared.',
+      },
+      {
+        title: 'Jurisdiction.',
+        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+      },
+      /* Same Rule 46(q) statement, same reasoning, as the invoice and receipt. */
+      {
+        title:
+          'This is a computer-generated document and does not require a physical signature.',
+        body: '',
       },
     ],
   },

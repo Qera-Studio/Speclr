@@ -10,7 +10,7 @@
 import { parseScope } from '../blanks';
 import { MSA_CLAUSES } from '../msa';
 import { SCHEDULES, SCHEDULE_BY_KEY } from '../schedules';
-import { serviceInputSchema } from '../service';
+import { serviceInputSchema } from '../../service';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../seed/libraries';
 import { SERVICES } from '../seed/services';
 

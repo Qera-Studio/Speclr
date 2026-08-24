@@ -45,7 +45,9 @@ function completeDraft(overrides: Partial<AdminDocument> = {}): AdminDocument {
     issueDate: '2026-06-10',
     lineItems: [{ description: 'Design retainer', ratePaise: 5_000_00, qty: 1 }],
     // Zero-rated keeps place-of-supply out of scope; GST validation is tested
-    // elsewhere and isn't what this file is about.
+    // elsewhere and isn't what this file is about. The client below is overseas
+    // for the same reason: a domestic recipient's supply is taxed whatever the
+    // document says, so a nil rate on one now needs a recorded reason.
     gstRatePercent: 0,
     createdAt: 1_750_000_000_000,
     updatedAt: 1_750_000_000_000,
@@ -61,7 +63,11 @@ function saved(): AdminDocument {
 beforeEach(() => {
   jest.clearAllMocks();
   requireAuthorizedUser.mockResolvedValue(DRAFTER);
-  getClient.mockResolvedValue({ id: 'client-1', name: 'Clayora' });
+  getClient.mockResolvedValue({
+    id: 'client-1',
+    name: 'Clayora',
+    addressParts: { country: 'GB' },
+  });
   saveDocument.mockResolvedValue(undefined);
 });
 

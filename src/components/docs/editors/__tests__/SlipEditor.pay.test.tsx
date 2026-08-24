@@ -70,8 +70,11 @@ describe('SlipEditor — pay slip', () => {
     await u.click(screen.getByRole('button', { name: 'Add deduction' }));
 
     expect(screen.getByLabelText(/^amount/i)).toBeInTheDocument();
-    // The earnings row still has a Rate + Qty pair; the deduction has neither.
-    expect(screen.queryByLabelText(/^qty$/i)).not.toBeInTheDocument();
+    // Every earnings row has a Rate + Qty pair and the deduction has neither,
+    // so the two counts agreeing is what says the deduction contributed no qty.
+    expect(screen.getAllByLabelText(/^qty$/i)).toHaveLength(
+      screen.getAllByLabelText(/^rate/i).length,
+    );
   });
 
   it('offers the wage-period day counts', () => {
@@ -193,15 +196,18 @@ describe('SlipEditor — pay slip', () => {
       updatedAt: 0,
     } as never;
 
-    /** The rate inputs of the earnings list, in order, as rupee strings. */
-    async function earningRates(u: ReturnType<typeof userEvent.setup>) {
-      const rates: string[] = [];
-      for (const { description } of slipEarningsSeed('PAY', 1)) {
-        await u.click(screen.getByRole('button', { name: new RegExp(description) }));
-        rates.push((screen.getByLabelText(/^rate/i) as HTMLInputElement).value);
-        await u.click(screen.getByRole('button', { name: new RegExp(description) }));
-      }
-      return rates;
+    /**
+     * The rate inputs of the earnings list, in order, as rupee strings.
+     *
+     * A slip's rows carry no lock: nothing behind them came from a Service, so
+     * "Basic" is the operator's own label and there is nothing to protect. The
+     * deductions list is addressed by Amount, never Rate, so this matcher
+     * cannot pick one up.
+     */
+    function earningRates() {
+      return (screen.getAllByLabelText(/^rate/i) as HTMLInputElement[]).map(
+        (input) => input.value,
+      );
     }
 
     const expected = (grossPaise: number) =>
@@ -211,7 +217,7 @@ describe('SlipEditor — pay slip', () => {
       const u = userEvent.setup();
       render(<SlipEditor type="PAY" employees={employees} title="Edit pay slip" doc={staleDraft} />);
 
-      expect(await earningRates(u)).toEqual(expected(6000000));
+      expect(earningRates()).toEqual(expected(6000000));
     });
 
     /** The other half of the same bug, on the slip type it was first seen on. */
@@ -225,7 +231,6 @@ describe('SlipEditor — pay slip', () => {
 
       await selectComboboxOption(u, /employee/i, /Riya/);
       await selectComboboxOption(u, /employee/i, /Dev/);
-      await u.click(screen.getByRole('button', { name: /Internship Stipend/ }));
 
       expect(screen.getByLabelText(/^rate/i)).toHaveValue('35000.00');
     });
@@ -242,7 +247,6 @@ describe('SlipEditor — pay slip', () => {
       } as never;
       render(<SlipEditor type="PAY" employees={employees} title="Edit pay slip" doc={tuned} />);
 
-      await u.click(screen.getByRole('button', { name: /Basic salary/ }));
       expect(screen.getByLabelText(/^rate/i)).toHaveValue('40000.00');
     });
   });

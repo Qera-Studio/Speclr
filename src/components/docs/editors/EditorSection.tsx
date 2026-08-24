@@ -29,30 +29,12 @@ export default function EditorSection({
   title,
   description,
   defaultOpen = false,
-  printed = false,
   children,
 }: {
   title: string;
   /** One short line under the title, saying what this section governs. */
   description?: string;
   defaultOpen?: boolean;
-  /**
-   * The fields in here are the document's *wording*, not its data.
-   *
-   * Both print. The difference is what an edit does: changing a date changes a
-   * fact about the document, and changing a clause changes what the document
-   * says, which on a stipend slip is a claim about somebody's tax position and
-   * on a contract is a term of it. `CONTEXT.md` §5b draws exactly this line
-   * (content is editable and snapshotted, structural labels are the document's
-   * grammar and are not), and until now the editor drew none: a TERMS clause
-   * and a GST rate sat in identical boxes.
-   *
-   * One mark, on the section rather than the field, because that is the grain
-   * the split already has. Nothing is disabled or gated by it; an operator who
-   * needs to change a clause needs to change it, and the point is only that
-   * they should know which kind of change they are making.
-   */
-  printed?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -81,25 +63,11 @@ export default function EditorSection({
                 </span>
               ) : null}
             </span>
-            {printed ? (
-              <span className="mt-0.5 shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
-                Prints as written
-              </span>
-            ) : null}
           </button>
         }
       />
       <CollapsibleContent>
-        {/* The accent rule is the mark at reading distance: it runs beside
-            every field in the section, so the wording sections read as one
-            body of text rather than as more form. */}
-        <div
-          className={
-            printed
-              ? "flex flex-col gap-4 border-t border-border p-3 pl-4 border-l-2 border-l-primary/30"
-              : "flex flex-col gap-4 border-t border-border p-3"
-          }
-        >
+        <div className="flex flex-col gap-4 border-t border-border p-3">
           {children}
         </div>
       </CollapsibleContent>

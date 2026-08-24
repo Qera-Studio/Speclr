@@ -41,10 +41,10 @@ describe('NewDocumentCommand', () => {
 
     // Anchored: a card's name is now its label *and* its description, and the
     // receipt's description mentions an invoice.
-    for (const label of ['Contract', 'Invoice', 'Receipt']) {
+    for (const label of ['Contract', 'Invoice', 'Receipt', 'Credit note']) {
       expect(screen.getByRole('option', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
     }
-    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getAllByRole('option')).toHaveLength(4);
   });
 
   /**

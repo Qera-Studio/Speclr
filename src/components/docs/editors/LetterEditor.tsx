@@ -315,6 +315,7 @@ export default function LetterEditor({
   return (
     <DocumentWorkspace
       title={heading}
+      status={<AutosaveStatus autosave={autosave} recipient="employee" />}
       // Feed the flat block list, not the monolithic sheet: the preview packs
       // blocks into A4 pages, and a single over-tall block would be clipped to
       // its first page. Offer letters pin their black cover as page 1.
@@ -372,7 +373,6 @@ export default function LetterEditor({
             title="Letter"
             description="Subject and body"
             defaultOpen
-            printed
           >
             <ContentText
               id="letter-subject"
@@ -460,7 +460,7 @@ export default function LetterEditor({
             </EditorSection>
           ) : null}
 
-          <EditorSection title="Heading" description="Masthead and sub-heading" printed>
+          <EditorSection title="Heading" description="Masthead and sub-heading">
             <ContentText
               id="letter-masthead"
               label="Masthead"
@@ -480,7 +480,6 @@ export default function LetterEditor({
           <EditorSection
             title="Signature"
             description="Acknowledgement and signatory"
-            printed
           >
             {type === "OFR" ? (
               <ContentText
@@ -539,7 +538,6 @@ export default function LetterEditor({
           </EditorSection>
 
           <SaveError autosave={autosave} />
-          <AutosaveStatus autosave={autosave} recipient="employee" />
 
           <div className="flex flex-wrap gap-2">
             {docId ? (

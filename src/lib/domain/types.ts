@@ -21,7 +21,16 @@ import type { CurrencyCode } from './currency';
 import type { DocContent } from './docContent';
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
-export type DocTypeCode = 'INV' | 'REC' | 'CON' | 'STP' | 'PAY' | 'OFR' | 'EXP' | 'EXIT';
+export type DocTypeCode =
+  | 'INV'
+  | 'REC'
+  | 'CRN'
+  | 'CON'
+  | 'STP'
+  | 'PAY'
+  | 'OFR'
+  | 'EXP'
+  | 'EXIT';
 
 export interface ClientRecord {
   id: string;
@@ -64,8 +73,10 @@ export interface ClientRecord {
   /**
    * Kept as a top-level field even though `tax.gstin` now exists, because every
    * document has printed from here since the first invoice and `ClientSnapshot`
-   * picks it by name. The onboarding form writes both; `tax.gstin` is where it
-   * is *validated*, this is where it is *read*.
+   * picks it by name. `tax.gstin` is where it is *validated*, this is where it
+   * is *read*, and `db/mappers.ts` is the one place the two are reconciled, on
+   * read as well as write, so rows saved before that existed correct themselves.
+   * Never read `tax.gstin` directly outside onboarding.
    */
   gstin?: string;
   /**
@@ -94,12 +105,27 @@ export interface ClientRecord {
 
 export interface LineItem {
   description: string;
-  /** Optional smaller sub-detail line under the description. */
+  /**
+   * @deprecated A sub-line under the description, printed by no sheet and
+   * collected by no editor. See `lineItemSchema` in `registry.ts`.
+   */
   detail?: string;
   /** Integer paise — never floats. ₹1,500.00 === 150000. */
   ratePaise: number;
   /** Positive, up to 2 decimal places (e.g. hours). */
   qty: number;
+  /**
+   * The Service Accounting Code this line is classified under.
+   *
+   * CGST Rule 46(g) wants the HSN or SAC printed against the line, and until
+   * this existed no invoice carried one at all. It is a property of *what is
+   * sold*, so it arrives from the catalogue when a line is seeded from a
+   * Service (`sacCode` on `ContractService`) and is typed for a custom line.
+   *
+   * Optional, for the same reason the six `ClientSnapshot` fields are: the
+   * documents written before it have none, and they must keep loading.
+   */
+  sacCode?: string;
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */
@@ -278,6 +304,15 @@ export interface BaseDocument {
    * document like everything else on it.
    */
   placeOfSupplyOverrideReason?: string;
+  /**
+   * Why the tax charged is not what the client record implies.
+   *
+   * The same rule as the field above, applied to the rate rather than the
+   * state: for an Indian recipient `gstTreatmentOf` states the treatment, and
+   * departing from it at finalize requires a reason. Kept separate because the
+   * two overrides are separately lawful and separately justified.
+   */
+  gstOverrideReason?: string;
   /** Free text shown when gstRatePercent is 0, e.g. 'not applicable - registration in process'. */
   gstLabel?: string;
   notes?: string;
@@ -372,6 +407,57 @@ export interface ContractData {
 export interface ContractDocument extends ClientDocument {
   type: 'CON';
   contract: ContractData;
+}
+
+/**
+ * A credit note — the only lawful way to reduce or reverse an invoice that has
+ * already been issued.
+ *
+ * This exists because finalized documents are immutable (CONTEXT.md §4) and
+ * that is correct: an issued tax invoice is a record retained 72 months under
+ * CGST s.36 and it may not be edited. So a mistake, a cancellation or a
+ * discount agreed afterwards has nowhere to go. CGST **s.34(1)** is the answer
+ * the statute gives: the supplier issues a credit note, and s.34(2) lets the
+ * output tax liability be reduced by it in the return for the month it is
+ * declared. Duplicating the invoice as a new draft does not do that — it
+ * creates a second invoice, and leaves the first one standing in the return.
+ *
+ * Numbered from the same atomic per-FY claim as everything else, in its own
+ * series (`QS-CRN-2627-nnn`), because s.34 wants a credit note to carry a
+ * consecutive serial number of its own. A number shared with the invoice series
+ * would break both.
+ *
+ * The tax fields are the invoice's, not new ones: a credit note reverses tax
+ * that was charged, so it carries the same rate, the same place of supply and
+ * the same split. `computeTotals` is untouched — the figures are stated
+ * positive and the document's *nature* is what makes them a reduction, which is
+ * how a credit note is read and how s.34 describes it.
+ */
+export interface CreditNoteDocument extends ClientDocument {
+  type: 'CRN';
+  /**
+   * The invoice being credited. Rule 53(1A)(f) requires the serial number *and
+   * date* of the corresponding tax invoice, so all three are printed, and the
+   * finalize schema requires the number and the date.
+   *
+   * `invoiceId` is the stored link and is kept in step with the number exactly
+   * as the receipt's is: picking an invoice sets all of them, and hand-editing
+   * the number clears the id, because a link that silently disagrees with the
+   * printed number is worse than no link.
+   */
+  against: {
+    invoiceNumber?: string;
+    invoiceDate?: string;
+    invoiceId?: string;
+  };
+  /**
+   * Why the credit is being issued. Not one of Rule 53's mandatory particulars,
+   * but it is what makes the note reconcilable a year later, and every
+   * accounting package prints one. Editable free text rather than a fixed list:
+   * "deficiency in service" and "post-supply discount agreed" are different
+   * facts and neither is a dropdown Qera can enumerate honestly.
+   */
+  reason?: string;
 }
 
 export type EngagementType = 'intern' | 'employee';
@@ -501,6 +587,7 @@ export interface LetterDocument extends BaseDocument {
 export type AdminDocument =
   | InvoiceDocument
   | ReceiptDocument
+  | CreditNoteDocument
   | ContractDocument
   | SlipDocument
   | LetterDocument;

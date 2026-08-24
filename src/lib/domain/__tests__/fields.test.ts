@@ -2,8 +2,10 @@ import {
   cinSchema,
   emailSchema,
   gstinSchema,
+  ibanSchema,
   panSchema,
   sacSchema,
+  swiftSchema,
   tanSchema,
 } from '../fields';
 
@@ -142,5 +144,38 @@ describe('sacSchema', () => {
   it('allows a blank unless the form says otherwise', () => {
     expect(sacSchema().safeParse('').success).toBe(true);
     expect(sacSchema({ required: 'A SAC is required.' }).safeParse('').success).toBe(false);
+  });
+});
+
+/**
+ * Where a foreign client's money is sent. The same class of check as the
+ * GSTIN's mod-36, and worth having for the same reason: a transposed pair of
+ * characters is the ordinary failure, and nothing downstream catches it.
+ */
+describe('swiftSchema and ibanSchema', () => {
+  it('takes a SWIFT of 8 or 11 characters and nothing between', () => {
+    expect(swiftSchema().safeParse('KKBKINBB').success).toBe(true);
+    expect(swiftSchema().safeParse('KKBKINBBCPC').success).toBe(true);
+    // Nine characters is what a reader produces by trimming 'XXX' badly.
+    expect(swiftSchema().safeParse('KKBKINBBC').success).toBe(false);
+    expect(swiftSchema().safeParse('KK1KINBB').success).toBe(false);
+  });
+
+  it('verifies an IBAN’s check digits, not just its shape', () => {
+    expect(ibanSchema().safeParse('GB29NWBK60161331926819').success).toBe(true);
+    expect(ibanSchema().safeParse('DE89370400440532013000').success).toBe(true);
+    // A transposition inside the account number: the shape is unchanged.
+    expect(ibanSchema().safeParse('GB29NWBK60161331926891').success).toBe(false);
+  });
+
+  it('names the check-digit failure rather than calling it malformed', () => {
+    const result = ibanSchema().safeParse('GB29NWBK60161331926891');
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.issues[0].message).toMatch(/check digits/i);
+  });
+
+  it('allows a blank on both — a studio with no foreign clients has neither', () => {
+    expect(swiftSchema().safeParse('').success).toBe(true);
+    expect(ibanSchema().safeParse('').success).toBe(true);
   });
 });

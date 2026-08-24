@@ -19,15 +19,23 @@ describe('DocumentWorkspace', () => {
     expect(screen.getByLabelText('Client')).toBeInTheDocument();
   });
 
-  it('exposes the page controls', () => {
+  /**
+   * jsdom measures every box as zero, so the paginator reports one page. That
+   * is also the real answer for every document this editor makes, and a
+   * one-page document shows no pager at all — see `DocumentWorkspaceBar`.
+   */
+  it('shows no pager for a single-page document, and does show the status', () => {
     render(
-      <DocumentWorkspace title="New invoice" preview={<div>Body</div>}>
+      <DocumentWorkspace
+        title="New invoice"
+        status={<p>Saved 14:32</p>}
+        preview={<div>Body</div>}
+      >
         <div />
       </DocumentWorkspace>,
     );
-    expect(screen.getByText('Page 1 / 1')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Saved 14:32')).toBeInTheDocument();
   });
 
   /**
@@ -79,9 +87,9 @@ describe('DocumentWorkspace', () => {
         <div />
       </DocumentWorkspace>,
     );
-    // Single page in jsdom, so both arrows stay disabled — the assertion is
+    // Single page in jsdom, so there is nowhere to page to — the assertion is
     // that the handler is wired and does not throw or move past the bounds.
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByText('Page 1 / 1')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
   });
 });

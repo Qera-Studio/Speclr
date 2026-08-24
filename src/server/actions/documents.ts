@@ -14,6 +14,7 @@ import {
 import { DOC_TYPES, isHrDocType, isSlip, type DocFields } from '@/lib/domain/registry';
 import { computeTotals } from '@/lib/domain/money';
 import { placeOfSupplyOf } from '@/lib/domain/placeOfSupply';
+import { gstTreatmentMismatch } from '@/lib/domain/gstTreatment';
 import { materialiseContent } from '@/lib/domain/docContent';
 import {
   clientSnapshotOf,
@@ -21,6 +22,7 @@ import {
   type AdminDocument,
   type ClientSnapshot,
   type ContractDocument,
+  type CreditNoteDocument,
   type DocTypeCode,
   type EmployeeSnapshot,
   type InvoiceDocument,
@@ -150,6 +152,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     gstLabel: fields.gstLabel,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     placeOfSupplyOverrideReason: fields.placeOfSupplyOverrideReason,
+    gstOverrideReason: fields.gstOverrideReason,
     notes: fields.notes,
     terms: fields.terms,
     content: fields.content,
@@ -162,6 +165,18 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       ...base,
       ...sharedMoney,
       payment: fields.payment ?? { date: '', method: 'Bank Transfer' },
+    };
+  }
+  if (base.type === 'CRN') {
+    return {
+      ...base,
+      ...sharedMoney,
+      against: {
+        invoiceNumber: fields.againstInvoiceNumber,
+        invoiceDate: fields.againstInvoiceDate,
+        invoiceId: fields.againstInvoiceId,
+      },
+      reason: fields.creditReason,
     };
   }
   // Letters (OFR/EXP/EXIT) — no line items or GST; zero-values satisfy
@@ -357,7 +372,9 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
 
     employeeSnapshot = employeeSnapshotOf(employee);
   } else {
-    const clientId = (existing as InvoiceDocument | ReceiptDocument | ContractDocument).clientId;
+    const clientId = (
+      existing as InvoiceDocument | ReceiptDocument | CreditNoteDocument | ContractDocument
+    ).clientId;
     const client = await getClient(clientId);
     if (!client) return { success: false, error: 'Client not found.' };
 
@@ -382,6 +399,30 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
           error: `This document's place of supply (${stored}) is not the one derived from ${client.name} (${derived.code}). Record why before finalizing.`,
         };
       }
+    }
+
+    /**
+     * A departure from the client's own tax treatment has to say why.
+     *
+     * Same rule as the place of supply above, applied to the rate. For an
+     * Indian recipient the treatment is derived (`gstTreatmentOf`), and it is
+     * not the operator's to choose: GST on a domestic supply is charged under
+     * CGST s.9 whether or not the invoice says so, and the rate follows the
+     * classification of the service. So an invoice that drops or changes it is
+     * either a genuine exemption, which can be stated, or a mistake, and this
+     * is where the two are told apart.
+     *
+     * **This is the enforcement.** The rail renders the fields read-only, but a
+     * read-only input is a convenience for the person typing; the document is
+     * reached by other paths and the client record is not in the payload's
+     * sight, which is why the check cannot live in the Zod schema.
+     */
+    const gstMismatch = gstTreatmentMismatch(existing, client);
+    if (gstMismatch && !existing.gstOverrideReason) {
+      return {
+        success: false,
+        error: `${gstMismatch} Record why before finalizing.`,
+      };
     }
 
     /**

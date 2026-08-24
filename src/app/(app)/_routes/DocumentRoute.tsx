@@ -143,6 +143,7 @@ export default async function DocumentRoute({
       <DocumentEditor
         typeCode={doc.type}
         clients={clients}
+        services={await listServices()}
         doc={doc}
         studio={studio}
         title={heading}

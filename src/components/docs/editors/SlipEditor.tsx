@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { deleteDraftAction, finalizeDocument } from "@/server/actions/documents";
+import {
+  deleteDraftAction,
+  finalizeDocument,
+} from "@/server/actions/documents";
 import { useDraftAutosave } from "./useDraftAutosave";
 import { AutosaveStatus, SaveError, UnsavedChangesDialog } from "./draftStatus";
 import {
@@ -54,12 +57,17 @@ import LineItemsEditor from "./LineItemsEditor";
 import { Spinner } from "@/components/ui/spinner";
 import { usePulse } from "@/lib/useMinimumDuration";
 import EditorSection from "./EditorSection";
-import { ContentText, TermsFields, shown, type ContentPatch } from "./ContentFields";
+import {
+  ContentText,
+  TermsFields,
+  shown,
+  type ContentPatch,
+} from "./ContentFields";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { workspaceTitle } from "../workspaceTitle";
 import { numericField } from "@/components/form/inputFilters";
-import { useProfile } from '@/lib/useProfile';
+import { useProfile } from "@/lib/useProfile";
 
 const EMPTY_SNAPSHOT: EmployeeSnapshot = {
   name: "",
@@ -133,9 +141,10 @@ function monthOfISODate(iso: string): string {
 function itemToForm(item: LineItem): LineItemFormValues {
   return {
     description: item.description,
-    detail: item.detail ?? "",
     rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : "",
     qty: String(item.qty),
+    // A slip is not a supply, so nothing here is ever classified.
+    sacCode: "",
   };
 }
 
@@ -158,7 +167,10 @@ function daysInMonth(month: string): string {
   return last ? last.slice(8, 10).replace(/^0/, "") : "";
 }
 
-function defaultsFor(type: SlipType, doc?: SlipDocument | null): SlipFormValues {
+function defaultsFor(
+  type: SlipType,
+  doc?: SlipDocument | null,
+): SlipFormValues {
   if (doc) {
     return {
       employeeId: doc.employeeId,
@@ -240,9 +252,10 @@ export default function SlipEditor({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, control, watch, setValue, getValues } = useForm<SlipFormValues>({
-    defaultValues: defaultsFor(type, doc),
-  });
+  const { register, control, watch, setValue, getValues } =
+    useForm<SlipFormValues>({
+      defaultValues: defaultsFor(type, doc),
+    });
   const fieldArray = useFieldArray({ control, name: "lineItems" });
   const deductionsArray = useFieldArray({ control, name: "deductions" });
 
@@ -336,9 +349,9 @@ export default function SlipEditor({
     fieldArray.replace(
       slipEarningsSeed(type, e.payAmountPaise).map((earning) => ({
         description: earning.description,
-        detail: "",
         rate: paiseToRupees(earning.ratePaise),
         qty: "1",
+        sacCode: "",
       })),
     );
   };
@@ -394,7 +407,6 @@ export default function SlipEditor({
   const toLineItems = (values: LineItemFormValues[] | undefined): LineItem[] =>
     (values ?? []).map((item) => ({
       description: item.description,
-      detail: item.detail || undefined,
       ratePaise: rupeesToPaise(item.rate) ?? 0,
       // Deductions hide the qty input and stay at 1 — a flat amount.
       qty: Number(item.qty) || 0,
@@ -574,60 +586,72 @@ export default function SlipEditor({
   };
 
   return (
-    <DocumentWorkspace title={heading} preview={<SlipSheet doc={previewDoc} />}>
+    <DocumentWorkspace
+      title={heading}
+      status={<AutosaveStatus autosave={autosave} recipient="employee" />}
+      preview={<SlipSheet doc={previewDoc} />}
+    >
       {/* No longer submits — the draft writes itself. See `DocumentEditor`. */}
-      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4" noValidate>
+      <form
+        onSubmit={(e) => e.preventDefault()}
+        className="flex flex-col gap-4"
+        noValidate
+      >
         <FieldGroup size="form">
-          <EditorSection title="Recipient & date" description="Who it is for, and when" defaultOpen>
-          <Field>
-            <FieldLabel htmlFor="stp-employee">
-              Employee {seeding ? <Spinner className="size-3.5" /> : null}
-            </FieldLabel>
-            <Combobox
-              id="stp-employee"
-              size="form"
-              options={eligible.map((e) => ({
-                value: e.id,
-                label: `${e.name} · ${e.role}`,
-              }))}
-              value={employeeId}
-              onValueChange={onSelectEmployee}
-              placeholder="Select an employee…"
-              emptyMessage={
-                isPay ? "No matching employees." : "No matching interns."
-              }
-            />
-          </Field>
+          <EditorSection
+            title="Recipient & date"
+            description="Who it is for, and when"
+            defaultOpen
+          >
+            <Field>
+              <FieldLabel htmlFor="stp-employee">
+                Employee {seeding ? <Spinner className="size-3.5" /> : null}
+              </FieldLabel>
+              <Combobox
+                id="stp-employee"
+                size="form"
+                options={eligible.map((e) => ({
+                  value: e.id,
+                  label: `${e.name} · ${e.role}`,
+                }))}
+                value={employeeId}
+                onValueChange={onSelectEmployee}
+                placeholder="Select an employee…"
+                emptyMessage={
+                  isPay ? "No matching employees." : "No matching interns."
+                }
+              />
+            </Field>
 
-          {internOnPaySlip ? (
-            <Alert variant="destructive" role="alert">
-              <AlertDescription>
-                {employee?.name} is engaged as an intern. A pay slip states that
-                wages were paid under a contract of employment — issue a stipend
-                slip instead. This cannot be finalized.
-              </AlertDescription>
-            </Alert>
-          ) : null}
+            {internOnPaySlip ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription>
+                  {employee?.name} is engaged as an intern. A pay slip states
+                  that wages were paid under a contract of employment — issue a
+                  stipend slip instead. This cannot be finalized.
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
-          <Field>
-            <FieldLabel htmlFor="stp-issue-date">Issue date</FieldLabel>
-            <Controller
-              control={control}
-              name="issueDate"
-              render={({ field }) => (
-                <DatePicker
-                  id="stp-issue-date"
-                  size="form"
-                  value={field.value}
-                  onValueChange={field.onChange}
-                />
-              )}
-            />
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="stp-issue-date">Issue date</FieldLabel>
+              <Controller
+                control={control}
+                name="issueDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="stp-issue-date"
+                    size="form"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  />
+                )}
+              />
+            </Field>
 
-          {/* Currency before the amounts it applies to — you pick the unit,
+            {/* Currency before the amounts it applies to — you pick the unit,
               then the figures. */}
-          {/* <Field>
+            {/* <Field>
             <FieldLabel htmlFor="stp-currency">Currency</FieldLabel>
             <Controller
               control={control}
@@ -671,7 +695,6 @@ export default function SlipEditor({
             legend={isPay ? "Earnings" : "Line items"}
             addLabel={isPay ? "Add earning" : "Add line item"}
             itemLabel={isPay ? "earning" : "line item"}
-            hideDetail
           />
 
           {/*
@@ -691,172 +714,173 @@ export default function SlipEditor({
               addLabel="Add deduction"
               itemLabel="deduction"
               hideQty
-              hideDetail
               allowEmpty
             />
           ) : null}
 
-          <EditorSection title="Period & payment" description="Month, dates and how it was paid" defaultOpen>
-          <Field>
-            <FieldLabel htmlFor="stp-month">
-              {isPay ? "Salary month" : "Stipend month"}
-            </FieldLabel>
-            {/* Native month input — the browser's own month/year dropdown, no
-                dependency and no bespoke picker to keep accessible. */}
-            <Controller
-              control={control}
-              name="stipendMonth"
-              render={({ field }) => (
-                <Input
-                  id="stp-month"
-                  type="month"
-                  size="form"
-                  value={field.value}
-                  onChange={(e) => onChangeMonth(e.target.value)}
-                />
-              )}
-            />
-          </Field>
-
-          <FieldRow>
+          <EditorSection
+            title="Period & payment"
+            description="Month, dates and how it was paid"
+            defaultOpen
+          >
             <Field>
-              <FieldLabel htmlFor="stp-period-start">Period start</FieldLabel>
-              <Controller
-                control={control}
-                name="stipendPeriodStart"
-                render={({ field }) => (
-                  <DatePicker
-                    id="stp-period-start"
-                    size="form"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="stp-period-end">Period end</FieldLabel>
-              <Controller
-                control={control}
-                name="stipendPeriodEnd"
-                render={({ field }) => (
-                  <DatePicker
-                    id="stp-period-end"
-                    size="form"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  />
-                )}
-              />
-            </Field>
-          </FieldRow>
-
-          <FieldRow>
-            <Field>
-              <FieldLabel htmlFor="stp-method">Payment method</FieldLabel>
-              <Controller
-                control={control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(v) => field.onChange(v)}
-                  >
-                    <SelectTrigger
-                      id="stp-method"
-                      size="form"
-                      className="w-full"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent size="form">
-                      {PAYMENT_METHODS.map((method) => (
-                        <SelectItem key={method} value={method}>
-                          {method}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="stp-reference">
-                Reference
+              <FieldLabel htmlFor="stp-month">
+                {isPay ? "Salary month" : "Stipend month"}
               </FieldLabel>
-              <Input
-                id="stp-reference"
-                size="form"
-                {...register("paymentReference")}
+              {/* Native month input — the browser's own month/year dropdown, no
+                dependency and no bespoke picker to keep accessible. */}
+              <Controller
+                control={control}
+                name="stipendMonth"
+                render={({ field }) => (
+                  <Input
+                    id="stp-month"
+                    type="month"
+                    size="form"
+                    value={field.value}
+                    onChange={(e) => onChangeMonth(e.target.value)}
+                  />
+                )}
               />
             </Field>
-          </FieldRow>
 
-          {/*
+            <FieldRow>
+              <Field>
+                <FieldLabel htmlFor="stp-period-start">Period start</FieldLabel>
+                <Controller
+                  control={control}
+                  name="stipendPeriodStart"
+                  render={({ field }) => (
+                    <DatePicker
+                      id="stp-period-start"
+                      size="form"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
+                  )}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="stp-period-end">Period end</FieldLabel>
+                <Controller
+                  control={control}
+                  name="stipendPeriodEnd"
+                  render={({ field }) => (
+                    <DatePicker
+                      id="stp-period-end"
+                      size="form"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    />
+                  )}
+                />
+              </Field>
+            </FieldRow>
+
+            <FieldRow>
+              <Field>
+                <FieldLabel htmlFor="stp-method">Payment method</FieldLabel>
+                <Controller
+                  control={control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => field.onChange(v)}
+                    >
+                      <SelectTrigger
+                        id="stp-method"
+                        size="form"
+                        className="w-full"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent size="form">
+                        {PAYMENT_METHODS.map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="stp-reference">Reference</FieldLabel>
+                <Input
+                  id="stp-reference"
+                  size="form"
+                  {...register("paymentReference")}
+                />
+              </Field>
+            </FieldRow>
+
+            {/*
             Days worked and paid are prescribed wage-slip contents. Left blank
             they simply do not print — an unrecorded count is absent, not zero.
           */}
-          {isPay ? (
-            <FieldRow>
-              <Field>
-                <FieldLabel htmlFor="stp-days-paid">Days paid</FieldLabel>
-                <Input
-                  id="stp-days-paid"
-                  size="form"
-                  {...numericField(register("daysPaid"))}
+            {isPay ? (
+              <FieldRow>
+                <Field>
+                  <FieldLabel htmlFor="stp-days-paid">Days paid</FieldLabel>
+                  <Input
+                    id="stp-days-paid"
+                    size="form"
+                    {...numericField(register("daysPaid"))}
                   />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="stp-days-period">
-                  Days in period
-                </FieldLabel>
-                <Input
-                  id="stp-days-period"
-                  size="form"
-                  {...numericField(register("daysInPeriod"))}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="stp-days-period">
+                    Days in period
+                  </FieldLabel>
+                  <Input
+                    id="stp-days-period"
+                    size="form"
+                    {...numericField(register("daysInPeriod"))}
                   />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="stp-lop">Loss of pay</FieldLabel>
-                <Input
-                  id="stp-lop"
-                  size="form"
-                  {...numericField(register("lopDays"))}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="stp-lop">Loss of pay</FieldLabel>
+                  <Input
+                    id="stp-lop"
+                    size="form"
+                    {...numericField(register("lopDays"))}
                   />
-              </Field>
-            </FieldRow>
-          ) : null}
+                </Field>
+              </FieldRow>
+            ) : null}
 
-          {/*
+            {/*
             Editable rather than fixed boilerplate: whether statutory deductions
             apply depends on the individual engagement, and this line is a legal
             assertion either way (CONTEXT.md §6). It prints once, inside the pay
             term in TERMS.
           */}
-          <Field>
-            <FieldLabel htmlFor="stp-deductions">
-              {isPay ? "Deductions note" : "Deductions / terms note"}
-            </FieldLabel>
-            <Textarea
-              id="stp-deductions"
-              size="form"
-              rows={2}
-              placeholder={
-                isPay ? "e.g. TDS deducted under section 192." : undefined
-              }
-              {...register("deductionsNote")}
-            />
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="stp-deductions">
+                {isPay ? "Deductions note" : "Deductions / terms note"}
+              </FieldLabel>
+              <Textarea
+                id="stp-deductions"
+                size="form"
+                rows={2}
+                placeholder={
+                  isPay ? "e.g. TDS deducted under section 192." : undefined
+                }
+                {...register("deductionsNote")}
+              />
+            </Field>
           </EditorSection>
 
-          <EditorSection title="Terms" description="The clauses at the foot" printed>
+          <EditorSection title="Terms" description="The clauses at the foot">
             <TermsFields
               terms={shown(content, resolved, "terms")}
               onChange={(terms) => patchContent({ terms })}
             />
           </EditorSection>
 
-          <EditorSection title="Heading" description="The slip's own title" printed>
+          <EditorSection title="Heading" description="The slip's own title">
             <ContentText
               id="stp-masthead"
               label="Masthead"
@@ -865,7 +889,10 @@ export default function SlipEditor({
             />
           </EditorSection>
 
-          <EditorSection title="Footer" description="QR caption and the closing line" printed>
+          <EditorSection
+            title="Footer"
+            description="QR caption and the closing line"
+          >
             <ContentText
               id="stp-qr-caption"
               label="QR caption"
@@ -881,7 +908,6 @@ export default function SlipEditor({
           </EditorSection>
 
           <SaveError autosave={autosave} />
-          <AutosaveStatus autosave={autosave} recipient="employee" />
 
           <div className="flex flex-wrap gap-2">
             {docId ? (
@@ -910,7 +936,10 @@ export default function SlipEditor({
         </FieldGroup>
       </form>
 
-      <UnsavedChangesDialog autosave={autosave} label={spec.label.toLowerCase()} />
+      <UnsavedChangesDialog
+        autosave={autosave}
+        label={spec.label.toLowerCase()}
+      />
     </DocumentWorkspace>
   );
 }

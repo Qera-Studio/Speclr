@@ -113,7 +113,7 @@ row changes.
 | `money`, `dates`, `amountInWords`, `address`, `phone`, `party` | `src/lib/domain/` | Compliant |
 | Identifier rules (PAN, GSTIN, TAN, CIN, email, phone, IFSC, UPI) | `src/lib/domain/fields.ts` | Compliant, 15 August 2026 |
 | Text rules (name, org, prose, code, URL) | `src/lib/domain/text.ts` | Compliant, 15 August 2026 |
-| **Service** | `src/lib/domain/contract/service.ts` | **Pre-triggered** |
+| **Service** | `src/lib/domain/service.ts` | Compliant, 23 August 2026 |
 
 The field rules were the rule fired late rather than broken: the *validators*
 were shared from the start, but the zod fragment, message, length cap and
@@ -135,12 +135,12 @@ Both files are now policed by `design-system.test.ts`, which is the §5e
 mechanism applied to schemas: writing the rule by hand fails the build. See
 `CONTEXT.md` §5g, which also records why none of this is what stops XSS.
 
-A Service is namespaced under `contract/` because contracts are its only
-consumer today, so rule 1 has not fired yet. **It fires the moment a quote, an
-invoice, or anything else references a Service** — at which point it moves to
-`src/lib/domain/service/` before the second consumer is written, not after. The
-move is a directory and its imports; doing it late means doing it with two
-callers instead of one.
+A Service was namespaced under `contract/` while contracts were its only
+consumer, with the note that rule 1 would fire "the moment a quote, an invoice,
+or anything else references a Service". **The invoice is that second consumer**,
+and the move was made in the same commit, before the reference was written. It
+cost a file rename and six import lines, which is the whole argument for doing
+it then rather than later.
 
 Anything referenced by multiple document types is a shared record, not a child
 of whichever document type happened to touch it first.
@@ -220,6 +220,28 @@ answer, `TaxStep` shows it beside the disagreement that already blocks the save,
 and `setClientEntityType` writes it only when a person accepts. The stronger
 evidence wins by default and still passes through a human, which is the
 place-of-supply override run the other way round.
+
+**23 August 2026, the rest of the tax answer and the line items.** Place of
+supply was derived; the two fields beside it were not. Whether GST applied was a
+switch and the rate was a free number, and for an Indian recipient neither is a
+choice: the tax is charged under CGST s.9 whatever the invoice says, and the
+rate follows how the service is classified. `gstTreatmentOf`
+([gstTreatment.ts](src/lib/domain/gstTreatment.ts)) composes `placeOfSupplyOf`
+and `zeroRatingLabel` into one answer, the rail renders it read-only, and
+`gstTreatmentMismatch` refuses a finalize that departs from it without a
+recorded reason. An **export is deliberately not locked**: nothing in Indian law
+fixes what a foreign invoice charges. Same pass, same rule: an invoice's
+**retainer line items** now come from `commercial.services` and the catalogue,
+where they were re-typed from memory every month, and each carries the Service's
+**SAC**.
+
+**And one bug that was rule 3 broken in the other direction.** `tax.gstin` and
+the top-level `clients.gstin` column both held the GSTIN and nothing reconciled
+them, so a client onboarded through the Tax step read back as *unregistered*:
+their invoice printed a PAN where Rule 46(e) wants a GSTIN, and place of supply
+silently fell back to the address. Two places holding one fact is the shape this
+rule exists to stop; the fix is `db/mappers.ts` resolving them on read as well as
+write, and the identity form no longer submitting a field the Tax step owns.
 
 ### Rule 4 — snapshotting
 
@@ -323,6 +345,34 @@ Specific standing pushbacks:
 - A third pass at rearranging navigation → §0, second correction.
 
 ### Logged deviations
+
+**23 August 2026 — the place-of-supply override was removed, on instruction.**
+Rule 3's stated exception is *derived by default, override explicit and
+recorded*, and this was the reference implementation of it: a switch, a
+required reason, and a finalize that refused without one. The user asked for it
+gone, on the grounds that the code comes from the recipient's registration and
+an invoice naming another state is a wrong return rather than a preference.
+
+The conflict was named and the request stands, so it is built and bounded:
+
+- **What it gives up is real but not ours.** CGST s.12(3) genuinely puts a
+  supply relating to immovable property in the state the property is in, and
+  bill-to/ship-to under s.10(1)(b) does the same. Qera makes neither: it sells
+  design services from Ghaziabad. The day it does, this field comes back rather
+  than being typed over quietly.
+- **The derivation is unchanged and still the only writer.**
+  `placeOfSupplyOf` still runs, the field is still read-only, and the effect
+  that keeps the stored code equal to it now also **clears any stale
+  `placeOfSupplyOverrideReason`** on a draft, or a reason for a departure that
+  no longer exists would freeze onto the document at finalize.
+- **The column stays.** `placeOfSupplyOverrideReason` is still on
+  `baseFieldsShape` and still refused-without at finalize, because documents
+  written while the switch existed carry it and a finalized one may not change.
+
+The GST-treatment override (`gstOverrideReason`) is untouched: a supply really
+can be exempt, and that is a question about the *supply* rather than about
+where the recipient is registered.
+
 
 **14 August 2026 — a second jurisdiction now sits inline on the client record.**
 §4 forbids a country selector, a second pack, multi-currency invoices and VAT

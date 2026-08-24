@@ -32,7 +32,7 @@ import { sacSchema } from '@/lib/domain/fields';
 import { multilineSchema, textSchema } from '@/lib/domain/text';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import { SCHEDULES, type ScheduleKey } from '@/lib/domain/contract/schedules';
-import { rateUnitOf, type ContractService } from '@/lib/domain/contract/service';
+import { rateUnitOf, type ContractService } from '@/lib/domain/service';
 import { createService, updateServiceDetails } from '@/server/actions/services';
 
 /**

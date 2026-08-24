@@ -28,7 +28,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { AddressParts } from '@/lib/domain/address';
 import type { ScheduleKey } from '@/lib/domain/contract/schedules';
-import type { ServiceContent } from '@/lib/domain/contract/service';
+import type { ServiceContent } from '@/lib/domain/service';
 import type { CurrencyCode } from '@/lib/domain/currency';
 import type { DocContent } from '@/lib/domain/docContent';
 import type {
@@ -318,10 +318,19 @@ export interface DocumentData {
   gstLabel?: string;
   /** Why place of supply departs from the client-derived one. */
   placeOfSupplyOverrideReason?: string;
+  /** Why the tax charged departs from the client-derived treatment. */
+  gstOverrideReason?: string;
   notes?: string;
   terms?: string;
   dueDate?: string; // INV
   payment?: unknown; // REC — ReceiptDocument['payment']
+  // CRN — the invoice this credit note reduces, and why. In `data` rather than
+  // columns because nothing queries them: the link is followed from the note,
+  // never searched for.
+  againstInvoiceNumber?: string;
+  againstInvoiceDate?: string;
+  againstInvoiceId?: string;
+  creditReason?: string;
   /** CON — the included Parts, copied, plus every filled blank. */
   contract?: ContractData;
   // STP

@@ -361,21 +361,65 @@ issued. Two consequences, both bad, and neither reversible:
 So the format is a **release**, not a rolling edit. Audit, fix everything found,
 freeze, then issue.
 
-### Found already, by inspection on 17 August 2026
+### Found already, by inspection on 17 August 2026; closed 23 August 2026
 
-Both are hard requirements of CGST Rule 46, and both are absent today:
+Both were hard requirements of CGST Rule 46 and both were absent. A third,
+46(q), turned out to be missing too and was found while closing them.
 
-- **No HSN/SAC anywhere.** Rule 46(g). `grep -i 'hsn\|sac'` returns nothing in
-  `domain/` or the sheets: not on `ContractService`, not on a line item, not on
-  `DocumentSheet`. Notification 78/2020-CT requires a supplier under ₹5 crore
-  turnover to print at least **4 digits** on every B2B supply. Design and
-  branding services sit in SAC heading **9983** (specialty design services are
-  998391). It belongs on the *service* record, so it is captured once and derived
-  onto every line rather than typed per invoice (`PRINCIPLES.md` rule 3), which
-  also means it must be snapshotted at finalize (rule 4).
-- **`reverseCharge` is collected and never printed.** Rule 46(p) requires the
-  invoice to state whether tax is payable on reverse charge. The field is on
-  `ClientTax`, it is on the onboarding form, and **no sheet reads it.**
+- **HSN/SAC.** Rule 46(g). ~~`grep -i 'hsn\|sac'` returns nothing.~~ `LineItem`
+  carries `sacCode`, `DocumentSheet` prints a SAC column, and a line seeded from
+  a Service arrives with the catalogue's code (`PRINCIPLES.md` rule 3). It is on
+  the line rather than only on the Service because a custom line has no Service
+  to derive from, and it is frozen with the document like every other line field
+  (rule 4). Notification 78/2020-CT wants at least 4 digits under ₹5 crore
+  turnover; all 22 catalogue codes are the full 6.
+- **The reverse-charge declaration.** Rule 46(p). `reverseChargeLine` in
+  `docContent.ts`, defaulted from the document's own place of supply and printed
+  under the totals. **`ClientTax.reverseCharge` is still not read by any sheet**,
+  and that is deliberate: the field records the *recipient's* regime, which is a
+  different question from India's, and the printed line is editable where it
+  needs to say so. Wiring the flag to the default is a small change and is left
+  until a client actually has it set.
+- **The signature statement.** Rule 46(q) wants the supplier's signature or DSC;
+  the proviso excuses an electronically issued invoice, and settled practice is
+  to say so on the face of it. Neither was present. It is now the last TERMS
+  clause on both tax documents (`CONTEXT.md` §5i), not a line of its own.
+
+### Found and closed on 24 August 2026
+
+Three more, from the same audit read further:
+
+- **The export endorsement was a paraphrase.** Rule 46's third proviso
+  prescribes the sentence in capitals and `zeroRatingLabel` was printing "Export
+  of services under LUT, zero rated, IGST not charged (IGST Act s.16)."
+  Correct in substance, not in form, and the form is what a refund claim under
+  IGST s.16(3) is checked against. `EXPORT_ENDORSEMENT` and `SEZ_ENDORSEMENT` in
+  `placeOfSupply.ts` hold the two prescribed sentences; `exportEndorsement` is a
+  content key so it is editable and frozen at finalize, and it prints on its own
+  line. `zeroRatingLabel` is unchanged and still explains the position in the
+  totals column: the two are different jobs.
+- **No copy marking.** Rule 48(1): an invoice for services is made in duplicate,
+  the original for the recipient and the duplicate for the supplier, each marked
+  as such. `copyMarking`, defaulting to 'ORIGINAL FOR RECIPIENT' on the invoice
+  and to nothing on the receipt, because Rule 50's receipt voucher prescribes no
+  marking.
+- **No credit note.** The largest of the three, and structural rather than a
+  line of text. A finalized document is immutable, correctly, so there was no
+  lawful way to reduce or reverse an issued invoice at all: duplicating it as a
+  new draft creates a *second* invoice and leaves the first standing in the
+  return. CGST **s.34** is the mechanism, and `CRN` is now a document type with
+  its own consecutive series (`QS-CRN-2627-nnn`). See `CONTEXT.md` §5j.
+
+Still open, and deliberately: **a debit note** (s.34(3), for an *increase*) is
+not built. Qera has never had to raise one, the shape is the credit note's
+mirror, and a document type nobody issues is one nobody checks.
+
+Still open on the SAC: **the 22 seeded codes want a CA's sign-off.**
+`seed/services.ts` records the reasoning and names 15 to 17 as the arguable
+ones. Every one is in the 9983 group and therefore 18%, so the choice between
+them moves no money, only the heading the supply is filed under. Not a blocker
+for the freeze; a correction is an edit to the catalogue and reaches the next
+invoice.
 
 ### The audit still to run, per document type
 
@@ -391,8 +435,10 @@ Nobody should assume the list above is complete. It is what one grep found.
   than trusting that it does.
 - **Receipt** against **Rule 50** (receipt voucher), which has its own field list
   and is not an invoice with a different masthead.
-- **Export invoice** against **IGST Act s.16** and Rule 46's export endorsement:
-  the LUT wording must be the prescribed sentence, not a paraphrase.
+- ~~**Export invoice** against Rule 46's export endorsement: the LUT wording must
+  be the prescribed sentence, not a paraphrase.~~ Closed 24 August 2026. The rest
+  of **IGST Act s.16** still wants reading: the LUT number and date are still not
+  collected anywhere.
 - **Contract** for the things an Indian commercial agreement needs that are not
   in the MSA: stamp duty (state-specific, and UP's schedule applies), the
   jurisdiction clause, and execution formalities.
@@ -409,7 +455,7 @@ Indian export invoice. This is not N jurisdictions. It is six additions:
 
 | Needed | Status today |
 |---|---|
-| The prescribed export endorsement, **verbatim** ("SUPPLY MEANT FOR EXPORT UNDER LUT WITHOUT PAYMENT OF INTEGRATED TAX") | `zeroRatingLabel` prefills something close. The statutory wording must be confirmed, not paraphrased. |
+| The prescribed export endorsement, **verbatim** | Done, 24 August 2026. `EXPORT_ENDORSEMENT` in `placeOfSupply.ts`, printed through the `exportEndorsement` content key. |
 | **LUT number and date printed on the invoice** | Not collected anywhere. Belongs on studio settings, and therefore inside `studioSnapshot`. |
 | Recipient's foreign tax ID | Collected (`taxIds/foreign.ts`), prints in the billed-to block |
 | Place of supply for an export of services (IGST s.13(2), location of recipient) | `placeOfSupplyOf` covers the domestic case; the export case needs confirming |

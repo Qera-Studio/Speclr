@@ -103,5 +103,16 @@ export default async function NewDocumentRoute({
     );
   }
 
-  return <DocumentEditor typeCode={spec.code} clients={clients} studio={studio} title={title} />;
+  // The catalogue seeds the retainer lines and fills the add-line menu. Passed
+  // to `DocumentRoute` as well, unlike the clause library above: see the note on
+  // `DocumentEditorProps.services` for why the two go opposite ways.
+  return (
+    <DocumentEditor
+      typeCode={spec.code}
+      clients={clients}
+      services={await listServices()}
+      studio={studio}
+      title={title}
+    />
+  );
 }

@@ -39,9 +39,12 @@ export default function DocumentWorkspace({
   columnWidth,
   columnGap,
   railFooter,
+  status,
   children,
 }: {
   title: string;
+  /** The autosave line, rendered in the bar. See `DocumentWorkspaceBar`. */
+  status?: React.ReactNode;
   preview?: React.ReactNode;
   /**
    * Shown in the card *instead of* the document. The contract uses it for the
@@ -116,6 +119,7 @@ export default function DocumentWorkspace({
     >
       <DocumentWorkspaceBar
         title={title}
+        status={status}
         currentPage={safePage}
         pageCount={main ? undefined : pageCount}
         onPrev={() => goToPage(safePage - 1)}

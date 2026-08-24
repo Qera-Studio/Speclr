@@ -38,6 +38,17 @@ type EditorPanelContextValue = {
    */
   footerHost: HTMLElement | null;
   setFooterHost: (node: HTMLElement | null) => void;
+  /**
+   * A third target: a drawer that slides over the rail from the right, for a
+   * body of editing that is its own subject rather than one more field. The
+   * document wording uses it — thirty inputs that are read together when they
+   * are read at all, and that used to be a dialog over the preview they change.
+   */
+  overlayHost: HTMLElement | null;
+  setOverlayHost: (node: HTMLElement | null) => void;
+  /** The open drawer's title, shown beside its back arrow. Null when closed. */
+  drawer: string | null;
+  setDrawer: (title: string | null) => void;
   /** How many panels are currently mounted — drives the rail's enabled state. */
   count: number;
   register: () => () => void;
@@ -59,6 +70,8 @@ const EditorPanelContext = createContext<EditorPanelContextValue | null>(null);
 export function EditorPanelProvider({ children }: { children: React.ReactNode }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [footerHost, setFooterHost] = useState<HTMLElement | null>(null);
+  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
+  const [drawer, setDrawer] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   const [title, setTitle] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -77,6 +90,9 @@ export function EditorPanelProvider({ children }: { children: React.ReactNode })
   // it (and prompt) rather than silently discarding what the user typed.
   const requestClose = useCallback(() => {
     if (dirtyGuard.current && !dirtyGuard.current()) return;
+    // A collapsed rail must not keep a drawer open behind it, or expanding it
+    // again lands on the drawer rather than on the form.
+    setDrawer(null);
     setOpen(false);
   }, []);
 
@@ -86,6 +102,10 @@ export function EditorPanelProvider({ children }: { children: React.ReactNode })
       setHost,
       footerHost,
       setFooterHost,
+      overlayHost,
+      setOverlayHost,
+      drawer,
+      setDrawer,
       count,
       register,
       title,
@@ -95,7 +115,18 @@ export function EditorPanelProvider({ children }: { children: React.ReactNode })
       setDirtyGuard,
       requestClose,
     }),
-    [host, footerHost, count, register, title, open, setDirtyGuard, requestClose],
+    [
+      host,
+      footerHost,
+      overlayHost,
+      drawer,
+      count,
+      register,
+      title,
+      open,
+      setDirtyGuard,
+      requestClose,
+    ],
   );
 
   return <EditorPanelContext.Provider value={value}>{children}</EditorPanelContext.Provider>;

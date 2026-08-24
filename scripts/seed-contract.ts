@@ -27,7 +27,7 @@ config({ path: '.env.local' });
 import { neon } from '@neondatabase/serverless';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../src/lib/domain/contract/seed/libraries';
 import { SERVICES } from '../src/lib/domain/contract/seed/services';
-import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/contract/service';
+import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/service';
 import { MSA_CLAUSES, msaClauseSchema } from '../src/lib/domain/contract/msa';
 
 const APPLY = process.argv.includes('--apply');

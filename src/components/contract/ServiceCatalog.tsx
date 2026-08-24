@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SCHEDULES } from '@/lib/domain/contract/schedules';
-import type { ContractService } from '@/lib/domain/contract/service';
+import type { ContractService } from '@/lib/domain/service';
 
 interface ServiceCatalogProps {
   services: ContractService[];

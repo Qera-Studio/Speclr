@@ -258,6 +258,28 @@ screen before step 1 writes `?kind=` into the URL only while there is no row to
 derive from; once step 1 saves, the entity type is the answer, and an existing
 client never sees the chooser.
 
+**Both choosers are reachable again, and the kind axis is editable after step 1.**
+Added 23 August 2026, because a wrong choice was unrecoverable. An Indian sole
+proprietor entered as "a company" was stuck: proprietorship is a natural-person
+form so the company dropdown never offers it, every move in the flow is a
+`router.replace` so the browser's back button leaves the wizard rather than
+stepping through it, and the kind is derived from the entity type, so there was
+no control anywhere that could change it. The record had to be abandoned and
+re-typed. Two fixes, in the two states:
+
+- **Before the first save**, the back arrow renders on step 1 and goes to the
+  country chooser, which now has its own back to the kind chooser. Nothing
+  unwinds because nothing has been written: both answers live only in the URL.
+- **After it**, `IdentityStep` offers `entityTypesForCountry` rather than
+  `entityTypesForClient`, so both kinds are listed, and the resolver judges the
+  *submitted* entity type instead of the arriving prop. The layout follows the
+  selection immediately (`isNaturalPerson` on the field, not the prop), or
+  picking Sole Proprietorship would still ask for a legal entity name.
+
+**The country filter is not relaxed with it.** A person is a person anywhere; a
+UK sole trader on an Indian address is the wrong record this check exists to
+catch. Pinned in `IdentityStep.test.tsx`.
+
 **Six steps, not seven.** `onboardingSteps(kind)` drops Contacts for an
 individual: a person is the contact they discuss the work with, the one who
 signs and, unless they say otherwise, the one an invoice goes to. What that step
@@ -507,6 +529,18 @@ anything inside triggers a scroll-into-view that walks up every ancestor scroll
 box. That pushed the header off the top of the shell with no way to bring it
 back. `clip` creates no scroll container at all. Don't change it back.
 
+**Two more of the same kind, both fixed 23 August 2026, both one property.**
+`UploadDropzone`'s preview box needed `min-h-0`: a flex item's `min-height` is
+`auto`, so the box was floored at its content's height, a tall scan pushed the
+card past `min-h-56`, `h-full` below it resolved to auto, and `overflow-hidden`
+never had a definite box to clip against. And `Calendar` needed `relative` on its
+root: react-day-picker renders `Nav` as a sibling of the month, and its own
+stylesheet, which is never imported here, is what would normally give
+`.rdp-months` a positioning context. Without one the arrows resolved against the
+popover and sat above and outside the calendar. Both look cosmetic and both are
+the same lesson as `overflow-clip`: a layout bug here is usually one property
+resolving against the wrong box.
+
 **One rule of the same kind lives in its own file, because it is arithmetic
 rather than a grep.** `src/__tests__/contrast.test.ts` parses the OKLCH tokens
 out of `globals.css`, converts them and measures every foreground against every
@@ -665,7 +699,7 @@ a hand-written phone rule — and the walker now polices `.ts` as well as `.tsx`
 pins the default. Both were confirmed to fail when the thing they guard is
 removed; a rule that matches nothing is a test that passes forever.
 
-### 5h. A Service carries its SAC and its list price, and neither prints yet
+### 5h. A Service carries its SAC and its list price
 
 The catalogue at `/client/services` is editable now: a pencil on each card opens
 a dialog of five fields (section, title, description, rate, SAC). Four things
@@ -680,15 +714,14 @@ library is safe: a contract copies a Part when the Service is ticked and freezes
 it at finalize, so an edit reaches the *next* contract and nothing already open
 or signed (§5c).
 
-**`sacCode` does not close the Rule 46 gap.** CGST Rule 46 wants the SAC printed
-against the *line* on a tax invoice, and invoice lines here are still free text
-that no Service feeds. This is the number a line will read once they do. All 22
-seeded codes sit in the 9983 group, so every one is 18% and the choice between
-them moves no money, only the line the classification is filed under. They are a
-proposal for a CA to sign off, and `seed/services.ts` records the reasoning and
-names 15 to 17 as the arguable ones.
+**`sacCode` closed the Rule 46 gap on 23 August 2026.** It used to say the code
+went nowhere, because invoice lines were free text that no Service fed. They are
+not any more: see §5i. All 22 seeded codes sit in the 9983 group, so every one is
+18% and the choice between them moves no money, only the heading the supply is
+filed under. They are still a proposal for a CA to sign off, and
+`seed/services.ts` records the reasoning and names 15 to 17 as the arguable ones.
 
-**`ratePaise` is not the contract's Fee.** The `fee` rows on a Service are
+**`ratePaise` is not the contract's Fee, and it does now reach a document.** The `fee` rows on a Service are
 blanks a specific contract fills after a specific negotiation; the rate is what
 the studio quotes *from* before there is a contract. Nothing reads it into a
 document. What it is *per* is `rateUnitOf(scheduleKey)` and is derived, not
@@ -705,6 +738,180 @@ build fails its own metadata check on load under `tsx`, taking the process with
 it. `COUNTRIES[].dialCode` is a cached getter now, so nothing outside the browser
 touches libphonenumber at all.
 
+
+### 5i. The invoice states its own tax, and does not ask
+
+The last of `PRINCIPLES.md` rule 3's live violations, plus the three CGST Rule
+46 statements that were simply absent. Everything here was built on 23 August
+2026, before the first invoice was issued, which is what the format freeze in
+`ROADMAP.md` is for.
+
+**The bug underneath it all.** `tax.gstin` and the top-level `clients.gstin`
+column both held the GSTIN, and nothing reconciled them. Onboarding's Tax step
+wrote only the group; `placeOfSupplyOf`, `clientSnapshotOf` and every sheet read
+only the column. So a client onboarded through the form read back as
+**unregistered**: their invoice printed a PAN where Rule 46(e) requires a GSTIN,
+and place of supply silently derived from the address instead of the
+registration. `db/mappers.ts` now resolves the two on read as well as write, so
+every existing row corrects itself and no migration was needed, and `gstin` was
+**removed from `clientInputSchema`** so the identity form stops being a second
+writer of a field the Tax step owns. **Never read `tax.gstin` directly outside
+onboarding.**
+
+**A domestic supply's tax treatment is not editable.** `gstTreatmentOf`
+(`domain/gstTreatment.ts`) composes `placeOfSupplyOf` and `zeroRatingLabel` into
+one answer: does GST apply, at what rate, at which place of supply, and is that
+the record's to state or the operator's to choose. For an Indian recipient it is
+the record's, because none of the three is a preference. Tax on a domestic
+supply is charged under CGST s.9 whether or not the invoice says so; the rate
+follows how the service is classified, and every catalogue Service is in the
+9983 group at 18%; the state follows the recipient's registration. Three fields
+each legally wrong to change, left changeable, is the same gap that produced the
+wrong place of supply.
+
+Three things about the lock:
+
+- **An SEZ unit is locked; an export is not.** A supply to an SEZ is zero-rated
+  *because the client record says the client is an SEZ unit*, so it is as
+  derived as a taxed one. An export is not locked because nothing in Indian law
+  fixes what a foreign invoice charges, and the recipient's own regime may want
+  a line this derivation cannot know about.
+- **The override is one switch and it demands a reason** (`gstOverrideReason`).
+  Rule 3's stated exception, implemented as written: derived by default,
+  override explicit and recorded.
+- **The server check is the enforcement.** `gstTreatmentMismatch` refuses the
+  finalize; the read-only inputs are a convenience for whoever is typing. A
+  read-only input has never stopped anything.
+
+**Line items come from the client record.** Picking a client fills the invoice
+with their **retainer** services at their agreed rate (else the catalogue's list
+price, since a blank rate on the record means "the catalogue rate" and
+deliberately not zero), each carrying the Service's SAC. Only retainers: those
+are the lines that are identical every month. A build or an audit is billed
+once, on a date nothing here knows, so it is offered on the Add-line menu
+instead of assumed onto the document, along with the rest of the catalogue and a
+custom row. **The seed only ever fires onto an untouched list**, so changing the
+client on an invoice already written cannot throw the writing away.
+
+This is what fired `PRINCIPLES.md` rule 1 on the Service: `contract/service.ts`
+moved to `domain/service.ts` in the same commit, before the second consumer was
+written. It is also the one place this diverges from the clause library (§5c):
+`DocumentRoute` **does** get the catalogue, unlike `ContractEditor`. A contract
+freezes a copy of a Part, so a live library there would rewrite a signed
+agreement; an invoice line is plain text the operator owns the moment it lands,
+and nothing on the document points back at a Service.
+
+**Three Rule 46 statements that were not on the sheet at all**, now content keys
+in `docContent.ts` and therefore editable per document and frozen at finalize
+(§5b), printing nothing when cleared:
+
+| Key | Rule | Default |
+|---|---|---|
+| `sacCode` on each `LineItem` | 46(g) | The Service's, or typed |
+| `reverseChargeLine` | 46(p) | 'Tax payable on reverse charge: No.', plus an export sentence |
+| the last `fixedTerms` clause | 46(q) proviso | 'This is a computer-generated document...' |
+| `currencyLine` | not Rule 46 | 'All amounts are in Indian Rupees (INR).' |
+
+Rule 46(q)'s statement is a **TERMS clause** rather than a content key of its
+own: a clause with the whole sentence as its `title` and an empty `body`, which
+is what prints it bold. It was a line above the footer first, which put a
+standing declaration somewhere nobody looks for one and gave it a second route
+to being edited. It replaced the invoice's *Suspension* clause, the one term
+whose remedy the payment clause and the contract already carry.
+
+The reverse-charge answer is No on everything Qera issues: s.9(3) applies to
+notified supplies and design services are not among them, and s.9(4) is a
+registered recipient's liability on an *unregistered* supplier's supply, while
+Qera is registered. **`ClientTax.reverseCharge` is still read by no sheet**, and
+that is deliberate: it records the recipient's own regime, which is a different
+question from India's.
+
+**A foreign recipient gets wire details instead of the UPI QR.** `StudioInfo.bank`
+gained `accountName`, `swift`, `iban` and `bankAddress`, all optional, all
+printed only when `placeOfSupplyStateCode` is '96'. The QR is a UPI intent: no
+foreign banking app reads it and the handle cannot receive an inward remittance,
+so printing it there would be an instruction that cannot be followed. The IFSC
+goes with it. `ibanSchema` verifies the mod-97 check digits for the same reason
+the GSTIN's mod-36 is verified: this is where money is being sent.
+
+**The invoice sheet is a fixed A4 frame that clips**, exactly like the slips, and
+everything above made it taller. `e2e/invoice.spec.ts` measures both the
+domestic and the export case with `worstClip`, and it was confirmed to go red
+before it was trusted. Verify any further change to this sheet in a real
+browser: jsdom renders every box as zero.
+
+**Jurisdiction stays Ghaziabad for every client, foreign ones included.** Raised
+and decided by the user on 23 August 2026, with the trade-off stated: an Indian
+court's judgment is difficult to enforce against a company with no assets in
+India, which is why exclusive-arbitration clauses are the norm for foreign
+clients. The decision is that flying to another country to litigate is the worse
+outcome. `DOC_TYPES.INV.fixedTerms` is unchanged; this note exists so the choice
+does not read as an oversight later.
+
+### 5j. The credit note is how an immutable invoice gets corrected
+
+Added 24 August 2026, with the two Rule 46/48 markings below it, closing the
+last of the compliance gaps found by reading the rules clause by clause.
+
+**The gap it fills is the immutability rule's own consequence.** A finalized
+document cannot be edited (§4), and that is right: an issued tax invoice is a
+record retained 72 months under CGST s.36. So a mistake, a cancellation, or a
+discount agreed after the fact had nowhere to go. "Duplicate it as a new draft"
+does not fix an invoice, it issues a *second* one and leaves the first standing
+in the return. CGST **s.34(1)** is what the statute provides instead: the
+supplier issues a credit note, and s.34(2) lets output tax liability be reduced
+by it in the period it is declared.
+
+Four things about `CRN` are decisions, not defaults:
+
+- **Its own series, `QS-CRN-2627-nnn`,** claimed from the same atomic per-FY
+  counter as everything else. s.34 wants a credit note to carry a consecutive
+  serial number of its own, and Rule 46(b) wants the same of the invoice series,
+  so sharing one would break both.
+- **It names the invoice it reduces, by number *and* date** (Rule 53(1A)(f)),
+  and finalize refuses without both. Picking the invoice copies its lines and
+  its whole tax position, because a credit note reverses tax that was actually
+  charged: a rate invented here would put a figure in the return that matches
+  nothing. Its `defaultFields` start at **0%**, not the studio's usual 18, for
+  the same reason.
+- **The `againstInvoiceId` is the app's link, never the statute's.** It is kept
+  in step with the number exactly as the receipt's is, and it is deliberately
+  *not* required: a credit note may lawfully be raised against an invoice issued
+  before speclr existed.
+- **The figures are positive and "TOTAL CREDITED" is what makes them a
+  reduction.** That is how s.34 describes it and how a return reads it. Storing
+  negatives would put a negative through `computeTotals`, which is money code
+  that has never had to consider one.
+
+Not built, deliberately: a **debit note** (s.34(3), for an increase). It is the
+credit note's mirror, Qera has never raised one, and a document type nobody
+issues is a document type nobody checks.
+
+**Two markings that were simply missing from the invoice**, both content keys in
+`docContent.ts` and therefore editable per document and frozen at finalize (§5b),
+printing nothing when cleared:
+
+| Key | Rule | Default |
+|---|---|---|
+| `exportEndorsement` | 46, third proviso | The prescribed sentence, in capitals |
+| `copyMarking` | 48(1) | 'ORIGINAL FOR RECIPIENT' on the invoice; nothing on the receipt |
+
+**The endorsement and `zeroRatingLabel` are two jobs and both print.** The rule
+does not ask for a description of the position, it asks for these words:
+'SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF
+INTEGRATED TAX'. `zeroRatingLabel` explains the position in a sentence a reader
+can follow, which is the right thing in the totals column; the endorsement is
+what a refund claim under IGST s.16(3) is checked against. Only the **export**
+case can be defaulted by `contentOf`, because place of supply 96 is a fact the
+document carries: an SEZ supply is zero-rated because the *client record* says
+so, and content resolution never reads the client, so `DocumentEditor` seeds
+that wording when the client is picked, exactly as it already seeds `gstLabel`.
+`zeroRatingEndorsement` and `zeroRatingLabel` branch identically and a test pins
+that they agree case for case, because two functions answering "which zero-rated
+case is this" is exactly the shape rule 3 exists to stop.
+
+The **receipt gets no copy marking**: Rule 48 governs the tax invoice, and Rule
+50's receipt voucher prescribes none.
 
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:

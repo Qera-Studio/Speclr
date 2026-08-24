@@ -9,7 +9,7 @@
 import type { ClientSnapshot, ContractDocument } from '../../types';
 import { EXCLUSIONS, CLIENT_INPUTS } from '../seed/libraries';
 import { SERVICES } from '../seed/services';
-import type { ContractService } from '../service';
+import type { ContractService } from '../../service';
 import type { BlankValues } from '../blanks';
 
 export const testClientSnapshot: ClientSnapshot = {

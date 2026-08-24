@@ -18,7 +18,7 @@
  * readable, and contracts already generated hold their own copy regardless.
  */
 
-import type { LibraryLine } from '../service';
+import type { LibraryLine } from '../../service';
 
 type Entry = [id: string, text: string];
 

@@ -15,7 +15,7 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,9 @@ import IfscField from '@/components/form/IfscField';
 import { CinField, EmailField, GstinField } from '@/components/form/fields';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import { studioInputSchema, type StudioInfo } from '@/lib/domain/studio';
+import { IBAN_MAX, SWIFT_MAX } from '@/lib/domain/fields';
 import { updateStudioSettings } from '@/server/actions/studio';
-import { numericField } from '@/components/form/inputFilters';
+import { numericField, uppercaseField } from '@/components/form/inputFilters';
 
 type FormValues = z.infer<typeof studioInputSchema>;
 
@@ -252,6 +253,63 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             <FieldLabel htmlFor="studio-bank-upi">UPI ID</FieldLabel>
             <Input id="studio-bank-upi" size="form" autoComplete="off" {...register('bank.upiId')} />
             <FieldError errors={[errors.bank?.upiId]} />
+          </Field>
+        </FieldSet>
+
+        <FieldSeparator />
+
+        <FieldSet>
+          <LegendInfo
+            label="When are these printed?"
+            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, in place of the IFSC and the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
+          >
+            Wire transfer
+          </LegendInfo>
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="studio-bank-swift">SWIFT / BIC</FieldLabel>
+              <Input
+                id="studio-bank-swift"
+                size="form"
+                autoComplete="off"
+                maxLength={SWIFT_MAX}
+                placeholder="KKBKINBB"
+                {...uppercaseField(register('bank.swift'))}
+              />
+              <FieldError errors={[errors.bank?.swift]} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="studio-bank-iban">IBAN</FieldLabel>
+              <Input
+                id="studio-bank-iban"
+                size="form"
+                autoComplete="off"
+                maxLength={IBAN_MAX}
+                {...uppercaseField(register('bank.iban'))}
+              />
+              <FieldError errors={[errors.bank?.iban]} />
+            </Field>
+          </FieldRow>
+          <Field>
+            <FieldLabel htmlFor="studio-bank-account-name">Account name</FieldLabel>
+            <Input
+              id="studio-bank-account-name"
+              size="form"
+              autoComplete="off"
+              placeholder="The name the account is held in"
+              {...register('bank.accountName')}
+            />
+            <FieldError errors={[errors.bank?.accountName]} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="studio-bank-address">Bank address</FieldLabel>
+            <Textarea
+              id="studio-bank-address"
+              rows={3}
+              autoComplete="off"
+              {...register('bank.bankAddress')}
+            />
+            <FieldError errors={[errors.bank?.bankAddress]} />
           </Field>
         </FieldSet>
 

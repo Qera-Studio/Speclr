@@ -1,5 +1,6 @@
-import { contractDoc } from '@/lib/domain/contract/__tests__/fixture';
-import type { AdminDocument, LineItem, SlipDocument } from '@/lib/domain/types';
+import { contractDoc } from "@/lib/domain/contract/__tests__/fixture";
+import { STUDIO_INFO } from "@/lib/domain/studio";
+import type { AdminDocument, LineItem, SlipDocument } from "@/lib/domain/types";
 
 /**
  * The documents the browser tests render.
@@ -24,81 +25,143 @@ const line = (description: string, ratePaise: number): LineItem => ({
  */
 const paySlip = (earnings: number, deductions: number): SlipDocument =>
   ({
-    id: 'pay-1',
-    type: 'PAY',
-    status: 'finalized',
-    number: 'QS-PAY-2627-001',
-    issueDate: '2026-06-30',
+    id: "pay-1",
+    type: "PAY",
+    status: "finalized",
+    number: "QS-PAY-2627-001",
+    issueDate: "2026-06-30",
     gstRatePercent: 0,
     lineItems: [
-      line('Basic', 4000000),
-      line('House rent allowance', 1600000),
-      line('Conveyance allowance', 160000),
-      line('Special allowance', 400000),
-      line('Medical allowance', 125000),
-      line('Performance incentive', 500000),
-      line('Leave travel allowance', 200000),
-      line('Shift allowance', 100000),
-      line('Meal allowance', 100000),
-      line('Internet reimbursement', 150000),
-      line('Books and training', 100000),
-      line('Statutory bonus', 175000),
+      line("Basic", 4000000),
+      line("House rent allowance", 1600000),
+      line("Conveyance allowance", 160000),
+      line("Special allowance", 400000),
+      line("Medical allowance", 125000),
+      line("Performance incentive", 500000),
+      line("Leave travel allowance", 200000),
+      line("Shift allowance", 100000),
+      line("Meal allowance", 100000),
+      line("Internet reimbursement", 150000),
+      line("Books and training", 100000),
+      line("Statutory bonus", 175000),
     ].slice(0, earnings),
     deductions: [
-      line('TDS under section 192', 250000),
-      line('Professional tax', 20000),
-      line('Salary advance recovery', 500000),
-      line('Loss of pay', 133300),
-      line('Group medical premium', 65000),
-      line('Canteen', 24000),
-      line('Parking', 15000),
+      line("TDS under section 192", 250000),
+      line("Professional tax", 20000),
+      line("Salary advance recovery", 500000),
+      line("Loss of pay", 133300),
+      line("Group medical premium", 65000),
+      line("Canteen", 24000),
+      line("Parking", 15000),
     ].slice(0, deductions),
-    employeeId: 'emp-1',
+    employeeId: "emp-1",
     employeeSnapshot: {
-      name: 'Ananya Rao',
-      address: 'Sector 12, Ghaziabad, Uttar Pradesh - 201017',
-      email: 'ananya@example.com',
-      phone: '+919000000000',
-      role: 'Senior Designer',
-      engagementType: 'employee',
-      pronoun: 'she',
-      joiningDate: '2025-04-01',
-      bank: { bankName: 'HDFC Bank', accountNo: '1234567890', ifsc: 'HDFC0001234' },
-      payroll: { employeeCode: 'QS-EMP-004', pan: 'ABCPR1234F', uan: '101234567890' },
+      name: "Ananya Rao",
+      address: "Sector 12, Ghaziabad, Uttar Pradesh - 201017",
+      email: "ananya@example.com",
+      phone: "+919000000000",
+      role: "Senior Designer",
+      engagementType: "employee",
+      pronoun: "she",
+      joiningDate: "2025-04-01",
+      bank: {
+        bankName: "HDFC Bank",
+        accountNo: "1234567890",
+        ifsc: "HDFC0001234",
+      },
+      payroll: {
+        employeeCode: "QS-EMP-004",
+        pan: "ABCPR1234F",
+        uan: "101234567890",
+      },
     },
-    stipendMonth: '2026-06',
-    stipendPeriodStart: '2026-06-01',
-    stipendPeriodEnd: '2026-06-30',
+    stipendMonth: "2026-06",
+    stipendPeriodStart: "2026-06-01",
+    stipendPeriodEnd: "2026-06-30",
     daysInPeriod: 30,
     daysPaid: 30,
-    paymentMethod: 'Bank Transfer',
-    deductionsNote: '',
+    paymentMethod: "Bank Transfer",
+    deductionsNote: "",
   }) as unknown as SlipDocument;
 
 const invoice = (): AdminDocument =>
   ({
-    id: 'inv-1',
-    type: 'INV',
-    status: 'finalized',
-    number: 'QS-INV-2627-001',
-    issueDate: '2026-06-10',
-    dueDate: '2026-06-25',
-    clientId: 'client-1',
+    id: "inv-1",
+    type: "INV",
+    status: "finalized",
+    number: "QS-INV-2627-001",
+    issueDate: "2026-06-10",
+    dueDate: "2026-06-25",
+    clientId: "client-1",
     clientSnapshot: {
-      name: 'Clayora',
-      companyName: 'Clayora Private Limited',
-      address: 'Sector 62, Noida, Uttar Pradesh - 201301',
-      email: 'hello@clayora.example',
-      phone: '+919876500000',
-      gstin: '09AAACC1206D1ZP',
+      name: "Clayora",
+      companyName: "Clayora Private Limited",
+      address: "Sector 62, Noida, Uttar Pradesh - 201301",
+      email: "hello@clayora.example",
+      phone: "+919876500000",
+      gstin: "09AAACC1206D1ZP",
     },
     lineItems: [
-      { description: 'Brand identity system', ratePaise: 18000000, qty: 1 },
-      { description: 'Shopify storefront build', ratePaise: 24000000, qty: 1 },
-      { description: 'Photography direction', ratePaise: 6000000, qty: 1 },
+      {
+        description: "Brand identity system",
+        ratePaise: 18000000,
+        qty: 1,
+        sacCode: "998391",
+      },
+      {
+        description: "Shopify storefront build",
+        ratePaise: 24000000,
+        qty: 1,
+        sacCode: "998314",
+      },
+      {
+        description: "Photography direction",
+        ratePaise: 6000000,
+        qty: 1,
+        sacCode: "998386",
+      },
     ],
     gstRatePercent: 18,
-    placeOfSupplyStateCode: '09',
+    placeOfSupplyStateCode: "09",
+  }) as unknown as AdminDocument;
+
+/**
+ * The same invoice to a recipient outside India, which is the case that grew.
+ *
+ * The wire block prints six rows where the domestic one prints four, one of
+ * them a multi-line bank address, and the PAYMENT section sits in the fixed A4
+ * frame's bottom band. That is a measurement, so it belongs here and not in
+ * jsdom, which renders every box as zero.
+ */
+const invoiceExport = (): AdminDocument =>
+  ({
+    ...invoice(),
+    id: "inv-2",
+    number: "QS-INV-2627-002",
+    clientSnapshot: {
+      name: "Northwind",
+      companyName: "Northwind Trading Ltd",
+      address: "14 Ludgate Hill, London EC4M 7AA, United Kingdom",
+      email: "accounts@northwind.example",
+      phone: "+442079460000",
+      taxIdType: "GB_VAT",
+      taxId: "GB123456789",
+      registrationNumber: "09876543",
+    },
+    gstRatePercent: 0,
+    gstLabel: "Export of services under LUT, IGST not charged (IGST Act s.16).",
+    placeOfSupplyStateCode: "96",
+    studioSnapshot: {
+      ...STUDIO_INFO,
+      bank: {
+        ...STUDIO_INFO.bank,
+        accountName: "Qera Private Limited",
+        swift: "KKBKINBBCPC",
+        iban: "GB29NWBK60161331926819",
+        bankAddress:
+          "Kotak Mahindra Bank, Ground Floor,\nRaj Nagar Extension, Ghaziabad 201017, India",
+      },
+    },
   }) as unknown as AdminDocument;
 
 /**
@@ -107,14 +170,17 @@ const invoice = (): AdminDocument =>
  */
 export const FIXTURES = {
   /** The density the pay slip is drawn for. Must fit on one page. */
-  'pay-slip': () => paySlip(6, 5),
+  "pay-slip": () => paySlip(6, 5),
   /** Past it. The clipping this document type already shipped once. */
-  'pay-slip-crowded': () => paySlip(12, 7),
+  "pay-slip-crowded": () => paySlip(12, 7),
   /** Twenty-odd pages of prose in two columns: the pagination case. */
-  contract: () => contractDoc({ codes: ['01', '05'] }) as AdminDocument,
+  contract: () => contractDoc({ codes: ["01", "05"] }) as AdminDocument,
   invoice,
+  /** The wire-transfer block, which is two rows taller than the domestic one. */
+  "invoice-export": invoiceExport,
 } as const;
 
 export type FixtureName = keyof typeof FIXTURES;
 
-export const isFixture = (name: string): name is FixtureName => name in FIXTURES;
+export const isFixture = (name: string): name is FixtureName =>
+  name in FIXTURES;

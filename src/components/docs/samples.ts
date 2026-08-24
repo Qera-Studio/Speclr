@@ -151,6 +151,27 @@ export const DOC_SAMPLES: Record<string, DocSample> = {
       },
     } as unknown as AdminDocument,
   },
+  'credit-note': {
+    blurb: 'Reduces an invoice already issued, under section 34.',
+    doc: {
+      ...base,
+      id: 'sample-credit-note',
+      type: 'CRN',
+      number: 'QS-CRN-2627-001',
+      clientId: 'sample-client',
+      clientSnapshot: client,
+      lineItems: [
+        { description: 'Photography direction', ratePaise: 6000000, qty: 1 },
+      ],
+      gstRatePercent: 18,
+      placeOfSupplyStateCode: '09',
+      against: {
+        invoiceNumber: 'QS-INV-2627-001',
+        invoiceDate: '2026-05-26',
+      },
+      reason: 'Photography direction was not delivered; credited in full.',
+    } as unknown as AdminDocument,
+  },
   'offer-letter': {
     blurb: 'Offers a role, and states the terms it is offered on.',
     doc: letter('OFR', 'employee'),

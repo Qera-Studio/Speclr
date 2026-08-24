@@ -29,14 +29,22 @@ beforeEach(() => {
 });
 
 /**
- * Line items render collapsed to a summary; the fields only exist once a row is
- * expanded.
+ * Opens a line item's fields, if it has a lock at all.
+ *
+ * Only a row seeded from a Service is locked, and a slip has no catalogue
+ * behind it: "Basic" is a label the operator owns, so its rows are open from
+ * the start. The helper stays because the same tests run against rows that do
+ * lock, and a slip that ever grows a Service-backed line should not need them
+ * rewritten. Addressed by position rather than by description, because the lock
+ * button is what carries the name and the summary is plain text.
  */
 async function expandLineItem(
   u: ReturnType<typeof userEvent.setup>,
-  name: RegExp,
+  label = 'line item',
+  n = 1,
 ) {
-  await u.click(screen.getByRole('button', { name }));
+  const lock = screen.queryByRole('button', { name: `Unlock ${label} ${n}` });
+  if (lock) await u.click(lock);
 }
 
 /**
@@ -55,7 +63,7 @@ describe('SlipEditor (new)', () => {
   it('renders the employee picker and a collapsed line item', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
     expect(screen.getByLabelText(/employee/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Untitled item/ })).toBeInTheDocument();
+    expect(screen.getByText('Untitled item')).toBeInTheDocument();
   });
 
   /**
@@ -67,7 +75,7 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await expandLineItem(u, /Internship Stipend/);
+    await expandLineItem(u);
 
     expect(screen.getByLabelText(/^description$/i)).toHaveValue('Internship Stipend');
     expect(screen.getByLabelText(/^rate/i)).toHaveValue('20000.00');
@@ -84,7 +92,7 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await expandLineItem(u, /Internship Stipend/);
+    await expandLineItem(u);
 
     expect(screen.getByLabelText(/^description$/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/^detail$/i)).not.toBeInTheDocument();
@@ -124,7 +132,7 @@ describe('SlipEditor (new)', () => {
     render(<SlipEditor type="STP" employees={employees} title="New stipend slip" />);
 
     await selectComboboxOption(u, /employee/i, /Riya/);
-    await expandLineItem(u, /Internship Stipend/);
+    await expandLineItem(u);
     const description = screen.getByLabelText(/^description$/i);
     await u.clear(description);
     await u.type(description, 'Bonus payment');
@@ -233,10 +241,10 @@ describe('SlipEditor (new)', () => {
     await selectComboboxOption(u, /employee/i, /Riya/);
     await u.click(screen.getByRole('button', { name: /add line item/i }));
 
-    // The new row opens on append; the seeded one stays collapsed.
+    // Both rows are open: neither came from a Service, so neither locks.
     const rates = screen.getAllByLabelText(/^rate/i);
-    expect(rates).toHaveLength(1);
-    await u.type(rates[0], '2500');
+    expect(rates).toHaveLength(2);
+    await u.type(rates[1], '2500');
 
     await autosavedWith(
       expect.objectContaining({

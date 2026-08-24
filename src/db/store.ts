@@ -12,13 +12,13 @@ import {
   services,
   studioSettings,
 } from './schema';
-import { fromRow, toRow, type DocumentRow } from './mappers';
+import { clientFromRow, clientToRow, fromRow, toRow, type DocumentRow } from './mappers';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import { docTypesForProfile, type Profile } from '@/lib/profile';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
 import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/types';
-import type { ContractService, LibraryLine } from '@/lib/domain/contract/service';
+import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import type { MsaClause } from '@/lib/domain/contract/msa';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
@@ -36,59 +36,11 @@ import type { EmployeeRecord } from '@/lib/domain/employee';
 // ─── Clients ──────────────────────────────────────────────────────────────────
 
 export async function saveClient(client: ClientRecord): Promise<void> {
-  const row = {
-    id: client.id,
-    name: client.name,
-    companyName: client.companyName ?? null,
-    address: client.address,
-    // Explicitly null rather than omitted: this same object is the
-    // `onConflictDoUpdate` set, so leaving the key out would keep stale parts
-    // on the row after an edit that cleared them.
-    addressParts: client.addressParts ?? null,
-    billingAddressParts: client.billingAddressParts ?? null,
-    email: client.email,
-    phone: client.phone,
-    gstin: client.gstin ?? null,
-    // Same rule as `addressParts` above, and it matters more here: clearing a
-    // whole section must null the column, not leave the previous section's JSON
-    // behind for a sheet or a derivation to read.
-    entityType: client.entityType ?? null,
-    tax: client.tax ?? null,
-    contacts: client.contacts ?? null,
-    commercial: client.commercial ?? null,
-    attachments: client.attachments ?? null,
-    access: client.access ?? null,
-    archived: client.archived ?? false,
-    createdAt: new Date(client.createdAt),
-    updatedAt: new Date(client.updatedAt),
-  };
+  const row = clientToRow(client);
   await db
     .insert(clients)
     .values(row)
     .onConflictDoUpdate({ target: clients.id, set: row });
-}
-
-function clientFromRow(r: typeof clients.$inferSelect): ClientRecord {
-  return {
-    id: r.id,
-    name: r.name,
-    companyName: r.companyName ?? undefined,
-    address: r.address,
-    addressParts: r.addressParts ?? undefined,
-    billingAddressParts: r.billingAddressParts ?? undefined,
-    email: r.email,
-    phone: r.phone,
-    gstin: r.gstin ?? undefined,
-    entityType: r.entityType ?? undefined,
-    tax: r.tax ?? undefined,
-    contacts: r.contacts ?? undefined,
-    commercial: r.commercial ?? undefined,
-    attachments: r.attachments ?? undefined,
-    access: r.access ?? undefined,
-    archived: r.archived,
-    createdAt: r.createdAt.getTime(),
-    updatedAt: r.updatedAt.getTime(),
-  };
 }
 
 export async function getClient(id: string): Promise<ClientRecord | null> {
