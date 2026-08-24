@@ -523,36 +523,32 @@ export default function TaxStep({
             leaves a hole under it that reads as a field that failed to render.
           */}
           <FieldRow columns={3}>
-            <PanField
-              control={control}
-              name="pan"
-              id="client-pan"
-              info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step: a Private Limited's PAN is a C, an individual's a P. A GSTIN contains it verbatim, so a registered client's PAN is read from there rather than typed."
-              inputClassName={panAutofilled ? "animate-fill-flash" : undefined}
-              readOnly={Boolean(derivedPan)}
-            />
-            {/* The flash says something happened; this says what. A field that
-                fills itself and then refuses to be typed in is the one place
-                the reason cannot be optional, because the only other way to
-                find it out is to try to correct it and fail. */}
-            {derivedPan ? (
-              <DerivedNote>
-                Read from the GSTIN above, which contains it verbatim. Change
-                the GSTIN to change this.
-              </DerivedNote>
-            ) : null}
-
             {/*
-              The cell is built like its neighbours rather than aligned against
-              them. `FieldRow` is `items-start`, so the row's box runs from the
-              top of PAN's label to the bottom of its input, and centring
-              against *that* lands above the inputs. A spacer label puts this
-              line where PAN's input starts, and `h-9.5` (what `Input
-              size="form"` resolves to) makes the checkbox share its midline.
-
-              It also survives an error under PAN growing the row, which
-              anything anchored to the row's middle or bottom would not.
+              PAN and its note are one cell, not two. `FieldRow` is a grid, so
+              every child is a column: rendered as a sibling the note took
+              column 2 for itself, pushing TAN across and SEZ onto a row of its
+              own. It belongs under the input it explains anyway.
             */}
+            <div>
+              <PanField
+                control={control}
+                name="pan"
+                id="client-pan"
+                info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step: a Private Limited's PAN is a C, an individual's a P. A GSTIN contains it verbatim, so a registered client's PAN is read from there rather than typed."
+                inputClassName={panAutofilled ? "animate-fill-flash" : undefined}
+                readOnly={Boolean(derivedPan)}
+              />
+              {/* The flash says something happened; this says what. A field that
+                  fills itself and then refuses to be typed in is the one place
+                  the reason cannot be optional, because the only other way to
+                  find it out is to try to correct it and fail. */}
+              {derivedPan ? (
+                <DerivedNote className="mt-1.5">
+                  Read from the GSTIN above, which contains it verbatim. Change
+                  the GSTIN to change this.
+                </DerivedNote>
+              ) : null}
+            </div>
 
             <TanField control={control} name="tan" id="client-tan" />
 

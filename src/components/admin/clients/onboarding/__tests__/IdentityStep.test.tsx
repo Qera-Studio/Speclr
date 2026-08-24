@@ -474,4 +474,61 @@ describe('IdentityStep, for an individual', () => {
     // the record says "this role does not point anywhere".
     expect(contacts.roles).toEqual({ signing: 'primary' });
   });
+
+  /**
+   * A client entered under the wrong kind has to be fixable.
+   *
+   * An Indian sole proprietor entered as "a company" was previously stuck:
+   * proprietorship is a natural-person form, so the company dropdown never
+   * offers it, the kind chooser is unreachable once the row exists, and the kind
+   * is derived from the entity type, so there was no control anywhere that
+   * could change it. The record had to be abandoned and re-typed.
+   */
+  describe('a saved record can cross the kind axis', () => {
+    it('offers natural-person forms on a record saved as a company', async () => {
+      const user = userEvent.setup();
+      render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+
+      await user.click(screen.getByLabelText('Entity type'));
+
+      expect(
+        await screen.findByRole('option', { name: /^sole proprietorship$/i }),
+      ).toBeInTheDocument();
+    });
+
+    it('follows the new selection rather than the kind it arrived with', async () => {
+      const user = userEvent.setup();
+      render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+
+      await pickEntityType(user, /^sole proprietorship$/i);
+
+      // A proprietor trades under a name, so the second field stays, but it is
+      // now the trading name, not a legal entity name.
+      expect(screen.getByLabelText(/business \/ trading name/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/legal entity name/i)).not.toBeInTheDocument();
+    });
+
+    it('saves the corrected form instead of rejecting it', async () => {
+      const user = userEvent.setup();
+      render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+
+      await pickEntityType(user, /^sole proprietorship$/i);
+      await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+      expect(updateClient).toHaveBeenCalled();
+      const [, values] = updateClient.mock.calls[0];
+      expect(values.entityType).toBe('proprietorship');
+    });
+
+    it('still refuses a form from another country’s register', async () => {
+      const user = userEvent.setup();
+      render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+
+      await user.click(screen.getByLabelText('Entity type'));
+
+      // The kind filter is relaxed; the country filter is not. A UK sole trader
+      // on an Indian address is the wrong record, not a correction of one.
+      expect(screen.queryByRole('option', { name: /^sole trader$/i })).not.toBeInTheDocument();
+    });
+  });
 });

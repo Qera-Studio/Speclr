@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from '@/components/ui/popup';
 import { cn } from '@/lib/utils';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
@@ -506,7 +507,13 @@ function DayOfMonthPicker({
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-2">
+      {/* A ringed trigger, so it clears the ring and never comes out
+          narrower than the field. See `ui/popup.ts`. */}
+      <PopoverContent
+        align="start"
+        sideOffset={RINGED_POPUP_GAP}
+        className={cn('w-auto p-2', RINGED_POPUP_WIDTH)}
+      >
         <div className="grid grid-cols-7 gap-1">
           {DAYS.map((day) => (
             <button

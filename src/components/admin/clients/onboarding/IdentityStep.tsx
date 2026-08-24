@@ -17,8 +17,11 @@ import { EmailField } from '@/components/form/fields';
 import { clientInputSchema } from '@/lib/domain/registry';
 import { composeAddress, emptyAddressParts } from '@/lib/domain/address';
 import {
+  clientKindOf,
   entityTypeSpec,
   entityTypesForClient,
+  entityTypesForCountry,
+  isNaturalPerson,
   type ClientKind,
 } from '@/lib/domain/entityType';
 import { emailSchema, phoneSchema } from '@/lib/domain/fields';
@@ -77,8 +80,15 @@ const REQUIRED_ADDRESS_PARTS = ['line1', 'city', 'state', 'pincode', 'country'] 
  * before onboarding existed have none, and a required column would make those
  * rows permanently un-saveable.
  */
-const makeResolver = (kind: ClientKind, saved?: string): Resolver<FormValues> => async (values, context, options) => {
+const makeResolver = (kind: ClientKind, saved?: string, hasRecord = false): Resolver<FormValues> => async (values, context, options) => {
   const composed = composeAddress(values.addressParts ?? emptyAddressParts);
+  /**
+   * The kind the *submitted* form describes, which on a saved record is not
+   * necessarily the one it arrived with: the entity type is editable across the
+   * axis there, and it is what the kind is derived from. Judging the rules below
+   * against the incoming prop would reject the very correction being made.
+   */
+  const submitted = values.entityType ? clientKindOf(values.entityType) : kind;
   /**
    * An individual has no legal name apart from their own.
    *
@@ -91,7 +101,7 @@ const makeResolver = (kind: ClientKind, saved?: string): Resolver<FormValues> =>
    */
   const trades = entityTypeSpec(values.entityType)?.tradingName === true;
   const companyName =
-    kind === 'individual' && !(trades && values.companyName?.trim())
+    submitted === 'individual' && !(trades && values.companyName?.trim())
       ? values.name
       : values.companyName;
 
@@ -137,7 +147,12 @@ const makeResolver = (kind: ClientKind, saved?: string): Resolver<FormValues> =>
   // The form already on the record is passed through, so the rule matches the
   // dropdown: a US corporation addressed in London stays saveable, an Indian
   // form on a foreign address still does not.
-  const offered = entityTypesForClient(values.addressParts?.country, kind, saved);
+  // A saved record may cross the kind axis (see `entityOptions` below), so the
+  // rule matches the dropdown there too: the country filter still applies, the
+  // kind filter does not.
+  const offered = hasRecord
+    ? entityTypesForCountry(values.addressParts?.country, saved)
+    : entityTypesForClient(values.addressParts?.country, kind, saved);
   if (!values.entityType || !offered.some((e) => e.value === values.entityType)) {
     errors.entityType = { type: 'manual', message: 'Choose the entity type.' };
     failed = true;
@@ -153,15 +168,14 @@ export default function IdentityStep({
   kind = 'company',
   country: chosenCountry,
 }: StepProps) {
-  const individual = kind === 'individual';
   const [serverError, setServerError] = useState<string | null>(null);
   // What the record already says, not what the field currently holds: the
   // exemption is for a form that was saved, and a fresh pick has to pass on its
   // own merits.
   const savedEntityType = client?.entityType;
   const resolver = useMemo(
-    () => makeResolver(kind, savedEntityType),
-    [kind, savedEntityType],
+    () => makeResolver(kind, savedEntityType, Boolean(client)),
+    [client, kind, savedEntityType],
   );
   const {
     register,
@@ -191,7 +205,6 @@ export default function IdentityStep({
           billingAddressParts: client.billingAddressParts,
           email: client.email,
           phone: client.phone,
-          gstin: client.gstin ?? '',
           entityType: client.entityType ?? '',
           designation: client.contacts?.primary?.designation ?? '',
           billingContact: client.contacts?.roles?.billing ? undefined : client.contacts?.billing,
@@ -210,7 +223,6 @@ export default function IdentityStep({
           billingAddressParts: undefined,
           email: '',
           phone: '',
-          gstin: '',
           entityType: '',
           designation: '',
           billingContact: undefined,
@@ -228,13 +240,24 @@ export default function IdentityStep({
   // Same shape as the second address: one value, present or absent, held by the
   // field rather than by state beside it.
   const billingContact = useController({ control, name: 'billingContact' });
+  /**
+   * On the create path the kind chooser has just been answered, so the list is
+   * narrowed to it. On a **saved** record both kinds are offered, because the
+   * entity type is the only thing that says which kind this is: an Indian sole
+   * proprietor entered as "a company" is never offered proprietorship (it is a
+   * natural-person form), and there is no other control that could fix it.
+   * Changing it here re-derives the kind, and with it the step list.
+   *
+   * The country filter still applies in both cases: a person is a person
+   * anywhere, but they are not a form from another country's register.
+   */
   const entityOptions = useMemo(
     () =>
-      entityTypesForClient(country, kind, savedEntityType).map((e) => ({
-        value: e.value,
-        label: e.label,
-      })),
-    [country, kind, savedEntityType],
+      (client
+        ? entityTypesForCountry(country, savedEntityType)
+        : entityTypesForClient(country, kind, savedEntityType)
+      ).map((e) => ({ value: e.value, label: e.label })),
+    [client, country, kind, savedEntityType],
   );
 
   /**
@@ -257,6 +280,21 @@ export default function IdentityStep({
       setValue('entityType', onlyOption, { shouldValidate: true });
     }
   }, [chosenEntityType, onlyOption, setValue]);
+
+  /**
+   * Whether this step is describing a person, read from the field rather than
+   * from the `kind` prop.
+   *
+   * The prop is derived from what the record *was* and only updates after a
+   * save. On a saved record the entity type is editable across the kind axis, so
+   * the layout has to follow the selection the moment it is made, otherwise
+   * picking Sole Proprietorship on a company record still asks for a legal
+   * entity name and still hides the designation. Before anything is chosen the
+   * prop is the answer, which is the create path.
+   */
+  const individual = chosenEntityType
+    ? isNaturalPerson(String(chosenEntityType))
+    : kind === 'individual';
 
   /** A proprietorship bills under a business name; a plain individual does not. */
   const tradesUnderName = entityTypeSpec(String(chosenEntityType ?? ''))?.tradingName === true;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Search } from "lucide-react";
+import { ArrowLeft, Check, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { COUNTRIES_BY_CONTINENT } from "@/lib/domain/countries";
@@ -37,8 +37,11 @@ import { CycleArrowIcon } from "@/components/ui/tray-arrow-icon";
  */
 export default function CountryChooser({
   onContinue,
+  onBack,
 }: {
   onContinue: (iso2: string) => void;
+  /** Back to the kind chooser. Nothing has been written yet, so nothing unwinds. */
+  onBack: () => void;
 }) {
   const [query, setQuery] = useState("");
   /**
@@ -150,7 +153,22 @@ export default function CountryChooser({
         {query.trim() ? `${matches} countries match.` : ""}
       </p>
 
-      <div className="flex shrink-0 items-center justify-center gap-3 mt-8">
+      {/*
+        Back sits beside Continue rather than at the corner: this is a two-screen
+        question and the second screen is the only place the first can be
+        answered again. Ghost, so it does not compete with the answer.
+      */}
+      <div className="relative flex shrink-0 items-center justify-center gap-3 mt-8">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute left-0"
+          aria-label="Back to the kind of client"
+          onClick={onBack}
+        >
+          <ArrowLeft aria-hidden />
+        </Button>
         <Button
           type="button"
           size="lg"

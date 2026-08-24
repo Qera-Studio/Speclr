@@ -11,7 +11,7 @@ import { COUNTRY_SEED } from '@/lib/domain/countries';
  */
 describe('CountryChooser', () => {
   it('lists every country under its continent', () => {
-    render(<CountryChooser onContinue={jest.fn()} />);
+    render(<CountryChooser onContinue={jest.fn()} onBack={jest.fn()} />);
 
     expect(screen.getAllByRole('button', { pressed: false })).toHaveLength(COUNTRY_SEED.length);
     expect(screen.getByRole('heading', { name: 'Asia' })).toBeInTheDocument();
@@ -21,7 +21,7 @@ describe('CountryChooser', () => {
   it('does not move on when a country is clicked', async () => {
     const user = userEvent.setup();
     const onContinue = jest.fn();
-    render(<CountryChooser onContinue={onContinue} />);
+    render(<CountryChooser onContinue={onContinue} onBack={jest.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /Germany/ }));
 
@@ -35,7 +35,7 @@ describe('CountryChooser', () => {
   it('answers on Continue, and not before there is an answer', async () => {
     const user = userEvent.setup();
     const onContinue = jest.fn();
-    render(<CountryChooser onContinue={onContinue} />);
+    render(<CountryChooser onContinue={onContinue} onBack={jest.fn()} />);
 
     expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
 
@@ -48,7 +48,7 @@ describe('CountryChooser', () => {
   it('replaces the selection rather than adding to it', async () => {
     const user = userEvent.setup();
     const onContinue = jest.fn();
-    render(<CountryChooser onContinue={onContinue} />);
+    render(<CountryChooser onContinue={onContinue} onBack={jest.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /Kenya/ }));
     await user.click(screen.getByRole('button', { name: /Japan/ }));
@@ -60,7 +60,7 @@ describe('CountryChooser', () => {
 
   it('filters as it is typed, and hides a continent nothing matched', async () => {
     const user = userEvent.setup();
-    render(<CountryChooser onContinue={jest.fn()} />);
+    render(<CountryChooser onContinue={jest.fn()} onBack={jest.fn()} />);
 
     await user.type(screen.getByLabelText(/search countries/i), 'brazil');
 
@@ -76,7 +76,7 @@ describe('CountryChooser', () => {
    */
   it('finds a country by its code', async () => {
     const user = userEvent.setup();
-    render(<CountryChooser onContinue={jest.fn()} />);
+    render(<CountryChooser onContinue={jest.fn()} onBack={jest.fn()} />);
 
     await user.type(screen.getByLabelText(/search countries/i), 'ae');
 
@@ -85,7 +85,7 @@ describe('CountryChooser', () => {
 
   it('says so when nothing matches', async () => {
     const user = userEvent.setup();
-    render(<CountryChooser onContinue={jest.fn()} />);
+    render(<CountryChooser onContinue={jest.fn()} onBack={jest.fn()} />);
 
     await user.type(screen.getByLabelText(/search countries/i), 'atlantis');
 
@@ -99,7 +99,7 @@ describe('CountryChooser', () => {
   it('keeps a choice that the filter scrolls past', async () => {
     const user = userEvent.setup();
     const onContinue = jest.fn();
-    render(<CountryChooser onContinue={onContinue} />);
+    render(<CountryChooser onContinue={onContinue} onBack={jest.fn()} />);
 
     await user.click(screen.getByRole('button', { name: /Iceland/ }));
     await user.type(screen.getByLabelText(/search countries/i), 'peru');

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ServicesStep from '../ServicesStep';
 import type { ClientRecord } from '@/lib/domain/types';
-import type { ContractService } from '@/lib/domain/contract/service';
+import type { ContractService } from '@/lib/domain/service';
 
 /**
  * One Schedule is on screen at a time, so the two things worth pinning are

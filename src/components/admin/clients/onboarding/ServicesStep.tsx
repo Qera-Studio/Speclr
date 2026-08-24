@@ -34,7 +34,7 @@ import {
   paiseToRupees,
   rupeesToPaise,
 } from "@/lib/domain/money";
-import type { ContractService } from "@/lib/domain/contract/service";
+import type { ContractService } from "@/lib/domain/service";
 import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
 import { cn } from "@/lib/utils";
 import { draftKey, useFormDraft } from "@/lib/draft";

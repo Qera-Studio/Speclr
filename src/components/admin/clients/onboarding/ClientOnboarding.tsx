@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ContractService } from "@/lib/domain/contract/service";
+import type { ContractService } from "@/lib/domain/service";
 import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
 import type { ClientRecord } from "@/lib/domain/types";
 import { COUNTRY_SEED } from "@/lib/domain/countries";
@@ -184,7 +184,37 @@ export default function ClientOnboarding({
     return next ? next.short : "Finish";
   }, [active, steps]);
 
-  const previous = active > 0 ? steps[active - 1] : undefined;
+  /**
+   * Where the back arrow goes, which is not always a step.
+   *
+   * On step 1 of a client that has not been saved yet, back is the country
+   * chooser, and from there the kind chooser. Both were previously
+   * unreachable the moment they had been answered once, so an Indian sole
+   * proprietor entered as "a company" could not be corrected: proprietorship is
+   * a natural-person form and never appears in the company dropdown, and every
+   * move in this flow is a `router.replace`, so the browser's back button
+   * leaves the wizard rather than stepping through it. An unrecoverable wrong
+   * click is worse than the mistake the chooser exists to prevent.
+   *
+   * Nothing is unwound by going back, because nothing has been written: the
+   * kind and the country live only in the URL until step 1 saves. After that
+   * the record answers both, and the way to change them is the entity type and
+   * the country field on the identity step.
+   */
+  const back = useMemo(() => {
+    if (active > 0) {
+      const previous = steps[active - 1];
+      return { label: `Back to ${previous.title}`, go: () => goTo(active - 1) };
+    }
+    if (client || !country) return undefined;
+    return {
+      label: "Back to the country",
+      go: () =>
+        router.replace(`/client/clients/new?step=${steps[0].key}&kind=${kind}`, {
+          scroll: false,
+        }),
+    };
+  }, [active, client, country, goTo, kind, router, steps]);
 
   const stepProps = useMemo(
     () => ({
@@ -239,6 +269,11 @@ export default function ClientOnboarding({
               `/client/clients/new?step=${steps[0].key}&kind=${kind}&country=${chosen}`,
               { scroll: false },
             )
+          }
+          // Dropping the kind from the URL is what shows the chooser again;
+          // there is no state to unwind, because there is no state.
+          onBack={() =>
+            router.replace(`/client/clients/new?step=${steps[0].key}`, { scroll: false })
           }
         />
       </div>
@@ -375,14 +410,14 @@ export default function ClientOnboarding({
         of the card, not adjacent.
       */}
       <div className="relative flex shrink-0 items-center justify-center pt-2">
-        {previous && !finishing ? (
+        {back && !finishing ? (
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
             className="absolute left-0"
-            aria-label={`Back to ${previous.title}`}
-            onClick={() => goTo(active - 1)}
+            aria-label={back.label}
+            onClick={back.go}
           >
             <ArrowLeft aria-hidden />
           </Button>
