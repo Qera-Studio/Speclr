@@ -3,6 +3,7 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
+import { POPUP_GAP } from "@/components/ui/popup"
 
 /**
  * Tooltips wait a beat before appearing, everywhere.
@@ -51,7 +52,7 @@ function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
 function TooltipContent({
   className,
   side = "top",
-  sideOffset = 4,
+  sideOffset = POPUP_GAP,
   align = "center",
   alignOffset = 0,
   children,

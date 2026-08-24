@@ -4,6 +4,7 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 
 import { cn } from "@/lib/utils"
+import { POPUP_GAP } from "@/components/ui/popup"
 
 const Popover = PopoverPrimitive.Root
 const PopoverTrigger = PopoverPrimitive.Trigger
@@ -17,7 +18,7 @@ const PopoverClose = PopoverPrimitive.Close
 function PopoverContent({
   className,
   side = "bottom",
-  sideOffset = 4,
+  sideOffset = POPUP_GAP,
   align = "center",
   alignOffset = 0,
   ...props

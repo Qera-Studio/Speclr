@@ -228,9 +228,14 @@
   --destructive-foreground: oklch(0.145 0.005 40);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
-  /* Up from 10% and 15%. See the note above the block. */
+  /* See the note above the block for why these are a pure white overlay.
+     `--input` was 22%, which drew a bright hairline around every field and made
+     a rail of eight inputs read as a grid of boxes rather than a form. It sits
+     one step above `--border` now instead of eight: an input is still a
+     distinguishable control, and 1.4.11 does not govern it, because every field
+     here is identified by a visible `<Label>` (see `contrast.test.ts`). */
   --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 22%);
+  --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.556 0.021 40);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
@@ -248,6 +253,36 @@
   --sidebar-active: oklch(0.32 0.013 40);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0.021 40);
+}
+
+/*
+  The edit rail, one step of extra ink.
+
+  It is the densest surface in the app: a 352px column of forty labelled fields,
+  section rules and card edges, read while looking somewhere else (the preview).
+  At the app's ordinary weights the rules between sections and the labels on top
+  of them both went quiet, and a form with no visible structure is a form people
+  scroll past the middle of.
+
+  Scoped rather than global, because the fault is the density and not the
+  palette: raising `--border` app-wide would redraw every table and every card
+  as a harder grid to fix a problem only this column has. Each value moves one
+  step along the ramp in the note at the top of this file, so it stays on the
+  hue-40 curve rather than becoming a colour of its own. Contrast only ever goes
+  up here, in both themes, so `contrast.test.ts`'s floors still hold.
+*/
+[data-editor-rail] {
+  --border: oklch(0.87 0.007 40);
+  --sidebar-border: oklch(0.85 0.007 40);
+  --muted-foreground: oklch(0.44 0.017 40);
+  --sidebar-foreground: oklch(0.27 0.011 40);
+}
+
+.dark [data-editor-rail] {
+  --border: oklch(1 0 0 / 22%);
+  --sidebar-border: oklch(1 0 0 / 22%);
+  --muted-foreground: oklch(0.78 0.012 40);
+  --sidebar-foreground: oklch(0.93 0.004 40);
 }
 
 @layer base {

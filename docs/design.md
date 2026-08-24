@@ -311,7 +311,54 @@ background step, not from shadow.
   white, because pure white on near-black haloes; `--border` and `--input` are
   *higher* than their light counterparts in relative terms, because a hairline
   that reads as an edge on white is nearly gone on black. Both live in
-  `globals.css` with the reasoning beside them.
+  `globals.css` with the reasoning beside them. `--input` is 16%, one step above
+  `--border` rather than eight: at 22% a rail of eight fields read as a grid of
+  hard boxes instead of a form. It is not held to 1.4.11, because every field
+  here is identified by a visible `<Label>` — written down in `contrast.test.ts`
+  rather than silently skipped.
+
+### 1.7a Popups anchored to a control — **enforced**
+
+Every surface that hangs off a field or a button (dropdown menu, submenu,
+select list, combobox list, calendar, tooltip) obeys two rules, and both live in
+`src/components/ui/popup.ts` rather than in each primitive:
+
+- **There is always a gap.** 4px between the anchor and the popup. A submenu
+  opening at zero overlapped the menu it came from, which reads as one surface
+  torn rather than two stacked.
+- **The popup is never narrower than its anchor.** Same width when the content
+  fits, wider when it does not (a month grid under a short date field, a long
+  option label in a 384px rail), never less. A list a few pixels short of the
+  field above it looks like a rendering fault.
+
+The ring is why there are two pairs of values. A focused input, combobox, select
+or date trigger draws `ring-2`, a box-shadow painted 2px *outside* the border
+box that both `--anchor-width` and `sideOffset` are measured from. So a ringed
+anchor takes `RINGED_POPUP_GAP` (6) and `RINGED_POPUP_WIDTH`
+(`min-w-[calc(var(--anchor-width)+4px)]`) to come out looking like the plain
+4px gap and the flush edges. Anchors that never ring take `POPUP_GAP` and
+`POPUP_WIDTH`.
+
+A hand-written `sideOffset={n}`, a popup pinned to `w-(--anchor-width)` and a
+floor lowered from the call site (`min-w-max`, `min-w-fit`) all fail `npm test`.
+
+**Three anchors are not the box you think, and only a browser found them.** The
+source rules above were green while every popup on screen was still wrong,
+because a class in the right file can still land on the wrong element. What the
+measurement in `e2e/popup.spec.ts` caught:
+
+| Control | The anchor actually used | Fix |
+|---|---|---|
+| Combobox | the bare `<input>`, 34px short of the bordered control and inside its padding | `Combobox.InputGroup`, which Base UI resolves as `inputGroupElement ?? inputElement` |
+| Submenu | the menu **row**, inset by the menu's own `p-1` | `SUBMENU_GAP` (8), so 4 survives the padding |
+| Select | none: `alignItemWithTrigger` laid the list *over* the trigger, macOS-style, 30px up | `alignItemWithTrigger={false}` |
+
+The measured resting state is now 6px offset and anchor+4px width on the three
+ringed controls (a visible 4px gap and edges flush with the ring), and 4px with
+equal width on the unringed menu. **The animation must be killed before
+measuring**: `zoom-in-95` and `slide-in-from-*` are transforms, so a box read
+inside the first 100ms is smaller than the one that settles, and the numbers
+moved between runs until the spec disabled them.
 
 ### 1.8 Focus and hit targets — **house**
 
@@ -374,6 +421,12 @@ The pair rule (`CONTEXT.md` §5f) is the law here: the **rule** lives in
 `src/lib/domain/fields.ts` or `text.ts`, the **input** in
 `src/components/form/fields.tsx`, named to match. Every schema imports the
 first, every form the second.
+
+**Two heights, and 32px is the floor.** The compact `default` is **32px**
+(`h-8`) and the roomy `form` is 38px (`h-9.5`). Nothing typed into goes under 32
+in any variant: input, textarea, select trigger, combobox and date trigger all
+declare the same number, so a field row cannot come out three heights. Pinned in
+`ui/__tests__/control-size.test.tsx`.
 
 **Enforced** (`design-system.test.ts` fails the build):
 
@@ -462,9 +515,14 @@ first, every form the second.
   that decides whether to show it. React Hook Form subscribes on read, so a
   conditional read means a field that has never shown an error is never told it
   has one. See `form/fields.tsx`.
-- **The sections that hold a document's *wording* are marked** (`printed` on
-  `EditorSection`): an accent rule and a "Prints as written" tag. Both wording
-  and data print; only wording changes what the document *says*.
+- **A document's *wording* is not in the rail.** It was marked instead, with an
+  accent rule and a "Prints as written" tag on every section that held it, which
+  put a label on three of five cards and still left four collapsed rows above
+  the fields people actually edit. The rule and the tag are gone and the wording
+  lives behind one row and an eye (`WordingDialog`). The distinction the mark
+  carried is real (`CONTEXT.md` §5b: both wording and data print, only wording
+  changes what the document *says*) and it is now carried by the separation
+  itself.
 
 **Accessibility, settled:**
 
@@ -653,6 +711,7 @@ when a house rule gets broken twice.
 | No phone printed in its stored form (§2.3) | `src/__tests__/design-system.test.ts` |
 | Optional is marked by `OptionalMark`, never by hand (§3) | `src/__tests__/design-system.test.ts` |
 | Labels are sentence case, never `uppercase` (§1.4) | `src/__tests__/design-system.test.ts` |
+| Popup gap and width come from `ui/popup.ts` (§1.7a) | `src/__tests__/design-system.test.ts` |
 | Security headers exist and are correct | `src/__tests__/security-headers.test.ts` |
 | Autofill defaults off | `src/components/ui/__tests__/autofill.test.tsx` |
 
@@ -789,3 +848,75 @@ Append a line when a rule here changes. Keep it to one line and name the
   button in the tab order the whole time and focus is what makes it visible for
   anyone not using a pointer. The card gained a third line, the SAC, shown only
   when there is one.
+- **24 August 2026.** **The edit rail gets one step of extra ink, scoped.** It
+  is the densest surface in the app: 352px of labelled fields, section rules and
+  card edges, read while looking at the preview beside it. At the app's ordinary
+  weights the rules between sections and the labels on top of them both went
+  quiet. `[data-editor-rail]` in `globals.css` redefines four tokens for that
+  subtree only — `--border`, `--sidebar-border`, `--muted-foreground`,
+  `--sidebar-foreground` — each one step along the hue-40 ramp in that file's
+  own table, in both themes. **Scoped rather than global on purpose:** the fault
+  is the density, not the palette, and raising `--border` app-wide would redraw
+  every table and card as a harder grid to fix a problem one column has.
+  Contrast only ever moves up, so `contrast.test.ts`'s floors still hold.
+- **24 August 2026.** **The wording drawer, and what a dialog was costing.**
+  Every field behind the eye changes a word printed a few centimetres to the
+  left, and a dialog covered the document it was editing. It is a second pane
+  over the rail now: the form slides out left as the drawer slides in from the
+  right, on the 200ms panel tier, with a back arrow and the drawer's name at the
+  top. Two rules came out of building it. `visibility` is in the transition, or
+  the closed drawer is off-screen and still in the tab order. And the pane that
+  scrolls is each pane, not `SidebarContent`: an `inset-0` overlay inside a
+  scrolling box is positioned against the content and scrolls away with it.
+- **24 August 2026.** **The compact control is 32px, and that is a floor.** It
+  was 28, which the wording drawer made unarguable: thirty of them stacked read
+  as an unfinished form rather than a dense one. Input, select, combobox and the
+  date trigger all moved together, because a row of three heights is worse than
+  a row of one wrong one. `Select`'s unused `sm` variant (24px) went with them.
+  Buttons are untouched at 28: a toolbar is not a form, and nothing is typed
+  into one.
+- **24 August 2026.** **The drawer replaces the whole rail, not its middle.**
+  The first build slid only the content, which left a fixed header above a pane
+  that had gone somewhere else: one sidebar with a moving middle rather than one
+  sidebar replaced by another. The track now holds header, form and footer, and
+  the drawer carries its own `h-14` header on the same centre line, with its
+  back arrow where the rail's was and the collapse toggle where the rail's was.
+  The leaving pane fades as it goes, because two panes at full strength crossing
+  each other read as two things rather than as a handover. Whichever pane is off
+  screen is `inert` and `aria-hidden`, which is what keeps one back arrow and
+  one collapse toggle reachable rather than two of each.
+- **24 August 2026.** **A one-page document shows no pager.** Every invoice,
+  receipt, credit note and slip is one page, so two dead arrows and a counter
+  that counts to one were the ordinary case rather than the edge one. The
+  autosave line took the space instead, which also moved it off the foot of a
+  rail that scrolls — the one place it could be while the document was being
+  typed *and* out of sight.
+- **24 August 2026.** **A lock is only ever on something somebody else owns.**
+  Line items lock the description and the SAC of a row seeded from a Service,
+  because that is the description its rate was agreed against. A row typed by
+  hand or chosen off the Add menu carries no padlock at all: a control whose
+  only function is to be turned off again is not a control. This is the general
+  rule, not one about invoices.
+- **24 August 2026.** **A popup keeps its distance and never comes out narrower
+  than what it hangs from.** §1.7a, and both numbers now live in
+  `ui/popup.ts`. Four primitives had each answered the two questions separately:
+  a submenu sat at `sideOffset={0}` and overlapped its parent menu, the
+  combobox and select lists were pinned to the anchor's border box and so came
+  out 4px inside the focus ring of the field above them, and the dropdown menu
+  was pinned to `w-(--anchor-width)` and truncated any label wider than its
+  trigger. The rule found two more on the way in: the user card's width class
+  was `w-(--radix-dropdown-menu-trigger-width)`, a Radix variable in a Base UI
+  app that had never resolved to anything, and the ⌘K result list, which is
+  anchored by hand, had the same two faults as the primitives.
+
+  **And then a browser showed that none of it had worked.** The source rules
+  passed, `npm test` was green at 1,989, and on screen every popup was still
+  wrong: the combobox anchored to its bare `<input>`, the submenu's offset was
+  eaten by the menu's padding, and the select was laying its list over the
+  trigger by 30px. All three are the same mistake as the ring, one level down,
+  and a class rule cannot see any of them because it checks which file a string
+  is in, not which element it lands on. `e2e/popup.spec.ts` measures the five
+  popups in Chromium; it was written against the broken build and watched to
+  fail on each one first. §1.7a carries the table. The general lesson is the
+  one the pay slip already taught: **anything that is a measurement belongs in
+  `e2e/`, and a green jsdom suite is not evidence about geometry.**

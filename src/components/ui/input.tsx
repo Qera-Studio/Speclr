@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils"
 /**
  * Two sizes, deliberately:
  *
- *   default: the compact 28px control. Used by tables, toolbars and anywhere
- *            density matters. This variant's class string must stay
- *            byte-identical to what shipped before sizes existed, because
- *            `Input` is imported across the whole app and every non-form
- *            usage silently depends on it.
+ *   default: the compact 32px control. Used by tables, toolbars and anywhere
+ *            density matters. **32px is the floor for anything typed into.**
+ *            It was 28, which is dense to the point of looking unfinished, and
+ *            no input, select, combobox or date trigger goes under 32 in any
+ *            variant. Pinned in `__tests__/control-size.test.tsx`.
  *   form:    the roomier 38px control for data entry (editor panes, admin
  *            forms), where comfort beats density.
  *
@@ -40,7 +40,7 @@ const inputVariants = cva(
   {
     variants: {
       size: {
-        default: `h-7 px-2 py-0.5 text-sm file:h-6 file:text-xs/relaxed md:text-xs/relaxed ${FORM_GROUP_INHERIT} group-data-[size=form]/field-group:md:text-sm group-data-[size=form]/field-group:file:h-7`,
+        default: `h-8 px-2 py-0.5 text-sm file:h-6 file:text-xs/relaxed md:text-xs/relaxed ${FORM_GROUP_INHERIT} group-data-[size=form]/field-group:md:text-sm group-data-[size=form]/field-group:file:h-7`,
         form: "h-9.5 px-3 py-1 text-sm file:h-7 file:text-sm",
       },
     },

@@ -5,6 +5,7 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup";
 
 /**
  * A searchable single-select, for lists too long to scroll comfortably:
@@ -161,11 +162,19 @@ function Combobox({
       disabled={disabled}
       name={name}
     >
-      <div
+      {/*
+        `InputGroup`, not a plain `div`. Base UI resolves the anchor as
+        `inputGroupElement ?? inputElement`, so without this part the list
+        hangs off the bare `<input>`, a box that sits inside this border and
+        stops short of the chevron. That is what made the popup ~34px narrower
+        than the control and swallowed the gap: both were correct, measured
+        against the wrong element.
+      */}
+      <ComboboxPrimitive.InputGroup
         data-slot="combobox"
         data-size={size}
         className={cn(
-          "group/combobox relative flex w-full items-center rounded-md border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-7 data-[size=form]:h-9.5 group-data-[size=form]/field-group:h-9.5",
+          "group/combobox relative flex w-full items-center rounded-md border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-8 data-[size=form]:h-9.5 group-data-[size=form]/field-group:h-9.5",
           className,
         )}
       >
@@ -195,23 +204,25 @@ function Combobox({
             }
           />
         </ComboboxPrimitive.Trigger>
-      </div>
+      </ComboboxPrimitive.InputGroup>
 
       <ComboboxPrimitive.Portal>
         {/*
-          `min-w`, not `w`: in the 384px editor rail, pinning the popup to the
-          trigger width truncated option labels to "01 — Stat…". The popup may
-          grow past the field to show the full label, capped so it can't run
-          off-screen.
+          A minimum width, not a fixed one: in the 384px editor rail, pinning
+          the popup to the trigger width truncated option labels to "01 Stat…".
+          The popup may grow past the field to show the full label, capped so it
+          can't run off-screen, and may never come out narrower than the field
+          it hangs from. See `popup.ts` for why the anchor width is not enough
+          on a control that draws a focus ring.
         */}
         <ComboboxPrimitive.Positioner
-          sideOffset={4}
-          className="isolate z-50 min-w-(--anchor-width) max-w-(--available-width)"
+          sideOffset={RINGED_POPUP_GAP}
+          className={cn("isolate z-50", RINGED_POPUP_WIDTH)}
         >
           <ComboboxPrimitive.Popup
             data-slot="combobox-content"
             data-size={size}
-            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-max min-w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
+            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
           >
             <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
               {emptyMessage}

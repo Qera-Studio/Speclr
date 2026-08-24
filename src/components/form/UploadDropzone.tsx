@@ -171,8 +171,14 @@ export default function UploadDropzone({
         // Inset, not edge to edge: the page sits as its own card on top of the
         // box rather than being the box's own top half, which is what stops a
         // scan's white background reading as part of the chrome around it.
-        <div className="flex-1 p-1">
-          <div className="relative h-full overflow-hidden rounded-sm bg-background">
+        // The media is `absolute`, and that is what makes the crop work.
+        // `min-h-0` alone was not enough: the box still had no definite height
+        // to resolve `h-full` against, because the card's own height is what
+        // its content asks for, and a tall scan asking for 900px got it. An
+        // out-of-flow child asks for nothing, so the card is whatever the grid
+        // row gives it and the image is cut to that.
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-1 overflow-hidden rounded-sm bg-background">
             {preview}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/80 text-center opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-visible/tray:opacity-100">
               <TrayArrowIcon direction="up" className="text-muted-foreground" />

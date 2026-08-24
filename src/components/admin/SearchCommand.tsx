@@ -163,8 +163,12 @@ export default function SearchCommand() {
         />
       )}
 
+      {/* Anchored by hand rather than by a Positioner, so the two rules in
+          `ui/popup.ts` are spelled out here: a 4px gap and a width no narrower
+          than the field, both measured past the focus ring the input is always
+          wearing while this list is up. */}
       {showList ? (
-        <div className="absolute top-full right-0 z-50 mt-1 w-full min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+        <div className="absolute top-full -right-0.5 z-50 mt-1.5 w-[calc(100%+4px)] min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
           {hits.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground" role="status">
               {loading ? 'Searching…' : 'No matches.'}

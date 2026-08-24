@@ -21,13 +21,21 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("w-fit", className)}
+      // `relative` is load-bearing, not decoration. react-day-picker renders
+      // `Nav` as a sibling of the month rather than inside the caption, and its
+      // own stylesheet, which is never imported here, is what would normally
+      // give `.rdp-months` a positioning context. Without one, `nav`'s absolute
+      // resolved against the popover instead, pinning the arrows to the popup's
+      // padding edge above and outside the calendar.
+      className={cn("relative w-fit", className)}
       classNames={{
         months: "flex flex-col gap-4",
         month: "flex flex-col gap-4",
         month_caption: "flex h-7 items-center justify-center",
         caption_label: "text-sm font-medium",
-        nav: "absolute inset-x-0 top-0 flex items-center justify-between",
+        // `h-7` matches the caption's height so the 24px buttons centre on the
+        // month's own centre line rather than sitting 2px proud of it.
+        nav: "absolute inset-x-0 top-0 flex h-7 items-center justify-between",
         button_previous: cn(
           buttonVariants({ variant: "ghost", size: "icon-sm" }),
           "text-muted-foreground"

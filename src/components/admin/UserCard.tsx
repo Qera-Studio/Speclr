@@ -64,11 +64,13 @@ export default function UserCard({ user }: { user: UserCardUser }) {
               </SidebarMenuButton>
             }
           />
+          {/* `min-w`, and the offset comes from the primitive. The width here
+              was `w-(--radix-dropdown-menu-trigger-width)`, a Radix variable in
+              a Base UI app: it had never resolved to anything. */}
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="min-w-56 rounded-lg"
             side={isMobile ? 'bottom' : 'right'}
             align="end"
-            sideOffset={4}
           >
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               {avatar}

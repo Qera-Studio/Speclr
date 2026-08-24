@@ -318,6 +318,32 @@ const HAND_ROLLED_STATUS_BADGE = /status === ['"]finalized['"]\s*\?/g;
  */
 const SHOUTED_LABEL = /\buppercase\b/g;
 
+/**
+ * A popup offset or width decided by whoever was writing that popup.
+ *
+ * Four primitives draw a surface anchored to a control, and each had answered
+ * "how far from it" and "how wide" on its own. That produced a submenu at
+ * `sideOffset={0}` overlapping the menu it opened from, and a combobox list a
+ * few pixels narrower than the field above it. `ui/popup.ts` owns both numbers
+ * and the reason a ringed control needs different ones.
+ *
+ * `w-(--anchor-width)` is banned with them: a popup pinned to its anchor's
+ * width cannot grow to its content, so a long option label is truncated rather
+ * than shown. The floor is the anchor's width, never the ceiling.
+ */
+const HAND_WRITTEN_POPUP_OFFSET = /sideOffset\s*=\s*\{?\d/g;
+const POPUP_PINNED_TO_ANCHOR = /\bw-\(--anchor-width\)/g;
+
+/**
+ * A width floor lowered from the call site. `tailwind-merge` resolves the
+ * *last* utility in the class string, so a `min-w-max` passed to a
+ * `DropdownMenuContent` silently replaces the anchor-width floor the primitive
+ * set, and the menu comes out narrower than the control it hangs from. Three
+ * filter menus were doing exactly that. A popup that needs to be wider says so
+ * with a number (`min-w-56`), which raises the floor instead of removing it.
+ */
+const POPUP_FLOOR_LOWERED = /\bmin-w-(max|fit|min|auto)\b/g;
+
 const HAND_WRITTEN_OPTIONAL =
   /(label|title)=["'][^"']*\(optional\)["']|placeholder=["']Optional["']/gi;
 
@@ -428,6 +454,12 @@ describe('design system', () => {
 
   it('formats every phone on the way out, never printing the stored form', () => {
     expect(violations(RAW_PHONE_PRINT, UI_PRIMITIVES)).toEqual([]);
+  });
+
+  it('takes every popup offset and width from ui/popup.ts', () => {
+    expect(violations(HAND_WRITTEN_POPUP_OFFSET)).toEqual([]);
+    expect(violations(POPUP_PINNED_TO_ANCHOR)).toEqual([]);
+    expect(violations(POPUP_FLOOR_LOWERED)).toEqual([]);
   });
 
   it('polices .ts as well as .tsx (the schemas are not .tsx)', () => {

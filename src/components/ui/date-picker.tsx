@@ -6,6 +6,7 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup"
 import {
   formatDisplayDate,
   isoToLocalDate,
@@ -58,7 +59,7 @@ function DatePicker({
         data-size={size}
         data-empty={!selected}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-7 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
+          "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
           className
         )}
         {...aria}
@@ -68,7 +69,14 @@ function DatePicker({
         </span>
         <CalendarIcon className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-2">
+      {/* The trigger is a ringed control, so the calendar clears the ring and
+          is never narrower than the field. A month grid is wider than a short
+          date field anyway; the floor is what keeps that true in a wide one. */}
+      <PopoverContent
+        align="start"
+        sideOffset={RINGED_POPUP_GAP}
+        className={cn("w-auto p-2", RINGED_POPUP_WIDTH)}
+      >
         <Calendar
           mode="single"
           autoFocus
