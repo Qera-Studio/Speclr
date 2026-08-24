@@ -27,7 +27,7 @@ function Harness({
 }) {
   const { offset, dragging } = useProfileDrag(onCommit, () => true, settleKey);
   return (
-    <div data-slot="sidebar">
+    <div data-slot="sidebar" data-side="left">
       <span data-testid="offset">{offset.toFixed(3)}</span>
       <span data-testid="dragging">{String(dragging)}</span>
     </div>
@@ -225,6 +225,28 @@ describe('useProfileDrag', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(commit).not.toHaveBeenCalled();
   });
+
+  /**
+   * The document editor's rail is a `Sidebar` too, on the right. It matched the
+   * selector, so swiping left while editing an invoice switched profile.
+   */
+  it('ignores a gesture over a rail that is not the profile rail', () => {
+    const commit = jest.fn();
+    render(<Harness onCommit={commit} />);
+    const other = document.createElement('div');
+    other.setAttribute('data-slot', 'sidebar');
+    other.setAttribute('data-side', 'right');
+    document.body.append(other);
+
+    const event = new WheelEvent('wheel', { deltaX: SPAN, bubbles: true, cancelable: true });
+    act(() => {
+      other.dispatchEvent(event);
+    });
+    settle();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(commit).not.toHaveBeenCalled();
+  });
 });
 
 /**
@@ -237,7 +259,7 @@ describe('useProfileDrag at the end of the row', () => {
     // Only forward steps exist, as for the leftmost profile.
     const { offset } = useProfileDrag(onCommit, (direction) => direction === 1);
     return (
-      <div data-slot="sidebar">
+      <div data-slot="sidebar" data-side="left">
         <span data-testid="offset">{offset.toFixed(3)}</span>
         <span data-testid="dragging">false</span>
       </div>

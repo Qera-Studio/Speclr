@@ -73,7 +73,13 @@ const AXIS_DEADZONE = 0.5;
  * gesture working on the surface that actually needs touch support, and adds no
  * wrapper element to a layout jsdom cannot check.
  */
-const RAIL_SELECTOR = '[data-slot="sidebar"]';
+/*
+ * The *left* rail specifically. `[data-slot="sidebar"]` alone also matched the
+ * document editor's rail on the right, so a horizontal swipe while editing an
+ * invoice switched profile, which is nowhere near what the gesture was aimed
+ * at. Only one sidebar carries the profiles and it is the one on the left.
+ */
+const RAIL_SELECTOR = '[data-slot="sidebar"][data-side="left"]';
 
 function insideRail(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(RAIL_SELECTOR) !== null;
