@@ -113,6 +113,8 @@ function buildPreviewDoc(
     lineItems: fields.lineItems,
     gstRatePercent: fields.gstRatePercent,
     gstLabel: fields.gstLabel,
+    discountPercent: fields.discountPercent,
+    discountPaise: fields.discountPaise,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     notes: fields.notes,
     content: fields.content,
@@ -572,9 +574,42 @@ export default function DocumentEditor({
     studio,
     content,
   );
+  /**
+   * One of the two discount inputs, which clears the other as it is typed.
+   *
+   * The mutual clearing is the whole point of the wrapper: the schema refuses a
+   * document carrying both, and without this the operator would type a
+   * percentage over an amount and hit a save error explaining a field they
+   * cannot see. The percentage is also capped here rather than only in the
+   * schema, because a rejected autosave is a poor way to learn that 120% is not
+   * a discount.
+   */
+  const discountField = (
+    name: "discountPercent" | "discountAmount",
+    other: "discountPercent" | "discountAmount",
+  ) => {
+    const props = numericField(register(name), "money");
+    return {
+      ...props,
+      onChange: (event: { target: { value?: string } }) => {
+        const result = props.onChange(event);
+        const typed = String(event.target.value ?? "");
+        if (name === "discountPercent" && Number(typed) > 100) {
+          setValue("discountPercent", "100", { shouldDirty: true });
+        }
+        if (typed) setValue(other, "", { shouldDirty: true });
+        return result;
+      },
+    };
+  };
+
   // What the sheet will print — the source for every content input's value.
   const resolved = contentOf(previewDoc, spec);
-  const totals = computeTotals(previewDoc.lineItems, previewDoc.gstRatePercent);
+  const totals = computeTotals(
+    previewDoc.lineItems,
+    previewDoc.gstRatePercent,
+    previewDoc,
+  );
   const heading = workspaceTitle(
     title,
     spec.label,
@@ -650,10 +685,26 @@ export default function DocumentEditor({
       shouldDirty: true,
     });
     setValue("gstLabel", invoice.gstLabel ?? "", { shouldDirty: true });
+    // A credit note reverses tax that was actually charged, so it takes the
+    // discount with the lines it applied to. Without it the note would credit
+    // more than the invoice ever billed.
+    setValue(
+      "discountPercent",
+      invoice.discountPercent !== undefined
+        ? String(invoice.discountPercent)
+        : "",
+      { shouldDirty: true },
+    );
+    setValue(
+      "discountAmount",
+      invoice.discountPaise !== undefined
+        ? paiseToRupees(invoice.discountPaise)
+        : "",
+      { shouldDirty: true },
+    );
     lineItems.replace(
       invoice.lineItems.map((item) => ({
         description: item.description,
-        detail: item.detail ?? "",
         rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : "",
         qty: String(item.qty),
         sacCode: item.sacCode ?? "",
@@ -828,6 +879,53 @@ export default function DocumentEditor({
             lockNames
             presets={linePresets}
           />
+
+          {/*
+            Discount, between the lines it reduces and the tax charged on what
+            is left, which is the order it prints in and the order it applies
+            in.
+
+            Two inputs rather than one input and a unit toggle, because they are
+            two ways of saying the same thing and neither is the primary one: a
+            retainer is discounted by a percentage, a one-off by a round figure.
+            Typing in either clears the other, so the document can never carry
+            two answers to one question.
+
+            **It comes off before GST and there is no control that would take it
+            off after.** A discount off the gross would have the studio remit
+            tax it never collected and the recipient claim credit for tax on a
+            price they were never charged (CGST s.15(3)(a), Rule 46). A discount
+            agreed after issue is s.34's credit note, which this app has.
+          */}
+          <FieldSet className="border-t border-border pt-4">
+            <FieldRow>
+              <Field>
+                <FieldInfo
+                  htmlFor="doc-discount-percent"
+                  label="Discount (%)"
+                  info="Comes off the subtotal, before GST, and prints on the document. A discount only reduces the taxable value if the invoice records it (CGST s.15(3)). To discount an invoice already issued, raise a credit note instead."
+                  infoLabel="How does the discount work?"
+                />
+                <Input
+                  id="doc-discount-percent"
+                  size="form"
+                  placeholder="0"
+                  {...discountField("discountPercent", "discountAmount")}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="doc-discount-amount">
+                  Discount (₹)
+                </FieldLabel>
+                <Input
+                  id="doc-discount-amount"
+                  size="form"
+                  placeholder="0.00"
+                  {...discountField("discountAmount", "discountPercent")}
+                />
+              </Field>
+            </FieldRow>
+          </FieldSet>
 
           {/*
             Tax, and not inside a collapsible card.

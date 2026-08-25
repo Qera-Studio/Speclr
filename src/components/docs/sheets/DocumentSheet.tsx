@@ -58,7 +58,7 @@ export default function DocumentSheet({
   // thanks line. Defaults when the document has never been edited; its own
   // frozen copy once finalized.
   const text = contentOf(doc, spec);
-  const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
+  const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
   /* Joined rather than rendered as two spans: either may be cleared, and a
      stray separator on a line with one sentence left is the tell. */
   const declarations = [text.reverseChargeLine, text.currencyLine]
@@ -101,7 +101,8 @@ export default function DocumentSheet({
    *
    * Deducted on the **taxable value**, not on the GST — s.194J applies to the
    * sum payable for professional services, and CBDT Circular 23/2017 excludes
-   * the GST component where it is shown separately. Rounded half-up to whole
+   * the GST component where it is shown separately. Net of any discount for the
+   * same reason: what is payable is what is payable. Rounded half-up to whole
    * paise like every other amount here; the result is only ever displayed, so
    * it can never drift into a stored total.
    */
@@ -110,7 +111,7 @@ export default function DocumentSheet({
       ? doc.clientSnapshot.tds
       : null;
   const tdsPaise = tds
-    ? Math.floor((totals.subtotalPaise * (tds.ratePercent ?? 0)) / 100 + 0.5)
+    ? Math.floor((totals.taxablePaise * (tds.ratePercent ?? 0)) / 100 + 0.5)
     : 0;
   const netOfTds = totals.totalPaise - tdsPaise;
   const { cgstPaise, sgstPaise } = splitGST(totals.gstPaise);
@@ -398,7 +399,7 @@ export default function DocumentSheet({
         second one down, and it does so whether or not the first is there, which
         is the domestic case.
       */}
-      <div className="mt-auto flex items-stretch gap-[84px] mb-[8px]">
+      <div className="mt-auto flex items-stretch gap-[96px] mb-[8px]">
         <div className="min-w-0 flex-1 flex flex-col max-w-[300px]">
           {/*
             Rule 46's third proviso prescribes these exact words in capitals,
@@ -424,7 +425,7 @@ export default function DocumentSheet({
             </p>
           ) : null}
         </div>
-        <div className="w-[50%] shrink-0">
+        <div className="w-[60%] shrink-0">
           <div className="flex justify-between gap-[16px] py-[3px]">
             <span className="text-black/70 text-[12px] font-normal">
               subtotal
@@ -433,6 +434,30 @@ export default function DocumentSheet({
               {formatINR(totals.subtotalPaise)}
             </span>
           </div>
+          {/*
+            CGST s.15(3)(a) deducts a discount from the value of supply only
+            where it is recorded in the invoice, and Rule 46 wants the taxable
+            value stated "taking into account discount or abatement". So this
+            row is not a courtesy to the reader: without it the figure GST is
+            charged on cannot be arrived at from what the document says.
+
+            The percentage prints beside the label when that is how it was
+            typed, for the same reason the GST rate does: a reader checking the
+            arithmetic should not have to divide to find out what was agreed.
+          */}
+          {totals.discountPaise > 0 ? (
+            <div className="flex justify-between gap-[16px] py-[3px]">
+              <span className="text-black/70 text-[12px] font-normal">
+                discount
+                {doc.discountPercent !== undefined
+                  ? ` (${doc.discountPercent}%)`
+                  : ""}
+              </span>
+              <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
+                -{formatINR(totals.discountPaise)}
+              </span>
+            </div>
+          ) : null}
           {hasGst ? (
             intraState ? (
               <>

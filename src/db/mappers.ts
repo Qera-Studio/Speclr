@@ -1,7 +1,7 @@
-import 'server-only';
+import "server-only";
 
-import { computeTotals, slipTotals } from '@/lib/domain/money';
-import { isHrDocType } from '@/lib/domain/registry';
+import { computeTotals, slipTotals } from "@/lib/domain/money";
+import { isHrDocType } from "@/lib/domain/registry";
 import type {
   Actor,
   AdminDocument,
@@ -14,9 +14,9 @@ import type {
   LetterDocument,
   ReceiptDocument,
   SlipDocument,
-} from '@/lib/domain/types';
-import type { clients } from './schema';
-import type { DocumentData } from './schema';
+} from "@/lib/domain/types";
+import type { clients } from "./schema";
+import type { DocumentData } from "./schema";
 
 /**
  * Maps between the `AdminDocument` discriminated union (the domain's source of
@@ -34,8 +34,8 @@ import type { DocumentData } from './schema';
 // row shape here uses the DB-facing types the Drizzle table produces.
 export interface DocumentRow {
   id: string;
-  type: AdminDocument['type'];
-  status: AdminDocument['status'];
+  type: AdminDocument["type"];
+  status: AdminDocument["status"];
   number: string | null;
   serial: number | null;
   fyYear: number | null;
@@ -64,7 +64,10 @@ export interface DocumentRow {
  * half-written actor, and a partial audit record is not evidence of anything —
  * better to report "unknown" than to imply a name we can't stand behind.
  */
-function actorFrom(userId: string | null, email: string | null): Actor | undefined {
+function actorFrom(
+  userId: string | null,
+  email: string | null,
+): Actor | undefined {
   return userId && email ? { userId, email } : undefined;
 }
 
@@ -87,7 +90,9 @@ export type ClientRow = typeof clients.$inferSelect;
  * which is why this needed no migration. The tax group wins because it is the
  * validated half; the column tail catches rows written before it existed.
  */
-function gstinOf(client: Pick<ClientRecord, 'tax' | 'gstin'>): string | undefined {
+function gstinOf(
+  client: Pick<ClientRecord, "tax" | "gstin">,
+): string | undefined {
   return client.tax?.gstin || client.gstin || undefined;
 }
 
@@ -148,23 +153,27 @@ export function clientFromRow(r: ClientRow): ClientRecord {
 // ─── Documents ────────────────────────────────────────────────────────────────
 
 /** Value written for a document's insert/update (id + timestamps handled by the store). */
-export type DocumentInsert = Omit<DocumentRow, 'createdAt' | 'updatedAt'> & {
+export type DocumentInsert = Omit<DocumentRow, "createdAt" | "updatedAt"> & {
   createdAt: Date;
   updatedAt: Date;
 };
 
 /** Split an AdminDocument into flat columns + JSONB for storage. */
 export function toRow(doc: AdminDocument): DocumentInsert {
-  const totals = computeTotals(doc.lineItems ?? [], doc.gstRatePercent);
+  const totals = computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc);
   // `total_paise` is what the lists and amount filters read, so for a pay slip
   // it has to be the net actually paid, not the gross before deductions.
   const totalPaise =
-    doc.type === 'PAY' ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise : totals.totalPaise;
+    doc.type === "PAY"
+      ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise
+      : totals.totalPaise;
 
   // Everything type-specific + shared-optional goes into `data`.
   const data: DocumentData = {
     lineItems: doc.lineItems,
     gstLabel: doc.gstLabel,
+    discountPercent: doc.discountPercent,
+    discountPaise: doc.discountPaise,
     notes: doc.notes,
     placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason,
     gstOverrideReason: doc.gstOverrideReason,
@@ -178,17 +187,17 @@ export function toRow(doc: AdminDocument): DocumentInsert {
   let dueDate: string | null = null;
 
   switch (doc.type) {
-    case 'INV':
+    case "INV":
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
       dueDate = doc.dueDate ?? null;
       break;
-    case 'REC':
+    case "REC":
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
       data.payment = doc.payment;
       break;
-    case 'CRN':
+    case "CRN":
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
       data.againstInvoiceNumber = doc.against.invoiceNumber;
@@ -196,13 +205,13 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.againstInvoiceId = doc.against.invoiceId;
       data.creditReason = doc.reason;
       break;
-    case 'CON':
+    case "CON":
       clientId = doc.clientId;
       snapshot = doc.clientSnapshot ?? null;
       data.contract = doc.contract;
       break;
-    case 'STP':
-    case 'PAY':
+    case "STP":
+    case "PAY":
       employeeId = doc.employeeId;
       snapshot = doc.employeeSnapshot ?? null;
       data.currency = doc.currency;
@@ -218,9 +227,9 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.daysPaid = doc.daysPaid;
       data.lopDays = doc.lopDays;
       break;
-    case 'OFR':
-    case 'EXP':
-    case 'EXIT':
+    case "OFR":
+    case "EXP":
+    case "EXIT":
       employeeId = doc.employeeId;
       snapshot = doc.employeeSnapshot ?? null;
       data.bodyParagraphs = doc.bodyParagraphs;
@@ -268,6 +277,8 @@ export function fromRow(row: DocumentRow): AdminDocument {
     gstRatePercent: row.gstRatePercent,
     placeOfSupplyStateCode: row.placeOfSupplyStateCode ?? undefined,
     gstLabel: row.data.gstLabel,
+    discountPercent: row.data.discountPercent,
+    discountPaise: row.data.discountPaise,
     placeOfSupplyOverrideReason: row.data.placeOfSupplyOverrideReason,
     gstOverrideReason: row.data.gstOverrideReason,
     notes: row.data.notes,
@@ -282,22 +293,23 @@ export function fromRow(row: DocumentRow): AdminDocument {
   };
 
   if (isHrDocType(row.type)) {
-    const employeeId = row.employeeId ?? '';
-    const employeeSnapshot = (row.snapshot ?? undefined) as EmployeeSnapshot | undefined;
-    if (row.type === 'STP' || row.type === 'PAY') {
+    const employeeId = row.employeeId ?? "";
+    const employeeSnapshot = (row.snapshot ?? undefined) as
+      EmployeeSnapshot | undefined;
+    if (row.type === "STP" || row.type === "PAY") {
       return {
         ...base,
         type: row.type,
         employeeId,
         employeeSnapshot: employeeSnapshot as EmployeeSnapshot,
         currency: row.data.currency,
-        stipendPeriod: row.data.stipendPeriod ?? '',
+        stipendPeriod: row.data.stipendPeriod ?? "",
         stipendPeriodStart: row.data.stipendPeriodStart,
         stipendPeriodEnd: row.data.stipendPeriodEnd,
-        stipendMonth: row.data.stipendMonth ?? '',
-        paymentMethod: row.data.paymentMethod ?? '',
+        stipendMonth: row.data.stipendMonth ?? "",
+        paymentMethod: row.data.paymentMethod ?? "",
         paymentReference: row.data.paymentReference,
-        deductionsNote: row.data.deductionsNote ?? '',
+        deductionsNote: row.data.deductionsNote ?? "",
         deductions: row.data.deductions,
         daysInPeriod: row.data.daysInPeriod,
         daysPaid: row.data.daysPaid,
@@ -306,7 +318,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
     }
     return {
       ...base,
-      type: row.type as LetterDocument['type'],
+      type: row.type as LetterDocument["type"],
       employeeId,
       employeeSnapshot: employeeSnapshot as EmployeeSnapshot,
       bodyParagraphs: row.data.bodyParagraphs ?? [],
@@ -318,23 +330,27 @@ export function fromRow(row: DocumentRow): AdminDocument {
   // Client-party documents.
   const clientBase = {
     ...base,
-    clientId: row.clientId ?? '',
+    clientId: row.clientId ?? "",
     clientSnapshot: (row.snapshot ?? undefined) as ClientSnapshot,
   };
-  if (row.type === 'INV') {
-    return { ...clientBase, type: 'INV', dueDate: row.dueDate ?? undefined } satisfies InvoiceDocument;
-  }
-  if (row.type === 'REC') {
+  if (row.type === "INV") {
     return {
       ...clientBase,
-      type: 'REC',
-      payment: row.data.payment as ReceiptDocument['payment'],
+      type: "INV",
+      dueDate: row.dueDate ?? undefined,
+    } satisfies InvoiceDocument;
+  }
+  if (row.type === "REC") {
+    return {
+      ...clientBase,
+      type: "REC",
+      payment: row.data.payment as ReceiptDocument["payment"],
     } satisfies ReceiptDocument;
   }
-  if (row.type === 'CRN') {
+  if (row.type === "CRN") {
     return {
       ...clientBase,
-      type: 'CRN',
+      type: "CRN",
       against: {
         invoiceNumber: row.data.againstInvoiceNumber,
         invoiceDate: row.data.againstInvoiceDate,
@@ -345,7 +361,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
   }
   return {
     ...clientBase,
-    type: 'CON',
+    type: "CON",
     contract: row.data.contract ?? { parts: [], blanks: {}, library: {} },
   } satisfies ContractDocument;
 }

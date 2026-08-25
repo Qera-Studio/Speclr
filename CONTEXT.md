@@ -913,6 +913,46 @@ case is this" is exactly the shape rule 3 exists to stop.
 The **receipt gets no copy marking**: Rule 48 governs the tax invoice, and Rule
 50's receipt voucher prescribes none.
 
+### 5k. A discount comes off before the tax, and it prints
+
+Added 25 August 2026. The request was for two of them: one off the total
+including GST, and one off the subtotal, with neither shown on the invoice.
+Both halves of that are refused, and the reasons are the whole of this section.
+
+**Off the gross is not a discount, it is a shortfall.** CGST s.15(3)(a) deducts
+a discount from the value of supply only where it is given at or before the
+supply *and recorded in the invoice*. Knock 10% off ₹23,600 and the document
+still declares ₹3,600 of tax on a sale that collected ₹21,240: the studio remits
+tax it never received, and the recipient claims input credit on a price they
+were never charged. So `computeTotals` takes the discount off first and charges
+GST on `taxablePaise`, and **there is no field anywhere that would take one off
+the gross.** The lawful way to discount a document already issued is s.34's
+credit note (§5j), which exists.
+
+**Not printing it is the same mistake in a different place.** Rule 46 wants the
+taxable value stated "taking into account discount or abatement". A discount the
+invoice does not record did not legally happen, and without the row the figure
+GST was charged on cannot be arrived at from what the document says. One row
+prints between Subtotal and the tax line, carrying the percentage when that is
+how it was typed.
+
+**Two fields, one figure.** `discountPercent` and `discountPaise` are two ways
+of writing the same thing, so the schema (`oneDiscount`) refuses a document
+carrying both and the editor clears one as the other is typed. Both are in the
+document's JSONB rather than a column, because nothing queries a discount: what
+the lists sort and filter on is `total_paise`, which is already net of it. The
+percentage is capped at 100 in the input as well as the schema, and
+`discountPaiseOf` clamps to the subtotal, because a negative taxable value would
+put a negative through money code that has never had to consider one.
+
+**Three things that follow it.** TDS is computed on the taxable value, so it
+follows the discount down: what is withheld is a percentage of what is payable.
+A receipt raised from an invoice carries the discount with the lines it
+discounted. And a credit note picking an invoice copies it for the same reason
+it copies the rate: it reverses tax that was actually charged, and a note
+crediting the undiscounted figure would credit more than the invoice ever
+billed.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.

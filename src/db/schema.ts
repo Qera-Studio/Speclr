@@ -13,7 +13,7 @@
  * only for the queryable projections. Row lifecycle timestamps use `timestamptz`.
  */
 
-import { sql } from 'drizzle-orm';
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -25,21 +25,21 @@ import {
   text,
   timestamp,
   uniqueIndex,
-} from 'drizzle-orm/pg-core';
-import type { AddressParts } from '@/lib/domain/address';
-import type { ScheduleKey } from '@/lib/domain/contract/schedules';
-import type { ServiceContent } from '@/lib/domain/service';
-import type { CurrencyCode } from '@/lib/domain/currency';
-import type { DocContent } from '@/lib/domain/docContent';
+} from "drizzle-orm/pg-core";
+import type { AddressParts } from "@/lib/domain/address";
+import type { ScheduleKey } from "@/lib/domain/contract/schedules";
+import type { ServiceContent } from "@/lib/domain/service";
+import type { CurrencyCode } from "@/lib/domain/currency";
+import type { DocContent } from "@/lib/domain/docContent";
 import type {
   ClientAccessRef,
   ClientAttachment,
   ClientCommercial,
   ClientContacts,
   ClientTax,
-} from '@/lib/domain/client';
-import type { EmployeeRecord } from '@/lib/domain/employee';
-import type { StudioInfo } from '@/lib/domain/studio';
+} from "@/lib/domain/client";
+import type { EmployeeRecord } from "@/lib/domain/employee";
+import type { StudioInfo } from "@/lib/domain/studio";
 import type {
   ClientSnapshot,
   ContractData,
@@ -48,26 +48,26 @@ import type {
   EmployeeSnapshot,
   LineItem,
   PayrollIds,
-} from '@/lib/domain/types';
+} from "@/lib/domain/types";
 
 // ─── Clients ──────────────────────────────────────────────────────────────────
 
-export const clients = pgTable('clients', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
+export const clients = pgTable("clients", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
   /**
    * Legal entity name printed on documents. Nullable: the rows written before
    * this column existed have none, and they must keep loading.
    */
-  companyName: text('company_name'),
+  companyName: text("company_name"),
   /** Flat printable address — what documents render. Stays authoritative. */
-  address: text('address').notNull(),
+  address: text("address").notNull(),
   /**
    * Structured address for editing and pincode autofill, composed into
    * `address` at save time. Nullable: rows written before this existed have no
    * parts, and that must keep working.
    */
-  addressParts: jsonb('address_parts').$type<AddressParts>(),
+  addressParts: jsonb("address_parts").$type<AddressParts>(),
   /**
    * Where invoices are addressed, when that is not the registered address.
    *
@@ -81,11 +81,11 @@ export const clients = pgTable('clients', {
    * twin: there are no rows predating it, so the printable line is composed on
    * read.
    */
-  billingAddressParts: jsonb('billing_address_parts').$type<AddressParts>(),
-  email: text('email').notNull(),
+  billingAddressParts: jsonb("billing_address_parts").$type<AddressParts>(),
+  email: text("email").notNull(),
   /** E.164 for new writes; legacy rows may hold arbitrary text. */
-  phone: text('phone').notNull(),
-  gstin: text('gstin'),
+  phone: text("phone").notNull(),
+  gstin: text("gstin"),
   /**
    * What kind of legal entity this is — see `lib/domain/entityType.ts`.
    *
@@ -94,7 +94,7 @@ export const clients = pgTable('clients', {
    * another — an Indian entity's PAN encodes its own kind in the 4th character.
    * Nullable, like every column added after the first invoice.
    */
-  entityType: text('entity_type'),
+  entityType: text("entity_type"),
   /**
    * The four groups onboarding added, and the reason they are groups rather
    * than thirty columns: nothing queries them, and a group keeps the next field
@@ -104,17 +104,17 @@ export const clients = pgTable('clients', {
    * `saveClientSection` refuses a payload that does not parse, so what lands in
    * these columns is never merely "whatever the browser sent".
    */
-  tax: jsonb('tax').$type<ClientTax>(),
-  contacts: jsonb('contacts').$type<ClientContacts>(),
-  commercial: jsonb('commercial').$type<ClientCommercial>(),
+  tax: jsonb("tax").$type<ClientTax>(),
+  contacts: jsonb("contacts").$type<ClientContacts>(),
+  commercial: jsonb("commercial").$type<ClientCommercial>(),
   /**
    * File *metadata* only. The bytes live in blob storage and are read back
    * through an authenticated route — these are a third party's identity
    * documents, so there is no public URL anywhere in this column.
    */
-  attachments: jsonb('attachments').$type<ClientAttachment[]>(),
+  attachments: jsonb("attachments").$type<ClientAttachment[]>(),
   /** Where credentials live. Never a credential — see `client.ts`. */
-  access: jsonb('access').$type<ClientAccessRef[]>(),
+  access: jsonb("access").$type<ClientAccessRef[]>(),
   /**
    * Offboarded: the engagement is over, and the row leaves the working list.
    *
@@ -128,51 +128,59 @@ export const clients = pgTable('clients', {
    * list. It never hides them from an open document, and it changes nothing
    * that prints.
    */
-  archived: boolean('archived').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  archived: boolean("archived").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ─── Employees ────────────────────────────────────────────────────────────────
 
 export const employees = pgTable(
-  'employees',
+  "employees",
   {
-    id: text('id').primaryKey(),
-    name: text('name').notNull(),
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
     /** Flat printable address — what HR documents render. */
-    address: text('address').notNull(),
+    address: text("address").notNull(),
     /** Structured parts for editing; null on rows that predate them. */
-    addressParts: jsonb('address_parts').$type<AddressParts>(),
-    email: text('email').notNull(),
+    addressParts: jsonb("address_parts").$type<AddressParts>(),
+    email: text("email").notNull(),
     /** E.164 for new writes; legacy rows may hold arbitrary text. */
-    phone: text('phone').notNull(),
-    role: text('role').notNull(),
-    engagementType: text('engagement_type').notNull(), // 'intern' | 'employee'
-    pronoun: text('pronoun').notNull(), // 'he' | 'she' | 'they'
-    joiningDate: date('joining_date').notNull(),
-    endDate: date('end_date'),
+    phone: text("phone").notNull(),
+    role: text("role").notNull(),
+    engagementType: text("engagement_type").notNull(), // 'intern' | 'employee'
+    pronoun: text("pronoun").notNull(), // 'he' | 'she' | 'they'
+    joiningDate: date("joining_date").notNull(),
+    endDate: date("end_date"),
     /** Monthly. Derived from `annual_salary_paise` when there is one. */
-    payAmountPaise: integer('pay_amount_paise').notNull(),
+    payAmountPaise: integer("pay_amount_paise").notNull(),
     /**
      * An employee's salary as quoted. A real column, not part of a JSONB group:
      * "what do we pay out a year" is a question worth asking of the table.
      * Null for interns, who are paid a monthly stipend, and for rows written
      * before this existed.
      */
-    annualSalaryPaise: integer('annual_salary_paise'),
+    annualSalaryPaise: integer("annual_salary_paise"),
     /** Record-keeping only — documents still print INR. Null means INR. */
-    payCurrency: text('pay_currency'),
+    payCurrency: text("pay_currency"),
     /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
-    bank: jsonb('bank').notNull().$type<EmployeeRecord['bank']>(),
+    bank: jsonb("bank").notNull().$type<EmployeeRecord["bank"]>(),
     /**
      * Statutory identifiers printed on a pay slip — { employeeCode?, pan?, uan?,
      * pfNumber?, esicNumber? }. Nullable: nothing queries these, interns have
      * none, and rows written before pay slips existed have no group at all.
      */
-    payroll: jsonb('payroll').$type<PayrollIds>(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    payroll: jsonb("payroll").$type<PayrollIds>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     /**
@@ -183,7 +191,7 @@ export const employees = pgTable(
      * — this index is what makes it *unrepresentable*, including against a hand
      * -written UPDATE. Partial, because a record without a code yet is normal.
      */
-    uniqueIndex('employees_employee_code_uniq')
+    uniqueIndex("employees_employee_code_uniq")
       .on(sql`(${t.payroll} ->> 'employeeCode')`)
       .where(sql`${t.payroll} ->> 'employeeCode' is not null`),
   ],
@@ -202,19 +210,23 @@ export const employees = pgTable(
  * text and lives in `content`, validated by `serviceContentSchema` on write.
  */
 export const services = pgTable(
-  'services',
+  "services",
   {
-    code: text('code').primaryKey(), // '01'–'22'
-    name: text('name').notNull(),
-    scheduleKey: text('schedule_key').notNull().$type<ScheduleKey>(),
-    sortOrder: integer('sort_order').notNull(),
-    content: jsonb('content').notNull().$type<ServiceContent>(),
+    code: text("code").primaryKey(), // '01'–'22'
+    name: text("name").notNull(),
+    scheduleKey: text("schedule_key").notNull().$type<ScheduleKey>(),
+    sortOrder: integer("sort_order").notNull(),
+    content: jsonb("content").notNull().$type<ServiceContent>(),
     /** Archived services leave new contracts but stay readable for audit. */
-    archived: boolean('archived').notNull().default(false),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    archived: boolean("archived").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (t) => [index('services_schedule_key_idx').on(t.scheduleKey)],
+  (t) => [index("services_schedule_key_idx").on(t.scheduleKey)],
 );
 
 /**
@@ -227,12 +239,14 @@ export const services = pgTable(
  * ponytail: id arrays over join tables — promote to joins if attachment ever
  * needs querying from the exclusion side at scale.
  */
-export const exclusions = pgTable('exclusions', {
-  id: text('id').primaryKey(), // 'E01'–
-  text: text('text').notNull(),
-  category: text('category').notNull(),
-  archived: boolean('archived').notNull().default(false),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+export const exclusions = pgTable("exclusions", {
+  id: text("id").primaryKey(), // 'E01'–
+  text: text("text").notNull(),
+  category: text("category").notNull(),
+  archived: boolean("archived").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 /**
@@ -254,24 +268,30 @@ export const exclusions = pgTable('exclusions', {
  * (`materialiseContent`) — the same rule `seed/services.ts` states for
  * Services, and CONTEXT.md §5b for document content generally.
  */
-export const clauses = pgTable('clauses', {
-  number: integer('number').primaryKey(),
-  heading: text('heading').notNull(),
+export const clauses = pgTable("clauses", {
+  number: integer("number").primaryKey(),
+  heading: text("heading").notNull(),
   /** One entry per paragraph, each carrying its own sub-number ('8.4 Where…'). */
-  body: jsonb('body').notNull().$type<string[]>(),
+  body: jsonb("body").notNull().$type<string[]>(),
   /** Archived clauses leave new contracts but stay readable for audit. */
-  archived: boolean('archived').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  archived: boolean("archived").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 /** The client-input library. Same mechanics as `exclusions`, opposite purpose. */
-export const clientInputs = pgTable('client_inputs', {
-  id: text('id').primaryKey(), // 'I01'–
-  text: text('text').notNull(),
-  category: text('category').notNull(),
-  archived: boolean('archived').notNull().default(false),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+export const clientInputs = pgTable("client_inputs", {
+  id: text("id").primaryKey(), // 'I01'–
+  text: text("text").notNull(),
+  category: text("category").notNull(),
+  archived: boolean("archived").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ─── Studio settings ──────────────────────────────────────────────────────────
@@ -284,10 +304,12 @@ export const clientInputs = pgTable('client_inputs', {
  * on — it is read whole, rendered whole, and frozen whole onto a document at
  * finalize. Validated by `studioInputSchema` on write.
  */
-export const studioSettings = pgTable('studio_settings', {
-  id: text('id').primaryKey(),
-  info: jsonb('info').notNull().$type<StudioInfo>(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+export const studioSettings = pgTable("studio_settings", {
+  id: text("id").primaryKey(),
+  info: jsonb("info").notNull().$type<StudioInfo>(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ─── Documents ────────────────────────────────────────────────────────────────
@@ -320,6 +342,13 @@ export interface DocumentData {
   placeOfSupplyOverrideReason?: string;
   /** Why the tax charged departs from the client-derived treatment. */
   gstOverrideReason?: string;
+  /**
+   * A discount off the taxable value, one or the other. In `data` rather than
+   * columns because nothing queries a discount: the figure the lists sort and
+   * filter on is `total_paise`, which is already net of it.
+   */
+  discountPercent?: number;
+  discountPaise?: number;
   notes?: string;
   terms?: string;
   dueDate?: string; // INV
@@ -354,53 +383,57 @@ export interface DocumentData {
 }
 
 export const documents = pgTable(
-  'documents',
+  "documents",
   {
-    id: text('id').primaryKey(),
-    type: text('type').notNull().$type<DocTypeCode>(),
-    status: text('status').notNull().$type<DocStatus>().default('draft'),
+    id: text("id").primaryKey(),
+    type: text("type").notNull().$type<DocTypeCode>(),
+    status: text("status").notNull().$type<DocStatus>().default("draft"),
 
     // Numbering — present only once finalized (financial + hr-slip docs).
-    number: text('number'),
-    serial: integer('serial'),
-    fyYear: integer('fy_year'), // FY start, e.g. 2026 for FY 2026-27
+    number: text("number"),
+    serial: integer("serial"),
+    fyYear: integer("fy_year"), // FY start, e.g. 2026 for FY 2026-27
 
     // Queryable projections.
-    issueDate: date('issue_date').notNull(),
-    dueDate: date('due_date'),
-    clientId: text('client_id').references(() => clients.id),
-    employeeId: text('employee_id').references(() => employees.id),
-    gstRatePercent: integer('gst_rate_percent').notNull().default(0),
-    placeOfSupplyStateCode: text('place_of_supply_state_code'),
-    totalPaise: integer('total_paise').notNull().default(0),
+    issueDate: date("issue_date").notNull(),
+    dueDate: date("due_date"),
+    clientId: text("client_id").references(() => clients.id),
+    employeeId: text("employee_id").references(() => employees.id),
+    gstRatePercent: integer("gst_rate_percent").notNull().default(0),
+    placeOfSupplyStateCode: text("place_of_supply_state_code"),
+    totalPaise: integer("total_paise").notNull().default(0),
 
     // Variable payload + frozen party snapshot (client OR employee).
-    data: jsonb('data').notNull().$type<DocumentData>(),
-    snapshot: jsonb('snapshot').$type<ClientSnapshot | EmployeeSnapshot>(),
+    data: jsonb("data").notNull().$type<DocumentData>(),
+    snapshot: jsonb("snapshot").$type<ClientSnapshot | EmployeeSnapshot>(),
 
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finalizedAt: timestamp("finalized_at", { withTimezone: true }),
 
     // Audit trail — who drafted and who issued. Flat columns rather than JSONB
     // because "everything Bob issued" is a query, and real columns are what the
     // queried/reported facts get (AGENTS.md). Nullable: documents written
     // before this existed have no actor, and that blank is deliberate — see
     // `Actor` in domain/types.ts. Clerk id + the email frozen at action time.
-    createdBy: text('created_by'),
-    createdByEmail: text('created_by_email'),
-    finalizedBy: text('finalized_by'),
-    finalizedByEmail: text('finalized_by_email'),
+    createdBy: text("created_by"),
+    createdByEmail: text("created_by_email"),
+    finalizedBy: text("finalized_by"),
+    finalizedByEmail: text("finalized_by_email"),
   },
   (t) => [
-    index('documents_created_at_idx').on(t.createdAt.desc()),
-    index('documents_finalized_by_idx').on(t.finalizedBy),
-    index('documents_status_idx').on(t.status),
-    index('documents_type_idx').on(t.type),
-    index('documents_client_id_idx').on(t.clientId),
-    index('documents_employee_id_idx').on(t.employeeId),
+    index("documents_created_at_idx").on(t.createdAt.desc()),
+    index("documents_finalized_by_idx").on(t.finalizedBy),
+    index("documents_status_idx").on(t.status),
+    index("documents_type_idx").on(t.type),
+    index("documents_client_id_idx").on(t.clientId),
+    index("documents_employee_id_idx").on(t.employeeId),
     // A finalized number must be unique across the whole system.
-    uniqueIndex('documents_number_uniq').on(t.number),
+    uniqueIndex("documents_number_uniq").on(t.number),
   ],
 );
 
@@ -412,12 +445,14 @@ export const documents = pgTable(
  * so a number is never handed out twice. Abandoned drafts never touch it.
  */
 export const counters = pgTable(
-  'counters',
+  "counters",
   {
-    docType: text('doc_type').notNull(),
-    fyCode: text('fy_code').notNull(), // e.g. '2627'
-    lastSerial: integer('last_serial').notNull().default(0),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    docType: text("doc_type").notNull(),
+    fyCode: text("fy_code").notNull(), // e.g. '2627'
+    lastSerial: integer("last_serial").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.docType, t.fyCode] })],
 );

@@ -93,7 +93,7 @@ export function totalPaiseOf(doc: AdminDocument): number | null {
   // A pay slip's total is the net paid, after deductions — matching what the
   // slip itself prints and what `toRow` stores in `total_paise`.
   if (doc.type === 'PAY') return slipTotals(doc.lineItems, doc.deductions).netPaise;
-  return computeTotals(doc.lineItems, doc.gstRatePercent).totalPaise;
+  return computeTotals(doc.lineItems, doc.gstRatePercent, doc).totalPaise;
 }
 
 function matchesRow(doc: AdminDocument, row: FilterRow): boolean {

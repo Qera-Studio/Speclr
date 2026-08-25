@@ -177,6 +177,62 @@ describe("DocumentEditor (new invoice)", () => {
   });
 
   /**
+   * A discount is one figure, however it was typed. Both fields filled is a
+   * document that disagrees with itself, which the schema refuses at finalize,
+   * so the second one is cleared as the first is typed rather than letting the
+   * operator meet that refusal later with no idea which field caused it.
+   */
+  it("keeps one discount, clearing the other field as it is typed", async () => {
+    const u = userEvent.setup();
+    render(
+      <DocumentEditor typeCode="INV" clients={clients} title="New invoice" />,
+    );
+
+    const amount = screen.getByLabelText("Discount (₹)");
+    const percent = screen.getByLabelText(/discount \(%\)/i);
+
+    await u.type(amount, "500");
+    expect(amount).toHaveValue("500");
+
+    await u.type(percent, "10");
+    expect(percent).toHaveValue("10");
+    expect(amount).toHaveValue("");
+  });
+
+  /**
+   * The preview is the only place an operator sees the discount before the
+   * document is issued, and it silently did not carry one: `buildPreviewDoc`
+   * lists the document's fields by hand, and the two new ones were added to the
+   * payload the server receives but not to the copy the sheet renders. So the
+   * figure saved and the figure shown disagreed, which on a tax invoice is the
+   * worse half of the two being wrong.
+   */
+  it("shows the discount on the preview as it is typed", async () => {
+    const u = userEvent.setup();
+    render(
+      <DocumentEditor typeCode="INV" clients={clients} title="New invoice" />,
+    );
+
+    await expandLineItem(u);
+    await u.type(screen.getByLabelText(/rate \(₹\)/i), "2000");
+    await u.type(screen.getByLabelText(/discount \(%\)/i), "10");
+
+    expect(await screen.findByText("discount (10%)")).toBeInTheDocument();
+    expect(screen.getByText("-₹ 200.00")).toBeInTheDocument();
+  });
+
+  /** 120% off is a typo, and a rejected autosave is a poor way to learn that. */
+  it("caps the discount percentage at 100", async () => {
+    const u = userEvent.setup();
+    render(
+      <DocumentEditor typeCode="INV" clients={clients} title="New invoice" />,
+    );
+
+    await u.type(screen.getByLabelText(/discount \(%\)/i), "120");
+    expect(screen.getByLabelText(/discount \(%\)/i)).toHaveValue("100");
+  });
+
+  /**
    * The wording is behind one row, not four cards in the rail.
    *
    * The four sections are right on almost every document, so leaving them in

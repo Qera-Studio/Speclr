@@ -123,6 +123,10 @@ const invoice = (): AdminDocument =>
     ],
     gstRatePercent: 18,
     placeOfSupplyStateCode: "09",
+    // A discount, because it adds a row to a band that does not stretch, and
+    // the domestic case is the taller of the two: it carries CGST and SGST
+    // where the export carries neither.
+    discountPercent: 10,
   }) as unknown as AdminDocument;
 
 /**
@@ -149,7 +153,7 @@ const invoiceExport = (): AdminDocument =>
       registrationNumber: "09876543",
     },
     gstRatePercent: 0,
-    gstLabel: "Export of services under LUT, IGST not charged (IGST Act s.16).",
+    gstLabel: "Export of services under LUT, IGST not charged.",
     placeOfSupplyStateCode: "96",
     studioSnapshot: {
       ...STUDIO_INFO,

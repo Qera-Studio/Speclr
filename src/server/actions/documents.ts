@@ -1,8 +1,8 @@
-'use server';
+"use server";
 
-import { randomUUID } from 'crypto';
-import { revalidatePath } from 'next/cache';
-import { invalidInput } from './validation';
+import { randomUUID } from "crypto";
+import { revalidatePath } from "next/cache";
+import { invalidInput } from "./validation";
 import {
   financialYearCodeOfISODate,
   financialYearStart,
@@ -10,12 +10,17 @@ import {
   isISOMonth,
   lastDayOfMonth,
   todayISO,
-} from '@/lib/domain/dates';
-import { DOC_TYPES, isHrDocType, isSlip, type DocFields } from '@/lib/domain/registry';
-import { computeTotals } from '@/lib/domain/money';
-import { placeOfSupplyOf } from '@/lib/domain/placeOfSupply';
-import { gstTreatmentMismatch } from '@/lib/domain/gstTreatment';
-import { materialiseContent } from '@/lib/domain/docContent';
+} from "@/lib/domain/dates";
+import {
+  DOC_TYPES,
+  isHrDocType,
+  isSlip,
+  type DocFields,
+} from "@/lib/domain/registry";
+import { computeTotals } from "@/lib/domain/money";
+import { placeOfSupplyOf } from "@/lib/domain/placeOfSupply";
+import { gstTreatmentMismatch } from "@/lib/domain/gstTreatment";
+import { materialiseContent } from "@/lib/domain/docContent";
 import {
   clientSnapshotOf,
   type ActionResult,
@@ -31,9 +36,9 @@ import {
   type ReceiptDocument,
   type SlipDocument,
   type Actor,
-} from '@/lib/domain/types';
-import type { EmployeeRecord } from '@/lib/domain/employee';
-import { claimSerial } from '@/db/counter';
+} from "@/lib/domain/types";
+import type { EmployeeRecord } from "@/lib/domain/employee";
+import { claimSerial } from "@/db/counter";
 import {
   deleteDraft as storeDeleteDraft,
   getClient,
@@ -42,9 +47,9 @@ import {
   getStudioSettings,
   listFinalizedInvoicesForClient,
   saveDocument,
-} from '@/db/store';
-import { logger } from '@/lib/logger';
-import { authorized } from './authGate';
+} from "@/db/store";
+import { logger } from "@/lib/logger";
+import { authorized } from "./authGate";
 
 function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
   return {
@@ -83,7 +88,7 @@ function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
 // Distributes over each union member instead of flattening to common keys,
 // so each branch's base keeps its own required subject fields (client vs employee).
 type DocBaseOf<T> = T extends AdminDocument
-  ? Omit<T, 'lineItems' | 'issueDate' | 'gstRatePercent'>
+  ? Omit<T, "lineItems" | "issueDate" | "gstRatePercent">
   : never;
 type DocBase = DocBaseOf<AdminDocument>;
 
@@ -101,7 +106,7 @@ type DocBase = DocBaseOf<AdminDocument>;
  * but not via sequential `||` equality checks.
  */
 function withFields(base: DocBase, fields: DocFields): AdminDocument {
-  if (base.type === 'CON') {
+  if (base.type === "CON") {
     // Contracts carry Parts and blanks, never line items / GST / payment.
     // Empty financial defaults satisfy BaseDocument's required fields (mirrors
     // the registry's CON defaultFields).
@@ -131,17 +136,17 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     stipendPeriod: fields.stipendPeriod,
     stipendPeriodStart: fields.stipendPeriodStart,
     stipendPeriodEnd: fields.stipendPeriodEnd,
-    stipendMonth: fields.stipendMonth ?? '',
-    paymentMethod: fields.paymentMethod ?? '',
+    stipendMonth: fields.stipendMonth ?? "",
+    paymentMethod: fields.paymentMethod ?? "",
     paymentReference: fields.paymentReference,
-    deductionsNote: fields.deductionsNote ?? '',
+    deductionsNote: fields.deductionsNote ?? "",
     deductions: fields.deductions,
     daysInPeriod: fields.daysInPeriod,
     daysPaid: fields.daysPaid,
     lopDays: fields.lopDays,
     content: fields.content,
   };
-  if (base.type === 'STP' || base.type === 'PAY') {
+  if (base.type === "STP" || base.type === "PAY") {
     return { ...base, ...slipFields } satisfies SlipDocument;
   }
   // INV/REC share every money field.
@@ -150,6 +155,8 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     lineItems: fields.lineItems,
     gstRatePercent: fields.gstRatePercent,
     gstLabel: fields.gstLabel,
+    discountPercent: fields.discountPercent,
+    discountPaise: fields.discountPaise,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     placeOfSupplyOverrideReason: fields.placeOfSupplyOverrideReason,
     gstOverrideReason: fields.gstOverrideReason,
@@ -157,17 +164,17 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     terms: fields.terms,
     content: fields.content,
   };
-  if (base.type === 'INV') {
+  if (base.type === "INV") {
     return { ...base, ...sharedMoney, dueDate: fields.dueDate };
   }
-  if (base.type === 'REC') {
+  if (base.type === "REC") {
     return {
       ...base,
       ...sharedMoney,
-      payment: fields.payment ?? { date: '', method: 'Bank Transfer' },
+      payment: fields.payment ?? { date: "", method: "Bank Transfer" },
     };
   }
-  if (base.type === 'CRN') {
+  if (base.type === "CRN") {
     return {
       ...base,
       ...sharedMoney,
@@ -203,19 +210,20 @@ export async function createDraft(
   data: unknown,
 ): Promise<ActionResult> {
   const actor = await authorized();
-  if (!actor) return { success: false, error: 'Unauthorized.' };
+  if (!actor) return { success: false, error: "Unauthorized." };
 
-  if (typeof typeCode !== 'string' || !(typeCode in DOC_TYPES)) {
-    return { success: false, error: 'Invalid input.' };
+  if (typeof typeCode !== "string" || !(typeCode in DOC_TYPES)) {
+    return { success: false, error: "Invalid input." };
   }
   const spec = DOC_TYPES[typeCode as DocTypeCode];
 
-  if (typeof clientId !== 'string' || clientId.length === 0) {
-    return { success: false, error: 'Invalid input.' };
+  if (typeof clientId !== "string" || clientId.length === 0) {
+    return { success: false, error: "Invalid input." };
   }
 
   const parsed = spec.draftSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: invalidInput(parsed.error) };
+  if (!parsed.success)
+    return { success: false, error: invalidInput(parsed.error) };
 
   const now = Date.now();
   // HR docs snapshot an employee (2nd param is the employeeId); financial and
@@ -226,7 +234,7 @@ export async function createDraft(
   const identity = {
     id: randomUUID(),
     type: spec.code,
-    status: 'draft' as const,
+    status: "draft" as const,
     createdAt: now,
     updatedAt: now,
     createdBy: actor,
@@ -234,7 +242,7 @@ export async function createDraft(
   let base: DocBase;
   if (isHrDocType(spec.code)) {
     const employee = await getEmployee(clientId);
-    if (!employee) return { success: false, error: 'Employee not found.' };
+    if (!employee) return { success: false, error: "Employee not found." };
     base = {
       ...identity,
       employeeId: clientId,
@@ -242,7 +250,7 @@ export async function createDraft(
     } as DocBase;
   } else {
     const client = await getClient(clientId);
-    if (!client) return { success: false, error: 'Client not found.' };
+    if (!client) return { success: false, error: "Client not found." };
     base = {
       ...identity,
       clientId,
@@ -255,14 +263,14 @@ export async function createDraft(
   try {
     await saveDocument(doc);
   } catch (err) {
-    logger.error({ action: 'createDraft', event: 'save_failed', error: err });
-    return { success: false, error: 'Failed to save draft.' };
+    logger.error({ action: "createDraft", event: "save_failed", error: err });
+    return { success: false, error: "Failed to save draft." };
   }
 
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true, id: doc.id };
 }
 
@@ -271,28 +279,33 @@ export async function updateDraft(
   clientId: unknown,
   data: unknown,
 ): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  if (!(await authorized())) return { success: false, error: "Unauthorized." };
 
-  if (typeof id !== 'string' || typeof clientId !== 'string' || clientId.length === 0) {
-    return { success: false, error: 'Invalid input.' };
+  if (
+    typeof id !== "string" ||
+    typeof clientId !== "string" ||
+    clientId.length === 0
+  ) {
+    return { success: false, error: "Invalid input." };
   }
 
   const existing = await getDocument(id);
-  if (!existing) return { success: false, error: 'Document not found.' };
-  if (existing.status === 'finalized') {
-    return { success: false, error: 'Finalized documents cannot be edited.' };
+  if (!existing) return { success: false, error: "Document not found." };
+  if (existing.status === "finalized") {
+    return { success: false, error: "Finalized documents cannot be edited." };
   }
 
   const spec = DOC_TYPES[existing.type];
   const parsed = spec.draftSchema.safeParse(data);
-  if (!parsed.success) return { success: false, error: invalidInput(parsed.error) };
+  if (!parsed.success)
+    return { success: false, error: invalidInput(parsed.error) };
 
   // As in createDraft, the subject-field pairing is correlated to the type only
   // at runtime (via spec.kind), so the rebuilt base is asserted to DocBase.
   let base: DocBase;
   if (isHrDocType(spec.code)) {
     const employee = await getEmployee(clientId);
-    if (!employee) return { success: false, error: 'Employee not found.' };
+    if (!employee) return { success: false, error: "Employee not found." };
     base = {
       ...existing,
       employeeId: clientId,
@@ -301,7 +314,7 @@ export async function updateDraft(
     } as DocBase;
   } else {
     const client = await getClient(clientId);
-    if (!client) return { success: false, error: 'Client not found.' };
+    if (!client) return { success: false, error: "Client not found." };
     base = {
       ...existing,
       clientId,
@@ -315,34 +328,38 @@ export async function updateDraft(
   try {
     await saveDocument(doc);
   } catch (err) {
-    logger.error({ action: 'updateDraft', event: 'save_failed', error: err });
-    return { success: false, error: 'Failed to save draft.' };
+    logger.error({ action: "updateDraft", event: "save_failed", error: err });
+    return { success: false, error: "Failed to save draft." };
   }
 
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true, id };
 }
 
 export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   const actor = await authorized();
-  if (!actor) return { success: false, error: 'Unauthorized.' };
+  if (!actor) return { success: false, error: "Unauthorized." };
 
-  if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+  if (typeof id !== "string")
+    return { success: false, error: "Invalid input." };
 
   const existing = await getDocument(id);
-  if (!existing) return { success: false, error: 'Document not found.' };
-  if (existing.status === 'finalized') {
-    return { success: false, error: 'Document is already finalized.' };
+  if (!existing) return { success: false, error: "Document not found." };
+  if (existing.status === "finalized") {
+    return { success: false, error: "Document is already finalized." };
   }
 
   // Drafts may be half-filled; finalize demands completeness.
   const spec = DOC_TYPES[existing.type];
   const parsed = spec.finalizeSchema.safeParse(existing);
   if (!parsed.success) {
-    return { success: false, error: 'Document is incomplete — fill every required field first.' };
+    return {
+      success: false,
+      error: "Document is incomplete — fill every required field first.",
+    };
   }
 
   // Refresh the frozen subject snapshot from the live record: HR docs snapshot
@@ -353,7 +370,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   if (hr) {
     const employeeId = (existing as SlipDocument | LetterDocument).employeeId;
     const employee = await getEmployee(employeeId);
-    if (!employee) return { success: false, error: 'Employee not found.' };
+    if (!employee) return { success: false, error: "Employee not found." };
 
     /**
      * A pay slip asserts wages paid under a contract of employment, and it is a
@@ -363,7 +380,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
      * gets a stipend slip. This lives here rather than in the Zod schema
      * because engagement type comes from the employee record, not the payload.
      */
-    if (existing.type === 'PAY' && employee.engagementType === 'intern') {
+    if (existing.type === "PAY" && employee.engagementType === "intern") {
       return {
         success: false,
         error: `${employee.name} is engaged as an intern — issue a stipend slip, not a pay slip.`,
@@ -373,10 +390,14 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     employeeSnapshot = employeeSnapshotOf(employee);
   } else {
     const clientId = (
-      existing as InvoiceDocument | ReceiptDocument | CreditNoteDocument | ContractDocument
+      existing as
+        | InvoiceDocument
+        | ReceiptDocument
+        | CreditNoteDocument
+        | ContractDocument
     ).clientId;
     const client = await getClient(clientId);
-    if (!client) return { success: false, error: 'Client not found.' };
+    if (!client) return { success: false, error: "Client not found." };
 
     /**
      * An overridden place of supply has to say why.
@@ -393,7 +414,12 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     if (existing.gstRatePercent > 0) {
       const derived = placeOfSupplyOf(client);
       const stored = existing.placeOfSupplyStateCode;
-      if (stored && derived.code && stored !== derived.code && !existing.placeOfSupplyOverrideReason) {
+      if (
+        stored &&
+        derived.code &&
+        stored !== derived.code &&
+        !existing.placeOfSupplyOverrideReason
+      ) {
         return {
           success: false,
           error: `This document's place of supply (${stored}) is not the one derived from ${client.name} (${derived.code}). Record why before finalizing.`,
@@ -432,7 +458,11 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
      * document is immutable, so the correction is a fresh document and a burnt
      * number, not an edit.
      */
-    if (existing.type === 'INV' && client.commercial?.poRequired && !client.commercial.poNumber) {
+    if (
+      existing.type === "INV" &&
+      client.commercial?.poRequired &&
+      !client.commercial.poNumber
+    ) {
       return {
         success: false,
         error: `${client.name} requires a PO number before invoicing, and none is recorded on their client record.`,
@@ -453,7 +483,11 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   let number: string | undefined;
   let serial: number | undefined;
   let year: number | undefined;
-  if (spec.kind === 'financial' || spec.kind === 'hr-slip' || spec.kind === 'contract') {
+  if (
+    spec.kind === "financial" ||
+    spec.kind === "hr-slip" ||
+    spec.kind === "contract"
+  ) {
     year = financialYearStart(existing.issueDate);
     const fyCode = financialYearCodeOfISODate(existing.issueDate);
 
@@ -462,8 +496,15 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     try {
       ({ serial, number } = await claimSerial(existing.type, fyCode));
     } catch (err) {
-      logger.error({ action: 'finalizeDocument', event: 'serial_claim_failed', error: err });
-      return { success: false, error: 'Failed to claim a document number. Try again.' };
+      logger.error({
+        action: "finalizeDocument",
+        event: "serial_claim_failed",
+        error: err,
+      });
+      return {
+        success: false,
+        error: "Failed to claim a document number. Try again.",
+      };
     }
   }
 
@@ -492,7 +533,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   // subject snapshot that applies to its kind.
   const finalized = {
     ...existing,
-    status: 'finalized',
+    status: "finalized",
     ...(number ? { number, serial, year } : {}),
     ...(hr ? { employeeSnapshot } : { clientSnapshot }),
     studioSnapshot,
@@ -514,28 +555,31 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       await saveDocument(finalized);
     } catch (err) {
       logger.error({
-        action: 'finalizeDocument',
-        event: 'serial_claimed_but_save_failed',
+        action: "finalizeDocument",
+        event: "serial_claimed_but_save_failed",
         number,
         // A burned GST serial is an accounting event someone has to reconcile.
         // The Clerk id, never the email — the logger deliberately carries no PII.
         actor: actor.userId,
         error: err,
       });
-      return { success: false, error: 'Failed to save. The claimed number was not used.' };
+      return {
+        success: false,
+        error: "Failed to save. The claimed number was not used.",
+      };
     }
   }
 
   logger.info({
-    action: 'finalizeDocument',
-    event: 'document_finalized',
+    action: "finalizeDocument",
+    event: "document_finalized",
     number,
     actor: actor.userId,
   });
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true, id };
 }
 
@@ -553,7 +597,7 @@ function asFreshDraft(existing: AdminDocument, actor: Actor): AdminDocument {
   return {
     ...existing,
     id: randomUUID(),
-    status: 'draft',
+    status: "draft",
     number: undefined,
     serial: undefined,
     year: undefined,
@@ -571,26 +615,31 @@ function asFreshDraft(existing: AdminDocument, actor: Actor): AdminDocument {
 
 export async function duplicateDocument(id: unknown): Promise<ActionResult> {
   const actor = await authorized();
-  if (!actor) return { success: false, error: 'Unauthorized.' };
+  if (!actor) return { success: false, error: "Unauthorized." };
 
-  if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+  if (typeof id !== "string")
+    return { success: false, error: "Invalid input." };
 
   const existing = await getDocument(id);
-  if (!existing) return { success: false, error: 'Document not found.' };
+  if (!existing) return { success: false, error: "Document not found." };
 
   const copy = asFreshDraft(existing, actor);
 
   try {
     await saveDocument(copy);
   } catch (err) {
-    logger.error({ action: 'duplicateDocument', event: 'save_failed', error: err });
-    return { success: false, error: 'Failed to duplicate.' };
+    logger.error({
+      action: "duplicateDocument",
+      event: "save_failed",
+      error: err,
+    });
+    return { success: false, error: "Failed to duplicate." };
   }
 
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true, id: copy.id };
 }
 
@@ -601,7 +650,7 @@ function monthAfter(month: string): string | null {
   const index = Number(month.slice(5, 7));
   return index === 12
     ? `${year + 1}-01`
-    : `${year}-${String(index + 1).padStart(2, '0')}`;
+    : `${year}-${String(index + 1).padStart(2, "0")}`;
 }
 
 /**
@@ -632,18 +681,20 @@ function monthAfter(month: string): string | null {
  */
 export async function copySlipForNextMonth(id: unknown): Promise<ActionResult> {
   const actor = await authorized();
-  if (!actor) return { success: false, error: 'Unauthorized.' };
+  if (!actor) return { success: false, error: "Unauthorized." };
 
-  if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+  if (typeof id !== "string")
+    return { success: false, error: "Invalid input." };
 
   const existing = await getDocument(id);
-  if (!existing) return { success: false, error: 'Document not found.' };
+  if (!existing) return { success: false, error: "Document not found." };
   if (!isSlip(existing)) {
-    return { success: false, error: 'Only a slip covers a month.' };
+    return { success: false, error: "Only a slip covers a month." };
   }
 
   const month = monthAfter(existing.stipendMonth);
-  if (!month) return { success: false, error: 'This slip has no wage month to move.' };
+  if (!month)
+    return { success: false, error: "This slip has no wage month to move." };
 
   const start = firstDayOfMonth(month);
   const end = lastDayOfMonth(month);
@@ -666,14 +717,18 @@ export async function copySlipForNextMonth(id: unknown): Promise<ActionResult> {
   try {
     await saveDocument(copy);
   } catch (err) {
-    logger.error({ action: 'copySlipForNextMonth', event: 'save_failed', error: err });
-    return { success: false, error: 'Failed to copy.' };
+    logger.error({
+      action: "copySlipForNextMonth",
+      event: "save_failed",
+      error: err,
+    });
+    return { success: false, error: "Failed to copy." };
   }
 
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true, id: copy.id };
 }
 
@@ -690,29 +745,43 @@ export async function copySlipForNextMonth(id: unknown): Promise<ActionResult> {
  * receipt to reference; and everything stays editable afterwards, because a
  * receipt may settle part of an invoice.
  */
-export async function createReceiptForInvoice(invoiceId: unknown): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+export async function createReceiptForInvoice(
+  invoiceId: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: "Unauthorized." };
 
-  if (typeof invoiceId !== 'string') return { success: false, error: 'Invalid input.' };
+  if (typeof invoiceId !== "string")
+    return { success: false, error: "Invalid input." };
 
   const invoice = await getDocument(invoiceId);
-  if (!invoice) return { success: false, error: 'Invoice not found.' };
-  if (invoice.type !== 'INV' || invoice.status !== 'finalized' || !invoice.number) {
-    return { success: false, error: 'Only a finalized invoice can be receipted.' };
+  if (!invoice) return { success: false, error: "Invoice not found." };
+  if (
+    invoice.type !== "INV" ||
+    invoice.status !== "finalized" ||
+    !invoice.number
+  ) {
+    return {
+      success: false,
+      error: "Only a finalized invoice can be receipted.",
+    };
   }
 
   // Delegated rather than assembled here: `createDraft` owns validation, the
   // client snapshot, the save, and the revalidate. One path, one set of rules.
-  return createDraft('REC', invoice.clientId, {
+  return createDraft("REC", invoice.clientId, {
     issueDate: todayISO(),
     lineItems: invoice.lineItems,
     gstRatePercent: invoice.gstRatePercent,
     gstLabel: invoice.gstLabel,
+    // The receipt acknowledges what was actually charged, so it carries the
+    // invoice's discount with the lines it discounted.
+    discountPercent: invoice.discountPercent,
+    discountPaise: invoice.discountPaise,
     placeOfSupplyStateCode: invoice.placeOfSupplyStateCode,
     notes: invoice.notes,
     payment: {
       date: todayISO(),
-      method: 'Bank Transfer',
+      method: "Bank Transfer",
       againstInvoiceId: invoice.id,
       againstInvoiceNumber: invoice.number,
     },
@@ -720,21 +789,22 @@ export async function createReceiptForInvoice(invoiceId: unknown): Promise<Actio
 }
 
 export async function deleteDraftAction(id: unknown): Promise<ActionResult> {
-  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  if (!(await authorized())) return { success: false, error: "Unauthorized." };
 
-  if (typeof id !== 'string') return { success: false, error: 'Invalid input.' };
+  if (typeof id !== "string")
+    return { success: false, error: "Invalid input." };
 
   try {
     await storeDeleteDraft(id);
   } catch (err) {
-    logger.error({ action: 'deleteDraft', event: 'delete_failed', error: err });
-    return { success: false, error: 'Failed to delete draft.' };
+    logger.error({ action: "deleteDraft", event: "delete_failed", error: err });
+    return { success: false, error: "Failed to delete draft." };
   }
 
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.
-  revalidatePath('/', 'layout');
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -744,31 +814,40 @@ export async function deleteDraftAction(id: unknown): Promise<ActionResult> {
  * Auth-gated like every other action — the list of a client's invoices is not
  * public just because the caller knows a client id.
  */
-export async function listInvoicesForClient(clientId: unknown): Promise<InvoiceOption[]> {
+export async function listInvoicesForClient(
+  clientId: unknown,
+): Promise<InvoiceOption[]> {
   if (!(await authorized())) return [];
-  if (typeof clientId !== 'string' || clientId.length === 0) return [];
+  if (typeof clientId !== "string" || clientId.length === 0) return [];
 
   try {
     const docs = await listFinalizedInvoicesForClient(clientId);
     return docs.flatMap((doc) => {
       // A finalized invoice always has a number; skip anything that somehow
       // doesn't rather than offering an unidentifiable row.
-      if (doc.type !== 'INV' || !doc.number) return [];
+      if (doc.type !== "INV" || !doc.number) return [];
       return [
         {
           id: doc.id,
           number: doc.number,
           issueDate: doc.issueDate,
-          totalPaise: computeTotals(doc.lineItems, doc.gstRatePercent).totalPaise,
+          totalPaise: computeTotals(doc.lineItems, doc.gstRatePercent, doc)
+            .totalPaise,
           lineItems: doc.lineItems,
           gstRatePercent: doc.gstRatePercent,
           placeOfSupplyStateCode: doc.placeOfSupplyStateCode,
           gstLabel: doc.gstLabel,
+          discountPercent: doc.discountPercent,
+          discountPaise: doc.discountPaise,
         },
       ];
     });
   } catch (err) {
-    logger.error({ action: 'listInvoicesForClient', event: 'query_failed', error: err });
+    logger.error({
+      action: "listInvoicesForClient",
+      event: "query_failed",
+      error: err,
+    });
     return [];
   }
 }

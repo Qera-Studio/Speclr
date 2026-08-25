@@ -108,7 +108,7 @@ export default function DocumentsTable({
           {documents.map((doc) => {
             // Letters carry no line items, and a ₹0 total would mislead.
             const hasMoney = hasTotal(doc);
-            const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
+            const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
             /*
               The whole row opens the document, via one stretched link rather than
               a row `onClick`: it stays a real anchor (middle-click, ⌘-click,

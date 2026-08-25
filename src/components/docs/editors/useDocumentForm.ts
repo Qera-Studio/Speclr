@@ -1,10 +1,14 @@
-'use client';
+"use client";
 
-import { useFieldArray, useForm } from 'react-hook-form';
-import { todayISO } from '@/lib/domain/dates';
-import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
-import { DOC_TYPES, type DocFields } from '@/lib/domain/registry';
-import type { AdminDocument, DocTypeCode, PaymentMethod } from '@/lib/domain/types';
+import { useFieldArray, useForm } from "react-hook-form";
+import { todayISO } from "@/lib/domain/dates";
+import { paiseToRupees, rupeesToPaise } from "@/lib/domain/money";
+import { DOC_TYPES, type DocFields } from "@/lib/domain/registry";
+import type {
+  AdminDocument,
+  DocTypeCode,
+  PaymentMethod,
+} from "@/lib/domain/types";
 
 /**
  * Form state for the document editor. Inputs are strings (what <input>
@@ -28,6 +32,14 @@ export interface EditorFormValues {
   lineItems: LineItemFormValues[];
   gstRatePercent: string;
   gstLabel: string;
+  /**
+   * A discount off the taxable value, one field per way of typing it. Both are
+   * strings because both are inputs; whichever the operator last touched is the
+   * one kept, and the other is cleared as they type, because two figures for
+   * one discount is a document that can disagree with itself.
+   */
+  discountPercent: string;
+  discountAmount: string;
   placeOfSupplyStateCode: string;
   /**
    * Why the place of supply is not the one derived from the client.
@@ -64,66 +76,76 @@ export interface EditorFormValues {
 }
 
 export function emptyLineItem(): LineItemFormValues {
-  return { description: '', rate: '', qty: '1', sacCode: '' };
+  return { description: "", rate: "", qty: "1", sacCode: "" };
 }
 
-function defaultsFor(typeCode: DocTypeCode, doc?: AdminDocument | null): EditorFormValues {
+function defaultsFor(
+  typeCode: DocTypeCode,
+  doc?: AdminDocument | null,
+): EditorFormValues {
   if (doc) {
     return {
-      clientId: doc.clientId ?? '',
+      clientId: doc.clientId ?? "",
       issueDate: doc.issueDate,
-      dueDate: doc.type === 'INV' ? (doc.dueDate ?? '') : '',
+      dueDate: doc.type === "INV" ? (doc.dueDate ?? "") : "",
       lineItems: doc.lineItems.map((item) => ({
         description: item.description,
-        rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : '',
+        rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : "",
         qty: String(item.qty),
-        sacCode: item.sacCode ?? '',
+        sacCode: item.sacCode ?? "",
       })),
       gstRatePercent: String(doc.gstRatePercent),
-      gstLabel: doc.gstLabel ?? '',
-      placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? '',
-      placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason ?? '',
-      gstOverrideReason: doc.gstOverrideReason ?? '',
-      notes: doc.notes ?? '',
-      paymentDate: doc.type === 'REC' ? doc.payment.date : '',
-      paymentMethod: doc.type === 'REC' ? doc.payment.method : 'Bank Transfer',
-      paymentReference: doc.type === 'REC' ? (doc.payment.reference ?? '') : '',
+      gstLabel: doc.gstLabel ?? "",
+      discountPercent:
+        doc.discountPercent !== undefined ? String(doc.discountPercent) : "",
+      discountAmount:
+        doc.discountPaise !== undefined ? paiseToRupees(doc.discountPaise) : "",
+      placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? "",
+      placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason ?? "",
+      gstOverrideReason: doc.gstOverrideReason ?? "",
+      notes: doc.notes ?? "",
+      paymentDate: doc.type === "REC" ? doc.payment.date : "",
+      paymentMethod: doc.type === "REC" ? doc.payment.method : "Bank Transfer",
+      paymentReference: doc.type === "REC" ? (doc.payment.reference ?? "") : "",
       againstInvoiceNumber:
-        doc.type === 'REC'
-          ? (doc.payment.againstInvoiceNumber ?? '')
-          : doc.type === 'CRN'
-            ? (doc.against.invoiceNumber ?? '')
-            : '',
+        doc.type === "REC"
+          ? (doc.payment.againstInvoiceNumber ?? "")
+          : doc.type === "CRN"
+            ? (doc.against.invoiceNumber ?? "")
+            : "",
       againstInvoiceId:
-        doc.type === 'REC'
-          ? (doc.payment.againstInvoiceId ?? '')
-          : doc.type === 'CRN'
-            ? (doc.against.invoiceId ?? '')
-            : '',
-      againstInvoiceDate: doc.type === 'CRN' ? (doc.against.invoiceDate ?? '') : '',
-      creditReason: doc.type === 'CRN' ? (doc.reason ?? '') : '',
+        doc.type === "REC"
+          ? (doc.payment.againstInvoiceId ?? "")
+          : doc.type === "CRN"
+            ? (doc.against.invoiceId ?? "")
+            : "",
+      againstInvoiceDate:
+        doc.type === "CRN" ? (doc.against.invoiceDate ?? "") : "",
+      creditReason: doc.type === "CRN" ? (doc.reason ?? "") : "",
     };
   }
 
   const fields = DOC_TYPES[typeCode].defaultFields(todayISO());
   return {
-    clientId: '',
+    clientId: "",
     issueDate: fields.issueDate,
-    dueDate: fields.dueDate ?? '',
+    dueDate: fields.dueDate ?? "",
     lineItems: fields.lineItems.map(() => emptyLineItem()),
     gstRatePercent: String(fields.gstRatePercent),
-    gstLabel: fields.gstLabel ?? '',
-    placeOfSupplyStateCode: fields.placeOfSupplyStateCode ?? '',
-    placeOfSupplyOverrideReason: '',
-    gstOverrideReason: '',
-    notes: fields.notes ?? '',
-    paymentDate: fields.payment?.date ?? '',
-    paymentMethod: fields.payment?.method ?? 'Bank Transfer',
-    paymentReference: fields.payment?.reference ?? '',
-    againstInvoiceNumber: '',
-    againstInvoiceId: '',
-    againstInvoiceDate: '',
-    creditReason: '',
+    gstLabel: fields.gstLabel ?? "",
+    discountPercent: "",
+    discountAmount: "",
+    placeOfSupplyStateCode: fields.placeOfSupplyStateCode ?? "",
+    placeOfSupplyOverrideReason: "",
+    gstOverrideReason: "",
+    notes: fields.notes ?? "",
+    paymentDate: fields.payment?.date ?? "",
+    paymentMethod: fields.payment?.method ?? "Bank Transfer",
+    paymentReference: fields.payment?.reference ?? "",
+    againstInvoiceNumber: "",
+    againstInvoiceId: "",
+    againstInvoiceDate: "",
+    creditReason: "",
   };
 }
 
@@ -132,7 +154,7 @@ export function toPayload(
   typeCode: DocTypeCode,
   values: EditorFormValues,
   /** Edited text overrides. Kept out of the form: it is prose, not validated input. */
-  content?: DocFields['content'],
+  content?: DocFields["content"],
 ): DocFields {
   const fields: DocFields = {
     issueDate: values.issueDate,
@@ -147,8 +169,16 @@ export function toPayload(
     })),
     gstRatePercent: Number(values.gstRatePercent) || 0,
     gstLabel: values.gstLabel || undefined,
+    /* One or the other, never both: the schema refuses a document carrying two
+       figures for one discount, and a zero is no discount rather than a
+       discount of nothing. */
+    discountPercent: Number(values.discountPercent) || undefined,
+    discountPaise: values.discountPercent
+      ? undefined
+      : rupeesToPaise(values.discountAmount) || undefined,
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
-    placeOfSupplyOverrideReason: values.placeOfSupplyOverrideReason || undefined,
+    placeOfSupplyOverrideReason:
+      values.placeOfSupplyOverrideReason || undefined,
     gstOverrideReason: values.gstOverrideReason || undefined,
     notes: values.notes || undefined,
     content,
@@ -175,15 +205,18 @@ export function toPayload(
   return fields;
 }
 
-export function useDocumentForm(typeCode: DocTypeCode, doc?: AdminDocument | null) {
+export function useDocumentForm(
+  typeCode: DocTypeCode,
+  doc?: AdminDocument | null,
+) {
   const form = useForm<EditorFormValues>({
     defaultValues: defaultsFor(typeCode, doc),
     // First blur, then every keystroke. `onBlur` alone left the displayed state
     // one blur behind the value, so a field already visited kept whatever
     // verdict it was last given while being changed. Same fix as the onboarding
     // steps; the note in `TaxStep` has the detail.
-    mode: 'onTouched',
+    mode: "onTouched",
   });
-  const lineItems = useFieldArray({ control: form.control, name: 'lineItems' });
+  const lineItems = useFieldArray({ control: form.control, name: "lineItems" });
   return { form, lineItems };
 }

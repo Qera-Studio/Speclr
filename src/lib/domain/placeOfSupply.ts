@@ -157,7 +157,7 @@ export function zeroRatingLabel(client: {
 }): string | null {
   const country = client.addressParts?.country?.trim().toUpperCase() || "IN";
   if (country !== "IN") {
-    return "Export of services under LUT, IGST not charged (IGST Act s.16).";
+    return "Export of services under LUT, IGST not charged.";
   }
   if (client.sez) {
     return "Supply to an SEZ unit under LUT, zero rated, IGST not charged (IGST Act s.16).";

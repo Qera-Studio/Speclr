@@ -43,13 +43,53 @@ describe("DocumentSheet", () => {
       ...baseInvoice,
       gstRatePercent: 0,
       placeOfSupplyStateCode: "96",
-      gstLabel:
-        "Export of services under LUT, IGST not charged (IGST Act s.16).",
+      gstLabel: "Export of services under LUT, IGST not charged.",
     } as unknown as InvoiceDocument;
     render(<DocumentSheet doc={doc} />);
     expect(
       screen.getByText(/place of supply: other country/i),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A discount only reduces the taxable value where the invoice records it
+   * (CGST s.15(3)(a)), and Rule 46 wants the taxable value stated "taking into
+   * account discount or abatement". So the row is not a courtesy: without it
+   * the figure GST was charged on cannot be arrived at from the document.
+   */
+  it("prints the discount, and charges GST on what is left", () => {
+    const doc = {
+      ...baseInvoice,
+      // ₹2,000 of line items, 10% off, 18% on the ₹1,800 that remains.
+      lineItems: [{ description: "Design", ratePaise: 200000, qty: 1 }],
+      discountPercent: 10,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText("discount (10%)")).toBeInTheDocument();
+    expect(screen.getByText("-₹ 200.00")).toBeInTheDocument();
+    // The tax follows the discount down. This is the assertion that matters:
+    // 18% of 2,000 would be ₹360, and charging that would remit tax on
+    // consideration nobody paid. It is an intra-state supply, so the ₹324 comes
+    // out as CGST and SGST of ₹162 each.
+    expect(screen.getAllByText("₹ 162.00")).toHaveLength(2);
+    expect(screen.getByText("₹ 2,124.00")).toBeInTheDocument();
+  });
+
+  it("prints no discount row when there is none", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.queryByText(/^discount/)).toBeNull();
+  });
+
+  /** Typed as a figure, the label carries no percentage to mislead with. */
+  it("names no percentage when the discount was typed as an amount", () => {
+    const doc = {
+      ...baseInvoice,
+      discountPaise: 50000,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.getByText("discount")).toBeInTheDocument();
+    expect(screen.queryByText(/discount \(/)).toBeNull();
   });
 
   /**

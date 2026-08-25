@@ -3,34 +3,26 @@
  * Client-safe: no server imports — these types cross the RSC boundary.
  */
 
-import type { AddressParts } from './address';
-import type { StudioInfo } from './studio';
+import type { AddressParts } from "./address";
+import type { StudioInfo } from "./studio";
 import type {
   ClientAccessRef,
   ClientAttachment,
   ClientCommercial,
   ClientContacts,
   ClientTax,
-} from './client';
+} from "./client";
 // A value import, not a type: the snapshot resolves the signing contact through
 // it rather than reading the group.
-import { clientContact } from './client';
-import type { BlankValues } from './contract/blanks';
-import type { ContractPart } from './contract/assembly';
-import type { CurrencyCode } from './currency';
-import type { DocContent } from './docContent';
+import { clientContact } from "./client";
+import type { BlankValues } from "./contract/blanks";
+import type { ContractPart } from "./contract/assembly";
+import type { CurrencyCode } from "./currency";
+import type { DocContent } from "./docContent";
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode =
-  | 'INV'
-  | 'REC'
-  | 'CRN'
-  | 'CON'
-  | 'STP'
-  | 'PAY'
-  | 'OFR'
-  | 'EXP'
-  | 'EXIT';
+  "INV" | "REC" | "CRN" | "CON" | "STP" | "PAY" | "OFR" | "EXP" | "EXIT";
 
 export interface ClientRecord {
   id: string;
@@ -129,7 +121,7 @@ export interface LineItem {
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */
-export type DocStatus = 'draft' | 'finalized';
+export type DocStatus = "draft" | "finalized";
 
 /**
  * Frozen copy of the client at finalize time.
@@ -146,7 +138,7 @@ export type DocStatus = 'draft' | 'finalized';
  */
 export type ClientSnapshot = Pick<
   ClientRecord,
-  'name' | 'companyName' | 'address' | 'email' | 'phone' | 'gstin'
+  "name" | "companyName" | "address" | "email" | "phone" | "gstin"
 > & {
   /**
    * The fields onboarding added, **flattened and every one optional.**
@@ -199,14 +191,17 @@ export function clientSnapshotOf(client: ClientRecord): ClientSnapshot {
   const tds =
     client.tax?.tdsApplicable &&
     (client.tax.tdsSection || client.tax.tdsRatePercent !== undefined)
-      ? { section: client.tax.tdsSection, ratePercent: client.tax.tdsRatePercent }
+      ? {
+          section: client.tax.tdsSection,
+          ratePercent: client.tax.tdsRatePercent,
+        }
       : undefined;
 
   // Through `clientContact`, never `contacts.signing` — a client who ticked
   // "same as primary" has nothing stored under `signing`, and an individual has
   // no contacts group at all. Reading the group directly would freeze a blank
   // signatory onto the contract in both cases.
-  const signing = clientContact(client, 'signing');
+  const signing = clientContact(client, "signing");
   const signatory =
     signing?.name || signing?.designation
       ? { name: signing.name, designation: signing.designation }
@@ -315,6 +310,25 @@ export interface BaseDocument {
   gstOverrideReason?: string;
   /** Free text shown when gstRatePercent is 0, e.g. 'not applicable - registration in process'. */
   gstLabel?: string;
+  /**
+   * A discount off the taxable value, expressed as a percentage of the
+   * subtotal. Mutually exclusive with `discountPaise` (refused together at the
+   * schema).
+   *
+   * **It comes off before GST, and that is not a preference.** CGST s.15(3)(a)
+   * deducts a discount from the value of supply only where it is given at or
+   * before the supply *and recorded in the invoice*, and Rule 46 wants the
+   * taxable value stated "taking into account discount or abatement". Taking it
+   * off the gross instead would charge tax on consideration nobody paid: the
+   * studio remits GST it never collected and the recipient claims credit for
+   * tax on a price they were never charged.
+   *
+   * A discount agreed *after* the invoice was issued is s.34's credit note, not
+   * this field. A finalized document does not change.
+   */
+  discountPercent?: number;
+  /** The same discount typed as a rupee figure instead. Integer paise. */
+  discountPaise?: number;
   notes?: string;
   terms?: string;
   createdAt: number;
@@ -342,14 +356,14 @@ interface ClientDocument extends BaseDocument {
 }
 
 export interface InvoiceDocument extends ClientDocument {
-  type: 'INV';
+  type: "INV";
   dueDate?: string;
 }
 
-export type PaymentMethod = 'Bank Transfer' | 'UPI' | 'Cash' | 'Card' | 'Other';
+export type PaymentMethod = "Bank Transfer" | "UPI" | "Cash" | "Card" | "Other";
 
 export interface ReceiptDocument extends ClientDocument {
-  type: 'REC';
+  type: "REC";
   payment: {
     date: string;
     method: PaymentMethod;
@@ -405,7 +419,7 @@ export interface ContractData {
 }
 
 export interface ContractDocument extends ClientDocument {
-  type: 'CON';
+  type: "CON";
   contract: ContractData;
 }
 
@@ -434,7 +448,7 @@ export interface ContractDocument extends ClientDocument {
  * how a credit note is read and how s.34 describes it.
  */
 export interface CreditNoteDocument extends ClientDocument {
-  type: 'CRN';
+  type: "CRN";
   /**
    * The invoice being credited. Rule 53(1A)(f) requires the serial number *and
    * date* of the corresponding tax invoice, so all three are printed, and the
@@ -460,8 +474,8 @@ export interface CreditNoteDocument extends ClientDocument {
   reason?: string;
 }
 
-export type EngagementType = 'intern' | 'employee';
-export type PronounKey = 'he' | 'she' | 'they';
+export type EngagementType = "intern" | "employee";
+export type PronounKey = "he" | "she" | "they";
 
 /**
  * Statutory payroll identifiers, printed on a pay slip and snapshotted onto it.
@@ -541,7 +555,7 @@ export interface EmployeeSnapshot {
  * That is also what makes a slip safe to pay in a currency other than INR.
  */
 export interface SlipDocument extends BaseDocument {
-  type: 'STP' | 'PAY';
+  type: "STP" | "PAY";
   employeeId: string;
   employeeSnapshot: EmployeeSnapshot;
   /** Paid-in currency. Absent on slips issued before currencies existed → INR. */
@@ -576,7 +590,7 @@ export type StipendDocument = SlipDocument;
 
 /** Letters (offer/experience/exit) — boilerplate + editable body. */
 export interface LetterDocument extends BaseDocument {
-  type: 'OFR' | 'EXP' | 'EXIT';
+  type: "OFR" | "EXP" | "EXIT";
   employeeId: string;
   employeeSnapshot: EmployeeSnapshot;
   bodyParagraphs: string[];
@@ -607,10 +621,17 @@ export interface InvoiceOption {
   gstRatePercent: number;
   placeOfSupplyStateCode?: string;
   gstLabel?: string;
+  /** Carried so a credit note reverses the tax that was actually charged. */
+  discountPercent?: number;
+  discountPaise?: number;
 }
 
 export interface DocTotals {
   subtotalPaise: number;
+  /** What the discount came to, 0 when there is none. Taken off before GST. */
+  discountPaise: number;
+  /** `subtotalPaise - discountPaise`. What GST is charged on, and what Rule 46 calls the taxable value. */
+  taxablePaise: number;
   gstPaise: number;
   totalPaise: number;
 }

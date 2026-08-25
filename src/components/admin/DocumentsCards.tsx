@@ -62,7 +62,7 @@ export default function DocumentsCards({
       {documents.map((doc) => {
         // Letters carry no line items — a ₹0 total would mislead, so show —.
         const hasMoney = hasTotal(doc);
-        const totals = computeTotals(doc.lineItems, doc.gstRatePercent);
+        const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
         return (
           <li key={doc.id}>
             {/*

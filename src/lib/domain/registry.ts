@@ -7,18 +7,24 @@
  * Client-safe: zod schemas are shared by client forms and Server Actions.
  */
 
-import { z } from 'zod';
-import { isISODate } from './dates';
-import { addressPartsSchema } from './address';
-import { CLIENT_ENTITY_TYPES } from './client';
-import { emailSchema, phoneSchema, sacSchema } from './fields';
-import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
-import { contractComplete } from './contract/completeness';
-import { serviceInputSchema } from './service';
-import { docContentSchema, type DocContent, type TermItem } from './docContent';
-import { CURRENCY_CODES, type CurrencyCode } from './currency';
-import { slipTotals } from './money';
-import type { ContractData, AdminDocument, DocTypeCode, LineItem, ReceiptDocument } from './types';
+import { z } from "zod";
+import { isISODate } from "./dates";
+import { addressPartsSchema } from "./address";
+import { CLIENT_ENTITY_TYPES } from "./client";
+import { emailSchema, phoneSchema, sacSchema } from "./fields";
+import { codeSchema, multilineSchema, orgNameSchema, textSchema } from "./text";
+import { contractComplete } from "./contract/completeness";
+import { serviceInputSchema } from "./service";
+import { docContentSchema, type DocContent, type TermItem } from "./docContent";
+import { CURRENCY_CODES, type CurrencyCode } from "./currency";
+import { slipTotals } from "./money";
+import type {
+  ContractData,
+  AdminDocument,
+  DocTypeCode,
+  LineItem,
+  ReceiptDocument,
+} from "./types";
 
 // ── Field schemas ─────────────────────────────────────────────────────────────
 
@@ -30,12 +36,17 @@ const isoDate = z
 const qtySchema = z
   .number()
   .max(100000)
-  .refine((q) => Number.isInteger(Math.round(q * 100)) && Math.abs(q * 100 - Math.round(q * 100)) < 1e-6, {
-    message: 'Quantity supports at most 2 decimal places.',
-  });
+  .refine(
+    (q) =>
+      Number.isInteger(Math.round(q * 100)) &&
+      Math.abs(q * 100 - Math.round(q * 100)) < 1e-6,
+    {
+      message: "Quantity supports at most 2 decimal places.",
+    },
+  );
 
 export const lineItemSchema = z.object({
-  description: textSchema(300, { required: 'A description is required.' }),
+  description: textSchema(300, { required: "A description is required." }),
   /**
    * @deprecated Nothing collects one and no sheet prints one. Rule 46(g) asks
    * for the description of the service, which is the field above; this was a
@@ -44,7 +55,9 @@ export const lineItemSchema = z.object({
    */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
-  qty: qtySchema.refine((q) => q > 0, { message: 'Quantity must be positive.' }),
+  qty: qtySchema.refine((q) => q > 0, {
+    message: "Quantity must be positive.",
+  }),
   /**
    * Optional even at finalize. Rule 46(g) requires it, but a document written
    * before the column existed must still be finalizable, and refusing here
@@ -60,22 +73,24 @@ export const draftLineItemSchema = z.object({
   /** @deprecated See `lineItemSchema`. */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
-  qty: qtySchema.refine((q) => q >= 0, { message: 'Quantity cannot be negative.' }),
+  qty: qtySchema.refine((q) => q >= 0, {
+    message: "Quantity cannot be negative.",
+  }),
   sacCode: sacSchema().optional(),
 });
 
 export const clientInputSchema = z.object({
   /** Short reference name — lists, dropdowns, the editor heading. */
-  name: orgNameSchema(200, { required: 'A name is required.' }),
+  name: orgNameSchema(200, { required: "A name is required." }),
   /**
    * The legal name documents print. Required: an invoice addressed to a pet
    * name is not a valid tax document. `ClientRecord.companyName` stays optional
    * so the rows written before this existed still load — but they cannot be
    * saved again until one is supplied.
    */
-  companyName: orgNameSchema(200, { required: 'A legal name is required.' }),
+  companyName: orgNameSchema(200, { required: "A legal name is required." }),
   /** The flat printable address; composed from `addressParts` when present. */
-  address: multilineSchema(500, { required: 'An address is required.' }),
+  address: multilineSchema(500, { required: "An address is required." }),
   addressParts: addressPartsSchema.optional(),
   /**
    * Where invoices are addressed, when that differs from the registered
@@ -86,7 +101,7 @@ export const clientInputSchema = z.object({
    * display only and never feeds place of supply.
    */
   billingAddressParts: addressPartsSchema.optional(),
-  email: emailSchema({ required: 'An email is required.' }),
+  email: emailSchema({ required: "An email is required." }),
   /**
    * Validated, where it used to be a bare length check.
    *
@@ -99,7 +114,7 @@ export const clientInputSchema = z.object({
    * surfaces an error on the field, next to the number, and the save proceeds
    * once it is fixed. That is the correct behaviour for a required field.
    */
-  phone: phoneSchema({ required: 'A phone number is required.' }),
+  phone: phoneSchema({ required: "A phone number is required." }),
   /*
    * `gstin` is deliberately absent from this schema.
    *
@@ -125,7 +140,13 @@ export const clientInputSchema = z.object({
  * `payment.method` and the stipend slip, so the two cannot drift apart — the
  * stipend used to default to a differently-cased 'Bank transfer'.
  */
-export const PAYMENT_METHODS = ['Bank Transfer', 'UPI', 'Cash', 'Card', 'Other'] as const;
+export const PAYMENT_METHODS = [
+  "Bank Transfer",
+  "UPI",
+  "Cash",
+  "Card",
+  "Other",
+] as const;
 export type PaymentMethodOption = (typeof PAYMENT_METHODS)[number];
 
 const paymentSchema = z.object({
@@ -146,7 +167,7 @@ const baseFieldsShape = {
   gstLabel: textSchema(120).optional(),
   placeOfSupplyStateCode: z
     .string()
-    .regex(/^\d{2}$/, { message: 'Expected a 2-digit GST state code.' })
+    .regex(/^\d{2}$/, { message: "Expected a 2-digit GST state code." })
     .optional(),
   /**
    * Why the place of supply is not the one derived from the client. Stored in
@@ -164,12 +185,42 @@ const baseFieldsShape = {
    * for something nobody wrote it about.
    */
   gstOverrideReason: textSchema(300).optional(),
+  /**
+   * A discount off the taxable value, typed as a percentage or as an amount.
+   *
+   * Two flat fields rather than one tagged pair because that is what the two
+   * inputs are, and `superRefine` below refuses both at once: two figures for
+   * one discount is a document that can disagree with itself about what was
+   * taken off. Whichever is set, `computeTotals` takes it off *before* GST, for
+   * the reason `types.ts` gives.
+   */
+  discountPercent: z.number().min(0).max(100).optional(),
+  discountPaise: z.number().int().min(0).optional(),
   notes: multilineSchema(2000).optional(),
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
   terms: multilineSchema(4000).optional(),
   content: docContentSchema.optional(),
 };
+
+/**
+ * One discount, not two. A percentage and an amount both set is a document
+ * that disagrees with itself about what came off, and `computeTotals` would
+ * silently prefer the percentage: the reader would be told one figure and
+ * charged another.
+ */
+function oneDiscount(
+  data: { discountPercent?: number; discountPaise?: number },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.discountPercent !== undefined && data.discountPaise !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      message: "A discount is either a percentage or an amount, not both.",
+      path: ["discountPaise"],
+    });
+  }
+}
 
 /** Finalize rule shared by all money docs: GST needs a place of supply. */
 function requirePlaceOfSupplyWithGst(
@@ -178,9 +229,9 @@ function requirePlaceOfSupplyWithGst(
 ): void {
   if (data.gstRatePercent > 0 && !data.placeOfSupplyStateCode) {
     ctx.addIssue({
-      code: 'custom',
-      message: 'Place of supply is required when GST applies.',
-      path: ['placeOfSupplyStateCode'],
+      code: "custom",
+      message: "Place of supply is required when GST applies.",
+      path: ["placeOfSupplyStateCode"],
     });
   }
 }
@@ -201,7 +252,8 @@ export const invoiceFinalizeSchema = baseFinalizeSchema
   .extend({
     dueDate: isoDate.optional(),
   })
-  .superRefine(requirePlaceOfSupplyWithGst);
+  .superRefine(requirePlaceOfSupplyWithGst)
+  .superRefine(oneDiscount);
 export const invoiceDraftSchema = baseDraftSchema.extend({
   dueDate: isoDate.optional(),
 });
@@ -223,26 +275,29 @@ const againstInvoiceShape = {
   creditReason: textSchema(300).optional(),
 };
 
-export const creditNoteDraftSchema = baseDraftSchema.extend(againstInvoiceShape);
+export const creditNoteDraftSchema =
+  baseDraftSchema.extend(againstInvoiceShape);
 export const creditNoteFinalizeSchema = baseFinalizeSchema
   .extend({
     ...againstInvoiceShape,
     againstInvoiceNumber: codeSchema(40, {
-      required: 'Name the invoice this credit note reduces.',
+      required: "Name the invoice this credit note reduces.",
     }),
     againstInvoiceDate: isoDate,
   })
-  .superRefine(requirePlaceOfSupplyWithGst);
+  .superRefine(requirePlaceOfSupplyWithGst)
+  .superRefine(oneDiscount);
 
 export const receiptFinalizeSchema = baseFinalizeSchema
   .extend({
     payment: paymentSchema,
   })
-  .superRefine(requirePlaceOfSupplyWithGst);
+  .superRefine(requirePlaceOfSupplyWithGst)
+  .superRefine(oneDiscount);
 export const receiptDraftSchema = baseDraftSchema.extend({
   payment: paymentSchema.extend({
     // Drafts may not have a payment date yet.
-    date: z.union([isoDate, z.literal('')]),
+    date: z.union([isoDate, z.literal("")]),
   }),
 });
 
@@ -284,8 +339,8 @@ export const contractFinalizeSchema = z
     }),
   })
   .refine((doc) => contractComplete(doc.contract).length === 0, {
-    message: 'Fill every blank before issuing this contract.',
-    path: ['contract'],
+    message: "Fill every blank before issuing this contract.",
+    path: ["contract"],
   });
 
 // ── HR schemas ────────────────────────────────────────────────────────────────
@@ -356,9 +411,10 @@ export const payslipFinalizeSchema = z
     const { netPaise } = slipTotals(data.lineItems, data.deductions);
     if (netPaise < 0) {
       ctx.addIssue({
-        code: 'custom',
-        message: 'Deductions exceed gross earnings — net pay cannot be negative.',
-        path: ['deductions'],
+        code: "custom",
+        message:
+          "Deductions exceed gross earnings — net pay cannot be negative.",
+        path: ["deductions"],
       });
     }
   });
@@ -379,7 +435,7 @@ export const letterDraftSchema = z.object(letterBaseShape);
 export const letterFinalizeSchema = z.object({
   ...letterBaseShape,
   bodyParagraphs: z
-    .array(multilineSchema(4000, { required: 'This paragraph is empty.' }))
+    .array(multilineSchema(4000, { required: "This paragraph is empty." }))
     .min(1)
     .max(40),
 });
@@ -394,7 +450,7 @@ export const letterFinalizeSchema = z.object({
  * two separately-typed copies of the same sentence.
  */
 export const DEFAULT_STIPEND_DEDUCTIONS_NOTE =
-  'No statutory deductions (PF, ESI, TDS) are applicable.';
+  "No statutory deductions (PF, ESI, TDS) are applicable.";
 
 /**
  * What deleting a draft actually costs, said in the confirmation.
@@ -411,7 +467,7 @@ export const DEFAULT_STIPEND_DEDUCTIONS_NOTE =
  * that can drift. Same reason as the note above it.
  */
 export const DELETE_DRAFT_CONSEQUENCE =
-  'Everything typed into it goes. No number was ever claimed for a draft, so the issued sequence is unaffected.';
+  "Everything typed into it goes. No number was ever claimed for a draft, so the issued sequence is unaffected.";
 
 // ── Registry ──────────────────────────────────────────────────────────────────
 
@@ -421,6 +477,9 @@ export interface DocFields {
   lineItems: LineItem[];
   gstRatePercent: number;
   gstLabel?: string;
+  /** One or the other, never both. See `baseFieldsShape` and `types.ts`. */
+  discountPercent?: number;
+  discountPaise?: number;
   placeOfSupplyStateCode?: string;
   placeOfSupplyOverrideReason?: string;
   gstOverrideReason?: string;
@@ -428,7 +487,7 @@ export interface DocFields {
   /** Legacy — terms are fixed per doc type now; kept so old drafts round-trip. */
   terms?: string;
   dueDate?: string;
-  payment?: ReceiptDocument['payment'];
+  payment?: ReceiptDocument["payment"];
   // CRN — the invoice this credit note reduces, and why
   againstInvoiceNumber?: string;
   againstInvoiceDate?: string;
@@ -481,7 +540,7 @@ export interface DocTypeSpec {
    * employee-based, numbered); 'hr-letter' = offer/experience/exit letters
    * (boilerplate + editable body).
    */
-  kind: 'financial' | 'contract' | 'hr-slip' | 'hr-letter';
+  kind: "financial" | "contract" | "hr-slip" | "hr-letter";
   hasPayment: boolean;
   hasDueDate: boolean;
   /**
@@ -501,40 +560,40 @@ export interface DocTypeSpec {
 
 export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
   INV: {
-    code: 'INV',
-    slug: 'invoice',
-    label: 'Invoice',
-    masthead: 'INVOICE',
-    kind: 'financial',
+    code: "INV",
+    slug: "invoice",
+    label: "Invoice",
+    masthead: "INVOICE",
+    kind: "financial",
     hasPayment: false,
     hasDueDate: true,
     draftSchema: invoiceDraftSchema,
     finalizeSchema: invoiceFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso,
-      lineItems: [{ description: '', ratePaise: 0, qty: 1 }],
+      lineItems: [{ description: "", ratePaise: 0, qty: 1 }],
       gstRatePercent: 18,
     }),
     fixedTerms: [
       {
-        title: 'Payment.',
-        body: 'Due within 7 days of invoice date. Overdue balances accrue interest at 1.5% per month.',
+        title: "Payment.",
+        body: "Due within 7 days of invoice date. Overdue balances accrue interest at 1.5% per month.",
       },
       {
-        title: 'Ownership.',
-        body: 'All deliverables, designs, code and IP remain the property of Qera Studio until payment is received in full.',
+        title: "Ownership.",
+        body: "All deliverables, designs, code and IP remain the property of Qera Studio until payment is received in full.",
       },
       {
-        title: 'Disputes.',
-        body: 'Raise any disputes in writing within 7 days; otherwise this invoice is deemed accepted.',
+        title: "Disputes.",
+        body: "Raise any disputes in writing within 7 days; otherwise this invoice is deemed accepted.",
       },
       {
-        title: 'Costs & taxes.',
-        body: 'Fees exclude applicable taxes and third-party costs (hosting, domains, fonts, stock, ad spend) unless stated.',
+        title: "Costs & taxes.",
+        body: "Fees exclude applicable taxes and third-party costs (hosting, domains, fonts, stock, ad spend) unless stated.",
       },
       {
-        title: 'Jurisdiction.',
-        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+        title: "Jurisdiction.",
+        body: "Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.",
       },
       /*
         CGST Rule 46(q) wants the supplier's signature; the proviso excuses an
@@ -546,39 +605,39 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       */
       {
         title:
-          'This is a computer-generated document and does not require a physical signature.',
-        body: '',
+          "This is a computer-generated document and does not require a physical signature.",
+        body: "",
       },
     ],
   },
   REC: {
-    code: 'REC',
-    slug: 'receipt',
-    label: 'Receipt',
-    masthead: 'RECEIPT',
-    kind: 'financial',
+    code: "REC",
+    slug: "receipt",
+    label: "Receipt",
+    masthead: "RECEIPT",
+    kind: "financial",
     hasPayment: true,
     hasDueDate: false,
     draftSchema: receiptDraftSchema,
     finalizeSchema: receiptFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso,
-      lineItems: [{ description: '', ratePaise: 0, qty: 1 }],
+      lineItems: [{ description: "", ratePaise: 0, qty: 1 }],
       gstRatePercent: 18,
-      payment: { date: '', method: 'Bank Transfer', reference: '' },
+      payment: { date: "", method: "Bank Transfer", reference: "" },
     }),
     fixedTerms: [
       {
-        title: 'Ownership.',
-        body: 'Payment having been received in full, all deliverables, designs, code and IP are hereby transferred to the client.',
+        title: "Ownership.",
+        body: "Payment having been received in full, all deliverables, designs, code and IP are hereby transferred to the client.",
       },
       {
-        title: 'Costs & taxes.',
-        body: 'Fees exclude applicable taxes and third-party costs (hosting, domains, fonts, stock, ad spend) unless stated.',
+        title: "Costs & taxes.",
+        body: "Fees exclude applicable taxes and third-party costs (hosting, domains, fonts, stock, ad spend) unless stated.",
       },
       {
-        title: 'Jurisdiction.',
-        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+        title: "Jurisdiction.",
+        body: "Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.",
       },
       /*
         CGST Rule 46(q) wants the supplier's signature; the proviso excuses an
@@ -590,17 +649,17 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       */
       {
         title:
-          'This is a computer-generated document and does not require a physical signature.',
-        body: '',
+          "This is a computer-generated document and does not require a physical signature.",
+        body: "",
       },
     ],
   },
   CRN: {
-    code: 'CRN',
-    slug: 'credit-note',
-    label: 'Credit note',
-    masthead: 'CREDIT NOTE',
-    kind: 'financial',
+    code: "CRN",
+    slug: "credit-note",
+    label: "Credit note",
+    masthead: "CREDIT NOTE",
+    kind: "financial",
     hasPayment: false,
     /*
       No due date: a credit note is not a demand, it is a reduction of one. What
@@ -612,7 +671,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     finalizeSchema: creditNoteFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso,
-      lineItems: [{ description: '', ratePaise: 0, qty: 1 }],
+      lineItems: [{ description: "", ratePaise: 0, qty: 1 }],
       /*
         Zero, not 18. A credit note reverses the tax that was actually charged
         on the invoice it names, and that rate arrives with the invoice when one
@@ -623,33 +682,33 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     }),
     fixedTerms: [
       {
-        title: 'Effect.',
-        body: 'This credit note reduces the amount payable under the invoice named above. It is not a demand for payment and no payment is due under it.',
+        title: "Effect.",
+        body: "This credit note reduces the amount payable under the invoice named above. It is not a demand for payment and no payment is due under it.",
       },
       {
-        title: 'Tax.',
-        body: 'Issued under section 34 of the CGST Act 2017. The corresponding reduction in output tax liability is claimed in the return for the period in which this note is declared.',
+        title: "Tax.",
+        body: "Issued under section 34 of the CGST Act 2017. The corresponding reduction in output tax liability is claimed in the return for the period in which this note is declared.",
       },
       {
-        title: 'Jurisdiction.',
-        body: 'Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.',
+        title: "Jurisdiction.",
+        body: "Subject to the exclusive jurisdiction of the courts of Ghaziabad, Uttar Pradesh.",
       },
       /* Same Rule 46(q) statement, same reasoning, as the invoice and receipt. */
       {
         title:
-          'This is a computer-generated document and does not require a physical signature.',
-        body: '',
+          "This is a computer-generated document and does not require a physical signature.",
+        body: "",
       },
     ],
   },
   CON: {
-    code: 'CON',
-    slug: 'contract',
-    label: 'Contract',
+    code: "CON",
+    slug: "contract",
+    label: "Contract",
     // What the cover prints. Editable per document like every other masthead —
     // the sheet reads `content.masthead`, it does not hardcode the title.
-    masthead: 'Master Service Agreement',
-    kind: 'contract',
+    masthead: "Master Service Agreement",
+    kind: "contract",
     hasPayment: false,
     hasDueDate: false,
     draftSchema: contractDraftSchema,
@@ -663,56 +722,113 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     fixedTerms: [],
   },
   STP: {
-    code: 'STP', slug: 'stipend', label: 'Stipend slip', masthead: 'STIPEND',
-    kind: 'hr-slip',
-    hasPayment: false, hasDueDate: false,
-    draftSchema: stipendDraftSchema, finalizeSchema: stipendFinalizeSchema,
+    code: "STP",
+    slug: "stipend",
+    label: "Stipend slip",
+    masthead: "STIPEND",
+    kind: "hr-slip",
+    hasPayment: false,
+    hasDueDate: false,
+    draftSchema: stipendDraftSchema,
+    finalizeSchema: stipendFinalizeSchema,
     defaultFields: (todayIso) => ({
-      issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
-      employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
+      issueDate: todayIso,
+      lineItems: [{ description: "", ratePaise: 0, qty: 1 }],
+      gstRatePercent: 0,
+      employeeId: "",
+      stipendMonth: "",
+      paymentMethod: "Bank Transfer",
       deductionsNote: DEFAULT_STIPEND_DEDUCTIONS_NOTE,
     }),
     fixedTerms: [],
   },
   PAY: {
-    code: 'PAY', slug: 'pay-slip', label: 'Pay slip', masthead: 'PAY SLIP',
-    kind: 'hr-slip',
-    hasPayment: false, hasDueDate: false,
-    draftSchema: payslipDraftSchema, finalizeSchema: payslipFinalizeSchema,
+    code: "PAY",
+    slug: "pay-slip",
+    label: "Pay slip",
+    masthead: "PAY SLIP",
+    kind: "hr-slip",
+    hasPayment: false,
+    hasDueDate: false,
+    draftSchema: payslipDraftSchema,
+    finalizeSchema: payslipFinalizeSchema,
     defaultFields: (todayIso) => ({
-      issueDate: todayIso, lineItems: [{ description: '', ratePaise: 0, qty: 1 }], gstRatePercent: 0,
-      employeeId: '', stipendMonth: '', paymentMethod: 'Bank Transfer',
+      issueDate: todayIso,
+      lineItems: [{ description: "", ratePaise: 0, qty: 1 }],
+      gstRatePercent: 0,
+      employeeId: "",
+      stipendMonth: "",
+      paymentMethod: "Bank Transfer",
       /**
        * Empty, unlike the stipend slip. Asserting "no statutory deductions
        * apply" on a wage record is a statement about the employee's tax
        * position, and it stops being true the moment TDS u/s 192 does — an
        * untrue assertion in a statutory record is worse than a blank one.
        */
-      deductionsNote: '',
+      deductionsNote: "",
       deductions: [],
     }),
     fixedTerms: [],
   },
   OFR: {
-    code: 'OFR', slug: 'offer-letter', label: 'Offer letter', masthead: 'OFFER LETTER',
-    kind: 'hr-letter', hasPayment: false, hasDueDate: false,
-    draftSchema: letterDraftSchema, finalizeSchema: letterFinalizeSchema,
+    code: "OFR",
+    slug: "offer-letter",
+    label: "Offer letter",
+    masthead: "OFFER LETTER",
+    kind: "hr-letter",
+    hasPayment: false,
+    hasDueDate: false,
+    draftSchema: letterDraftSchema,
+    finalizeSchema: letterFinalizeSchema,
     // letters carry no line items or GST — these are structural zero-values to satisfy DocFields.
-    defaultFields: (todayIso) => ({ issueDate: todayIso, lineItems: [], gstRatePercent: 0, employeeId: '', bodyParagraphs: [], bulletSections: [] }),
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      lineItems: [],
+      gstRatePercent: 0,
+      employeeId: "",
+      bodyParagraphs: [],
+      bulletSections: [],
+    }),
     fixedTerms: [],
   },
   EXP: {
-    code: 'EXP', slug: 'experience-letter', label: 'Experience letter', masthead: 'EXPERIENCE LETTER',
-    kind: 'hr-letter', hasPayment: false, hasDueDate: false,
-    draftSchema: letterDraftSchema, finalizeSchema: letterFinalizeSchema,
-    defaultFields: (todayIso) => ({ issueDate: todayIso, lineItems: [], gstRatePercent: 0, employeeId: '', bodyParagraphs: [], bulletSections: [] }),
+    code: "EXP",
+    slug: "experience-letter",
+    label: "Experience letter",
+    masthead: "EXPERIENCE LETTER",
+    kind: "hr-letter",
+    hasPayment: false,
+    hasDueDate: false,
+    draftSchema: letterDraftSchema,
+    finalizeSchema: letterFinalizeSchema,
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      lineItems: [],
+      gstRatePercent: 0,
+      employeeId: "",
+      bodyParagraphs: [],
+      bulletSections: [],
+    }),
     fixedTerms: [],
   },
   EXIT: {
-    code: 'EXIT', slug: 'exit-letter', label: 'Exit letter', masthead: 'EXIT LETTER',
-    kind: 'hr-letter', hasPayment: false, hasDueDate: false,
-    draftSchema: letterDraftSchema, finalizeSchema: letterFinalizeSchema,
-    defaultFields: (todayIso) => ({ issueDate: todayIso, lineItems: [], gstRatePercent: 0, employeeId: '', bodyParagraphs: [], bulletSections: [] }),
+    code: "EXIT",
+    slug: "exit-letter",
+    label: "Exit letter",
+    masthead: "EXIT LETTER",
+    kind: "hr-letter",
+    hasPayment: false,
+    hasDueDate: false,
+    draftSchema: letterDraftSchema,
+    finalizeSchema: letterFinalizeSchema,
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      lineItems: [],
+      gstRatePercent: 0,
+      employeeId: "",
+      bodyParagraphs: [],
+      bulletSections: [],
+    }),
     fixedTerms: [],
   },
 };
@@ -732,7 +848,7 @@ export const DOC_TYPE_LIST: DocTypeSpec[] = Object.values(DOC_TYPES);
  */
 export function isHrDocType(code: DocTypeCode): boolean {
   const kind = DOC_TYPES[code].kind;
-  return kind === 'hr-slip' || kind === 'hr-letter';
+  return kind === "hr-slip" || kind === "hr-letter";
 }
 
 /** An HR document — one that names an employee rather than a client. */
@@ -747,7 +863,7 @@ export function isHrDocument(doc: AdminDocument): doc is HrDocument {
 }
 
 /** A slip — the stipend slip or the pay slip. */
-export type SlipDoc = Extract<AdminDocument, { type: 'STP' | 'PAY' }>;
+export type SlipDoc = Extract<AdminDocument, { type: "STP" | "PAY" }>;
 
 /**
  * A type predicate rather than an inline `doc.type === 'STP' || …`, because a
@@ -757,7 +873,7 @@ export type SlipDoc = Extract<AdminDocument, { type: 'STP' | 'PAY' }>;
  * sheets need it excluded, not just matched. Mirrors the routes' `isLetter`.
  */
 export function isSlip(doc: AdminDocument): doc is SlipDoc {
-  return doc.type === 'STP' || doc.type === 'PAY';
+  return doc.type === "STP" || doc.type === "PAY";
 }
 
 export const DOC_TYPE_BY_SLUG: Record<string, DocTypeSpec> = Object.fromEntries(
