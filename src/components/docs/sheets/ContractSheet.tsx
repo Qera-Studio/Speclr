@@ -52,7 +52,7 @@ export const CONTRACT_CHROME_HEIGHT = 20 + 40 + 28;
  */
 const PROSE = "text-black text-[14px] font-normal leading-[1.5] mb-[8px]";
 const HEADING =
-  "text-black text-[24px] font-bold tracking-[0.01em] mb-[12px] uppercase";
+  "text-black text-[24px] font-bold tracking-[0.01em] mb-[16px] uppercase";
 const PART_NAME =
   "text-black text-[20px] font-bold tracking-[-0.01em] mb-[8px]";
 const SUBHEADING =
@@ -66,7 +66,7 @@ const SUBHEADING =
  * At the top of a page it is suppressed (`PageColumns`): there is nothing above
  * to be divided from.
  */
-const SECTION = "border-t border-[#000] pt-[12px] mt-[20px]";
+const SECTION = "border-t border-[#000] pt-[12px] mt-[36px]";
 
 /**
  * Everything a page of this contract needs: its margins, its running header and
@@ -202,7 +202,10 @@ const MARKER = /^(\d+(?:\.\d+)+|[A-Z]\d+(?:\.\d+)+|\([a-z]\)|-)\s+/;
  *
  * Sub-items step in from their parent, and definitions — the '"Deliverables"
  * means …' lines under clause 1.1, which carry no number — step in with them.
- * Markers print semibold: a reader scanning for 8.4 should find it.
+ * Markers print muted and unbolded, so the prose reads first. They are not
+ * decoration and cannot be removed: the clauses cite each other by number
+ * nineteen times ('has the meaning given at clause 11.2'), so a reader sent to
+ * 8.4 has to be able to find 8.4.
  *
  * Falls back to plain text where the section holds no blanks at all, which is
  * most of them. `plain` turns all of this off for the one caller that renders
@@ -264,7 +267,9 @@ function Para({
       className={`${className} flex gap-[6px]${sub ? " pl-[18px]" : ""}`}
     >
       {marker ? (
-        <span className="shrink-0 font-semibold tabular-nums">{marker}</span>
+        <span className="shrink-0 font-normal tabular-nums text-black">
+          {marker}
+        </span>
       ) : null}
       <span className="min-w-0 flex-1">{body}</span>
     </p>

@@ -11,7 +11,13 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { A4_PADDING, A4_PADDING_Y, SHEET_HEIGHT, SHEET_WIDTH } from './sheets/frame';
+import {
+  A4_PADDING,
+  A4_PADDING_Y,
+  PAGE_SAFETY_MARGIN,
+  SHEET_HEIGHT,
+  SHEET_WIDTH,
+} from './sheets/frame';
 import { usePagination } from './usePagination';
 import type { PackedPage } from './pagination';
 import PageColumns from './PageColumns';
@@ -141,10 +147,11 @@ export default function DocumentPreview({
 
   const [scale, setScale] = useState(0.5);
 
-  // A4 content box height minus this document's page padding and whatever its
-  // running header and footer take. Blocks are packed until the next one would
-  // overflow it.
-  const pageContentHeight = SHEET_HEIGHT - pagePaddingY - chromeHeight;
+  // A4 content box height minus this document's page padding, whatever its
+  // running header and footer take, and PAGE_SAFETY_MARGIN. Blocks are packed
+  // until the next one would overflow it.
+  const pageContentHeight =
+    SHEET_HEIGHT - pagePaddingY - chromeHeight - PAGE_SAFETY_MARGIN;
   const { flowRef, pages: flowPages } = usePagination(
     flowBlocks,
     pageContentHeight,

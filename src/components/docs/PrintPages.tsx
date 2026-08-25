@@ -4,7 +4,7 @@ import { Children, isValidElement, type ReactNode } from 'react';
 import { usePagination } from './usePagination';
 import type { PageChrome } from './DocumentPreview';
 import PageColumns from './PageColumns';
-import { SHEET_HEIGHT } from './sheets/frame';
+import { PAGE_SAFETY_MARGIN, SHEET_HEIGHT } from './sheets/frame';
 
 /**
  * The paginated document, at 100%, one page per sheet of paper.
@@ -49,7 +49,7 @@ export default function PrintPages({
   const blocks = Children.toArray(children).filter(isValidElement);
   const { flowRef, pages } = usePagination(
     blocks,
-    SHEET_HEIGHT - pagePaddingY - chromeHeight,
+    SHEET_HEIGHT - pagePaddingY - chromeHeight - PAGE_SAFETY_MARGIN,
     columns,
   );
 

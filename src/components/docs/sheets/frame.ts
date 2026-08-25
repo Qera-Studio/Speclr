@@ -15,6 +15,21 @@
 export const SHEET_WIDTH = 794;
 export const SHEET_HEIGHT = 1123;
 
+/**
+ * Held back from every page's packing budget, on top of its margins and
+ * chrome.
+ *
+ * `usePagination` measures the un-paginated flow and packs to the px; a
+ * multi-page document (the contract) then re-renders those same blocks split
+ * across real page frames, where sub-pixel line-wrap rounding can land a
+ * fraction of a line differently than it did in the single continuous flow
+ * that was measured. On a document run long enough, one page eventually lands
+ * exactly on that edge and clips. This is the margin against it — cheaper than
+ * chasing a rounding difference measured in single px, and it costs nothing
+ * that matters against an A4 page's own height.
+ */
+export const PAGE_SAFETY_MARGIN = 16;
+
 export const A4_PADDING = "p-[12px]";
 
 /** Total vertical padding `A4_PADDING` costs a page, in px (top + bottom). */
