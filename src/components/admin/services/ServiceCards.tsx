@@ -12,10 +12,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
-import {
-  rateUnitOf,
-  type ContractService,
-} from "@/lib/domain/service";
+import { rateUnitOf, type ContractService } from "@/lib/domain/service";
 import { formatINR } from "@/lib/domain/money";
 import { NIL } from "@/lib/utils";
 import { PageHeader } from "@/components/admin/Page";
@@ -91,7 +88,7 @@ export default function ServiceCards({
             <section
               key={schedule.key}
               aria-label={schedule.name}
-              className="flex min-h-0 flex-col rounded-md border border-border bg-muted/40"
+              className="flex min-h-0 flex-col rounded-md border border-border bg-sidebar"
             >
               {/* Add sits in the column header rather than at the foot of the
                   list: the column *is* the answer to "which Schedule", and up
@@ -123,14 +120,13 @@ export default function ServiceCards({
               {/* `pb-2` so the last card ends clear of the column's bottom
                   edge rather than flush against it, which is what the add
                   button used to provide. */}
-              <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+              <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
                 {mine.map((service) => (
                   <li key={service.code}>
                     {/* `bg-background`, not `bg-card`: in dark mode `--card`
-                        (0.205) sits within a hair of the column's `bg-muted/40`
-                        and the cards dissolve into it. The page background
-                        reads as a well the cards sit in. In light mode the two
-                        tokens are both white, so nothing changes there. */}
+                        and `--sidebar` are the same 0.235, so a card on the
+                        column would dissolve into it. The page background
+                        reads as a well the cards sit in. */}
                     <div className="group/card flex flex-col gap-3 rounded-md border border-border bg-background p-3">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="tabular-nums">{service.code}</span>
