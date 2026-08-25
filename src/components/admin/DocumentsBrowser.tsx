@@ -13,7 +13,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { tabPillSurface, tabsListVariants } from "@/components/ui/tabs";
+import {
+  tabPillSurface,
+  tabsListVariants,
+  useTabDrag,
+} from "@/components/ui/tabs";
 import {
   Empty,
   EmptyContent,
@@ -107,6 +111,8 @@ export default function DocumentsBrowser({
   const [sort, setSort] = useState<SortState | null>(null);
   const [showSort, toggleShowSort] = useShowSort();
   const [view, setView] = useState<View>("table");
+  /** The pill is draggable here exactly as it is on a real tab strip. */
+  const viewDrag = useTabDrag();
 
   // Read on mount, not in a lazy initializer: this component server-renders,
   // and reading localStorage during the first render would mismatch hydration.
@@ -143,7 +149,7 @@ export default function DocumentsBrowser({
   //
   // The pill glides rather than blinking, and it does so without measuring
   // anything: the segments are an equal-width grid, so the pill is exactly one
-  // segment wide and `translate-x-full` lands precisely on the second. That is
+  // segment wide and a 100% translate lands precisely on the second. That is
   // why the labels are not free-width — `TabsIndicator` needs Base UI to
   // measure the active tab onto CSS variables, and there is no tab here to
   // measure. Add a third view and the grid columns go with it.
@@ -151,6 +157,7 @@ export default function DocumentsBrowser({
     <div
       role="group"
       aria-label="View"
+      {...viewDrag}
       className={cn(
         tabsListVariants(),
         // `grid-cols-2` sizes both columns to the wider label, which is what
@@ -158,13 +165,21 @@ export default function DocumentsBrowser({
         "relative grid h-8 shrink-0 grid-cols-2",
       )}
     >
+      {/* `data-drag-pill` / `data-drag-segment` are what `useTabDrag` looks for
+          in a strip Base UI did not build. The transform is written out rather
+          than left to `translate-x-full`, because the drag adds to it. */}
       <span
         aria-hidden="true"
+        data-drag-pill=""
+        style={{
+          transform: `translateX(calc(${view === "cards" ? "100%" : "0px"} + var(--tab-drag, 0px)))`,
+        }}
         className={cn(
           "pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md",
           tabPillSurface,
           "transition-transform duration-200 ease-standard motion-reduce:transition-none",
-          view === "cards" && "translate-x-full",
+          // Untransitioned under the hand; the offset is already per-frame.
+          "group-data-dragging/tabs-list:transition-none",
         )}
       />
       {VIEW_TABS.map(({ value, label, icon: Icon }) => (
@@ -172,6 +187,7 @@ export default function DocumentsBrowser({
           key={value}
           type="button"
           aria-pressed={view === value}
+          data-drag-segment=""
           onClick={() => chooseView(value)}
           className={cn(
             "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-md px-2.5",

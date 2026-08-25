@@ -672,6 +672,38 @@ three of them are what the screen looks like when something goes wrong.
   records; there is no undo to offer.
 - **Never a toast for a validation error.** Errors belong on the field.
 
+### 2.7 Tabs and segmented pills
+
+Anything shaped like a pill sliding along a trough gets **both** ways in: click
+a segment, or pick the pill up and drop it. It is one hook, `useTabDrag` in
+`ui/tabs.tsx`, and `TabsList` calls it for you, so an ordinary strip built from
+`Tabs` / `TabsList` / `TabsTrigger` has the gesture without asking.
+
+A control that is *not* built from `Tabs` (there is one: the list/cards toggle
+in `DocumentsBrowser`, which has no panels to reveal and so must not claim tab
+roles) spreads the hook onto its container and marks its parts:
+`data-drag-pill` on the sliding surface, `data-drag-segment` on each choice. The
+pill's transform then adds `var(--tab-drag, 0px)`, which is 0 at rest.
+
+Six rules, each of which is a thing that broke while it was being built:
+
+| Rule | Why |
+|---|---|
+| The click is the control; the drag is an accelerator | A gesture cannot be tabbed to, described or discovered. Every segment stays a real button or link, keyboard included. |
+| Mouse and pen only, never touch | A touch drag across a strip is how the page under it scrolls. |
+| The release commits to the **nearest segment centre**, measured | Tabs are rarely equal widths, so "one width per step" quietly mis-selects on a strip whose middle label is longer. |
+| The pill does not transition while it is held | The offset is already per-frame; a transition on top of it lags the hand. |
+| Pointer capture is taken on the first *move*, not on the way down | Capturing at pointerdown retargets the click to the capture element, and a plain tap stops selecting anything. |
+| A release that travelled swallows the click it lands on | Otherwise the segment under the mouse activates too, which is frequently the one being dragged away from. Stopped in the capture phase; `preventDefault` alone does not reach a React handler. |
+
+The one control deliberately outside the hook is `ProfileSwitcher`, which
+carries its own copy: committing there is a *navigation*, so the pill must latch
+where it landed until the route arrives rather than springing home and sliding
+across a second time when it does.
+
+Verified in `e2e/tabs.spec.ts` against `/preview/tabs`, because every rule above
+is a measurement and jsdom reports every box as zero.
+
 ---
 
 ## 3. Writing
@@ -920,3 +952,12 @@ Append a line when a rule here changes. Keep it to one line and name the
   fail on each one first. §1.7a carries the table. The general lesson is the
   one the pay slip already taught: **anything that is a measurement belongs in
   `e2e/`, and a green jsdom suite is not evidence about geometry.**
+- **25 August 2026.** **§2.7.** Every pill-shaped strip is draggable as well as
+  clickable, from one hook (`useTabDrag`) that `TabsList` calls for you; the
+  list/cards toggle opts in with two data attributes. Five browser tests on
+  `/preview/tabs`, each watched failing first, and one of them earned its keep
+  immediately: the release was landing a whole gesture further along than the
+  hand, because the pill's measured box already carries the drag and the offset
+  was being added to it twice. `ProfileSwitcher` stays outside the hook, because
+  committing there is a navigation and its pill has to latch until the route
+  lands.

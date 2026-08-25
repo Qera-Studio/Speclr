@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { cva, type VariantProps } from "class-variance-authority";
 
@@ -24,7 +25,10 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list relative inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  // The grab cursor only where there is a pill to grab: a `line` strip is an
+  // underline with nothing to pick up, and a vertical one goes nowhere
+  // sideways. Neither should claim otherwise.
+  "group/tabs-list relative inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none group-data-horizontal/tabs:data-[variant=default]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
   {
     variants: {
       variant: {
@@ -38,17 +42,174 @@ const tabsListVariants = cva(
   },
 );
 
+/** Travel under this many pixels is a click that wobbled, not a drag. */
+const DRAG_SLOP = 3;
+
+/**
+ * The two parts a draggable strip is made of.
+ *
+ * A Base UI strip labels them for us. A hand-rolled pill (the view toggle in
+ * `DocumentsBrowser`) says so with `data-drag-pill` / `data-drag-segment`, which
+ * is all `useTabDrag` needs from it — a segment is committed to by being
+ * clicked, so a button and a link both work.
+ */
+const PILL_SELECTOR = '[data-slot="tabs-indicator"],[data-drag-pill]';
+const SEGMENT_SELECTOR = '[data-slot="tabs-trigger"],[data-drag-segment]';
+
+/**
+ * The pill can be picked up and dragged, and it activates whichever tab it is
+ * nearest when let go.
+ *
+ * Wired into `TabsList` itself, so every tab strip in the app has it without
+ * opting in — see `docs/design.md` §2.7. It is strictly an accelerator: the
+ * triggers are still buttons, still clickable, still reachable by keyboard, and
+ * nothing here is the only way to select anything.
+ *
+ * **Mouse and pen only.** A touch drag across a tab strip is how the page under
+ * it scrolls, and claiming that gesture would cost more than it gives.
+ *
+ * **Measured, not assumed.** Tabs are rarely equal widths, so the commit is the
+ * trigger whose centre is nearest the dragged pill's centre rather than a
+ * fraction of the way across. That also makes a three- or five-tab strip work
+ * with no arithmetic of its own.
+ */
+export function useTabDrag() {
+  const [drag, setDrag] = useState<{
+    startX: number;
+    /** How far the pill may travel and stay inside the trough. */
+    min: number;
+    max: number;
+    dx: number;
+  } | null>(null);
+  /** Whether the pointer travelled far enough that the release was a drag. */
+  const moved = useRef(false);
+  /** A drag has committed; swallow the click its release is about to land. */
+  const swallow = useRef(false);
+  /** The commit's own click, which must be let through to the trigger. */
+  const committing = useRef(false);
+
+  /**
+   * What is being dragged, in falling order of preference: the strip's own
+   * indicator, a hand-rolled pill that has marked itself, or, failing both, the
+   * active trigger — which is what `SpecDetailsTabs` leaves behind when it
+   * suppresses the indicator in favour of a Motion pill. The last case cannot
+   * be watched moving, but it still commits correctly, which is the half that
+   * matters.
+   */
+  const pill = (list: Element) =>
+    list.querySelector(PILL_SELECTOR) ??
+    list.querySelector(`${SEGMENT_SELECTOR}[data-active]`);
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || event.pointerType === "touch") return;
+    const list = event.currentTarget;
+    // Vertical strips are dragged nowhere: sideways means nothing there.
+    if (
+      list
+        .closest('[data-slot="tabs"]')
+        ?.getAttribute("data-orientation") === "vertical"
+    )
+      return;
+    const indicator = pill(list);
+    if (!indicator) return;
+
+    const box = indicator.getBoundingClientRect();
+    const trough = list.getBoundingClientRect();
+    moved.current = false;
+    // A release that never produced a click (let go outside the strip) would
+    // otherwise leave this armed and eat the next real one.
+    swallow.current = false;
+    setDrag({
+      startX: event.clientX,
+      min: trough.left - box.left,
+      max: trough.right - box.right,
+      dx: 0,
+    });
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag) return;
+    const dx = Math.max(drag.min, Math.min(drag.max, event.clientX - drag.startX));
+    if (Math.abs(event.clientX - drag.startX) > DRAG_SLOP && !moved.current) {
+      moved.current = true;
+      // Captured here rather than on the way down: capturing at pointerdown
+      // retargets the click to the capture element, which stops a plain tap on
+      // a tab from ever reaching it.
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    setDrag({ ...drag, dx });
+  };
+
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag) return;
+    const list = event.currentTarget;
+    const indicator = pill(list);
+    const dragged = moved.current;
+    setDrag(null);
+    if (!dragged || !indicator) return;
+
+    // The box read here is the *dragged* one: the offset is already in the
+    // pill's transform, so adding `drag.dx` again would count it twice and land
+    // the release a whole gesture further along than the hand.
+    const box = indicator.getBoundingClientRect();
+    const centre = box.left + box.width / 2;
+    const triggers = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
+    const nearest = triggers.reduce((best, trigger) => {
+      const distance = (element: HTMLElement) => {
+        const rect = element.getBoundingClientRect();
+        return Math.abs(rect.left + rect.width / 2 - centre);
+      };
+      return distance(trigger) < distance(best) ? trigger : best;
+    }, triggers[0]);
+
+    if (!nearest) return;
+    // Dispatched, then the *native* click that follows the release is swallowed.
+    // The order matters and getting it wrong is silent: swallowing first eats
+    // this click too, and the drag then tracks the hand perfectly and selects
+    // nothing at all.
+    committing.current = true;
+    nearest.click();
+    committing.current = false;
+    swallow.current = true;
+  };
+
+  return {
+    "data-dragging": drag ? "" : undefined,
+    style: { "--tab-drag": `${drag?.dx ?? 0}px` } as React.CSSProperties,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel: () => setDrag(null),
+    // The mouse comes up over one of the tabs, and that tab must not activate
+    // on its own — it is frequently the one being dragged away from. Stopped in
+    // the capture phase, which is what keeps it from reaching the trigger's own
+    // handler; `preventDefault` alone would not.
+    onClickCapture: (event: React.MouseEvent) => {
+      if (committing.current || !swallow.current) return;
+      swallow.current = false;
+      event.stopPropagation();
+      event.preventDefault();
+    },
+  };
+}
+
 function TabsList({
   className,
   variant = "default",
   ...props
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
+  const { style, ...drag } = useTabDrag();
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
       className={cn(tabsListVariants({ variant }), className)}
       {...props}
+      // After `props`, so a caller cannot drop the gesture by passing a pointer
+      // handler of its own. Its `style` is merged rather than replaced: the
+      // drag rides on a custom property and would otherwise be clobbered.
+      {...drag}
+      style={{ ...(props.style as React.CSSProperties), ...style }}
     />
   );
 }
@@ -110,7 +271,12 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
     <TabsPrimitive.Indicator
       data-slot="tabs-indicator"
       className={cn(
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md transition-[translate,width] duration-200 ease-standard",
+        // `--tab-drag` is set on the list by `useTabDrag` and inherits down. It
+        // is 0 at rest, so the resting position is exactly what it always was.
+        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] rounded-md transition-[translate,width] duration-200 ease-standard",
+        // Untransitioned under the hand: the offset is already per-frame, and a
+        // transition on top of it lags the pointer.
+        "group-data-dragging/tabs-list:transition-none",
         tabPillSurface,
         className,
       )}
