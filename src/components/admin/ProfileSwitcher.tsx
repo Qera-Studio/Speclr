@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -96,6 +96,16 @@ export function otherProfile(profile: Profile): Profile {
   return profile === 'client' ? 'admin' : 'client';
 }
 
+/** Release past this fraction of the way across commits; short of it, springs back. */
+const COMMIT_AT = 0.4;
+
+/**
+ * Travel under this fraction of the way across is a click that wobbled, not a
+ * drag. A fraction rather than a pixel count, so it scales with the control
+ * instead of meaning one thing in the rail and another in a narrower one.
+ */
+const DRAG_SLOP = 0.05;
+
 export default function ProfileSwitcher({
   profile,
   /**
@@ -114,6 +124,16 @@ export default function ProfileSwitcher({
   const { state, isMobile } = useSidebar();
   const collapsed = state === 'collapsed' && !isMobile;
   const entries = useProfileEntries();
+  const router = useRouter();
+  const [drag, setDrag] = useState<{
+    startX: number;
+    /** Half the control: how far the pill travels for one whole profile. */
+    span: number;
+    offset: number;
+  } | null>(null);
+  const [latch, setLatch] = useState<{ direction: -1 | 1; from: Profile } | null>(null);
+  /** Whether the pointer travelled far enough that the release was a drag. */
+  const moved = useRef(false);
 
   const other = otherProfile(profile);
   const otherNav = NAV_BY_PROFILE[other];
@@ -149,12 +169,84 @@ export default function ProfileSwitcher({
 
   const index = PROFILES.indexOf(profile);
 
+  /**
+   * The pill answers a mouse held on it, dragged across, and released past the
+   * halfway point — the same gesture as the rail swipe, at the scale of the
+   * control itself.
+   *
+   * Mouse and pen only. Touch already reaches `useProfileDrag` through the
+   * rail, and two handlers reading one finger would fight over the offset.
+   *
+   * Latched on release rather than zeroed, for the reason `useProfileDrag`
+   * records at length: zeroing and *then* navigating springs the pill home,
+   * sits through the round trip and slides it across a second time. The latch
+   * is compared against the profile it was taken at, so the frame where the
+   * index advances is the frame it clears, and the two cancel exactly.
+   */
+  const held = latch && latch.from === profile ? latch.direction : 0;
+  const shown = drag ? drag.offset : held || offset;
+  const live = drag !== null || dragging;
+
+  const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.button !== 0 || event.pointerType === "touch") return;
+    // Zero-width in jsdom, and a zero span divides every drag to Infinity.
+    const span = event.currentTarget.getBoundingClientRect().width / 2 || 1;
+    moved.current = false;
+    setLatch(null);
+    setDrag({ startX: event.clientX, span, offset: 0 });
+  };
+
+  const moveDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (!drag) return;
+    const raw = (event.clientX - drag.startX) / drag.span;
+    if (Math.abs(raw) > DRAG_SLOP && !moved.current) {
+      moved.current = true;
+      // Captured here rather than on the way down, and that is the whole of a
+      // bug: capturing at pointerdown retargets the click to the capture
+      // element, so an ordinary tap on Admin stopped reaching the link and
+      // stopped switching profile. Nothing needs the events until the hand has
+      // actually moved.
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+    // Clamped to the ends: pulling left from the leftmost profile is inert
+    // rather than rubber-banding towards a page that will not open.
+    const offsetNow = Math.max(-index, Math.min(PROFILES.length - 1 - index, raw));
+    setDrag({ ...drag, offset: offsetNow });
+  };
+
+  const endDrag = () => {
+    if (!drag) return;
+    const settled = drag.offset;
+    setDrag(null);
+    if (Math.abs(settled) < COMMIT_AT) return;
+    const direction = settled > 0 ? 1 : -1;
+    const next = PROFILES[index + direction];
+    if (!next) return;
+    setLatch({ direction, from: profile });
+    router.push(entryHref(next, entries));
+  };
+
   return (
     // No tooltips expanded: the labels are right there, and a tooltip repeating
     // a visible word is noise the pointer has to wait out.
     <nav
       aria-label="Profile"
-      className="relative flex items-center rounded-lg bg-muted p-[3px]"
+      onPointerDown={beginDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={() => setDrag(null)}
+      // A release that travelled is a drag, and the link underneath it must not
+      // also fire — it would navigate to whichever half the mouse happened to
+      // come up over, which is frequently the one being dragged away from.
+      onClickCapture={(event) => {
+        if (!moved.current) return;
+        moved.current = false;
+        event.preventDefault();
+      }}
+      className={cn(
+        'relative flex items-center rounded-lg border border-border bg-muted p-[3px]',
+        drag ? 'cursor-grabbing select-none' : 'cursor-grab',
+      )}
     >
       {/*
         The raised surface, drawn once and translated, rather than painted on
@@ -166,14 +258,16 @@ export default function ProfileSwitcher({
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md',
+          // The border is drawn inside the pill's box, so it costs no width and
+          // the translate still lands it exactly over the other half.
+          'pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md border border-border',
           tabPillSurface,
           // Untransitioned while dragging — the offset is already per-frame, and
           // a transition on top of it lags the fingers. Everything else,
           // including the committed hold that outlasts the gesture, animates.
-          !dragging && 'transition-transform duration-200 ease-standard',
+          !live && 'transition-transform duration-200 ease-standard',
         )}
-        style={{ transform: `translateX(${(index + offset) * 100}%)` }}
+        style={{ transform: `translateX(${(index + shown) * 100}%)` }}
       />
       {PROFILES.map((value) => {
         const nav = NAV_BY_PROFILE[value];
@@ -187,11 +281,24 @@ export default function ProfileSwitcher({
             // links to where you left it.
             href={active ? nav.home.href : entryHref(value, entries)}
             aria-current={active ? 'page' : undefined}
+            // A link is natively draggable, and holding one and moving starts
+            // the browser's own drag with its ghost image, which cancels the
+            // pointer stream before the pill ever sees it. This is what made
+            // the gesture feel dead over the labels.
+            draggable={false}
             className={cn(
               'relative z-10 flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors',
+              // Exactly the rail's own two weights. A nav row below never
+              // changes colour to say it is active — `sidebarMenuButtonVariants`
+              // moves the *background* and leaves the label on
+              // `--sidebar-foreground` — so the selected profile sits on that
+              // same 0.44 and the unselected one steps back to the muted ramp.
+              // `--foreground` (0.145) and `--sidebar-accent-foreground` (0.205)
+              // both read as ink beside it; they are hover and press colours
+              // here, not resting ones.
               active
-                ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'text-sidebar-foreground'
+                : 'text-muted-foreground hover:text-sidebar-foreground',
             )}
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />

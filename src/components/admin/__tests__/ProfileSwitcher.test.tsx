@@ -1,4 +1,4 @@
-import { render, renderHook, screen } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { PROFILE_COOKIE } from '@/lib/profile';
 import { rememberProfile } from '@/lib/useProfile';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -41,6 +41,71 @@ describe('ProfileSwitcher, expanded', () => {
     renderIn(<ProfileSwitcher profile="admin" />);
     expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Client' })).not.toHaveAttribute('aria-current');
+  });
+});
+
+/**
+ * The pill can be picked up and dragged across, which is an accelerator on top
+ * of two real links and never the only way to reach anything.
+ *
+ * jsdom measures the control as zero wide, so the drag is fed the span it would
+ * have had: `beginDrag` falls back to 1, meaning one CSS pixel is one whole
+ * profile here and the numbers below read as fractions of the way across.
+ */
+describe('ProfileSwitcher, dragging the pill', () => {
+  const dragBy = (dx: number) => {
+    const rail = screen.getByRole('navigation', { name: 'Profile' });
+    fireEvent.pointerDown(rail, { button: 0, pointerId: 1, clientX: 0 });
+    fireEvent.pointerMove(rail, { pointerId: 1, clientX: dx });
+    fireEvent.pointerUp(rail, { pointerId: 1, clientX: dx });
+    return rail;
+  };
+
+  it('moves to the other profile when released past the halfway point', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    dragBy(0.8);
+    expect(push).toHaveBeenCalledWith('/admin');
+  });
+
+  it('springs back when released short of it', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    dragBy(0.2);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  /** Client is on the left; pulling further left leads nowhere. */
+  it('is inert in a direction with no profile in it', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    dragBy(-0.9);
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The mouse comes up over one of the two links, and that link must not also
+   * navigate — frequently it is the half being dragged away from.
+   */
+  it('suppresses the click the release lands on', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    dragBy(0.8);
+    const click = fireEvent.click(screen.getByRole('link', { name: 'Client' }));
+    expect(click).toBe(false);
+  });
+
+  it('leaves an ordinary click alone', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    dragBy(0);
+    const click = fireEvent.click(screen.getByRole('link', { name: 'Admin' }));
+    expect(click).toBe(true);
+  });
+
+  /** Touch already reaches the rail swipe; two handlers on one finger fight. */
+  it('ignores touch', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    const rail = screen.getByRole('navigation', { name: 'Profile' });
+    fireEvent.pointerDown(rail, { button: 0, pointerId: 1, clientX: 0, pointerType: 'touch' });
+    fireEvent.pointerMove(rail, { pointerId: 1, clientX: 0.8 });
+    fireEvent.pointerUp(rail, { pointerId: 1, clientX: 0.8 });
+    expect(push).not.toHaveBeenCalled();
   });
 });
 
