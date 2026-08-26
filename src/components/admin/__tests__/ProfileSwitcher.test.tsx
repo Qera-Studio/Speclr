@@ -107,6 +107,27 @@ describe('ProfileSwitcher, dragging the pill', () => {
     fireEvent.pointerUp(rail, { pointerId: 1, clientX: 0.8 });
     expect(push).not.toHaveBeenCalled();
   });
+
+  /**
+   * `beginDrag` used to rely on `onPointerMove`/`onPointerUp` React props
+   * attached to the rail, which only fire for a native event whose target is
+   * inside the rail's own subtree. An ordinary-speed drag on a 212px-wide
+   * control routinely delivers its first `pointermove` sample already past
+   * that boundary, so the handler never saw it, capture was never taken, and
+   * the pill sat dead at rest for the rest of the gesture. Firing on
+   * `document.body` — an ancestor of the render root, so React's delegated
+   * listener never sees it either — is what a coarse, fast drag looks like
+   * once the physical cursor has left the strip: `beginDrag`'s `window`
+   * listener must still catch it.
+   */
+  it('tracks a pointermove that lands outside the switcher entirely', () => {
+    renderIn(<ProfileSwitcher profile="client" />);
+    const rail = screen.getByRole('navigation', { name: 'Profile' });
+    fireEvent.pointerDown(rail, { button: 0, pointerId: 1, clientX: 0 });
+    fireEvent.pointerMove(document.body, { pointerId: 1, clientX: 0.8 });
+    fireEvent.pointerUp(document.body, { pointerId: 1, clientX: 0.8 });
+    expect(push).toHaveBeenCalledWith('/admin');
+  });
 });
 
 /**

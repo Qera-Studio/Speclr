@@ -105,4 +105,51 @@ test.describe('the tab pill is draggable', () => {
       '',
     );
   });
+
+  /**
+   * A single un-interpolated jump that lands *outside the list itself*, not
+   * just on a further tab within it — one native pointermove, the whole
+   * distance at once, which is what a normal-speed drag delivers on a strip
+   * no wider than its own content.
+   *
+   * `useTabDrag` used to take pointer capture on the first move past the
+   * slop threshold, which had a hole: without capture already active, a
+   * pointermove whose target has already left the list's own subtree never
+   * reaches the list's handler at all (a synthetic React event only fires
+   * when the native event's target is inside this element's subtree, and
+   * without capture, hit-testing sends the event to whatever is now under
+   * the cursor instead). The pill sat dead at rest for the rest of the
+   * gesture, `data-dragging` stuck true — reproduced with a two- and
+   * three-step drag against the real list/card toggle, which is narrow
+   * enough that an ordinary-speed drag clears it in one native sample.
+   * Tracking on `window` instead fixed it: window sees every pointer event
+   * regardless of what is under the cursor.
+   */
+  test('still tracks a single-jump drag that lands outside the strip', async ({
+    page,
+  }) => {
+    const list = page.locator('[data-slot="tabs-list"]');
+    const pill = page.locator('[data-slot="tabs-indicator"]');
+    const start = await boxOf(pill);
+    const listBox = await boxOf(list);
+    const from = await centreOf(pill);
+    // Well past the list's own right edge — the failure this guards against
+    // only shows once the jump's destination is outside the list's subtree.
+    const to = { x: listBox.x + listBox.width + 200, y: from.y };
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    // No `steps`: one pointermove event, the whole distance at once.
+    await page.mouse.move(to.x, to.y);
+    expect((await boxOf(pill)).x).toBeGreaterThan(start.x + 20);
+    await expect(list).toHaveAttribute('data-dragging', '');
+    await page.mouse.up();
+
+    // Clamped inside the trough, and the stuck-drag state cleared.
+    await expect(page.getByRole('tab', { name: 'Terms' })).toHaveAttribute(
+      'data-active',
+      '',
+    );
+    await expect(list).not.toHaveAttribute('data-dragging', '');
+  });
 });

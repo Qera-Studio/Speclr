@@ -32,7 +32,10 @@ const tabsListVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-muted",
+        // Border only on the trough that actually holds a pill — a `line`
+        // strip is an underline sitting on nothing, so a container stroke
+        // around it would frame empty air.
+        default: "border border-border bg-muted",
         line: "gap-1 bg-transparent",
       },
     },
@@ -87,6 +90,8 @@ export function useTabDrag() {
   const swallow = useRef(false);
   /** The commit's own click, which must be let through to the trigger. */
   const committing = useRef(false);
+  /** Tears down whichever `window` listeners the current drag attached. */
+  const cleanup = useRef<(() => void) | null>(null);
 
   /**
    * What is being dragged, in falling order of preference: the strip's own
@@ -113,73 +118,103 @@ export function useTabDrag() {
     const indicator = pill(list);
     if (!indicator) return;
 
+    // A stray second pointerdown before the first drag's `pointerup` (two
+    // buttons, a stuck browser state) would otherwise stack listeners.
+    cleanup.current?.();
+
     const box = indicator.getBoundingClientRect();
     const trough = list.getBoundingClientRect();
+    const startX = event.clientX;
+    const min = trough.left - box.left;
+    const max = trough.right - box.right;
     moved.current = false;
     // A release that never produced a click (let go outside the strip) would
     // otherwise leave this armed and eat the next real one.
     swallow.current = false;
-    setDrag({
-      startX: event.clientX,
-      min: trough.left - box.left,
-      max: trough.right - box.right,
-      dx: 0,
-    });
-  };
+    setDrag({ startX, min, max, dx: 0 });
 
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    const dx = Math.max(drag.min, Math.min(drag.max, event.clientX - drag.startX));
-    if (Math.abs(event.clientX - drag.startX) > DRAG_SLOP && !moved.current) {
-      moved.current = true;
-      // Captured here rather than on the way down: capturing at pointerdown
-      // retargets the click to the capture element, which stops a plain tap on
-      // a tab from ever reaching it.
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-    setDrag({ ...drag, dx });
-  };
+    /**
+     * Tracked on `window`, not through this element's own bubbling handlers.
+     *
+     * The pointer capture this used to take on the first move past the slop
+     * threshold had a hole: on a narrow strip (the list/card toggle is
+     * 152px), an ordinary-speed drag's *first* `pointermove` can already land
+     * outside the strip's bounds before that move ever reaches this handler
+     * — a synthetic React event only fires when the native event's target is
+     * inside this element's subtree, and without capture already active,
+     * hit-testing sends it to whatever is now under the cursor instead. So
+     * capture was never taken, every later move suffered the same fate, and
+     * the pill sat dead at rest for the rest of the gesture — `data-dragging`
+     * stuck true, cursor stuck `grabbing`, until the next pointerdown reset
+     * it. Confirmed with a two- and three-step synthetic drag before this
+     * fix, both of which never moved the pill at all.
+     *
+     * `window` sees every pointer event in the document regardless of what
+     * is currently under the cursor, so tracking here needs no capture at
+     * all — which also means the click-retargeting capture caused (the
+     * reason it was deferred to the first move rather than taken on the way
+     * down) never arises. A plain, no-movement tap on a trigger still
+     * reaches the trigger's own `onClick` untouched.
+     */
+    const handleMove = (moveEvent: PointerEvent) => {
+      const dx = Math.max(min, Math.min(max, moveEvent.clientX - startX));
+      if (Math.abs(moveEvent.clientX - startX) > DRAG_SLOP) moved.current = true;
+      setDrag((current) => (current ? { ...current, dx } : current));
+    };
 
-  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    const list = event.currentTarget;
-    const indicator = pill(list);
-    const dragged = moved.current;
-    setDrag(null);
-    if (!dragged || !indicator) return;
+    const finish = (commit: boolean) => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+      cleanup.current = null;
+      const dragged = moved.current;
+      setDrag(null);
+      if (!commit || !dragged) return;
 
-    // The box read here is the *dragged* one: the offset is already in the
-    // pill's transform, so adding `drag.dx` again would count it twice and land
-    // the release a whole gesture further along than the hand.
-    const box = indicator.getBoundingClientRect();
-    const centre = box.left + box.width / 2;
-    const triggers = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
-    const nearest = triggers.reduce((best, trigger) => {
-      const distance = (element: HTMLElement) => {
-        const rect = element.getBoundingClientRect();
-        return Math.abs(rect.left + rect.width / 2 - centre);
-      };
-      return distance(trigger) < distance(best) ? trigger : best;
-    }, triggers[0]);
+      // The box read here is the *dragged* one: the offset is already in the
+      // pill's transform, so adding the last `dx` again would count it twice
+      // and land the release a whole gesture further along than the hand.
+      const indicatorNow = pill(list);
+      if (!indicatorNow) return;
+      const dragBox = indicatorNow.getBoundingClientRect();
+      const centre = dragBox.left + dragBox.width / 2;
+      const triggers = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
+      const nearest = triggers.reduce((best, trigger) => {
+        const distance = (element: HTMLElement) => {
+          const rect = element.getBoundingClientRect();
+          return Math.abs(rect.left + rect.width / 2 - centre);
+        };
+        return distance(trigger) < distance(best) ? trigger : best;
+      }, triggers[0]);
+      if (!nearest) return;
 
-    if (!nearest) return;
-    // Dispatched, then the *native* click that follows the release is swallowed.
-    // The order matters and getting it wrong is silent: swallowing first eats
-    // this click too, and the drag then tracks the hand perfectly and selects
-    // nothing at all.
-    committing.current = true;
-    nearest.click();
-    committing.current = false;
-    swallow.current = true;
+      // Dispatched, then the *native* click that follows the release is
+      // swallowed. The order matters and getting it wrong is silent:
+      // swallowing first eats this click too, and the drag then tracks the
+      // hand perfectly and selects nothing at all.
+      committing.current = true;
+      nearest.click();
+      committing.current = false;
+      swallow.current = true;
+    };
+
+    const handleUp = () => finish(true);
+    const handleCancel = () => finish(false);
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleCancel);
+    cleanup.current = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+    };
   };
 
   return {
     "data-dragging": drag ? "" : undefined,
     style: { "--tab-drag": `${drag?.dx ?? 0}px` } as React.CSSProperties,
     onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onPointerCancel: () => setDrag(null),
     // The mouse comes up over one of the tabs, and that tab must not activate
     // on its own — it is frequently the one being dragged away from. Stopped in
     // the capture phase, which is what keeps it from reaching the trigger's own
@@ -217,28 +252,28 @@ function TabsList({
 /**
  * The raised surface behind the active tab.
  *
- * Exported because three things draw it — this file's `TabsIndicator` and
- * `TabsTrigger`, plus the two hand-rolled pills (`SpecDetailsTabs`'s Motion one
- * and the list/card toggle in `DocumentsBrowser`) — and they had already
- * drifted apart.
+ * Exported because four things draw it — this file's `TabsIndicator` and
+ * `TabsTrigger`, plus the hand-rolled pills (`ProfileSwitcher`,
+ * `SpecDetailsTabs`'s Motion one, and the list/card toggle in
+ * `DocumentsBrowser`) — and they had already drifted apart.
  *
- * **Fill and shadow, in both themes. No stroke in either.** Light mode raises
- * the pill by making it lighter than the trough (white on `--muted`) and adds a
+ * **Fill, shadow and a light stroke, in both themes.** Light mode raises the
+ * pill by making it lighter than the trough (white on `--muted`) and adds a
  * shadow; dark mode does the same thing in the same direction, because lighter
  * is what "nearer" means under a light source and that does not invert with the
  * theme. What dark mode cannot do is inherit light's *values*: `--background`
  * there is darker than `--muted`, so painting the pill `bg-background` would
- * push it into the trough. Hence a white overlay instead.
- *
- * The stroke is gone. It was added when the fill was `bg-input/30` (L .28
- * against a trough at L .269), which is to say the border was compensating for
- * a fill that did not read; with a fill that does, an outline only makes the
- * one component in the app that is drawn two visibly different ways. The shadow
- * stays slight, since it does little over a dark ground and the fill is now
- * carrying the elevation.
+ * push it into the trough. Hence a white overlay instead. The border is what
+ * `ProfileSwitcher` carried on its own before this was generalised to it: a
+ * pill that is only a fill difference reads as one thing on a busy background,
+ * and the stroke is what lets an eye find its edge without the shadow alone
+ * carrying it. It is fill *and* shadow *and* stroke together that make the
+ * surface, not the stroke instead of the other two — the same fill-does-not-
+ * read problem this comment used to describe would return if the border were
+ * asked to carry the elevation on its own.
  */
 const tabPillSurface =
-  "bg-raised shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+  "border border-border bg-raised shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
@@ -246,10 +281,15 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       data-slot="tabs-trigger"
       className={cn(
         "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-[calc(--spacing(1.25))] hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+        // `line` is an underline, not a pill — its active trigger keeps no
+        // fill and no border in either theme. Unprefixed rather than `dark:`
+        // only, so it also overrides the new `data-active:border-border`
+        // below in light mode.
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         // Same surface as `tabPillSurface`, spelled with `data-active:` since
-        // it paints on the trigger itself. Keep the two in step.
-        "data-active:bg-raised data-active:shadow-sm data-active:text-foreground dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
+        // it paints on the trigger itself. Keep the two in step. The base
+        // class already carries `border`; only the colour needs to switch.
+        "data-active:border-border data-active:bg-raised data-active:shadow-sm data-active:text-foreground dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}

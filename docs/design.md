@@ -685,6 +685,11 @@ roles) spreads the hook onto its container and marks its parts:
 `data-drag-pill` on the sliding surface, `data-drag-segment` on each choice. The
 pill's transform then adds `var(--tab-drag, 0px)`, which is 0 at rest.
 
+Container and pill both carry `border border-border` — the same light stroke,
+never one without the other. `tabPillSurface` (the pill's fill + shadow +
+border) is the one export every pill draws from, hand-rolled ones included, so
+none of them can drift back apart the way they had before it existed.
+
 Six rules, each of which is a thing that broke while it was being built:
 
 | Rule | Why |
@@ -693,16 +698,37 @@ Six rules, each of which is a thing that broke while it was being built:
 | Mouse and pen only, never touch | A touch drag across a strip is how the page under it scrolls. |
 | The release commits to the **nearest segment centre**, measured | Tabs are rarely equal widths, so "one width per step" quietly mis-selects on a strip whose middle label is longer. |
 | The pill does not transition while it is held | The offset is already per-frame; a transition on top of it lags the hand. |
-| Pointer capture is taken on the first *move*, not on the way down | Capturing at pointerdown retargets the click to the capture element, and a plain tap stops selecting anything. |
+| Tracked on `window` from the moment the pointer goes down, not through the strip's own bubbling handlers | See below — a narrow strip's first move sample routinely lands outside it. |
 | A release that travelled swallows the click it lands on | Otherwise the segment under the mouse activates too, which is frequently the one being dragged away from. Stopped in the capture phase; `preventDefault` alone does not reach a React handler. |
+
+**The tracking rule replaced pointer capture, and the reason is a bug that
+shipped and was found live.** Capture used to be taken on the first *move*
+past a slop threshold rather than on the way down, because capturing
+immediately retargets the click that follows to the capturing element and a
+plain tap stops selecting anything. That traded one failure for another: a
+synthetic React event only fires when the native event's target is inside the
+listening element's own subtree, and without capture already active, a
+pointermove whose first sample has already left that subtree — an
+ordinary-speed drag on the 152px-wide list/card toggle clears it in a single
+native sample — never reaches the handler at all. Capture was then never
+taken, no later move fared any better, and the pill sat dead at rest for the
+rest of the gesture: `data-dragging` stuck true, the cursor stuck `grabbing`,
+until the next pointerdown reset it. `ProfileSwitcher`'s own copy of the
+gesture had the identical hole, just harder to hit on its wider control.
+`window` sees every pointer event in the document regardless of what is
+currently under the cursor, so tracking there needs no capture and the
+plain-tap case it was protecting stays protected for free.
 
 The one control deliberately outside the hook is `ProfileSwitcher`, which
 carries its own copy: committing there is a *navigation*, so the pill must latch
 where it landed until the route arrives rather than springing home and sliding
 across a second time when it does.
 
-Verified in `e2e/tabs.spec.ts` against `/preview/tabs`, because every rule above
-is a measurement and jsdom reports every box as zero.
+Verified in `e2e/tabs.spec.ts` against `/preview/tabs` and in
+`ProfileSwitcher.test.tsx`, both confirmed red before the `window`-tracking fix:
+a single un-interpolated jump past the strip's own edge in the first case, a
+`pointermove` fired on `document.body` (outside the render root's ancestor
+chain, so React's delegated listener cannot see it either) in the second.
 
 ---
 
@@ -961,3 +987,15 @@ Append a line when a rule here changes. Keep it to one line and name the
   was being added to it twice. `ProfileSwitcher` stays outside the hook, because
   committing there is a navigation and its pill has to latch until the route
   lands.
+- **26 August 2026.** **§2.7.** Two fixes, found from one screenshot. The
+  container and every pill now carry the same light `border-border` stroke —
+  `tabPillSurface` gained it, `ProfileSwitcher`'s own copy lost the duplicate it
+  had been carrying alone since before the surface was shared. And the drag
+  itself was silently breaking on an ordinary-speed gesture across the list/card
+  toggle (152px, narrower than most): pointer capture taken lazily on the first
+  move past the slop threshold never engaged, because that first move had
+  already landed outside the strip before the handler saw it. The pill stuck
+  dead at rest, cursor stuck `grabbing`, for the rest of the gesture.
+  `ProfileSwitcher`'s own copy had the identical hole. Both now track on
+  `window` from pointerdown, which needs no capture at all. New tests in
+  `e2e/tabs.spec.ts` and `ProfileSwitcher.test.tsx`, both confirmed red first.

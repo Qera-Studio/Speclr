@@ -134,6 +134,10 @@ export default function ProfileSwitcher({
   const [latch, setLatch] = useState<{ direction: -1 | 1; from: Profile } | null>(null);
   /** Whether the pointer travelled far enough that the release was a drag. */
   const moved = useRef(false);
+  /** Mirrors `drag.offset`, read synchronously at release — see `beginDrag`. */
+  const offsetRef = useRef(0);
+  /** Tears down whichever `window` listeners the current drag attached. */
+  const cleanup = useRef<(() => void) | null>(null);
 
   const other = otherProfile(profile);
   const otherNav = NAV_BY_PROFILE[other];
@@ -189,41 +193,70 @@ export default function ProfileSwitcher({
 
   const beginDrag = (event: React.PointerEvent<HTMLElement>) => {
     if (event.button !== 0 || event.pointerType === "touch") return;
+    // A stray second pointerdown before the first drag's `pointerup` would
+    // otherwise stack listeners.
+    cleanup.current?.();
+
     // Zero-width in jsdom, and a zero span divides every drag to Infinity.
     const span = event.currentTarget.getBoundingClientRect().width / 2 || 1;
+    const startX = event.clientX;
     moved.current = false;
+    offsetRef.current = 0;
     setLatch(null);
-    setDrag({ startX: event.clientX, span, offset: 0 });
-  };
+    setDrag({ startX, span, offset: 0 });
 
-  const moveDrag = (event: React.PointerEvent<HTMLElement>) => {
-    if (!drag) return;
-    const raw = (event.clientX - drag.startX) / drag.span;
-    if (Math.abs(raw) > DRAG_SLOP && !moved.current) {
-      moved.current = true;
-      // Captured here rather than on the way down, and that is the whole of a
-      // bug: capturing at pointerdown retargets the click to the capture
-      // element, so an ordinary tap on Admin stopped reaching the link and
-      // stopped switching profile. Nothing needs the events until the hand has
-      // actually moved.
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-    // Clamped to the ends: pulling left from the leftmost profile is inert
-    // rather than rubber-banding towards a page that will not open.
-    const offsetNow = Math.max(-index, Math.min(PROFILES.length - 1 - index, raw));
-    setDrag({ ...drag, offset: offsetNow });
-  };
+    /**
+     * Tracked on `window`, not through this element's own bubbling handlers
+     * — the same fix as `useTabDrag` in `ui/tabs.tsx`, and the same bug it
+     * fixes: the pointer capture this used to take on the first move past
+     * the slop threshold had a hole. Without capture already active, a
+     * pointermove whose *first* sample already lands outside the switcher's
+     * own bounds — an ordinary-speed drag on a 212px-wide control clears it
+     * easily — never reaches this handler at all, so capture was never
+     * taken, every later move suffered the same fate, and the pill sat dead
+     * at rest for the whole gesture with no navigation on release. Confirmed
+     * with a single un-interpolated jump from inside the control to past its
+     * far edge, before this fix, which left the pill at `translateX(0)` and
+     * the URL unchanged. `window` sees every pointer event in the document
+     * regardless of what is under the cursor, so no capture is needed; a
+     * plain, no-movement tap on Admin still reaches the link untouched.
+     */
+    const handleMove = (moveEvent: PointerEvent) => {
+      const raw = (moveEvent.clientX - startX) / span;
+      if (Math.abs(raw) > DRAG_SLOP) moved.current = true;
+      // Clamped to the ends: pulling left from the leftmost profile is inert
+      // rather than rubber-banding towards a page that will not open.
+      const offsetNow = Math.max(-index, Math.min(PROFILES.length - 1 - index, raw));
+      offsetRef.current = offsetNow;
+      setDrag((current) => (current ? { ...current, offset: offsetNow } : current));
+    };
 
-  const endDrag = () => {
-    if (!drag) return;
-    const settled = drag.offset;
-    setDrag(null);
-    if (Math.abs(settled) < COMMIT_AT) return;
-    const direction = settled > 0 ? 1 : -1;
-    const next = PROFILES[index + direction];
-    if (!next) return;
-    setLatch({ direction, from: profile });
-    router.push(entryHref(next, entries));
+    const finish = (commit: boolean) => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+      cleanup.current = null;
+      const settled = offsetRef.current;
+      setDrag(null);
+      if (!commit || Math.abs(settled) < COMMIT_AT) return;
+      const direction = settled > 0 ? 1 : -1;
+      const next = PROFILES[index + direction];
+      if (!next) return;
+      setLatch({ direction, from: profile });
+      router.push(entryHref(next, entries));
+    };
+
+    const handleUp = () => finish(true);
+    const handleCancel = () => finish(false);
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleCancel);
+    cleanup.current = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+    };
   };
 
   return (
@@ -232,9 +265,6 @@ export default function ProfileSwitcher({
     <nav
       aria-label="Profile"
       onPointerDown={beginDrag}
-      onPointerMove={moveDrag}
-      onPointerUp={endDrag}
-      onPointerCancel={() => setDrag(null)}
       // A release that travelled is a drag, and the link underneath it must not
       // also fire — it would navigate to whichever half the mouse happened to
       // come up over, which is frequently the one being dragged away from.
@@ -254,13 +284,15 @@ export default function ProfileSwitcher({
         exactly this — it exists because the hand-rolled pills had drifted, and
         this was a fourth one that had: `bg-sidebar` on `bg-sidebar-accent/50` is
         a 0.7% lightness difference in the light theme, which is to say none.
+        Its border is drawn inside the pill's box (border-box sizing, the
+        Tailwind default), so it costs no width and the translate still lands
+        it exactly over the other half — this pill carried that border on its
+        own before `tabPillSurface` generalised it to every tab strip.
       */}
       <span
         aria-hidden="true"
         className={cn(
-          // The border is drawn inside the pill's box, so it costs no width and
-          // the translate still lands it exactly over the other half.
-          'pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md border border-border',
+          'pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md',
           tabPillSurface,
           // Untransitioned while dragging — the offset is already per-frame, and
           // a transition on top of it lags the fingers. Everything else,
