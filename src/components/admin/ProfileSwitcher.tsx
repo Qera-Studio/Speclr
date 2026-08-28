@@ -1,39 +1,24 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { tabPillSurface } from '@/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { useSidebar } from '@/components/ui/sidebar';
-import { PROFILES, type Profile } from '@/lib/profile';
-import { useProfileEntries } from '@/lib/useProfile';
-import { NAV_BY_PROFILE } from './nav';
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { PROFILES, type Profile } from "@/lib/profile";
+import { useProfileEntries } from "@/lib/useProfile";
+import { NAV_BY_PROFILE } from "./nav";
 
 /**
- * The Client / Admin switcher, at the top of the nav.
+ * The Client / Admin switcher, beside the wordmark in `TopPanel`.
  *
  * speclr is two applications sharing one shell, and this is the only control
- * that crosses between them. It sits directly under the wordmark because it
- * scopes everything below it — the nav, the home, ⌘D and ⌘K all belong to
+ * that crosses between them — the nav, the home, ⌘D and ⌘K all belong to
  * whichever half is selected.
  *
  * **Two links, not a tablist.** `ui/tabs.tsx` would have been the closer visual
  * match, but `role="tablist"` promises a screen reader that activating a tab
  * swaps a panel in place. These navigate to a different page. Links that look
  * like tabs are honest; tabs that are secretly links are not.
- *
- * **Collapsed, it is one square button, not two stacked halves.** Stacking a
- * pair into the icon rail made a tall oval that lined up with nothing: the rows
- * below are 32px squares, and a two-row control cannot be one. So the rail gets
- * the same affordance `ThemeToggle` uses one group down — the *current* value,
- * clickable to change — in exactly the box `sidebarMenuButtonVariants` gives a
- * nav row, so the two icons share an edge.
  */
 
 /**
@@ -83,17 +68,20 @@ export function useStepProfile(current: Profile) {
 /**
  * Where a profile reopens: the last page seen there, else its home.
  *
- * Shared by the swipe, the collapsed square and the expanded pair so all three
- * land in the same place. A switch that resumed from one control and reset from
- * another would be worse than one that always reset.
+ * Shared by the swipe and the pill's two links so both land in the same
+ * place. A switch that resumed from one control and reset from another would
+ * be worse than one that always reset.
  */
-function entryHref(profile: Profile, entries: Partial<Record<Profile, string>>): string {
+function entryHref(
+  profile: Profile,
+  entries: Partial<Record<Profile, string>>,
+): string {
   return entries[profile] ?? NAV_BY_PROFILE[profile].home.href;
 }
 
 /** The other one. With two profiles this is total — no fallback to reason about. */
 export function otherProfile(profile: Profile): Profile {
-  return profile === 'client' ? 'admin' : 'client';
+  return profile === "client" ? "admin" : "client";
 }
 
 /** Release past this fraction of the way across commits; short of it, springs back. */
@@ -121,8 +109,6 @@ export default function ProfileSwitcher({
   offset?: number;
   dragging?: boolean;
 }) {
-  const { state, isMobile } = useSidebar();
-  const collapsed = state === 'collapsed' && !isMobile;
   const entries = useProfileEntries();
   const router = useRouter();
   const [drag, setDrag] = useState<{
@@ -131,45 +117,16 @@ export default function ProfileSwitcher({
     span: number;
     offset: number;
   } | null>(null);
-  const [latch, setLatch] = useState<{ direction: -1 | 1; from: Profile } | null>(null);
+  const [latch, setLatch] = useState<{
+    direction: -1 | 1;
+    from: Profile;
+  } | null>(null);
   /** Whether the pointer travelled far enough that the release was a drag. */
   const moved = useRef(false);
   /** Mirrors `drag.offset`, read synchronously at release — see `beginDrag`. */
   const offsetRef = useRef(0);
   /** Tears down whichever `window` listeners the current drag attached. */
   const cleanup = useRef<(() => void) | null>(null);
-
-  const other = otherProfile(profile);
-  const otherNav = NAV_BY_PROFILE[other];
-  const currentNav = NAV_BY_PROFILE[profile];
-  const CurrentIcon = currentNav.icon;
-
-  // Collapsed: one square showing where you are, linking to the other side.
-  // A Link, not ThemeToggle's button — a profile *is* a URL, so ⌘-click, middle
-  // click and the browser's own status-bar preview all keep working for free.
-  if (collapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Link
-              href={entryHref(other, entries)}
-              aria-label={`Profile: ${currentNav.label}. Switch to ${otherNav.label}`}
-              // Not `self-center`: the rows below start at the header's left
-              // padding, so centring this one in the rail put it a few pixels
-              // off their shared centre line.
-              className="flex size-8 items-center justify-center rounded-[calc(var(--radius-sm)+2px)] text-sidebar-foreground transition-colors hover:bg-sidebar-hover hover:text-sidebar-accent-foreground"
-            >
-              <CurrentIcon className="size-4" aria-hidden="true" />
-            </Link>
-          }
-        />
-        <TooltipContent side="right">
-          {currentNav.label} — tap to change
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
 
   const index = PROFILES.indexOf(profile);
 
@@ -226,9 +183,14 @@ export default function ProfileSwitcher({
       if (Math.abs(raw) > DRAG_SLOP) moved.current = true;
       // Clamped to the ends: pulling left from the leftmost profile is inert
       // rather than rubber-banding towards a page that will not open.
-      const offsetNow = Math.max(-index, Math.min(PROFILES.length - 1 - index, raw));
+      const offsetNow = Math.max(
+        -index,
+        Math.min(PROFILES.length - 1 - index, raw),
+      );
       offsetRef.current = offsetNow;
-      setDrag((current) => (current ? { ...current, offset: offsetNow } : current));
+      setDrag((current) =>
+        current ? { ...current, offset: offsetNow } : current,
+      );
     };
 
     const finish = (commit: boolean) => {
@@ -274,30 +236,37 @@ export default function ProfileSwitcher({
         event.preventDefault();
       }}
       className={cn(
-        'relative flex items-center rounded-lg border border-border bg-muted p-[3px]',
-        drag ? 'cursor-grabbing select-none' : 'cursor-grab',
+        // No border, no fill, no shadow. The active pill is the whole of the
+        // control's visible state, and an outline around it was a second edge
+        // saying what the fill already says on a header that is one flat band.
+        "relative flex items-center",
+        drag ? "cursor-grabbing select-none" : "cursor-grab",
       )}
     >
       {/*
-        The raised surface, drawn once and translated, rather than painted on
-        whichever link is active. `tabPillSurface` is `ui/tabs.tsx`'s export for
-        exactly this — it exists because the hand-rolled pills had drifted, and
-        this was a fourth one that had: `bg-sidebar` on `bg-sidebar-accent/50` is
-        a 0.7% lightness difference in the light theme, which is to say none.
-        Its border is drawn inside the pill's box (border-box sizing, the
-        Tailwind default), so it costs no width and the translate still lands
-        it exactly over the other half — this pill carried that border on its
-        own before `tabPillSurface` generalised it to every tab strip.
+        The fill behind the active half, drawn once and translated rather than
+        painted on whichever link is active — which is what lets the drag move
+        it per frame.
+
+        No shadow, no border and no container around it: the fill is the whole
+        of the state now, which is why `--raised` is a shade *down* the taupe
+        ramp rather than white. `bg-card` and `bg-background` were both tried
+        and are the same 0.986 as the header, so the pill came out identical to
+        the ground behind it and only a hairline said anything.
+
+        `bg-raised` is the token written for this exact surface: "the pill that
+        sits on a track, the active tab, the active profile". Both its values
+        are measured by the contrast suite, which a `bg-white` written here
+        would have slipped straight past.
       */}
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md',
-          tabPillSurface,
+          "pointer-events-none absolute inset-y-0 left-0 z-0 w-1/2 rounded-md bg-raised",
           // Untransitioned while dragging — the offset is already per-frame, and
           // a transition on top of it lags the fingers. Everything else,
           // including the committed hold that outlasts the gesture, animates.
-          !live && 'transition-transform duration-200 ease-standard',
+          !live && "transition-transform duration-200 ease-standard",
         )}
         style={{ transform: `translateX(${(index + shown) * 100}%)` }}
       />
@@ -312,14 +281,19 @@ export default function ProfileSwitcher({
             // "take me back to the top" affordance. The side you are not on
             // links to where you left it.
             href={active ? nav.home.href : entryHref(value, entries)}
-            aria-current={active ? 'page' : undefined}
+            aria-current={active ? "page" : undefined}
             // A link is natively draggable, and holding one and moving starts
             // the browser's own drag with its ghost image, which cancels the
             // pointer stream before the pill ever sees it. This is what made
             // the gesture feel dead over the labels.
             draggable={false}
             className={cn(
-              'relative z-10 flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors',
+              // `px-3`, up from `px-2`. The pill is exactly half the control
+              // and the two halves are adjacent by construction, so the air
+              // between the labels is the links' own padding: widening it is
+              // what separates them without introducing a gap the pill would
+              // then have to be short of.
+              "relative z-10 flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors",
               // Exactly the rail's own two weights. A nav row below never
               // changes colour to say it is active — `sidebarMenuButtonVariants`
               // moves the *background* and leaves the label on
@@ -329,8 +303,8 @@ export default function ProfileSwitcher({
               // both read as ink beside it; they are hover and press colours
               // here, not resting ones.
               active
-                ? 'text-sidebar-foreground'
-                : 'text-muted-foreground hover:text-sidebar-foreground',
+                ? "text-sidebar-foreground"
+                : "text-muted-foreground hover:text-sidebar-foreground",
             )}
           >
             <Icon className="size-3.5 shrink-0" aria-hidden="true" />

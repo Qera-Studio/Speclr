@@ -1,12 +1,8 @@
 "use client";
 
-import { ArrowLeft, PanelRight } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-} from "@/components/ui/sidebar";
+import { ArrowLeft, PanelRight } from "lucide-react";
+import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -51,9 +47,9 @@ export const EDITOR_RAIL_WIDTH = 352;
  * page content has registered, and says why.
  */
 export default function EditorSidebar() {
-  const panel = useEditorPanel();
   const router = useRouter();
   const pathname = usePathname();
+  const panel = useEditorPanel();
   if (!panel) return null;
 
   const {
@@ -63,10 +59,7 @@ export default function EditorSidebar() {
     drawer,
     setDrawer,
     count,
-    title,
     open,
-    setOpen,
-    requestClose,
   } = panel;
   const hasContent = count > 0;
   // A page with nothing editable can't be expanded; collapse if content goes.
@@ -75,14 +68,32 @@ export default function EditorSidebar() {
   return (
     <Sidebar
       side="right"
-      variant="inset"
+      variant="sidebar"
       collapsible="icon"
       data-editor-rail=""
+      // No seam of its own. `variant="sidebar"` draws a `border-l` here, which
+      // is a stroke on the *inside* of this box: the rail is `bg-sidebar`, a
+      // different fill from the inset, so a line sitting on that fill reads as
+      // a rule drawn inside the panel rather than as the join between two
+      // panels. It also cut a pixel out of the rail's own 352px while the nav's
+      // seam cuts one out of the nav, so the two were not mirror images.
+      //
+      // Both seams are drawn by the middle column now: the nav's `border-r` on
+      // its own right edge, and the inset's `border-r` in `AdminShell` on its
+      // right. Same box, same ink, symmetric, and neither one lands on the
+      // sidebar fill. That also settles the colour problem this class used to
+      // solve by hand: the inset is outside `[data-editor-rail]`, so `--border`
+      // there is the app's value with no override to work around.
+      className="group-data-[side=right]:border-l-0"
       state={expanded ? "expanded" : "collapsed"}
       style={
         {
           "--sidebar-width": `${EDITOR_RAIL_WIDTH}px`,
-          "--sidebar-width-icon": "2.5rem",
+          // 3rem, matching the nav's collapsed strip. It is also what the
+          // toggle's alignment needs: at 2.5rem a right-aligned 28px button
+          // with 12px of padding leaves 0 on its left and reads as pushed
+          // against the seam.
+          "--sidebar-width-icon": "3rem",
         } as React.CSSProperties
       }
     >
@@ -105,9 +116,51 @@ export default function EditorSidebar() {
 
         The track is `overflow-hidden` only while the rail is expanded: it is
         what clips the pane on its way past the edge, and a collapsed rail is
-        2.5rem wide with a tooltip-bearing button in it.
+        3rem wide with a tooltip-bearing button in it.
+      */}
+      {/*
+        The rail's collapse toggle, floated over the header row rather than
+        placed in it.
+
+        It was in `TopPanel` while that bar was divided into rail-width columns.
+        The bar is one band now, and a control that opens this column belongs on
+        the column. But it cannot go *inside* the track below: that pane is
+        `inert` while the drawer is over it, and hidden entirely at the icon
+        width, and this is the one control that has to survive both.
+
+        So it is a sibling of the track, absolutely placed in the same 3rem
+        the two panes give their own headers, at the right edge where the
+        titles' text runs out. A second stacked row would have been the obvious
+        way to keep it outside, and would have given the rail two header bars.
+
+        `z-20` clears the drawer, which is `absolute inset-0` over the same box.
+
+        It keeps `px-3` and its right alignment at *both* widths, rather than
+        centring in the collapsed strip. That is what puts it directly under the
+        notifications bell: the header also pads 12px from the right edge and
+        its bell is the same 28px box, so both centres land 26px in. Centring in
+        the 3rem strip would have put this one 24px in — two pixels off, which
+        is exactly the kind of miss that reads as sloppy rather than as a
+        different decision.
       */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden group-data-[collapsible=icon]:overflow-visible">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-end px-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!hasContent}
+            onClick={() =>
+              expanded ? panel.requestClose() : panel.setOpen(true)
+            }
+            aria-label={expanded ? "Collapse edit panel" : "Expand edit panel"}
+            title={hasContent ? undefined : "No editable content on this page"}
+            className="pointer-events-auto size-7 shrink-0 text-muted-foreground"
+          >
+            <PanelRight className="size-4" />
+          </Button>
+        </div>
+
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col duration-200 ease-standard",
@@ -124,79 +177,60 @@ export default function EditorSidebar() {
           aria-hidden={drawer !== null}
         >
           {/*
-        The rule matters: a page can put its own back button at the top of the
-        panel, and two back arrows stacked with nothing between them read as one
-        control that has been drawn twice.
+        The rail's own header, matching the drawer's row below it.
+
+        It sat in `TopPanel` while that bar was divided into three columns of
+        rail width. The bar is one unbroken band now, so a document title in it
+        would appear and disappear mid-header as this rail opened, which is the
+        thing that band exists to stop. A title belongs to the panel it names.
+
+        The collapse toggle is not in this row: it sits above the track, where
+        it survives both the drawer sliding over this pane and the rail
+        collapsing to its icon strip. This row goes with the form it names.
+
+        The back arrow leaves the page, so it confirms first: the draft's
+        unsaved edits live in the form, not the server. It is a different
+        control from the drawer's, which returns to the form behind it.
       */}
-          {/*
-        `h-14`, matching the page header and the wordmark row on the far side.
-        The three sit at the top of the three columns and were on three
-        different centre lines, which is the sort of thing nobody reports and
-        everybody sees. The toggle stays *here* rather than moving into the page
-        header: it belongs to the rail it opens, and that is also the only place
-        it can be found once the rail is collapsed to a strip.
-      */}
-          <SidebarHeader className="h-14 flex-row items-center justify-between gap-2 border-b px-3 py-0 group-data-[collapsible=icon]:border-b-0">
-            {/*
-          A back arrow, left of the title. There is rarely anywhere to go "back"
-          to in a single-page editor, but people reach for one before they reach
-          for a collapse icon — the first thing someone shown this rail asked was
-          how to go back. It leaves the page, so it confirms first: the draft's
-          unsaved edits live in the form, not the server.
-        */}
-            <div className="flex min-w-0 items-center gap-1 group-data-[collapsible=icon]:hidden">
-              <AlertDialog>
-                <AlertDialogTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Go back"
-                      className="size-7 shrink-0 text-muted-foreground"
-                    >
-                      <ArrowLeft className="size-4" />
-                    </Button>
-                  }
-                />
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Leave this page?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Anything you have not saved will be lost.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Stay</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => router.push(parentHref(pathname))}
-                    >
-                      Leave
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <span className="truncate text-sm font-semibold">
-                {title ?? "Edit"}
-              </span>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={!hasContent}
-              onClick={() => (expanded ? requestClose() : setOpen(true))}
-              aria-label={
-                expanded ? "Collapse edit panel" : "Expand edit panel"
-              }
-              title={
-                hasContent ? undefined : "No editable content on this page"
-              }
-              className="text-muted-foreground"
-            >
-              <PanelRight className="size-4" />
-            </Button>
-          </SidebarHeader>
+          {/* `pr-10` clears the floated collapse toggle above (12px of padding
+              plus its 28px box), so a long title truncates before it reaches
+              the button rather than under it. */}
+          <div className="flex h-12 shrink-0 items-center gap-1 border-b pr-10 pl-3 group-data-[collapsible=icon]:hidden">
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Go back"
+                    className="size-7 shrink-0 text-muted-foreground"
+                  >
+                    <ArrowLeft className="size-4" />
+                  </Button>
+                }
+              />
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave this page?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Anything you have not saved will be lost.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Stay</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => router.push(parentHref(pathname))}
+                  >
+                    Leave
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <span className="truncate text-sm font-semibold">
+              {panel.title ?? "Edit"}
+            </span>
+          </div>
 
           <SidebarContent className="no-scrollbar gap-0 p-4 group-data-[collapsible=icon]:hidden">
             {/* The portal target. Kept mounted so panels can fill it at any time. */}
@@ -216,10 +250,11 @@ export default function EditorSidebar() {
         </div>
 
         {/*
-        The drawer. Its header sits on the rail's own centre line (`h-14`, the
-        same as the page header and the wordmark row) and carries the same
-        collapse toggle, because that button is the only way to shut the rail
-        and it must not disappear for as long as the drawer is up.
+        The drawer, covering the pane above along with its header. Its back
+        arrow is a different control from the form pane's: that one leaves the
+        page, this one returns to the form behind it. The collapse toggle is
+        above both, floated over this row, which is why it alone still answers
+        while this is open.
       */}
         <div
           className={cn(
@@ -230,7 +265,7 @@ export default function EditorSidebar() {
           inert={drawer === null}
           aria-hidden={drawer === null}
         >
-          <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-3">
+          <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b pr-10 pl-3">
             <div className="flex min-w-0 items-center gap-1">
               <Button
                 type="button"
@@ -244,16 +279,6 @@ export default function EditorSidebar() {
               </Button>
               <span className="truncate text-sm font-semibold">{drawer}</span>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={requestClose}
-              aria-label="Collapse edit panel"
-              className="text-muted-foreground"
-            >
-              <PanelRight className="size-4" />
-            </Button>
           </div>
           <div
             ref={setOverlayHost}

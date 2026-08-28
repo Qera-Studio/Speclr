@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
+import TopPanel from "./TopPanel";
 // Parked: the left nav is fixed-width for now. Kept wired up (and tested) so
 // drag-resize can be revived by restoring the width state and the handle below.
 // import SidebarResizeHandle from './SidebarResizeHandle';
@@ -51,11 +52,10 @@ import { OfflineBar } from "./OfflineBar";
  * oversized at the same number. They are not peers — one is navigation, the
  * other is the document being worked on.
  *
- * The number includes the `variant="inset"` gutter: `Sidebar` puts `p-2` on the
- * fixed container, so the visible panel is 16px narrower than this. 252 here is
- * the 236px rail that was asked for.
+ * The rail is `variant="sidebar"`, which takes no `p-2` gutter, so this number
+ * is the visible width: 236px, as asked for.
  */
-const NAV_WIDTH = 252;
+const NAV_WIDTH = 236;
 
 export default function AdminShell({
   user,
@@ -105,11 +105,19 @@ export default function AdminShell({
           // that walks up every ancestor scroll box. That pushed the header off
           // the top of the shell with no way to bring it back. `clip` creates no
           // scroll container at all, so there is nothing left to shift.
-          className="h-svh min-h-svh overflow-clip"
+          className="h-svh min-h-svh flex-col overflow-clip"
           style={
             {
+              // `Sidebar`'s fixed panel reads this to start below `TopPanel`
+              // instead of at the true viewport top — see `ui/sidebar.tsx`.
+              // Matches `TopPanel`'s own `h-12`.
+              "--top-panel-height": "3rem",
               "--sidebar-width": `${NAV_WIDTH}px`,
-              "--sidebar-width-icon": "2.5rem",
+              // 3rem, not 2.5. `SidebarGroup` carries `px-2` and a collapsed
+              // menu button is `size-8`, so a row needs 8 + 32 + 8 = 48px to
+              // sit with equal air on both sides. At 40 the right-hand 8px had
+              // nowhere to go and every icon looked shoved against the seam.
+              "--sidebar-width-icon": "3rem",
             } as React.CSSProperties
           }
         >
@@ -128,33 +136,42 @@ export default function AdminShell({
               provider so it sits under the same profile, outside the sidebar
               so both work from the editor rail as well. */}
           <KeyboardShortcuts profile={profile} />
-          <AdminSidebar user={user} profile={profile} />
-          {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
-          <SidebarInset
-            insetRight
-            // `overflow-clip` for the same reason as the shell above: this only
-            // ever needed to clip the inset's rounded corners, and being a
-            // scroll container was an accident the browser could exploit.
-            className="min-h-0 overflow-clip"
-          >
-            {/* Above the header rather than over the content: it is a fact
-                about the whole app, and it must not cover a control. */}
-            <OfflineBar />
-            <AdminHeader />
-            {/* The skip link's target. Not the `<main>` itself: `SidebarInset`
-                already is one, and it holds the header the link exists to skip.
-                `tabIndex` because a div is not focusable, and a skip link that
-                moves the scroll without moving the focus leaves the next Tab
-                back at the rail it just skipped. */}
-            <div
-              id="main-content"
-              tabIndex={-1}
-              className="min-h-0 flex-1 overflow-y-auto outline-none"
+          <TopPanel profile={profile} />
+          <div className="flex min-h-0 flex-1">
+            <AdminSidebar user={user} profile={profile} />
+            {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
+            <SidebarInset
+              // `overflow-clip` for the same reason as the shell above: this only
+              // ever needed to clip the inset's rounded corners, and being a
+              // scroll container was an accident the browser could exploit.
+              //
+              // `border-r` is the seam against the editor rail, drawn here
+              // rather than by the rail itself. A border is a stroke on the
+              // inside of its own box, so a `border-l` on the rail sat on the
+              // rail's `bg-sidebar` fill and read as a line *inside* the panel.
+              // Owning both seams from the middle column makes them mirror
+              // images: nav's right edge, inset's right edge, one ink.
+              className="min-h-0 overflow-clip border-r border-border"
             >
-              {children}
-            </div>
-          </SidebarInset>
-          <EditorSidebar />
+              {/* Above the header rather than over the content: it is a fact
+                  about the whole app, and it must not cover a control. */}
+              <OfflineBar />
+              <AdminHeader />
+              {/* The skip link's target. Not the `<main>` itself: `SidebarInset`
+                  already is one, and it holds the header the link exists to skip.
+                  `tabIndex` because a div is not focusable, and a skip link that
+                  moves the scroll without moving the focus leaves the next Tab
+                  back at the rail it just skipped. */}
+              <div
+                id="main-content"
+                tabIndex={-1}
+                className="min-h-0 flex-1 overflow-y-auto outline-none"
+              >
+                {children}
+              </div>
+            </SidebarInset>
+            <EditorSidebar />
+          </div>
         </SidebarProvider>
       </NewDocumentProvider>
     </EditorPanelProvider>

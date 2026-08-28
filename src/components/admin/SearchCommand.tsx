@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useId, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Shortcut } from '@/components/ui/kbd';
-import { cn } from '@/lib/utils';
-import { DEFAULT_PROFILE, profileFromPath } from '@/lib/profile';
-import { searchAll, type SearchHit } from '@/server/actions/search';
+import { useEffect, useId, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Shortcut } from "@/components/ui/kbd";
+import { cn } from "@/lib/utils";
+import { DEFAULT_PROFILE, profileFromPath } from "@/lib/profile";
+import { searchAll, type SearchHit } from "@/server/actions/search";
 
 /**
  * The header search, scoped to the current profile: the client side finds
@@ -36,7 +36,7 @@ export default function SearchCommand() {
   const listId = `${inputId}-results`;
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,40 +79,43 @@ export default function SearchCommand() {
       // `document`, so it sees every keydown on the page — including synthetic
       // ones from component libraries and autofill that carry no `key` at all.
       // `event.key.toLowerCase()` on one of those took the whole page down.
-      if ((event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)) {
+      if (
+        (event.key === "k" || event.key === "K") &&
+        (event.metaKey || event.ctrlKey)
+      ) {
         event.preventDefault();
         inputRef.current?.focus();
         inputRef.current?.select();
       }
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   const go = (hit: SearchHit) => {
     setOpen(false);
-    setQuery('');
+    setQuery("");
     setHits([]);
     inputRef.current?.blur();
     router.push(hit.href);
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       setOpen(false);
       return;
     }
     if (!hits.length) return;
 
-    if (event.key === 'ArrowDown') {
+    if (event.key === "ArrowDown") {
       event.preventDefault();
       setOpen(true);
       setActive((i) => (i + 1) % hits.length);
-    } else if (event.key === 'ArrowUp') {
+    } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setOpen(true);
       setActive((i) => (i - 1 + hits.length) % hits.length);
-    } else if (event.key === 'Enter') {
+    } else if (event.key === "Enter") {
       event.preventDefault();
       const hit = hits[active];
       if (hit) go(hit);
@@ -124,7 +127,7 @@ export default function SearchCommand() {
   let lastGroup: string | null = null;
 
   return (
-    <div className="relative ml-auto w-full max-w-xs">
+    <div className="relative w-full max-w-md">
       <Search
         className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden="true"
@@ -138,7 +141,9 @@ export default function SearchCommand() {
         role="combobox"
         aria-expanded={showList}
         aria-controls={showList ? listId : undefined}
-        aria-activedescendant={showList && hits[active] ? `${listId}-${active}` : undefined}
+        aria-activedescendant={
+          showList && hits[active] ? `${listId}-${active}` : undefined
+        }
         autoComplete="off"
         className="pl-8 pr-14"
         value={query}
@@ -159,7 +164,7 @@ export default function SearchCommand() {
         <Shortcut
           aria-hidden="true"
           className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2"
-          keys={['mod', 'K']}
+          keys={["mod", "K"]}
         />
       )}
 
@@ -170,11 +175,19 @@ export default function SearchCommand() {
       {showList ? (
         <div className="absolute top-full -right-0.5 z-50 mt-1.5 w-[calc(100%+4px)] min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
           {hits.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground" role="status">
-              {loading ? 'Searching…' : 'No matches.'}
+            <p
+              className="px-3 py-2 text-xs text-muted-foreground"
+              role="status"
+            >
+              {loading ? "Searching…" : "No matches."}
             </p>
           ) : (
-            <ul id={listId} role="listbox" aria-label="Search results" className="max-h-80 overflow-y-auto py-1">
+            <ul
+              id={listId}
+              role="listbox"
+              aria-label="Search results"
+              className="max-h-80 overflow-y-auto py-1"
+            >
               {hits.map((hit, index) => {
                 const heading = hit.group !== lastGroup ? hit.group : null;
                 lastGroup = hit.group;
@@ -193,13 +206,15 @@ export default function SearchCommand() {
                       onMouseEnter={() => setActive(index)}
                       onClick={() => go(hit)}
                       className={cn(
-                        'flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left text-sm',
-                        index === active && 'bg-accent text-accent-foreground',
+                        "flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left text-sm",
+                        index === active && "bg-accent text-accent-foreground",
                       )}
                     >
                       <span className="truncate font-medium">{hit.label}</span>
                       {hit.hint ? (
-                        <span className="truncate text-xs text-muted-foreground">{hit.hint}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {hit.hint}
+                        </span>
                       ) : null}
                     </button>
                   </li>

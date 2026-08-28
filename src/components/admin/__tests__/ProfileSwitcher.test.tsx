@@ -1,7 +1,6 @@
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { PROFILE_COOKIE } from '@/lib/profile';
 import { rememberProfile } from '@/lib/useProfile';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import ProfileSwitcher, { otherProfile, useStepProfile } from '../ProfileSwitcher';
 
 const push = jest.fn();
@@ -19,9 +18,7 @@ beforeEach(() => {
   document.cookie = `${PROFILE_COOKIE}=; path=/; max-age=0`;
 });
 
-/** The switcher reads the rail's open state, so it needs the provider. */
-const renderIn = (ui: React.ReactNode, open = true) =>
-  render(<SidebarProvider open={open}>{ui}</SidebarProvider>);
+const renderIn = (ui: React.ReactNode) => render(ui);
 
 describe('ProfileSwitcher, expanded', () => {
   /**
@@ -127,32 +124,6 @@ describe('ProfileSwitcher, dragging the pill', () => {
     fireEvent.pointerMove(document.body, { pointerId: 1, clientX: 0.8 });
     fireEvent.pointerUp(document.body, { pointerId: 1, clientX: 0.8 });
     expect(push).toHaveBeenCalledWith('/admin');
-  });
-});
-
-/**
- * Collapsed, the pair becomes one square.
- *
- * Two rows stacked into the icon rail made a tall oval that lined up with
- * nothing — the nav rows below are 32px squares, and a two-row control cannot
- * be one. So the rail shows the *current* profile and links to the other, the
- * same affordance `ThemeToggle` uses one group down.
- */
-describe('ProfileSwitcher, collapsed', () => {
-  it('shows one control that leads to the other profile', () => {
-    renderIn(<ProfileSwitcher profile="client" />, false);
-
-    const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute('href', '/admin');
-  });
-
-  it('names where you are and where the control goes', () => {
-    renderIn(<ProfileSwitcher profile="admin" />, false);
-
-    expect(
-      screen.getByRole('link', { name: 'Profile: Admin. Switch to Client' }),
-    ).toBeInTheDocument();
   });
 });
 
@@ -275,9 +246,7 @@ describe('reopening where you left off', () => {
 
   it('resumes from the swipe too, so both controls agree', () => {
     remember('admin', '/admin/docs');
-    const { result } = renderHook(() => useStepProfile('client'), {
-      wrapper: ({ children }) => <SidebarProvider open>{children}</SidebarProvider>,
-    });
+    const { result } = renderHook(() => useStepProfile('client'));
     result.current(1);
     expect(push).toHaveBeenCalledWith('/admin/docs');
   });

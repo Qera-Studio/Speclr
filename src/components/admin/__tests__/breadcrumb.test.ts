@@ -1,4 +1,34 @@
-import { breadcrumbForPath, parentHref } from '../breadcrumb';
+import { breadcrumbForPath, isPrimaryPath, parentHref } from '../breadcrumb';
+
+/**
+ * The breadcrumb is suppressed on any page the sidebar links to, so this is
+ * what decides whether the trail appears at all. It reads the same nav
+ * definition `breadcrumbForPath` does, which is the point: adding a link to the
+ * nav must take its breadcrumb away in the same commit.
+ */
+describe('isPrimaryPath', () => {
+  it.each([
+    ['/admin', 'a profile home'],
+    ['/client', 'the other profile home'],
+    ['/client/clients', 'a nav link'],
+    ['/admin/spec', 'a nav link in the other profile'],
+    ['/client/clients/', 'a nav link with a trailing slash'],
+    ['/admin/spec?zoom=2', 'a nav link with a query string'],
+    ['/admin/settings', 'settings, reached from the account menu'],
+    ['/', 'a path outside both profiles'],
+  ])('treats %s as primary (%s)', (path) => {
+    expect(isPrimaryPath(path)).toBe(true);
+  });
+
+  it.each([
+    ['/admin/docs/abc123', 'one document'],
+    ['/client/docs/new/invoice', 'a create form'],
+    ['/client/clients/new', 'the onboarding flow'],
+    ['/client/clients/2f1b-uuid', 'one client'],
+  ])('treats %s as secondary (%s)', (path) => {
+    expect(isPrimaryPath(path)).toBe(false);
+  });
+});
 
 /**
  * Every trail is rooted at its *profile's* home rather than a global one: the

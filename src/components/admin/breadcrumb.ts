@@ -17,6 +17,27 @@ function leafLabels(profile: Profile): Record<string, string> {
   };
 }
 
+/**
+ * Whether this path is one the sidebar links to directly.
+ *
+ * A trail on such a page says nothing the nav does not already say, with the
+ * current page highlighted in it: "Dashboard > Clients" is one hop restated as
+ * two, above a rail that is showing you the same hop. Secondary pages are the
+ * ones worth a trail, because nothing else on screen says how you got there or
+ * offers the way back up.
+ *
+ * Read off the same `leafLabels` map the trail itself uses, so a link added to
+ * the nav loses its breadcrumb in the same commit rather than in whichever one
+ * somebody notices. The home is included by construction (it is a nav link) and
+ * so is Settings, which is primary in the way that matters here: it is reached
+ * from the account menu in one click and has no parent to walk back to.
+ */
+export function isPrimaryPath(pathname: string): boolean {
+  const clean = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+  const profile = profileFromPath(clean) ?? DEFAULT_PROFILE;
+  return clean === '/' || Boolean(leafLabels(profile)[clean]);
+}
+
 /** Turn a raw path segment into a human label ("exit-letter" → "Exit letter"). */
 function humanize(segment: string): string {
   const spaced = segment.replace(/[-_]+/g, ' ').trim();

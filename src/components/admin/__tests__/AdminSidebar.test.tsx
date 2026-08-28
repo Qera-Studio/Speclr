@@ -39,40 +39,8 @@ function renderSidebar({
 }
 
 describe('AdminSidebar', () => {
-  describe('profile switcher', () => {
-    it('offers both profiles, with the current one marked', () => {
-      renderSidebar({ profile: 'client' });
-      expect(screen.getByRole('link', { name: 'Client' })).toHaveAttribute('aria-current', 'page');
-      expect(screen.getByRole('link', { name: 'Admin' })).not.toHaveAttribute(
-        'aria-current',
-        'page',
-      );
-    });
-
-    /**
-     * Not a `tablist`: these navigate to another page rather than swapping a
-     * panel, and a screen reader promised tabs would be told the wrong thing.
-     */
-    it('links each profile at its own home', () => {
-      renderSidebar({ profile: 'admin' });
-      expect(screen.getByRole('link', { name: 'Client' })).toHaveAttribute('href', '/client');
-      expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
-      expect(screen.getByRole('navigation', { name: 'Profile' })).toBeInTheDocument();
-    });
-
-    /**
-     * Collapsed, the pair becomes one square linking to the other side — two
-     * rows stacked into the icon rail made a tall oval that lined up with none
-     * of the 32px nav rows below it.
-     */
-    it('collapses to a single control that leads to the other profile', () => {
-      renderSidebar({ open: false, profile: 'client' });
-      expect(
-        screen.getByRole('link', { name: 'Profile: Client. Switch to Admin' }),
-      ).toHaveAttribute('href', '/admin');
-      expect(screen.queryByRole('navigation', { name: 'Profile' })).not.toBeInTheDocument();
-    });
-  });
+  // The wordmark, sidebar toggle and ProfileSwitcher moved to `TopPanel` —
+  // see `TopPanel.test.tsx` and `ProfileSwitcher.test.tsx` for their coverage.
 
   describe('client profile', () => {
     /**
@@ -252,6 +220,24 @@ describe('AdminSidebar', () => {
       'href',
       '/client/clauses',
     );
+  });
+
+  /**
+   * The collapse toggle moved here out of `TopPanel`, which is one unbroken
+   * band now with nothing to do with either column. It sits outside
+   * `SidebarContent`, so it neither rides the profile track nor disappears
+   * with the collapse it performs — a toggle you cannot reach once you have
+   * used it is a one-way door.
+   */
+  it('carries its own collapse toggle, still reachable once collapsed', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar();
+    const rail = () => container.querySelector('[data-slot="sidebar"]');
+    expect(rail()).toHaveAttribute('data-state', 'expanded');
+
+    await clicker.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    expect(rail()).toHaveAttribute('data-state', 'collapsed');
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 
   it('no longer lists Settings in the nav — it moved into the account menu', () => {

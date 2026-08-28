@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, PanelLeft } from "lucide-react";
+import { ChevronRight, PanelLeft, Plus } from "lucide-react";
+import { Shortcut } from "@/components/ui/kbd";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Shortcut } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -29,10 +29,10 @@ import {
   type ProfileNav,
   type RailEntry,
 } from "./nav";
-import ProfileSwitcher, { useStepProfile } from "./ProfileSwitcher";
+import { useStepProfile } from "./ProfileSwitcher";
 import { useProfileDrag } from "./useProfileDrag";
 import UserCard, { type UserCardUser } from "./UserCard";
-import NewDocumentButton from "./NewDocumentButton";
+import { useNewDocument } from "./NewDocumentCommand";
 
 /**
  * Is this link the page we are on?
@@ -75,6 +75,43 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
             <span>{item.label}</span>
             <HoverArrow />
           </Link>
+        }
+      />
+    </SidebarMenuItem>
+  );
+}
+
+/**
+ * The create affordance, as a row in the same column as every page link.
+ *
+ * It was a ghost button above the menu, in `--sidebar-primary`, with its ⌘D
+ * keycap always showing. That made the app's one job look like a different
+ * kind of thing from the places you can go, on a rail whose whole job is a
+ * single column of rows. So it takes the menu button's own height, radius,
+ * icon size and taupe foreground, and differs from its neighbours only in
+ * opening the palette rather than navigating.
+ *
+ * The keycap fades in on hover, on the same `group/menu-button` the chevron
+ * above already uses. It does not also take a `HoverArrow`: two things
+ * appearing on one hover is noise, and the chevron means "this leads
+ * somewhere", which a palette does not.
+ */
+function NewDocumentRow() {
+  const { open } = useNewDocument();
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        className="text-sm"
+        tooltip="New document"
+        render={
+          <button type="button" onClick={open} aria-haspopup="dialog">
+            <Plus aria-hidden="true" />
+            <span>New document</span>
+            <Shortcut
+              className="ml-auto shrink-0 opacity-0 transition-opacity group-hover/menu-button:opacity-100 group-data-[collapsible=icon]:hidden"
+              keys={["mod", "D"]}
+            />
+          </button>
         }
       />
     </SidebarMenuItem>
@@ -139,7 +176,7 @@ function ProfileNavBody({
       // 100% *of the track* — two rails each — so the second body began two
       // rails along while the track only ever slides one, and the admin nav
       // rendered entirely off-screen.
-      className="flex w-1/2 shrink-0 flex-col"
+      className="flex w-1/2 shrink-0 flex-col pt-4"
     >
       {nav.rail ? (
         <FlatNavBody nav={nav} pathname={pathname} />
@@ -188,50 +225,27 @@ function GroupedNavBody({
   return (
     <SidebarGroup>
       <SidebarGroupContent>
-        {/* The app's one job, above every place you can go */}
-        {/* Same rounding collapsed as expanded, and the same
-            `--radius-sm`-based squircle the icon rows use. A radius that
-            changes with the rail animates on its own clock — the button
-            went pill-shaped a beat before the sidebar had moved. */}
-        <NewDocumentButton
-          variant="ghost"
-          // `--sidebar-primary`, not `--primary`: the dark theme puts
-          // primary at L .424, which on the near-black rail reads as a
-          // disabled link. The sidebar's own blue is L .623 — the token
-          // exists for exactly this surface.
-          className="h-8 w-full justify-start gap-2 rounded-[calc(var(--radius-sm)+2px)] text-sidebar-primary hover:text-sidebar-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-        >
-          <span className="group-data-[collapsible=icon]:hidden">
-            New document
-          </span>
-          {/* Grey keycaps beside blue text read as disabled. Tinted with
-              the button's own accent so they belong to it. */}
-          <Shortcut
-            className="ml-auto shrink-0 group-data-[collapsible=icon]:hidden [&_[data-slot=kbd]]:bg-sidebar-primary/10 [&_[data-slot=kbd]]:text-sidebar-primary/70"
-            keys={["mod", "D"]}
-          />
-        </NewDocumentButton>
-
         {/*
-          Dashboard, records, then the library — one menu, no headings and no
-          gap.
+          Dashboard, the create row, records, then the library — one menu, no
+          headings and no gap.
 
-          The document types are not listed here any more: ⌘D and the button
-          above are the way in, and `nav.documents` still feeds both.
+          The document types are not listed here any more: ⌘D and the create
+          row are the way in, and `nav.documents` still feeds both.
         */}
-        <SidebarMenu className="mt-1">
-          {[nav.home, ...nav.records, ...nav.groups.flatMap((g) => g.links)].map(
+        <SidebarMenu>
+          <MenuLink
+            item={nav.home}
+            // Home matches exactly — every URL on this side starts with it, so
+            // the prefix rule would leave Dashboard always lit.
+            active={pathname === nav.home.href}
+          />
+          <NewDocumentRow />
+          {[...nav.records, ...nav.groups.flatMap((g) => g.links)].map(
             (item) => (
               <MenuLink
                 key={item.href}
                 item={item}
-                // Home matches exactly — every URL on this side starts with
-                // it, so the prefix rule would leave Dashboard always lit.
-                active={
-                  item.href === nav.home.href
-                    ? pathname === item.href
-                    : isActiveHref(pathname, item.href)
-                }
+                active={isActiveHref(pathname, item.href)}
               />
             ),
           )}
@@ -290,51 +304,48 @@ export default function AdminSidebar({
   const shown = PROFILES[index + committed] ?? profile;
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
-      {/* `px-2` once collapsed, matching `SidebarGroup`'s own padding: at
-          `px-3` every icon in this header sat 4px right of every icon in the
-          rail below it. Expanded the wordmark keeps its wider inset. */}
-      <SidebarHeader className="gap-2 px-3 py-2 group-data-[collapsible=icon]:px-2">
-        {/* `h-10`, so the wordmark sits on the header's baseline rather than
-            six pixels above it. Both columns start 8px down (the inset gutter
-            on the rail, the `m-2` on the content frame) and the header is
-            `h-14`, so a 40px row under this block's own 8px of top padding puts
-            this text and the breadcrumb on the same centre line. They are the
-            two things a person reads first and they were not level. */}
-        <div className="flex h-10 flex-row items-center justify-between">
-          <span className="text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
-            speclr
-          </span>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleSidebar}
-                  aria-label="Toggle sidebar"
-                  // `size-icon` is 28px; a nav row collapsed is 32px. Matching
-                  // it is what puts this icon on the rail's centre line.
-                  className="text-muted-foreground group-data-[collapsible=icon]:size-8"
-                >
-                  <PanelLeft className="size-4" />
-                </Button>
-              }
-            />
-            <TooltipContent side="right">
-              Toggle sidebar
-              <Shortcut keys={["mod", "B"]} />
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <ProfileSwitcher
-          profile={profile}
-          offset={offset}
-          dragging={dragging}
-        />
-      </SidebarHeader>
+    <Sidebar collapsible="icon" variant="sidebar">
+      {/*
+        The rail's own collapse toggle. It was in `TopPanel` while that bar was
+        divided into rail-width columns; the bar is one band now, and a control
+        that opens this column belongs on it.
 
+        Outside `SidebarContent`, so it does not ride the profile track, and
+        with no `group-data-[collapsible=icon]:hidden`, so it survives the
+        collapse it performs — the icon strip is 3rem wide and this is the one
+        thing in it that has to stay hit-able.
+
+        `px-2` at both widths rather than `px-3` expanded and centred collapsed.
+        The rows below sit in a `SidebarGroup`'s own `px-2`, so this lines the
+        toggle's box up with theirs at the expanded width, and at the collapsed
+        one 8 + 32 + 8 fills the 3rem strip with equal air either side, which is
+        the same arithmetic that set `--sidebar-width-icon`.
+      */}
+      <SidebarHeader className="h-12 shrink-0 justify-center px-2 py-0">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                aria-label="Toggle sidebar"
+                // `size-8`, the same box a collapsed menu button takes, so the
+                // toggle and every icon below it share one column and one
+                // 8px margin on each side of the strip.
+                className="size-8 shrink-0 text-muted-foreground"
+              >
+                <PanelLeft className="size-4" />
+              </Button>
+            }
+          />
+          <TooltipContent side="right">
+            Toggle sidebar
+            <Shortcut keys={["mod", "B"]} />
+          </TooltipContent>
+        </Tooltip>
+      </SidebarHeader>
       {/*
         Both profiles' navs, side by side in a track the drag slides.
 

@@ -116,14 +116,35 @@
      for the page closes that gap and the shell reads flat. */
   --background: oklch(0.986 0.002 40);
   --foreground: oklch(0.145 0.005 40);
-  /* The pill that sits *on* a track: the active tab, the active profile. In
-     light mode it is the page surface, which is what it always was. In dark
-     mode it cannot be, because a raised thing has to be lighter than the track
-     under it. It was an alpha white over the ground, which composites grey
-     however warm the ground is: white has no hue to lend. So it is a real
-     taupe now, and this token exists so the two themes stop disagreeing about
-     what "raised" means. */
-  --raised: oklch(0.986 0.002 40);
+  /* The pill that sits *on* a track: the active tab, the active profile.
+
+     Taupe 300 in light mode: three steps *down* the ramp from the taupe 50 the
+     page and the header are, straight off the chroma curve above (0.92 →
+     0.005). Pure white was tried first and is the wrong direction: the ramp
+     already ends at 0.986, so a white pill is separated from its ground by the
+     last 1.4% of lightness and reads as a smudge rather than as a selection. A
+     shade darker is a real edge, and with no border and no container outline
+     it is the only thing carrying the state.
+
+     **This value and `--muted-foreground` are a pair, and every step down here
+     costs a step down there.** The *inactive* profile label is
+     muted-foreground and a pill mid-drag passes under it, so the two are
+     measured against each other in `TEXT_PAIRS`. 200 failed at 4.40:1 against
+     the 0.54 this token had for months; 300 needs 0.5125 to break even. That
+     is not a local cost: muted-foreground is every muted row, tooltip and
+     secondary column in the app, and it has now moved twice for this pill.
+     Taupe 400 would want roughly 0.48, at which point the "muted" ramp is no
+     longer meaningfully muted. See the note on `--muted-foreground` below.
+
+     In dark mode a raised thing has to go the other way, because it sits on a
+     darker track. It was an alpha white over the ground, which composites grey
+     however warm the ground is: white has no hue to lend. So the dark value is
+     a real taupe, and this token exists so the two themes stop disagreeing
+     about what "raised" means.
+
+     Both values are measured by `src/__tests__/contrast.test.ts`, which is why
+     this is a token rather than a `bg-white` written onto the pill. */
+  --raised: oklch(0.92 0.005 40);
   --card: oklch(0.986 0.002 40);
   --card-foreground: oklch(0.145 0.005 40);
   --popover: oklch(0.986 0.002 40);
@@ -135,8 +156,18 @@
   --muted: oklch(0.97 0.003 40);
   /* 0.556 was 4.34:1 on --muted, which is where this colour most often
      actually lands (hovered rows, tooltips, muted panels). It read as passing
-     because it was only ever measured against white. */
-  --muted-foreground: oklch(0.54 0.021 40);
+     because it was only ever measured against white.
+
+     0.54 then moved twice as `--raised` was stepped down the taupe ramp: to
+     0.53 for taupe 200, and to 0.51 for taupe 300. This colour is the
+     *inactive* profile label and a pill mid-drag passes under it, so the
+     darkest surface it lands on is no longer --muted but --raised, and each
+     step darker there raises this token's floor. Break-even against a 0.92
+     pill is 0.5125; 0.51 is one rounding step clear, at 4.57:1. Solved for
+     rather than nudged, and the direction of the dependency is worth keeping
+     in mind: the darkest surface this token sits on sets its ceiling, so
+     darkening any of them moves this one too. */
+  --muted-foreground: oklch(0.51 0.021 40);
   --accent: oklch(0.97 0.003 40);
   --accent-foreground: oklch(0.205 0.009 40);
   --destructive: oklch(0.577 0.245 27.325);

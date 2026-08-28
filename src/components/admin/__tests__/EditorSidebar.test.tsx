@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { EditorPanelProvider, EditorPanelContent } from '../EditorPanel';
 import EditorSidebar from '../EditorSidebar';
+import TopPanel from '../TopPanel';
 import WordingDrawer from '@/components/docs/editors/WordingDrawer';
 
 const push = jest.fn();
@@ -12,16 +13,26 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
   usePathname: () => pathname,
 }));
+// `TopPanel` renders `SearchCommand`, which calls a Server Action that imports
+// the Neon client — stub it so this file doesn't drag a DB connection in.
+jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => []) }));
 
 beforeEach(() => {
   push.mockClear();
   pathname = '/admin/docs/new/exit-letter';
 });
 
+/**
+ * The rail carries its own expand/collapse toggle again, floated over its
+ * header row rather than placed in `TopPanel`. `TopPanel` is still rendered
+ * beside it, exactly as `AdminShell` does, so this file would notice if the
+ * two ever started answering to the same name.
+ */
 function renderRail(panel?: React.ReactNode) {
   return render(
     <EditorPanelProvider>
       <SidebarProvider>
+        <TopPanel profile="admin" />
         <EditorSidebar />
         {panel}
       </SidebarProvider>
@@ -190,20 +201,26 @@ describe('EditorSidebar drawer', () => {
   });
 
   /**
-   * The drawer replaces the whole rail, header included, so the rail's own back
-   * arrow and title go with it: two back arrows on one column, one leaving the
-   * page and one stepping back a pane, is two meanings on one glyph. The pane
-   * underneath is `inert`, which is also what leaves one collapse toggle rather
-   * than two answering to the same name.
+   * The drawer covers the rail's own header along with its form, because the
+   * two belong to the same pane — the header sits *inside* the sliding track,
+   * so it goes with it. That is why "Go back" is unreachable here rather than
+   * duplicated: its pane is `inert`, and a control on a pane nobody can see
+   * must not be in the tab order either.
+   *
+   * What stays reachable is the collapse toggle, floated over this row and
+   * outside the track for exactly this reason. And the drawer's own "Back to the form"
+   * arrow, which is a different control with a different name: that one
+   * returns to the form, while "Go back" leaves the page.
    */
-  it('takes the rail header with it, and keeps a collapse toggle of its own', async () => {
+  it('covers the rail header along with the form, keeping the toggle above it', async () => {
     const user = userEvent.setup();
     renderWithDrawer();
 
     await user.click(screen.getByRole('button', { name: /wording/i }));
 
     expect(screen.queryByRole('button', { name: /^go back$/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /collapse edit panel/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /back to the form/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /collapse edit panel/i })).toHaveLength(1);
   });
 
   /** A drawer left open behind a collapsed rail is what you reopen it onto. */

@@ -39,7 +39,10 @@ describe('AdminShell', () => {
     const { container } = renderShell();
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
     expect(wrapper.style.getPropertyValue('--sidebar-width')).toBe(`${NAV_WIDTH}px`);
-    expect(wrapper.style.getPropertyValue('--sidebar-width-icon')).toBe('2.5rem');
+    // 3rem, not 2.5: a collapsed menu button is `size-8` inside `SidebarGroup`'s
+    // `px-2`, so 8 + 32 + 8 is the width at which a row has equal air on both
+    // sides. At 2.5rem the right-hand 8px had nowhere to go.
+    expect(wrapper.style.getPropertyValue('--sidebar-width-icon')).toBe('3rem');
   });
 
   it('offers no drag-resize control while resizing is parked', () => {
