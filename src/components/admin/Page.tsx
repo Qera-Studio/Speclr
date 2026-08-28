@@ -47,7 +47,10 @@ export function PageBody({
 }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("mx-auto flex w-full max-w-[1400px] flex-col gap-6 p-9", className)}
+      className={cn(
+        "mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4",
+        className,
+      )}
       {...props}
     >
       {children}
@@ -91,7 +94,9 @@ export function TableCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("overflow-clip rounded-md border bg-background", className)}>
+    <div
+      className={cn("overflow-clip rounded-md border bg-background", className)}
+    >
       {children}
       {count || pagination ? (
         <div className="flex min-h-11 items-center justify-between gap-2 border-t px-3 py-2 text-xs text-muted-foreground">
@@ -112,7 +117,14 @@ export function TableCard({
  * arrives on the other side of the cell from where its placeholder sat is a
  * visible jump on every load.
  */
-const SKELETON_COLUMNS = ["w-24", "w-16", "w-32", "w-20", "w-16 ml-auto", "w-14"];
+const SKELETON_COLUMNS = [
+  "w-24",
+  "w-16",
+  "w-32",
+  "w-20",
+  "w-16 ml-auto",
+  "w-14",
+];
 
 /**
  * A table's shape, before the table.
@@ -269,6 +281,11 @@ export function PageHeader({
     // header renders a beat before its body (or one with no description where
     // its neighbour has one) shifts everything below by a line as it settles,
     // which reads as the page twitching on arrival.
+    // `mb-4` on top of `PageBody`'s own `gap-2`, so the page name sits 24px
+    // above what follows while the blocks below it stay 8px apart. The title
+    // names the whole page; the filter row and the table it filters are one
+    // thing, and equal gaps all the way down made them read as three unrelated
+    // strips.
     <div className="flex min-h-9 flex-wrap items-start justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
         {/* `tracking-[-0.01em]`: at 24px semibold the default spacing that
@@ -281,7 +298,15 @@ export function PageHeader({
         ) : null}
       </div>
       {children ? (
-        <div className="flex flex-wrap items-start gap-2">{children}</div>
+        // `min-h-9 items-center`, not `items-start`. The title is a 32px line
+        // and a default button is 36px, so aligning the two boxes' tops leaves
+        // the button reading 2px high against the word beside it. Matching the
+        // title row's own reserved height and centring within it puts the
+        // button's centre on the title's centre line, and it stays there when a
+        // description pushes the block taller.
+        <div className="flex min-h-9 flex-wrap items-center gap-2">
+          {children}
+        </div>
       ) : null}
     </div>
   );

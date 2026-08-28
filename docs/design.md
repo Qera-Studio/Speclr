@@ -408,6 +408,25 @@ moved between runs until the spec disabled them.
   and the confirmSwap pattern for the feedback shape.
 - A disabled button must be explainable. If the reason is not obvious on the
   screen, wrap it in a tooltip that says why.
+- **Every control in one horizontal row is the same height.** The `form` size
+  above is this rule stated for one case; it holds for all of them. A toolbar of
+  `default` buttons is 28px, so anything sharing that row is 28px too, including
+  a hand-written control that is not a `Button` at all. Pick the height from
+  whichever primitive dominates the row rather than choosing one per control.
+
+  A row is a single band of chrome. Two heights inside it read as a rendering
+  artefact rather than a distinction, because they are not saying anything: no
+  control in a toolbar is more important than its neighbour, and 28 against 32
+  is too small a difference to mean something and too large to go unseen. The
+  case that produced this rule was the Table/Cards toggle in `DocumentsBrowser`,
+  hand-written at `h-8` beside filter and sort controls that take `Button`'s own
+  `h-7`.
+
+  **This one is not mechanically enforced**, and the reason is worth stating:
+  a grep cannot see which elements share a row. It is checked by eye, which
+  makes the fix above the reference rather than the exception. When a control in
+  a toolbar is hand-written, take its height from the primitive beside it and
+  say so in a comment, or the next person will have nothing to reconcile against.
 
 **One filled blue per viewport.** The rail's "New document" is the app's single
 primary and is on screen everywhere, so a page-level create is `outline`. Two

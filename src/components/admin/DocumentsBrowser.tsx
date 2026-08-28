@@ -15,11 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  tabPillSurface,
-  tabsListVariants,
-  useTabDrag,
-} from "@/components/ui/tabs";
+import { useTabDrag } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyContent,
@@ -150,8 +146,8 @@ export default function DocumentsBrowser({
   // this redraws one list that lives outside the bar, with the sort control,
   // the row count and the pager all reading from the same state. Borrowing the
   // tab roles for the look would announce panels to a screen reader that do
-  // not exist. The container classes are shared with `TabsList` so the two
-  // still look like siblings.
+  // not exist. It is drawn to match `ProfileSwitcher` rather than `TabsList`:
+  // same trackless pill, same two label weights, same padding.
   //
   // The pill glides rather than blinking, and it does so without measuring
   // anything: the segments are an equal-width grid, so the pill is exactly one
@@ -165,10 +161,16 @@ export default function DocumentsBrowser({
       aria-label="View"
       {...viewDrag}
       className={cn(
-        tabsListVariants(),
-        // `grid-cols-2` sizes both columns to the wider label, which is what
-        // keeps the pill's width honest.
-        "relative grid h-8 shrink-0 grid-cols-2",
+        // Deliberately *not* `tabsListVariants()` any more. This matches
+        // `ProfileSwitcher`: no trough, no border, no padding. The pill is the
+        // whole of the visible state, and a container stroke was a second edge
+        // saying what the fill already says.
+        //
+        // `h-7` is not a taste: it is `Button`'s own default size, which every
+        // other control on this row is. A hand-written control that sets its
+        // own height is how one row comes to have two, and the difference is
+        // small enough to look like a rendering artefact rather than a bug.
+        "group/tabs-list relative grid h-7 w-fit shrink-0 grid-cols-2 cursor-grab items-center data-dragging:cursor-grabbing data-dragging:select-none",
       )}
     >
       {/* `data-drag-pill` / `data-drag-segment` are what `useTabDrag` looks for
@@ -181,8 +183,10 @@ export default function DocumentsBrowser({
           transform: `translateX(calc(${view === "cards" ? "100%" : "0px"} + var(--tab-drag, 0px)))`,
         }}
         className={cn(
-          "pointer-events-none absolute inset-y-[3px] left-[3px] z-0 w-[calc(50%-3px)] rounded-md",
-          tabPillSurface,
+          // Flat `bg-raised`, no border and no shadow: with the trough gone
+          // the fill is the whole of the state, and the offsets re-zero with
+          // the padding that used to inset them.
+          "pointer-events-none absolute inset-y-0 left-0 z-0 w-1/2 rounded-md bg-raised",
           "transition-transform duration-200 ease-standard motion-reduce:transition-none",
           // Untransitioned under the hand; the offset is already per-frame.
           "group-data-dragging/tabs-list:transition-none",
@@ -196,11 +200,14 @@ export default function DocumentsBrowser({
           data-drag-segment=""
           onClick={() => chooseView(value)}
           className={cn(
-            "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-md px-2.5",
+            // `px-3` and the switcher's own two weights. The pill is exactly
+            // half the control and the halves are adjacent by construction, so
+            // the air between the labels is the segments' own padding.
+            "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-md px-3",
             "text-xs font-medium whitespace-nowrap transition-colors",
-            "text-foreground/60 hover:text-foreground dark:text-muted-foreground",
+            "text-muted-foreground hover:text-sidebar-foreground",
             "focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
-            "aria-pressed:text-foreground dark:aria-pressed:text-foreground",
+            "aria-pressed:text-sidebar-foreground",
           )}
         >
           <Icon className="size-3.5" aria-hidden="true" />

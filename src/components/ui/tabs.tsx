@@ -110,9 +110,8 @@ export function useTabDrag() {
     const list = event.currentTarget;
     // Vertical strips are dragged nowhere: sideways means nothing there.
     if (
-      list
-        .closest('[data-slot="tabs"]')
-        ?.getAttribute("data-orientation") === "vertical"
+      list.closest('[data-slot="tabs"]')?.getAttribute("data-orientation") ===
+      "vertical"
     )
       return;
     const indicator = pill(list);
@@ -158,7 +157,8 @@ export function useTabDrag() {
      */
     const handleMove = (moveEvent: PointerEvent) => {
       const dx = Math.max(min, Math.min(max, moveEvent.clientX - startX));
-      if (Math.abs(moveEvent.clientX - startX) > DRAG_SLOP) moved.current = true;
+      if (Math.abs(moveEvent.clientX - startX) > DRAG_SLOP)
+        moved.current = true;
       setDrag((current) => (current ? { ...current, dx } : current));
     };
 
@@ -178,7 +178,9 @@ export function useTabDrag() {
       if (!indicatorNow) return;
       const dragBox = indicatorNow.getBoundingClientRect();
       const centre = dragBox.left + dragBox.width / 2;
-      const triggers = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
+      const triggers = [
+        ...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR),
+      ];
       const nearest = triggers.reduce((best, trigger) => {
         const distance = (element: HTMLElement) => {
           const rect = element.getBoundingClientRect();

@@ -1,22 +1,19 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full"
-    >
+    <div data-slot="table-container" className="relative w-full">
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-xs", className)}
         {...props}
       />
     </div>
-  )
+  );
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
@@ -28,10 +25,13 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
       // `overflow-x: auto` computes `overflow-y: auto` too, which makes it the
       // scrollport and pins the header to a box that never scrolls. The page's
       // own scroll area in `AdminShell` is the scrollport now.
-      className={cn("sticky top-0 z-10 bg-background [&_tr]:border-b", className)}
+      className={cn(
+        "sticky top-0 z-10 bg-background [&_tr]:border-b",
+        className,
+      )}
       {...props}
     />
-  )
+  );
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -41,7 +41,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
       className={cn("[&_tr:last-child]:border-0", className)}
       {...props}
     />
-  )
+  );
 }
 
 function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
@@ -50,11 +50,11 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
       data-slot="table-footer"
       className={cn(
         "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
@@ -62,12 +62,12 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "h-11 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
-        className
+        "h-9 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
@@ -82,11 +82,11 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       scope="col"
       className={cn(
         "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
@@ -94,16 +94,18 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        // 12px vertical padding against `h-11` on the row: a 44px row, which is
-        // the floor for a scannable list. `leading-none` because a cell holds a
-        // value, not prose — prose leading makes rows of different content
-        // types sit at different heights in the same table.
-        "px-2 py-3 leading-none align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
-        className
+        // 6px vertical padding against `h-9` on the row: a 36px row. Denser
+        // than the 44px touch floor, deliberately — this is a desktop-only
+        // internal tool and a list of documents is scanned, not tapped.
+        // `leading-none` because a cell holds a value, not prose: prose leading
+        // makes rows of different content types sit at different heights in the
+        // same table.
+        "px-2 py-1.5 leading-none align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function TableCaption({
@@ -116,7 +118,7 @@ function TableCaption({
       className={cn("mt-4 text-xs text-muted-foreground", className)}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -128,4 +130,4 @@ export {
   TableRow,
   TableCell,
   TableCaption,
-}
+};
