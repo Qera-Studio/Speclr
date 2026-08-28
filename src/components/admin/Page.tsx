@@ -99,7 +99,7 @@ export function TableCard({
     >
       {children}
       {count || pagination ? (
-        <div className="flex min-h-11 items-center justify-between gap-2 border-t px-3 py-2 text-xs text-muted-foreground">
+        <div className="flex min-h-11 items-center justify-between gap-2 border-t px-9 py-2 text-xs text-muted-foreground">
           <span>{count}</span>
           {pagination}
         </div>
