@@ -124,7 +124,7 @@ export default function ServiceCards({
                 {mine.map((service) => (
                   <li key={service.code}>
                     {/* `bg-background`, not `bg-card`: in dark mode `--card`
-                        and `--sidebar` are the same 0.235, so a card on the
+                        and `--sidebar` are the same value, so a card on the
                         column would dissolve into it. The page background
                         reads as a well the cards sit in. */}
                     <div className="group/card flex flex-col gap-3 rounded-md border border-border bg-background p-3">

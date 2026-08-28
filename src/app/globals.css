@@ -217,43 +217,76 @@
 }
 
 /*
-  Dark mode is its own design, not the light one inverted. Three consequences,
-  and all three are here rather than scattered through the components:
+  Dark mode is its own design, not the light one inverted. Four consequences,
+  and all four are here rather than scattered through the components:
 
-  - **Text is 0.93, not 0.985.** Pure white on a near-black page haloes: the
+  - **Text is 0.87, not 0.985.** Pure white on a near-black page haloes: the
     glyph blooms into its own background and long labels get harder to read the
-    longer you look. 0.93 is still 13:1 against `--background`, well past AA,
-    and it is what stops a dense table reading as glare. Every foreground that
-    was 0.985 moved together, or text on a popover would sit brighter than the
-    same text on the page behind it.
-  - **Borders go up, not down.** A hairline that reads as an edge on white is
-    nearly gone on black, and with the table's fill removed the row rules are
-    now the only structure a list has.
+    longer you look. 0.87 is still 12.7:1 against `--background`, nearly three
+    times what AA asks, and it is what stops a dense table reading as glare. It
+    was 0.93 until the surfaces came down on 29 August 2026; against a 0.155
+    page that was 15.9:1, and a table of forty rows at that strength is the
+    brightest thing in the app. **Every foreground moves together or none of
+    them do**, or the same sentence sits brighter on a popover than on the page
+    behind it. `--muted-foreground` is exempt and deliberately unchanged: it is
+    already the quiet tier, and lowering it with the rest would keep the
+    relationship and lose the legibility.
+  - **The rail is darker than the page, not lighter.** This is the inversion
+    people get wrong, this file included until 29 August 2026. In light mode a
+    rail is a step *down* from a white page, and carrying that instinct over
+    means stepping *up* from a dark one, which turns scenery into the most lit
+    surface on screen. Chrome recedes below the content in both themes; only
+    the direction of "below" flips.
+  - **Borders are a proportion of their ground, not a fixed alpha.** An overlay
+    white composites brighter the darker the surface under it, so a percentage
+    tuned against one set of surfaces is wrong the moment they move. These went
+    14 → 9 → 6 across three passes for exactly that reason, each judged against
+    a lighter ground than the next. When a surface changes, re-look at these.
   - **Shadows do nothing here** and are not used to separate surfaces; the
     border is the separation. That is a rule about what to reach for, so it
     lives in `docs/design.md` rather than in a token.
 */
 .dark {
   color-scheme: dark;
-  /* One step up the ramp, all three surfaces together. At 0.145 the panel read
-     as black rather than as the darkest taupe: a hue needs some lightness under
-     it to be seen at all, which is the same reason the chroma curve tapers at
-     the ends. Cards and the rail move with it, or the layering closes up. */
-  --background: oklch(0.185 0.006 40);
-  --foreground: oklch(0.93 0.004 40);
-  --raised: oklch(0.335 0.013 40);
-  --card: oklch(0.235 0.009 40);
-  --card-foreground: oklch(0.93 0.004 40);
-  --popover: oklch(0.235 0.009 40);
-  --popover-foreground: oklch(0.93 0.004 40);
+  /* Taupe 950 for the page, taupe 800 for the raised tier. Both went down a
+     step on 29 August 2026: the page read closer to a dark grey card than to
+     the ground under one, and the panels sitting on it were light enough that
+     the shell had no clear floor.
+
+     0.155 is as dark as this can go and still be *taupe*. Below roughly 0.14 a
+     hue has too little lightness under it to be seen at all (the same reason
+     the chroma curve at the top of this file tapers at both ends), and the page
+     starts reading as flat black with the warmth only visible where two
+     surfaces meet. Chroma follows the curve down with it: 0.005 at 0.15.
+
+     **The gap between the two tiers closed from 0.05 to 0.02**, and that is the
+     substance of the change rather than the absolute values. Dropping the page
+     alone had made things worse: the chrome stayed where it was, so the rails
+     and the header read as *lighter* panels on a near-black page and the shell
+     came apart into a bright frame around a dark hole. The whole surface is one
+     dark field now, and what separates a rail from the page it sits beside is
+     the hairline between them, which is the same thing that separates them in
+     light mode. Panels lift off their ground by a step you can find when you
+     look for it, not by one that announces itself.
+
+     Everything above the chrome compressed with it, or a hover fill would have
+     been the brightest thing on screen. The order is what matters and it is
+     preserved throughout: page < chrome < muted < secondary < raised. */
+  --background: oklch(0.155 0.005 40);
+  --foreground: oklch(0.7 0.013 40);
+  --raised: oklch(0.21 0.011 40);
+  --card: oklch(0.175 0.006 40);
+  --card-foreground: oklch(0.75 0.013 40);
+  --popover: oklch(0.175 0.006 40);
+  --popover-foreground: oklch(0.75 0.013 40);
   --primary: oklch(0.424 0.199 265.638);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.274 0.011 40);
-  --secondary-foreground: oklch(0.93 0.004 40);
-  --muted: oklch(0.269 0.011 40);
+  --secondary: oklch(0.212 0.009 40);
+  --secondary-foreground: oklch(0.75 0.013 40);
+  --muted: oklch(0.207 0.008 40);
   --muted-foreground: oklch(0.708 0.014 40);
-  --accent: oklch(0.269 0.011 40);
-  --accent-foreground: oklch(0.93 0.004 40);
+  --accent: oklch(0.207 0.008 40);
+  --accent-foreground: oklch(0.75 0.013 40);
   --destructive: oklch(0.704 0.191 22.216);
   /* Near-black, not white: 6.84:1 on this fill against white's 2.89:1. */
   --destructive-foreground: oklch(0.145 0.005 40);
@@ -264,25 +297,70 @@
      a rail of eight inputs read as a grid of boxes rather than a form. It sits
      one step above `--border` now instead of eight: an input is still a
      distinguishable control, and 1.4.11 does not govern it, because every field
-     here is identified by a visible `<Label>` (see `contrast.test.ts`). */
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 16%);
+     here is identified by a visible `<Label>` (see `contrast.test.ts`).
+
+     Both came down again on 29 August 2026, from 14/16 to 9/11. An alpha white
+     composites to a lighter hairline the darker the surface under it *appears*
+     to the eye, so the same percentages that read as subtle at 0.185 read as
+     drawn-on at 0.155: the table's row rules were the loudest thing in a list
+     of quiet text. The rule is that these two follow the surfaces down rather
+     than being a fixed percentage — an edge is a proportion of its ground, not
+     an absolute.
+
+     There is a floor under this and it is not a contrast rule. `contrast.test.ts`
+     deliberately does not assert `--border`, because 1.4.11 governs boundaries
+     required to *identify* a control and every field here has a visible
+     `<Label>`. What it cannot go below is visible-at-all on a 60Hz panel at
+     low brightness, which in practice is around 5%: a table whose rows do not
+     separate is worse than one whose rules are slightly loud.
+
+     6% is one step off that floor, reached on the third pass. The two before it
+     (14 → 9 → 6) were each judged against a lighter set of surfaces than the
+     one below them, which is the whole reason this took three: an alpha white
+     is a *proportion* of its ground, so every time the surfaces went down these
+     had further to fall than they looked. Anything under 6% and the dashboard's
+     row rules stop reading as a table. */
+  --border: oklch(1 0 0 / 5%);
+  --input: oklch(1 0 0 / 5%);
   --ring: oklch(0.556 0.021 40);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.235 0.009 40);
+  /* Taupe 900, a hair above the page rather than below it.
+
+     The pass before this had it at 0.142, below the page, on the reasoning that
+     chrome should recede. Tried on a real screen that was too far: a rail that
+     dark stops reading as a surface at all and the app looks like a table
+     floating on nothing. 0.19 is the smallest lift that still says "this is a
+     panel" — 0.035 above the page, where the earlier passes had it 0.05 to 0.08
+     above and it read as lit.
+
+     The direction is a judgement, not a rule, and it was worth getting wrong
+     once to find the distance. What made the rail loud was never purely which
+     side of the page it sat on; it was the size of the step, plus a
+     `--sidebar-active` pill brighter than either. */
+  --sidebar: oklch(0.16 0.007 40);
   /* 8.1:1 on --sidebar. */
   --sidebar-foreground: oklch(0.78 0.012 40);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.269 0.011 40);
-  --sidebar-accent-foreground: oklch(0.93 0.004 40);
-  --sidebar-hover: oklch(0.269 0.011 40);
-  --sidebar-active: oklch(0.32 0.013 40);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-accent: oklch(0.222 0.009 40);
+  --sidebar-accent-foreground: oklch(0.75 0.013 40);
+  /* Hover and active keep a real step between them, or "you are here"
+     disappears the moment the cursor rests on another row. This is the one
+     place the compression stops short: these two fills are the only feedback a
+     nav row gives.
+
+     `--sidebar-active` is the widest bright shape in the column and was doing
+     most of the work of making the rail look lit — a 0.255 pill on a 0.175
+     ground is a brighter thing than the ground it announces itself against. It
+     tracks the rail wherever the rail goes and keeps a 0.04 step, rather than
+     being set against the page. */
+  --sidebar-hover: oklch(0.222 0.009 40);
+  --sidebar-active: oklch(0.21 0.011 40);
+  --sidebar-border: oklch(1 0 0 / 5%);
   --sidebar-ring: oklch(0.556 0.021 40);
 }
 
@@ -310,8 +388,11 @@
 }
 
 .dark [data-editor-rail] {
-  --border: oklch(1 0 0 / 22%);
-  --sidebar-border: oklch(1 0 0 / 22%);
+  /* One step of extra ink, not a fixed percentage: these track the app-wide
+     values down (14/10 → 9/7 → 6/5) so the rail stays *a step firmer than*
+     everything else rather than becoming the one surface with bright edges. */
+  --border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(1 0 0 / 10%);
   --muted-foreground: oklch(0.78 0.012 40);
   --sidebar-foreground: oklch(0.93 0.004 40);
 }
