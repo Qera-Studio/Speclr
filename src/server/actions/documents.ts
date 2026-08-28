@@ -186,6 +186,27 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       reason: fields.creditReason,
     };
   }
+  // The Service Quotation — addressed to nobody in particular. `base` carries
+  // neither clientId/clientSnapshot nor employeeId/employeeSnapshot (see the
+  // third branch in createDraft/updateDraft below), and it never carries GST
+  // through the shared `gstRatePercent` machinery — `gstCountry` drives its own
+  // flat estimate (`quotationTotals.ts`).
+  if (base.type === "QTN") {
+    return {
+      ...base,
+      issueDate: fields.issueDate,
+      lineItems: fields.lineItems,
+      gstRatePercent: 0,
+      recipientName: fields.recipientName,
+      attentionName: fields.attentionName,
+      subjectLine: fields.subjectLine,
+      validUntil: fields.validUntil,
+      gstCountry: fields.gstCountry ?? "IN",
+      milestones: fields.milestones,
+      termsNote: fields.termsNote,
+      content: fields.content,
+    };
+  }
   // Letters (OFR/EXP/EXIT) — no line items or GST; zero-values satisfy
   // BaseDocument. `base` is asserted rather than narrowed because there are now
   // *two* members with a union-valued discriminant (the slips and the letters),
@@ -217,9 +238,20 @@ export async function createDraft(
   }
   const spec = DOC_TYPES[typeCode as DocTypeCode];
 
-  if (typeof clientId !== "string" || clientId.length === 0) {
+  // Every other document type is addressed to a client or an employee, so an
+  // empty recipient is a caller error. A quotation is deliberately addressed to
+  // nobody in particular — see `QuotationDocument` — so it is the one type this
+  // guard admits with no id at all.
+  if (
+    spec.kind !== "quotation" &&
+    (typeof clientId !== "string" || clientId.length === 0)
+  ) {
     return { success: false, error: "Invalid input." };
   }
+  // Narrowed once, for the branches below: the guard above proves this is a
+  // non-empty string whenever `spec.kind !== "quotation"`, which is the only
+  // case any branch below actually reads it.
+  const recipientId = typeof clientId === "string" ? clientId : "";
 
   const parsed = spec.draftSchema.safeParse(data);
   if (!parsed.success)
@@ -227,10 +259,11 @@ export async function createDraft(
 
   const now = Date.now();
   // HR docs snapshot an employee (2nd param is the employeeId); financial and
-  // contract docs snapshot a client (2nd param is the clientId). `spec.code` is
-  // the validated discriminant, but TS can't correlate it with the subject-field
-  // pairing at compile time (the correlation is runtime, via spec.kind), so the
-  // base is asserted to its distributive union — see the note on DocBase.
+  // contract docs snapshot a client (2nd param is the clientId); a quotation
+  // snapshots neither. `spec.code` is the validated discriminant, but TS can't
+  // correlate it with the subject-field pairing at compile time (the
+  // correlation is runtime, via spec.kind), so the base is asserted to its
+  // distributive union — see the note on DocBase.
   const identity = {
     id: randomUUID(),
     type: spec.code,
@@ -240,20 +273,22 @@ export async function createDraft(
     createdBy: actor,
   };
   let base: DocBase;
-  if (isHrDocType(spec.code)) {
-    const employee = await getEmployee(clientId);
+  if (spec.kind === "quotation") {
+    base = { ...identity } as DocBase;
+  } else if (isHrDocType(spec.code)) {
+    const employee = await getEmployee(recipientId);
     if (!employee) return { success: false, error: "Employee not found." };
     base = {
       ...identity,
-      employeeId: clientId,
+      employeeId: recipientId,
       employeeSnapshot: employeeSnapshotOf(employee),
     } as DocBase;
   } else {
-    const client = await getClient(clientId);
+    const client = await getClient(recipientId);
     if (!client) return { success: false, error: "Client not found." };
     base = {
       ...identity,
-      clientId,
+      clientId: recipientId,
       clientSnapshot: clientSnapshotOf(client),
     } as DocBase;
   }
@@ -281,11 +316,7 @@ export async function updateDraft(
 ): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: "Unauthorized." };
 
-  if (
-    typeof id !== "string" ||
-    typeof clientId !== "string" ||
-    clientId.length === 0
-  ) {
+  if (typeof id !== "string") {
     return { success: false, error: "Invalid input." };
   }
 
@@ -296,6 +327,20 @@ export async function updateDraft(
   }
 
   const spec = DOC_TYPES[existing.type];
+
+  // As in createDraft, a quotation is the one type addressed to nobody — see
+  // the note there.
+  if (
+    spec.kind !== "quotation" &&
+    (typeof clientId !== "string" || clientId.length === 0)
+  ) {
+    return { success: false, error: "Invalid input." };
+  }
+  // Narrowed once, for the branches below: the guard above proves this is a
+  // non-empty string whenever `spec.kind !== "quotation"`, which is the only
+  // case any branch below actually reads it.
+  const recipientId = typeof clientId === "string" ? clientId : "";
+
   const parsed = spec.draftSchema.safeParse(data);
   if (!parsed.success)
     return { success: false, error: invalidInput(parsed.error) };
@@ -303,21 +348,23 @@ export async function updateDraft(
   // As in createDraft, the subject-field pairing is correlated to the type only
   // at runtime (via spec.kind), so the rebuilt base is asserted to DocBase.
   let base: DocBase;
-  if (isHrDocType(spec.code)) {
-    const employee = await getEmployee(clientId);
+  if (spec.kind === "quotation") {
+    base = { ...existing, updatedAt: Date.now() } as DocBase;
+  } else if (isHrDocType(spec.code)) {
+    const employee = await getEmployee(recipientId);
     if (!employee) return { success: false, error: "Employee not found." };
     base = {
       ...existing,
-      employeeId: clientId,
+      employeeId: recipientId,
       employeeSnapshot: employeeSnapshotOf(employee),
       updatedAt: Date.now(),
     } as DocBase;
   } else {
-    const client = await getClient(clientId);
+    const client = await getClient(recipientId);
     if (!client) return { success: false, error: "Client not found." };
     base = {
       ...existing,
-      clientId,
+      clientId: recipientId,
       clientSnapshot: clientSnapshotOf(client),
       updatedAt: Date.now(),
     } as DocBase;
@@ -363,8 +410,10 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   }
 
   // Refresh the frozen subject snapshot from the live record: HR docs snapshot
-  // the employee; financial/contract docs snapshot the client.
+  // the employee; financial/contract docs snapshot the client. A quotation
+  // snapshots neither — it is addressed to nobody in particular.
   const hr = isHrDocType(spec.code);
+  const quotation = spec.kind === "quotation";
   let clientSnapshot: ClientSnapshot | undefined;
   let employeeSnapshot: EmployeeSnapshot | undefined;
   if (hr) {
@@ -388,7 +437,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     }
 
     employeeSnapshot = employeeSnapshotOf(employee);
-  } else {
+  } else if (!quotation) {
     const clientId = (
       existing as
         | InvoiceDocument
@@ -486,7 +535,8 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   if (
     spec.kind === "financial" ||
     spec.kind === "hr-slip" ||
-    spec.kind === "contract"
+    spec.kind === "contract" ||
+    spec.kind === "quotation"
   ) {
     year = financialYearStart(existing.issueDate);
     const fyCode = financialYearCodeOfISODate(existing.issueDate);
@@ -535,7 +585,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     ...existing,
     status: "finalized",
     ...(number ? { number, serial, year } : {}),
-    ...(hr ? { employeeSnapshot } : { clientSnapshot }),
+    ...(hr ? { employeeSnapshot } : quotation ? {} : { clientSnapshot }),
     studioSnapshot,
     content,
     updatedAt: Date.now(),

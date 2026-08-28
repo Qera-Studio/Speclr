@@ -8,6 +8,8 @@ import {
   invoiceDraftSchema,
   invoiceFinalizeSchema,
   letterFinalizeSchema,
+  quotationDraftSchema,
+  quotationFinalizeSchema,
   receiptDraftSchema,
   receiptFinalizeSchema,
   stipendFinalizeSchema,
@@ -38,6 +40,7 @@ describe("DOC_TYPES registry", () => {
       "INV",
       "OFR",
       "PAY",
+      "QTN",
       "REC",
       "STP",
     ]);
@@ -409,6 +412,79 @@ describe("clientInputSchema", () => {
       expect(parsed.success).toBe(true);
       expect(parsed.data?.companyName).toBe("Clayora Private Limited");
     });
+  });
+});
+
+describe("QTN registry entry", () => {
+  it("is its own kind, not 'financial' — no clientId/place-of-supply assumptions", () => {
+    expect(DOC_TYPES.QTN.kind).toBe("quotation");
+    expect(DOC_TYPES.QTN.hasPayment).toBe(false);
+    expect(DOC_TYPES.QTN.hasDueDate).toBe(false);
+    expect(DOC_TYPES.QTN.fixedTerms).toHaveLength(0);
+  });
+
+  it("draft accepts a minimal payload with just gstCountry", () => {
+    expect(
+      quotationDraftSchema.safeParse({
+        issueDate: "2026-08-27",
+        lineItems: [],
+        gstCountry: "IN",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("finalize refuses an empty line-item list", () => {
+    expect(
+      quotationFinalizeSchema.safeParse({
+        issueDate: "2026-08-27",
+        lineItems: [],
+        gstCountry: "IN",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("finalize accepts a complete quotation with sections, a recurring line, and milestones", () => {
+    expect(
+      quotationFinalizeSchema.safeParse({
+        issueDate: "2026-08-27",
+        recipientName: "Clayora",
+        attentionName: "Priya Shah",
+        subjectLine: "Website + social media retainer",
+        validUntil: "2026-09-27",
+        gstCountry: "IN",
+        lineItems: [
+          {
+            description: "Web design",
+            ratePaise: 1500000,
+            qty: 1,
+            section: "Website(s)",
+          },
+          {
+            description: "Hosting",
+            ratePaise: 287000,
+            qty: 1,
+            section: "Website(s)",
+            recurring: true,
+          },
+        ],
+        milestones: [
+          { label: "Advance", percent: 50 },
+          { label: "On delivery", percent: 50 },
+        ],
+        termsNote: "Valid for 10 days from the date above.",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("finalize does not require milestone percentages to sum to 100", () => {
+    expect(
+      quotationFinalizeSchema.safeParse({
+        issueDate: "2026-08-27",
+        gstCountry: "IN",
+        lineItems: [validLineItem],
+        milestones: [{ label: "Advance", percent: 40 }],
+      }).success,
+    ).toBe(true);
   });
 });
 

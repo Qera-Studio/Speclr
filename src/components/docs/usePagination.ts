@@ -91,6 +91,7 @@ export function usePagination(
   blocks: ReactNode[],
   columnHeight: number,
   columnsPerPage = 1,
+  forceDark = false,
 ) {
   const flowRef = useRef<HTMLDivElement>(null);
   const signature = blocksSignature(blocks);
@@ -123,14 +124,14 @@ export function usePagination(
 
       setComputed({
         signature,
-        pages: packBlocks(measured, columnHeight, columnsPerPage),
+        pages: packBlocks(measured, columnHeight, columnsPerPage, forceDark),
       });
     };
 
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [pages, signature, columnHeight, columnsPerPage]);
+  }, [pages, signature, columnHeight, columnsPerPage, forceDark]);
 
   return { flowRef, pages };
 }

@@ -31,6 +31,7 @@ export default function PrintPages({
   columns = 1,
   columnWidth,
   columnGap = 0,
+  forceDark = false,
 }: {
   children: ReactNode;
   pagePadding: string;
@@ -45,12 +46,15 @@ export default function PrintPages({
   columns?: number;
   columnWidth?: number;
   columnGap?: number;
+  /** Paint every flowing page dark — see `packBlocks`. Only the quotation sets this. */
+  forceDark?: boolean;
 }) {
   const blocks = Children.toArray(children).filter(isValidElement);
   const { flowRef, pages } = usePagination(
     blocks,
     SHEET_HEIGHT - pagePaddingY - chromeHeight - PAGE_SAFETY_MARGIN,
     columns,
+    forceDark,
   );
 
   // Height is added per branch rather than baked in: `h-auto` alongside
@@ -67,7 +71,7 @@ export default function PrintPages({
         // `DocumentPreview`.
         className={`paginatorPage w-[794px] box-border flex flex-col [&>*]:shrink-0 ${
           selfPaddedSheet ? '' : pagePadding
-        } min-h-[1123px] bg-white text-black`}
+        } min-h-[1123px] ${forceDark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black'}`}
       >
         {blocks}
       </div>

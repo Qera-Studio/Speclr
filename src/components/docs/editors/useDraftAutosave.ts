@@ -77,12 +77,20 @@ export function useDraftAutosave({
   typeCode,
   initialDocId,
   recipientId,
+  requiresRecipient = true,
   payload,
 }: {
   typeCode: string;
   initialDocId?: string | null;
   /** Client id, or employee id for an HR document. Empty until one is picked. */
   recipientId: string;
+  /**
+   * Off only for the Service Quotation, the one document type addressed to
+   * nobody in particular (`QuotationDocument`). Every other caller leaves this
+   * at its default, which preserves the "nothing saves before a recipient is
+   * picked" rule exactly as before.
+   */
+  requiresRecipient?: boolean;
   payload: unknown;
 }): DraftAutosave {
   // Only used to keep the URL right when a first save mints an id — the editor
@@ -138,7 +146,7 @@ export function useDraftAutosave({
    * Always call through `enqueue` — never twice at once.
    */
   const save = async (): Promise<boolean> => {
-    if (!recipientId) return false;
+    if (requiresRecipient && !recipientId) return false;
     const sending = key;
     const id = docIdRef.current;
     const result = id
@@ -164,7 +172,12 @@ export function useDraftAutosave({
   const dirty = key !== lastSaved.current;
 
   useEffect(() => {
-    if (frozen.current || !recipientId || key === lastSaved.current) return;
+    if (
+      frozen.current ||
+      (requiresRecipient && !recipientId) ||
+      key === lastSaved.current
+    )
+      return;
     const timer = setTimeout(() => {
       // Re-checked at fire time, not just at schedule time. A `flush` (finalize,
       // or "Save and leave") can land in the second between the two and write
@@ -182,7 +195,7 @@ export function useDraftAutosave({
     // `save` reads exactly what `key` encodes, plus `docIdRef`. Depending on
     // `save` itself would re-arm the timer on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, recipientId]);
+  }, [key, recipientId, requiresRecipient]);
 
   return {
     docId,

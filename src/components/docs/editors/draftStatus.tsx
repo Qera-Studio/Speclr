@@ -39,16 +39,21 @@ import type { DraftAutosave } from './useDraftAutosave';
  */
 export function AutosaveStatus({
   autosave,
-  /** What has to be picked before saving can start: "client" or "employee". */
+  /**
+   * What has to be picked before saving can start: "client" or "employee".
+   * `null` for the one document type with nothing to pick — the Service
+   * Quotation, which saves as soon as it is touched — so this line never
+   * claims a recipient is being waited on when none is required.
+   */
   recipient = 'client',
 }: {
   autosave: DraftAutosave;
-  recipient?: string;
+  recipient?: string | null;
 }) {
   const { saveState, savedAt, dirty, docId } = autosave;
 
   let message: string | null = null;
-  if (!docId && dirty) message = `Pick a ${recipient} to start saving.`;
+  if (!docId && dirty && recipient) message = `Pick a ${recipient} to start saving.`;
   else if (saveState === 'saving') message = 'Saving…';
   else if (saveState !== 'idle') message = `Saved ${formatClockTime(savedAt)}`;
 

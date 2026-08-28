@@ -10,11 +10,12 @@ describe('nav model', () => {
 
   // The document links go to each type's *list*, not straight to a blank
   // editor — "new" is a button on the list page.
-  it('puts contract/invoice/receipt/credit note in the client profile', () => {
+  it('puts contract/invoice/receipt/quotation/credit note in the client profile', () => {
     expect(NAV_BY_PROFILE.client.documents.map((c) => c.href)).toEqual([
       '/client/docs/contract',
       '/client/docs/invoice',
       '/client/docs/receipt',
+      '/client/docs/quotation',
       '/client/docs/credit-note',
     ]);
   });
@@ -147,7 +148,7 @@ describe('nav model', () => {
    */
   it('gives every document type a unique ⌥ shortcut letter across both profiles', () => {
     const shortcuts = PROFILES.flatMap((p) => NAV_BY_PROFILE[p].documents).map((c) => c.shortcut);
-    expect(shortcuts).toHaveLength(9);
+    expect(shortcuts).toHaveLength(10);
     expect(shortcuts.every((s) => typeof s === 'string' && /^[A-Z]$/.test(s))).toBe(true);
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });

@@ -22,7 +22,16 @@ import type { DocContent } from "./docContent";
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode =
-  "INV" | "REC" | "CRN" | "CON" | "STP" | "PAY" | "OFR" | "EXP" | "EXIT";
+  | "INV"
+  | "REC"
+  | "CRN"
+  | "CON"
+  | "STP"
+  | "PAY"
+  | "OFR"
+  | "EXP"
+  | "EXIT"
+  | "QTN";
 
 export interface ClientRecord {
   id: string;
@@ -118,6 +127,19 @@ export interface LineItem {
    * documents written before it have none, and they must keep loading.
    */
   sacCode?: string;
+  /**
+   * The heading this line prints under on a Service Quotation (e.g.
+   * "Website(s)", "Social Media") — the only doc type with grouped, subtotaled
+   * line items. Consecutive lines sharing a section are grouped by the sheet;
+   * absent on every other document type, which prints a flat list.
+   */
+  section?: string;
+  /**
+   * A recurring (monthly) line on a Service Quotation — printed as '/m' and
+   * excluded from its section subtotal and the grand total, since it is not a
+   * one-time cost the quoted figure represents. Meaningless outside QTN.
+   */
+  recurring?: boolean;
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */
@@ -598,13 +620,49 @@ export interface LetterDocument extends BaseDocument {
   payAmountPaise?: number;
 }
 
+/**
+ * A pre-sale Service Quotation — the one document type addressed to nobody in
+ * particular. Every other client document carries `clientId` +
+ * `clientSnapshot` (`ClientDocument`), because it is billed to a client record
+ * that already exists. A quotation is routinely sent *before* a prospect is
+ * onboarded at all, so it extends `BaseDocument` directly and never sets
+ * `clientId` — the recipient is free text, decoupled from the `clients` table.
+ *
+ * `gstCountry` is an explicit operator choice, not derived from any client
+ * record (there may be none) — see `CONTEXT.md`'s note on this type for why
+ * that is deliberate rather than a gap. `gstRatePercent` (inherited from
+ * `BaseDocument`) is pinned to 0, the same way a `SlipDocument`'s is: the
+ * estimate this type shows is computed by `computeQuotationTotals`, not the
+ * shared GST machinery, since there is no place-of-supply to derive.
+ */
+export interface QuotationDocument extends BaseDocument {
+  type: "QTN";
+  /** Free text — a prospect's name or company, independent of any client record. */
+  recipientName?: string;
+  /** "Kind Attention" — the contact person named on the quotation. */
+  attentionName?: string;
+  /** One line addressing the attention name, printed just under it — e.g.
+   * "We are pleased to submit our offer for the above mentioned project." */
+  offerLine?: string;
+  subjectLine?: string;
+  /** ISO date — after which the quoted figures are no longer held. */
+  validUntil?: string;
+  /** India shows an estimated 18% GST line; International shows none. */
+  gstCountry: "IN" | "INTL";
+  /** A free payment-milestone schedule, e.g. Advance 35% / Final 10%. Percentages are not enforced to sum to 100 — this is not a binding contract. */
+  milestones?: { label: string; percent: number }[];
+  /** Freeform terms/notes, printed as-is — not the clause-library machinery invoices/contracts use. */
+  termsNote?: string;
+}
+
 export type AdminDocument =
   | InvoiceDocument
   | ReceiptDocument
   | CreditNoteDocument
   | ContractDocument
   | SlipDocument
-  | LetterDocument;
+  | LetterDocument
+  | QuotationDocument;
 
 /**
  * Slim view of a finalized invoice, for the receipt's "against invoice" picker.

@@ -161,6 +161,9 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
       { href: '/client/docs/contract', label: 'Contract', icon: FileSignature, shortcut: 'C' },
       { href: '/client/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee, shortcut: 'I' },
       { href: '/client/docs/receipt', label: 'Receipt', icon: Receipt, shortcut: 'R' },
+      // Pre-sale, so it comes before the billed documents in spirit even
+      // though it sits after them here — 'Q' is free and mnemonic.
+      { href: '/client/docs/quotation', label: 'Service Quotation', icon: FileOutput, shortcut: 'Q' },
       // Last, and deliberately so: a credit note only exists to reduce an
       // invoice that has already been issued, so it is never the document you
       // reach for first. 'N' because 'C' is the contract's.

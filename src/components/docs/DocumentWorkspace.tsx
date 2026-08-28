@@ -38,6 +38,7 @@ export default function DocumentWorkspace({
   columns,
   columnWidth,
   columnGap,
+  forceDark,
   railFooter,
   status,
   children,
@@ -79,6 +80,8 @@ export default function DocumentWorkspace({
   columns?: number;
   columnWidth?: number;
   columnGap?: number;
+  /** Paint every flowing page dark — see `packBlocks`. Only the quotation sets this. */
+  forceDark?: boolean;
   /**
    * Pinned below the rail's scroll rather than at the end of the form — the
    * stage's one forward action, and on the last stage Finalize and Delete.
@@ -142,6 +145,7 @@ export default function DocumentWorkspace({
           columns={columns}
           columnWidth={columnWidth}
           columnGap={columnGap}
+          forceDark={forceDark}
           onPageCountChange={setPageCount}
           onCurrentPageChange={setCurrentPage}
         >

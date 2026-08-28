@@ -380,6 +380,15 @@ export interface DocumentData {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
+  // QTN — the Service Quotation. See `QuotationDocument` in domain/types.
+  recipientName?: string;
+  attentionName?: string;
+  offerLine?: string;
+  subjectLine?: string;
+  validUntil?: string;
+  gstCountry?: "IN" | "INTL";
+  milestones?: { label: string; percent: number }[];
+  termsNote?: string;
 }
 
 export const documents = pgTable(

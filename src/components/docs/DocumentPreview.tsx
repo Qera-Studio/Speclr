@@ -91,6 +91,7 @@ export default function DocumentPreview({
   columns = 1,
   columnWidth,
   columnGap = 0,
+  forceDark = false,
   onPageCountChange,
   onCurrentPageChange,
   ref,
@@ -134,6 +135,8 @@ export default function DocumentPreview({
   columns?: number;
   columnWidth?: number;
   columnGap?: number;
+  /** Paint every flowing page dark — see `packBlocks`. Only the quotation sets this. */
+  forceDark?: boolean;
   onPageCountChange?: (count: number) => void;
   onCurrentPageChange?: (index: number) => void;
   ref?: Ref<DocumentPreviewHandle>;
@@ -156,6 +159,7 @@ export default function DocumentPreview({
     flowBlocks,
     pageContentHeight,
     columns,
+    forceDark,
   );
 
   // Fit the A4 page *width* into the viewport — with a continuously scrolling
@@ -354,7 +358,9 @@ export default function DocumentPreview({
               // blocks those are.
               className={`paginatorPage w-[794px] ${
                 selfPaddedSheet ? '' : pagePadding
-              } ${flowColumn} box-border bg-white text-black h-auto min-h-[1123px] ${PAGE_SHADOW}`}
+              } ${flowColumn} box-border ${
+                forceDark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black'
+              } h-auto min-h-[1123px] ${PAGE_SHADOW}`}
             >
               {flowBlocks}
             </div>

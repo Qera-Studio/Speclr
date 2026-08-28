@@ -5,6 +5,7 @@ import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import { ContractPrint } from '@/components/docs/ContractPages';
+import { QuotationPrint } from '@/components/docs/QuotationPages';
 import { FIXTURES, isFixture } from './fixtures';
 import '@/styles/print.css';
 
@@ -53,6 +54,8 @@ export default async function PreviewPage({
     <LetterSheet doc={doc} />
   ) : doc.type === 'CON' ? (
     <ContractPrint doc={doc} />
+  ) : doc.type === 'QTN' ? (
+    <QuotationPrint doc={doc} />
   ) : (
     <DocumentSheet doc={doc} />
   );

@@ -16,8 +16,10 @@ import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
+import QuotationEditor from '@/components/docs/editors/QuotationEditor';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { ContractWorkspace } from '@/components/docs/ContractPages';
+import { QuotationWorkspace } from '@/components/docs/QuotationPages';
 import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
 import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
 import SlipSheet from '@/components/docs/sheets/SlipSheet';
@@ -121,6 +123,17 @@ export default async function DocumentRoute({
       );
     }
     const clients = await listClients();
+    if (doc.type === 'QTN') {
+      return (
+        <QuotationEditor
+          clients={clients}
+          services={await listServices()}
+          doc={doc}
+          studio={studio}
+          title={heading}
+        />
+      );
+    }
     if (doc.type === 'CON') {
       const [services, exclusions, clientInputs] = await Promise.all([
         listServices(),
@@ -186,6 +199,14 @@ export default async function DocumentRoute({
       pagePadding: LETTER_PADDING,
       pagePaddingY: LETTER_PADDING_Y,
     });
+  // The quotation is dark on every page, not just a cover, so it goes through
+  // its own client component too — see `QuotationPages`.
+  if (doc.type === 'QTN')
+    return (
+      <QuotationWorkspace doc={doc} title={heading}>
+        <FinalizedActions docId={doc.id} isSlip={false} />
+      </QuotationWorkspace>
+    );
   // The contract carries a running header and footer, so its chrome has to be
   // built inside a client component — see `ContractPages`. Same workspace, same
   // actions rail.

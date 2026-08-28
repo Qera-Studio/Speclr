@@ -147,6 +147,17 @@ export function packBlocks(
   blocks: MeasuredBlock[],
   pageHeight: number,
   columnsPerPage = 1,
+  /**
+   * Paint every flowing (non-`own`) page dark, not just a block's own
+   * dedicated page. `own`/`dark` already lets one block claim a full-bleed
+   * black page (the contract's cover, an offer letter); this is for a
+   * document that is dark on *every* page, like the Service Quotation — added
+   * rather than working around it, because every alternative (one giant
+   * overflowing `own` block, or a per-block dark flag the packer would have to
+   * special-case) either breaks clean page breaks or duplicates this same
+   * plumbing per call site.
+   */
+  forceDark = false,
 ): PackedPage[] {
   const pages: PackedPage[] = [];
   const heights = blocks.map((b) => b.height);
@@ -157,7 +168,7 @@ export function packBlocks(
 
   const breakPage = () => {
     if (bands.length === 0) return;
-    pages.push(page(bands, false, false));
+    pages.push(page(bands, forceDark, false));
     bands = [];
     used = 0;
   };
@@ -257,7 +268,7 @@ export function packBlocks(
 
   breakPage();
 
-  if (pages.length === 0) return [page([], false, false)];
+  if (pages.length === 0) return [page([], forceDark, false)];
 
   // A block that fills a page on its own, without having asked for one, is
   // still too tall to clip.

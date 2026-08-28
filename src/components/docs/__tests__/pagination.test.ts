@@ -176,4 +176,35 @@ describe('packBlocks', () => {
       expect(bands(pages)).toEqual([[[[0], []]], [[[1]]], [[[2], []]]]);
     });
   });
+
+  /**
+   * The Service Quotation is dark on every page, not just a cover — added for
+   * it. Default `false` leaves every other document type (which paints normal
+   * flowing pages white via `own`/`dark` only) unchanged.
+   */
+  describe('forceDark', () => {
+    it('defaults to false — every existing document type is unaffected', () => {
+      const pages = packBlocks([b(400), b(400)], 1000);
+      expect(pages.every((p) => p.dark === false)).toBe(true);
+    });
+
+    it('paints every flowing page dark when set', () => {
+      const pages = packBlocks([b(600), b(600), b(600)], 1000, 1, true);
+      expect(pages).toHaveLength(3);
+      expect(pages.every((p) => p.dark === true)).toBe(true);
+    });
+
+    it('paints the sole page of an empty document dark too', () => {
+      expect(packBlocks([], 1000, 1, true)).toEqual([
+        { bands: [], blocks: [], dark: true, overflows: false, full: false },
+      ]);
+    });
+
+    it('does not override an own block’s own dark flag', () => {
+      // An own block that is explicitly light should stay light even inside a
+      // forced-dark document — `own`/`dark` is a stronger, per-block signal.
+      const pages = packBlocks([b(100, { own: true, dark: false })], 1000, 1, true);
+      expect(pages[0].dark).toBe(false);
+    });
+  });
 });

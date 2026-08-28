@@ -315,6 +315,22 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 
 ## Smaller / unapproved
 
+- List/Cards drag pill (`DocumentsBrowser`'s view toggle, top of the dashboard
+  table) reported as still overflowing/misbehaving after the 26 August 2026
+  drag fix (`docs/design.md` §2.7, commit `3255aa2`) that fixed the identical
+  bug in `ProfileSwitcher` and the Base UI tab strips. Investigated at length:
+  `useTabDrag` is the shared hook both controls use, the border/pill classes
+  are the same shared exports, and a real signed-in Chromium session (mouse,
+  synthetic single-jump drag past the edge, squeezed with filter chips, at
+  1024px/1440px, light/dark) could not reproduce any overflow or missing
+  border on the pushed code — the pill clamped to the pixel every time. User
+  confirmed a hard refresh first. Left open because the discrepancy is
+  unexplained, not because it's dismissed: candidates not yet ruled out are the
+  user's actual browser/input device (Safari, trackpad — untested; only
+  Chromium synthetic mouse events were tried) and a build/deploy target other
+  than local `localhost:3000`. Revisit by asking which browser and pointer
+  device reproduces it, ideally with screen recording rather than a static
+  screenshot (the bug, if real, is transient — "mid-drag, briefly").
 - Rename the amber card title "Reviewed" → "Checked".
 - Lint rule flagging `Upload`/`Download` lucide imports, to force `TrayArrowIcon`.
 - Wire the search bar.

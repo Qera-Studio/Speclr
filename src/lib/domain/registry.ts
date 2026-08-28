@@ -12,7 +12,13 @@ import { isISODate } from "./dates";
 import { addressPartsSchema } from "./address";
 import { CLIENT_ENTITY_TYPES } from "./client";
 import { emailSchema, phoneSchema, sacSchema } from "./fields";
-import { codeSchema, multilineSchema, orgNameSchema, textSchema } from "./text";
+import {
+  codeSchema,
+  multilineSchema,
+  orgNameSchema,
+  personNameSchema,
+  textSchema,
+} from "./text";
 import { contractComplete } from "./contract/completeness";
 import { serviceInputSchema } from "./service";
 import { docContentSchema, type DocContent, type TermItem } from "./docContent";
@@ -419,6 +425,45 @@ export const payslipFinalizeSchema = z
     }
   });
 
+// ── Quotation schema ──────────────────────────────────────────────────────
+
+/** A payment-milestone row. Percentages are not required to sum to 100 — a
+ * quotation is not a binding contract, so this is a soft-checked convenience,
+ * not a validated schedule. */
+const milestoneSchema = z.object({
+  label: textSchema(120),
+  percent: z.number().min(0).max(100),
+});
+
+const quotationLineItemShape = {
+  section: textSchema(120).optional(),
+  recurring: z.boolean().optional(),
+};
+const quotationLineItemSchema = lineItemSchema.extend(quotationLineItemShape);
+const quotationDraftLineItemSchema =
+  draftLineItemSchema.extend(quotationLineItemShape);
+
+const quotationBaseShape = {
+  issueDate: isoDate,
+  recipientName: textSchema(200).optional(),
+  attentionName: personNameSchema(120).optional(),
+  offerLine: textSchema(300).optional(),
+  subjectLine: textSchema(300).optional(),
+  validUntil: isoDate.optional(),
+  gstCountry: z.enum(["IN", "INTL"]),
+  milestones: z.array(milestoneSchema).max(20).optional(),
+  termsNote: multilineSchema(4000).optional(),
+  content: docContentSchema.optional(),
+};
+export const quotationDraftSchema = z.object({
+  ...quotationBaseShape,
+  lineItems: z.array(quotationDraftLineItemSchema).max(50),
+});
+export const quotationFinalizeSchema = z.object({
+  ...quotationBaseShape,
+  lineItems: z.array(quotationLineItemSchema).min(1).max(50),
+});
+
 const bulletSectionSchema = z.object({
   heading: textSchema(200),
   items: z.array(multilineSchema(1000)).max(30),
@@ -513,6 +558,14 @@ export interface DocFields {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
+  // QTN — the Service Quotation. See `QuotationDocument` in types.ts.
+  recipientName?: string;
+  attentionName?: string;
+  subjectLine?: string;
+  validUntil?: string;
+  gstCountry?: "IN" | "INTL";
+  milestones?: { label: string; percent: number }[];
+  termsNote?: string;
   /**
    * Editable text overrides. Absent keys resolve to the defaults below via
    * `contentOf`; finalize materialises the lot onto the document so an issued
@@ -540,7 +593,7 @@ export interface DocTypeSpec {
    * employee-based, numbered); 'hr-letter' = offer/experience/exit letters
    * (boilerplate + editable body).
    */
-  kind: "financial" | "contract" | "hr-slip" | "hr-letter";
+  kind: "financial" | "contract" | "hr-slip" | "hr-letter" | "quotation";
   hasPayment: boolean;
   hasDueDate: boolean;
   /**
@@ -700,6 +753,30 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
         body: "",
       },
     ],
+  },
+  QTN: {
+    code: "QTN",
+    slug: "quotation",
+    label: "Service Quotation",
+    masthead: "SERVICE QUOTATION",
+    // Its own kind, not 'financial': a quotation carries no clientId, no
+    // clientSnapshot and no place-of-supply — reusing 'financial' would risk
+    // pulling in invoice-only finalize logic that assumes a client record.
+    kind: "quotation",
+    hasPayment: false,
+    // Uses `validUntil` instead of the shared due-date mechanism.
+    hasDueDate: false,
+    draftSchema: quotationDraftSchema,
+    finalizeSchema: quotationFinalizeSchema,
+    defaultFields: (todayIso) => ({
+      issueDate: todayIso,
+      // No pre-seeded blank row — the rail's "Add item" starts the list.
+      lineItems: [],
+      gstRatePercent: 0,
+      gstCountry: "IN",
+    }),
+    // No clause list — `termsNote` is freeform prose, not TERMS clauses.
+    fixedTerms: [],
   },
   CON: {
     code: "CON",

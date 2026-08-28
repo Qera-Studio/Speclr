@@ -1,6 +1,7 @@
 import "server-only";
 
 import { computeTotals, slipTotals } from "@/lib/domain/money";
+import { computeQuotationTotals } from "@/lib/domain/quotationTotals";
 import { isHrDocType } from "@/lib/domain/registry";
 import type {
   Actor,
@@ -12,6 +13,7 @@ import type {
   EmployeeSnapshot,
   InvoiceDocument,
   LetterDocument,
+  QuotationDocument,
   ReceiptDocument,
   SlipDocument,
 } from "@/lib/domain/types";
@@ -162,11 +164,16 @@ export type DocumentInsert = Omit<DocumentRow, "createdAt" | "updatedAt"> & {
 export function toRow(doc: AdminDocument): DocumentInsert {
   const totals = computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc);
   // `total_paise` is what the lists and amount filters read, so for a pay slip
-  // it has to be the net actually paid, not the gross before deductions.
+  // it has to be the net actually paid, not the gross before deductions; for a
+  // quotation it has to be the section-grouped, recurring-excluded, GST-estimated
+  // figure the sheet actually shows — `computeTotals` knows none of that (it
+  // reads `gstRatePercent`, which is pinned to 0 on a quotation).
   const totalPaise =
     doc.type === "PAY"
       ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise
-      : totals.totalPaise;
+      : doc.type === "QTN"
+        ? computeQuotationTotals(doc.lineItems ?? [], doc.gstCountry).totalPaise
+        : totals.totalPaise;
 
   // Everything type-specific + shared-optional goes into `data`.
   const data: DocumentData = {
@@ -236,6 +243,20 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.bulletSections = doc.bulletSections;
       data.payAmountPaise = doc.payAmountPaise;
       break;
+    case "QTN":
+      // Addressed to nobody in particular — no clientId, no snapshot. See
+      // `QuotationDocument` in domain/types. `validUntil` stays in `data`
+      // rather than the `dueDate` column: that column's "Due" framing (used
+      // by the invoice) means something different from a quotation's expiry.
+      data.recipientName = doc.recipientName;
+      data.attentionName = doc.attentionName;
+      data.offerLine = doc.offerLine;
+      data.subjectLine = doc.subjectLine;
+      data.validUntil = doc.validUntil;
+      data.gstCountry = doc.gstCountry;
+      data.milestones = doc.milestones;
+      data.termsNote = doc.termsNote;
+      break;
   }
 
   return {
@@ -291,6 +312,21 @@ export function fromRow(row: DocumentRow): AdminDocument {
     createdBy: actorFrom(row.createdBy, row.createdByEmail),
     finalizedBy: actorFrom(row.finalizedBy, row.finalizedByEmail),
   };
+
+  if (row.type === "QTN") {
+    return {
+      ...base,
+      type: "QTN",
+      recipientName: row.data.recipientName,
+      attentionName: row.data.attentionName,
+      offerLine: row.data.offerLine,
+      subjectLine: row.data.subjectLine,
+      validUntil: row.data.validUntil,
+      gstCountry: row.data.gstCountry ?? "IN",
+      milestones: row.data.milestones,
+      termsNote: row.data.termsNote,
+    } satisfies QuotationDocument;
+  }
 
   if (isHrDocType(row.type)) {
     const employeeId = row.employeeId ?? "";

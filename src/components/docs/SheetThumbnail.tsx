@@ -4,7 +4,13 @@ import DocumentSheet from "./sheets/DocumentSheet";
 import LetterSheet from "./sheets/LetterSheet";
 import SlipSheet from "./sheets/SlipSheet";
 import { CONTRACT_DARK_PAGE, contractBlocks } from "./sheets/ContractSheet";
-import { CONTRACT_PADDING, SHEET_HEIGHT, SHEET_WIDTH } from "./sheets/frame";
+import { quotationBlocks } from "./sheets/QuotationSheet";
+import {
+  A4_PADDING,
+  CONTRACT_PADDING,
+  SHEET_HEIGHT,
+  SHEET_WIDTH,
+} from "./sheets/frame";
 
 /**
  * A document's first page, small enough to recognise at a glance.
@@ -42,6 +48,16 @@ function firstPage(doc: AdminDocument) {
         className={`flex h-full w-full flex-col ${CONTRACT_PADDING} ${CONTRACT_DARK_PAGE} box-border`}
       >
         {contractBlocks(doc)[0]}
+      </div>
+    );
+  }
+  if (doc.type === "QTN") {
+    // Every page of a quotation is dark, not just a cover — same trick as the
+    // contract's cover above: paint the frame black and drop in the first
+    // (header) block, which is all that lands in the thumbnail's crop anyway.
+    return (
+      <div className={`flex h-full w-full flex-col ${A4_PADDING} bg-black text-white box-border`}>
+        {quotationBlocks(doc)[0]}
       </div>
     );
   }

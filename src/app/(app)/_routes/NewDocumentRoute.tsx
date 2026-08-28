@@ -16,6 +16,7 @@ import DocumentEditor from '@/components/docs/editors/DocumentEditor';
 import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
+import QuotationEditor from '@/components/docs/editors/QuotationEditor';
 
 /**
  * `/<profile>/docs/new/<slug>` — a blank editor for one document type.
@@ -75,6 +76,19 @@ export default async function NewDocumentRoute({
   // the next save silently loses the client the draft was written for. Same
   // rule as a saved registration type staying on offer (`CONTEXT.md` §5d-ii).
   const clients = (await listClients()).filter((c) => !c.archived);
+  if (spec.code === 'QTN') {
+    // A quotation is deliberately not tied to a client record (it is routinely
+    // sent pre-onboarding) — `clients` is passed only for the optional
+    // "fill from an existing client" autofill, never as a required recipient.
+    return (
+      <QuotationEditor
+        clients={clients}
+        services={await listServices()}
+        studio={studio}
+        title={title}
+      />
+    );
+  }
   if (spec.code === 'CON') {
     const [services, exclusions, clientInputs, clauses] = await Promise.all([
       listServices(),

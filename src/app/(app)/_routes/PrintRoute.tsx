@@ -6,6 +6,7 @@ import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { ContractPrint } from '@/components/docs/ContractPages';
+import { QuotationPrint } from '@/components/docs/QuotationPages';
 import LetterSheet from '@/components/docs/sheets/LetterSheet';
 import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import PrintToolbar from '@/components/docs/PrintToolbar';
@@ -88,6 +89,12 @@ export default async function PrintRoute({
     return shell(
       <ContractPrint doc={doc} />,
       `Contract-${slug(doc.clientSnapshot.name)}-${doc.issueDate}`,
+    );
+  }
+  if (doc.type === 'QTN') {
+    return shell(
+      <QuotationPrint doc={doc} />,
+      doc.number ?? `Quotation-${slug(doc.recipientName ?? doc.issueDate)}`,
     );
   }
   return shell(<DocumentSheet doc={doc} />, doc.number ?? `${spec.code}-draft`);
