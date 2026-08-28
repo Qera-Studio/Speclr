@@ -11,6 +11,15 @@ import { defineConfig, devices } from '@playwright/test';
  * `next dev`, not a production build: the fixtures render at `/preview/…`,
  * which `notFound()`s in production on purpose.
  */
+/**
+ * 3000 unless told otherwise. `next dev` walks up a port when 3000 is taken, so
+ * a second server (a production build left running, another worktree) puts the
+ * fixtures on 3001 while this still points at 3000 — where `/preview/…` is a
+ * real 404, because it `notFound()`s outside dev. That failure reads exactly
+ * like a broken selector, which cost a debugging cycle once.
+ */
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -19,13 +28,13 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000/preview/invoice',
+    url: `${BASE_URL}/preview/invoice`,
     reuseExistingServer: !process.env.CI,
     // A cold Turbopack compile of the first page is slow, and the print sheets
     // pull in the whole domain layer.

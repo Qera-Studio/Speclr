@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
 import { EditorPanelProvider, EditorPanelContent } from '../EditorPanel';
@@ -55,16 +55,40 @@ describe('TopPanel', () => {
     expect(screen.getByRole('combobox', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('renders a labelled, inert notifications button', () => {
+  /**
+   * The bell opens a drawer rather than being decoration. Nothing produces a
+   * notification yet, so what it opens says so in those words — an invented
+   * list would be a fabricated record in an app whose point is records that
+   * are not.
+   */
+  it('opens the notifications drawer from the bell', async () => {
+    const user = userEvent.setup();
     renderPanel();
-    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /notifications/i }));
+    const drawer = await screen.findByRole('dialog');
+    expect(within(drawer).getByText('Nothing to report')).toBeInTheDocument();
   });
 
-  it('disables the editor-rail toggle when the page has nothing editable', () => {
-    renderPanel();
-    const button = screen.getByRole('button', { name: /edit panel/i });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('title', 'No editable content on this page');
+  /**
+   * The clock is a reading and the bell is a control, so a hairline sits
+   * between them. It is decoration: the two names already separate them for a
+   * reader who cannot see it, which is why it is `aria-hidden` and does not
+   * announce as a separator.
+   */
+  it('separates the clock from the bell without announcing it', () => {
+    const { container } = renderPanel();
+    const end = container.querySelector('[data-slot="top-panel-end"]') as HTMLElement;
+    const rule = end.querySelector('[data-slot="separator"]');
+    expect(rule).toBeInTheDocument();
+    expect(rule).toHaveAttribute('aria-hidden', 'true');
+
+    // The bell is last, after the date and time. `compareDocumentPosition` is
+    // the ordering the reader tabs in as well as the one they see.
+    const bell = within(end).getByRole('button', { name: /notifications/i });
+    expect(
+      rule!.compareDocumentPosition(bell) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('expands and collapses the editor rail from its own toggle', async () => {

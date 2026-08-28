@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import type { Profile } from "@/lib/profile";
 import Clock from "./Clock";
+import Notifications from "./Notifications";
 import ProfileSwitcher from "./ProfileSwitcher";
 import SearchCommand from "./SearchCommand";
 
@@ -57,20 +57,31 @@ export default function TopPanel({ profile }: { profile: Profile }) {
         data-slot="top-panel-end"
         // `gap-3`, the bar's own, rather than the `gap-1` that suited two
         // adjacent icon buttons: the clock is a text run and the bell is a
-        // control, so they are two things rather than a pair. The clock sits
-        // last, at the very end of the bar.
+        // control, so they are two things rather than a pair.
         className="flex flex-1 items-center justify-end gap-3"
       >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Notifications"
-          className="shrink-0 text-muted-foreground"
-        >
-          <Bell className="size-4" />
-        </Button>
         <Clock />
+        {/* A hairline between them, because they are unrelated: one is a
+            reading, the other opens a panel. `h-4` rather than the full band,
+            so it reads as a join between two items in a row and not as a
+            column seam like the ones this header was built to remove. */}
+        <Separator
+          orientation="vertical"
+          // `self-center!` is load-bearing, and the `!` is the whole of it.
+          // The primitive carries `data-vertical:self-stretch`, an `align-self`
+          // that beats the row's `items-center`: the rule anchors to the band's
+          // top edge and `h-4` then caps it 16px *down from there*, landing its
+          // centre 6px above the clock's and the bell's. Plain `self-center`
+          // does not fix it — an attribute-selector utility outranks a bare one
+          // whatever the class order, so the override has to raise its own
+          // specificity. Measured, not guessed: `[data-slot=separator]` sat at
+          // mid 17.5 against 23.5 for both its neighbours.
+          className="h-4 self-center! bg-border"
+          // Decoration, not structure: the gap and the two names already
+          // separate these for a reader who cannot see it.
+          aria-hidden
+        />
+        <Notifications />
       </div>
     </div>
   );
