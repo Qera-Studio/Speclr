@@ -137,7 +137,13 @@ export default function AdminShell({
               so both work from the editor rail as well. */}
           <KeyboardShortcuts profile={profile} />
           <TopPanel profile={profile} />
-          <div className="flex min-h-0 flex-1">
+          {/* `has-[[data-editor-rail]]` so the inset's seam below follows the
+              rail's existence. The rail unmounts on a page with nothing
+              editable, and a border drawn against nothing is a stroke down the
+              right edge of the window. Done here rather than by passing a prop,
+              because `AdminShell` renders inside `EditorPanelProvider` and so
+              cannot read the panel count itself. */}
+          <div className="group/shell-row flex min-h-0 flex-1">
             <AdminSidebar user={user} profile={profile} />
             {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
             <SidebarInset
@@ -150,8 +156,10 @@ export default function AdminShell({
               // inside of its own box, so a `border-l` on the rail sat on the
               // rail's `bg-sidebar` fill and read as a line *inside* the panel.
               // Owning both seams from the middle column makes them mirror
-              // images: nav's right edge, inset's right edge, one ink.
-              className="min-h-0 overflow-clip border-r border-border"
+              // images: nav's right edge, inset's right edge, one ink. It is
+              // drawn only when there is a rail to be a seam against, which is
+              // what the wrapper's `group/shell-row` above is for.
+              className="min-h-0 overflow-clip border-border group-has-[[data-editor-rail]]/shell-row:border-r"
             >
               {/* Above the header rather than over the content: it is a fact
                   about the whole app, and it must not cover a control. */}

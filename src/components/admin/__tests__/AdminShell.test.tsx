@@ -26,11 +26,30 @@ const railEl = () => document.querySelector('[data-side="right"][data-slot="side
 const navEl = () => document.querySelector('[data-side="left"][data-slot="sidebar"]');
 
 describe('AdminShell', () => {
-  it('renders the nav, the content card and the editor rail', () => {
+  it('renders the nav and the content card', () => {
     renderShell();
     expect(navEl()).toBeInTheDocument();
-    expect(railEl()).toBeInTheDocument();
     expect(screen.getByText('Page body')).toBeInTheDocument();
+  });
+
+  /**
+   * The rail follows the page, not the shell: it is absent until something on
+   * the page registers a panel, and back once one does. The seam between the
+   * inset and the rail goes with it, since a border drawn against nothing is a
+   * stroke down the right edge of the window.
+   */
+  it('has no editor rail until a page registers a panel', () => {
+    const { rerender } = renderShell();
+    expect(railEl()).not.toBeInTheDocument();
+
+    rerender(
+      <AdminShell user={user}>
+        <EditorPanelContent title="Edit">
+          <p>Fields</p>
+        </EditorPanelContent>
+      </AdminShell>,
+    );
+    expect(railEl()).toBeInTheDocument();
   });
 
   // Two widths, toggled: this one and `--sidebar-width-icon`. Deliberately a
@@ -82,9 +101,4 @@ describe('AdminShell', () => {
     expect(railEl()).toHaveAttribute('data-state', 'expanded');
   });
 
-  it('keeps the rail collapsed on a page with nothing editable', () => {
-    renderShell();
-    expect(railEl()).toHaveAttribute('data-state', 'collapsed');
-    expect(screen.getByRole('button', { name: /edit panel/i })).toBeDisabled();
-  });
 });

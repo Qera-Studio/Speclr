@@ -61,9 +61,21 @@ export default function EditorSidebar() {
     count,
     open,
   } = panel;
-  const hasContent = count > 0;
-  // A page with nothing editable can't be expanded; collapse if content goes.
-  const expanded = open && hasContent;
+  /*
+    A page with nothing editable has no rail at all, rather than a disabled
+    strip. The registration that drives this already existed — panels register
+    on mount and `count` is what the expand button was reading — so this is the
+    same fact used one step earlier: it decided whether the rail could open,
+    and now it decides whether the rail is there.
+
+    The portal hosts below are ref callbacks, so they null out on the way out
+    and are re-set on the way back in. The ordering holds because registration
+    is what brings the rail back: a panel mounts, `count` goes to 1, this
+    renders, and `setHost` fires before the panel's own portal effect reads it.
+  */
+  if (count === 0) return null;
+
+  const expanded = open;
 
   return (
     <Sidebar
@@ -149,12 +161,10 @@ export default function EditorSidebar() {
             type="button"
             variant="ghost"
             size="icon"
-            disabled={!hasContent}
             onClick={() =>
               expanded ? panel.requestClose() : panel.setOpen(true)
             }
             aria-label={expanded ? "Collapse edit panel" : "Expand edit panel"}
-            title={hasContent ? undefined : "No editable content on this page"}
             className="pointer-events-auto size-7 shrink-0 text-muted-foreground"
           >
             <PanelRight className="size-4" />

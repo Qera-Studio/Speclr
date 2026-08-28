@@ -43,12 +43,15 @@ function renderRail(panel?: React.ReactNode) {
 const expandButton = () => screen.getByRole('button', { name: /edit panel/i });
 
 describe('EditorSidebar', () => {
-  it('disables the expand button when the page has nothing editable', () => {
+  /**
+   * The rail is not there at all on a page with nothing editable, rather than
+   * present and disabled. A permanently collapsed strip beside every list was
+   * chrome that named a capability the page did not have; the registration that
+   * now decides this is the same `count` the expand button used to read.
+   */
+  it('renders nothing when the page has nothing editable', () => {
     renderRail();
-    const button = expandButton();
-    expect(button).toBeDisabled();
-    // A disabled control must say why it is disabled.
-    expect(button).toHaveAttribute('title', 'No editable content on this page');
+    expect(screen.queryByRole('button', { name: /edit panel/i })).toBeNull();
   });
 
   it('enables the expand button once a panel registers', () => {
