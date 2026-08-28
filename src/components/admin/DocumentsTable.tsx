@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DateCell, SortableHead, TableCard, TruncCell } from './Page';
+import type { BulkSelection } from './BulkSelect';
 import { CopyCell } from './CopyCell';
 import DocumentRowActions from './DocumentRowActions';
 import { computeTotals, formatINR } from '@/lib/domain/money';
@@ -47,6 +48,13 @@ export interface DocumentsTableProps {
   /** Card footer: the row count on the left, the pager on the right. */
   count?: React.ReactNode;
   pagination?: React.ReactNode;
+  /**
+   * Row selection, opt-in exactly as sorting is: pass it and the checkbox
+   * column appears, omit it and the table is unchanged. The browser owns the
+   * state because it also owns the paging and filtering the selection has to
+   * survive.
+   */
+  selection?: BulkSelection<AdminDocument>;
 }
 
 // Total is right-aligned, which reverses an earlier call here. Money is read by
@@ -70,6 +78,7 @@ export default function DocumentsTable({
   onSortChange,
   count,
   pagination,
+  selection,
 }: DocumentsTableProps) {
   if (documents.length === 0) {
     return (
@@ -91,6 +100,7 @@ export default function DocumentsTable({
         <TableCaption className="sr-only">All documents, newest first</TableCaption>
         <TableHeader>
           <TableRow>
+            {selection?.head}
             {COLUMNS.map((col) => (
               <SortableHead
                 key={col.column}
@@ -121,6 +131,7 @@ export default function DocumentsTable({
             */
             return (
               <TableRow key={doc.id} className="group/row relative cursor-pointer">
+                {selection?.cell(doc)}
                 <CopyCell
                   value={doc.number}
                   label="Copy document number"

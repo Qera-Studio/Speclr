@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   FilterX,
   LayoutGrid,
@@ -36,6 +38,10 @@ import SortToggle, { useShowSort } from "./SortToggle";
 import FilterBar from "./FilterBar";
 import DocumentsCards from "./DocumentsCards";
 import DocumentsTable from "./DocumentsTable";
+import { BulkBar, useBulkSelect } from "./BulkSelect";
+import { DELETE_DRAFT_CONSEQUENCE } from "@/lib/domain/registry";
+import { DEV_UNLIMITED } from "@/lib/devMode";
+import { deleteDraftAction } from "@/server/actions/documents";
 import {
   FILTER_FIELDS,
   hasTotal,
@@ -257,10 +263,54 @@ export default function DocumentsBrowser({
     start,
   } = usePagedRows(visible);
 
-  // A new filter set is a new list; page 3 of the old one means nothing.
+  const router = useRouter();
+
+  /*
+    Only what may lawfully be deleted gets a checkbox. A finalized document is
+    immutable (`CONTEXT.md` §4) and the persistence layer refuses to remove one,
+    so offering it here would be offering an action the server says no to, one
+    confirm dialog later. `DEV_UNLIMITED` is inlined at build time and is the
+    same pre-launch escape hatch `DocumentRowActions` uses for the single-row
+    delete; it is not in the production bundle.
+  */
+  const deletable = useCallback(
+    (doc: AdminDocument) => doc.status === "draft" || DEV_UNLIMITED,
+    [],
+  );
+  const docId = useCallback((doc: AdminDocument) => doc.id, []);
+  const selection = useBulkSelect({ rows: pageRows, id: docId, deletable });
+
+  /*
+    One call per document rather than a batch action. There is no batched delete
+    on the server and adding one would mean a second path that has to re-derive
+    the auth and immutability checks `deleteDraftAction` already makes; the
+    sequential loop reuses the checked path exactly.
+
+    Refusals are counted and reported rather than swallowed. A server that says
+    no to three of five must not look like a success — the list refreshes either
+    way, so whatever survived is visible in the rows themselves.
+  */
+  const onBulkDelete = async () => {
+    const chosen = selection.chosen;
+    const results = await Promise.all(
+      chosen.map((doc) => deleteDraftAction(doc.id)),
+    );
+    const refused = results.filter((r) => !r.success).length;
+    selection.clear();
+    router.refresh();
+    if (refused > 0) {
+      toast.error(
+        `${refused} of ${chosen.length} could not be deleted. They are still in the list.`,
+      );
+    }
+  };
+
+  // A new filter set is a new list; page 3 of the old one means nothing, and
+  // neither does a tick on a row it no longer contains.
   const onFiltersChange = (next: FilterRow[]) => {
     setRows(next);
     setPage(0);
+    selection.clear();
   };
 
   // asc → desc → unsorted, so a column can always be put back.
@@ -283,7 +333,12 @@ export default function DocumentsBrowser({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    // `gap-2`, the same 8px `FilterBar` puts between Sort and Add filter. The
+    // bar and the table are one unit — every control in it changes what the
+    // rows below say — and at 16px the bar floated between the page title and a
+    // table it had no visible connection to. Matching the bar's own internal
+    // spacing is what makes the two read as one block.
+    <div className="flex flex-col gap-2">
       <FilterBar
         rows={rows}
         onChange={onFiltersChange}
@@ -347,6 +402,7 @@ export default function DocumentsBrowser({
           ) : (
             <DocumentsTable
               documents={pageRows}
+              selection={selection}
               sort={sort}
               // Omitted while the toggle is off — the headers then render as plain
               // text, which is `DocumentsTable`'s existing unsortable mode.
@@ -367,6 +423,20 @@ export default function DocumentsBrowser({
               }
             />
           )}
+
+          {/* Under the table and right-aligned, in normal flow rather than
+              floating over it: a bar that overlays the last rows hides the
+              very things about to be deleted. Cards get none — selection is a
+              table affordance and a card has no checkbox column. */}
+          {view === "table" ? (
+            <BulkBar
+              count={selection.count}
+              noun="document"
+              onClear={selection.clear}
+              onDelete={onBulkDelete}
+              consequence={DELETE_DRAFT_CONSEQUENCE}
+            />
+          ) : null}
         </>
       )}
     </div>

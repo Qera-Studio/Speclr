@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useMemo, useOptimistic, useState } from 'react';
+import { startTransition, useCallback, useMemo, useOptimistic, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Archive, Calendar, CircleAlert, CircleDashed, Globe, FilterX, Users } from 'lucide-react';
@@ -18,6 +18,7 @@ import { AddLink } from '@/components/ui/add-button';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ClientsTable from './ClientsTable';
+import { BulkBar, useBulkSelect } from '../BulkSelect';
 import FilterBar from '../FilterBar';
 import SortToggle, { useShowSort } from '../SortToggle';
 import {
@@ -116,10 +117,45 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
 
   const { page, pageCount, visible, setPage, start } = usePagedRows(shown);
 
-  // A new filter set is a new list; page 3 of the old one means nothing.
+  /*
+    Every row gets a checkbox, because this list genuinely cannot tell which
+    clients are deletable: a client that has ever been on a document is refused
+    server-side and nothing here knows what has been issued (`CONTEXT.md` §5d).
+    That is the same shape the per-row `RemoveButton` already has, and the
+    honest one — the alternative is a checkbox missing for reasons the row
+    cannot explain.
+  */
+  const clientId = useCallback((client: ClientRecord) => client.id, []);
+  const selection = useBulkSelect({ rows: visible, id: clientId });
+
+  /*
+    One call per client rather than a batch action, for the reason above: the
+    refusal is per client and `deleteClientAction` is where it is decided. It
+    also erases the attachments blob-first (DPDP Act 2023 erasure), which a
+    batch path would have to reimplement.
+  */
+  const onBulkDelete = async () => {
+    const chosen = selection.chosen;
+    setError(null);
+    const results = await Promise.all(
+      chosen.map((client) => deleteClientAction(client.id)),
+    );
+    const refused = results.filter((r) => !r.success).length;
+    selection.clear();
+    if (refused > 0) {
+      setError(
+        `${refused} of ${chosen.length} could not be deleted. A client that has been on a document can't be removed.`,
+      );
+    }
+    router.refresh();
+  };
+
+  // A new filter set is a new list; page 3 of the old one means nothing, and
+  // neither does a tick on a row it no longer contains.
   const onFiltersChange = (next: ClientFilterRow[]) => {
     setFilters(next);
     setPage(0);
+    selection.clear();
   };
 
   // asc → desc → unsorted, so a column can always be put back.
@@ -278,6 +314,7 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
       ) : (
         <ClientsTable
           clients={visible}
+          selection={selection}
           onDelete={onDelete}
           onArchive={onArchive}
           archived={showArchived}
@@ -296,6 +333,16 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
           }
         />
       )}
+
+      {/* Under the table and right-aligned, in normal flow: a bar floating over
+          the last rows would hide the very things about to be deleted. */}
+      <BulkBar
+        count={selection.count}
+        noun="client"
+        onClear={selection.clear}
+        onDelete={onBulkDelete}
+        consequence="This permanently removes these clients and any files uploaded for them. A client that has been on a document can't be deleted. This cannot be undone."
+      />
     </div>
   );
 }

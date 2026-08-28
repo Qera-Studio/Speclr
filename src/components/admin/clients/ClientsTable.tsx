@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
 import { RowActions } from '../RowActions';
 import { DateCell, SortableHead, TableCard } from '../Page';
+import type { BulkSelection } from '../BulkSelect';
 import { CopyCell } from '../CopyCell';
 import {
   Table,
@@ -130,6 +131,7 @@ export default function ClientsTable({
   onSortChange,
   count,
   pagination,
+  selection,
 }: {
   clients: ClientRecord[];
   onDelete: (client: ClientRecord) => void;
@@ -146,6 +148,8 @@ export default function ClientsTable({
       the caller's, because the caller is what filters and pages the list. */
   count?: React.ReactNode;
   pagination?: React.ReactNode;
+  /** Row selection, opt-in exactly as sorting is. Owned by the manager. */
+  selection?: BulkSelection<ClientRecord>;
 }) {
   if (clients.length === 0) {
     return (
@@ -172,6 +176,7 @@ export default function ClientsTable({
         <TableCaption className="sr-only">Saved clients</TableCaption>
         <TableHeader>
           <TableRow>
+            {selection?.head}
             {COLUMNS.map((col) => (
               <SortableHead
                 key={col.column}
@@ -199,6 +204,7 @@ export default function ClientsTable({
             const total = onboardingStepsFor(client).length;
             return (
               <TableRow key={client.id} className="group/row relative cursor-pointer">
+                {selection?.cell(client)}
                 <TableCell>
                   {/*
                     The whole row opens the client, via one stretched anchor

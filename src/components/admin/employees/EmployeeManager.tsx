@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { AddButton } from '@/components/ui/add-button';
 import RecordPanel from '../RecordPanel';
 import { useRecordPanel } from '../useRecordPanel';
@@ -28,6 +29,26 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
     router.refresh();
   };
 
+  /*
+    One call per employee rather than a batch action: the refusal is per
+    employee (one who has been on a slip or a letter is refused server-side)
+    and `deleteEmployeeAction` is where that is decided. Refusals are counted
+    and reported rather than swallowed — the list refreshes either way, so
+    whatever survived is visible in the rows themselves.
+  */
+  const onBulkDelete = async (chosen: EmployeeRecord[]) => {
+    const results = await Promise.all(
+      chosen.map((employee) => deleteEmployeeAction(employee.id)),
+    );
+    const refused = results.filter((r) => !r.success).length;
+    router.refresh();
+    if (refused > 0) {
+      toast.error(
+        `${refused} of ${chosen.length} could not be deleted. They are still in the list.`,
+      );
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {/* The create CTA lives here whether or not the list is empty — a control
@@ -42,6 +63,7 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
         employees={employees}
         onEdit={(employee) => guardedSelect(employee)}
         onDelete={onDelete}
+        onBulkDelete={onBulkDelete}
       />
 
       <RecordPanel
