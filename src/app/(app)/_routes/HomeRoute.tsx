@@ -4,6 +4,7 @@ import { listDocumentsByProfile } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
 import NewDocumentButton from '@/components/admin/NewDocumentButton';
 import { PageBody, PageHeader } from '@/components/admin/Page';
+import { NAV_BY_PROFILE } from '@/components/admin/nav';
 import type { Profile } from '@/lib/profile';
 
 /**
@@ -26,10 +27,9 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
 
   return (
     <PageBody>
-      {/* "Dashboard", matching the rail. This page browses every document
-          already issued; `/<profile>/docs` lists the *types* you can create.
-          Both were headed "Documents", which made them the same page twice. */}
-      <PageHeader title="Dashboard">
+      {/* The heading is the rail's own label, so the two cannot drift: the
+          client side calls this "Documents", the admin side "Dashboard". */}
+      <PageHeader title={NAV_BY_PROFILE[profile].home.label}>
         {/* The one button trialling `raised` — see the variant's note in
             `button.tsx`. Every other create button is still `default`. */}
         <NewDocumentButton variant="raised" />

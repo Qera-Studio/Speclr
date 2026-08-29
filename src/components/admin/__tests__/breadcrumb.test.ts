@@ -66,14 +66,14 @@ describe('parentHref', () => {
 });
 
 describe('breadcrumbForPath', () => {
-  it('maps a profile home to a single Dashboard crumb', () => {
-    expect(breadcrumbForPath('/client')).toEqual([{ label: 'Dashboard', href: '/client' }]);
+  it('maps a profile home to a single home crumb', () => {
+    expect(breadcrumbForPath('/client')).toEqual([{ label: 'Documents', href: '/client' }]);
     expect(breadcrumbForPath('/admin')).toEqual([{ label: 'Dashboard', href: '/admin' }]);
   });
 
-  it('maps a record link to Dashboard > label', () => {
+  it('maps a record link to home > label', () => {
     expect(breadcrumbForPath('/client/clients')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Clients', href: '/client/clients' },
     ]);
   });
@@ -87,7 +87,7 @@ describe('breadcrumbForPath', () => {
    */
   it('names the kind rather than printing a client’s uuid', () => {
     expect(breadcrumbForPath('/client/clients/95d22130-5aae-4944-893c-3e4029017cc3')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Clients', href: '/client/clients' },
       {
         label: 'Client',
@@ -98,7 +98,7 @@ describe('breadcrumbForPath', () => {
 
   it('labels the create route as a new client', () => {
     expect(breadcrumbForPath('/client/clients/new')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Clients', href: '/client/clients' },
       { label: 'New client', href: '/client/clients/new' },
     ]);
@@ -118,14 +118,14 @@ describe('breadcrumbForPath', () => {
    */
   it('maps a document list straight under its home, with no section crumb', () => {
     expect(breadcrumbForPath('/client/docs/invoice')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Invoice', href: '/client/docs/invoice' },
     ]);
   });
 
   it('trails a new-document route through its list, so the type stays navigable', () => {
     expect(breadcrumbForPath('/client/docs/new/invoice')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Invoice', href: '/client/docs/invoice' },
       { label: 'New', href: '/client/docs/new/invoice' },
     ]);
@@ -149,7 +149,7 @@ describe('breadcrumbForPath', () => {
 
   it('strips query strings and trailing slashes', () => {
     expect(breadcrumbForPath('/client/clients/')).toEqual([
-      { label: 'Dashboard', href: '/client' },
+      { label: 'Documents', href: '/client' },
       { label: 'Clients', href: '/client/clients' },
     ]);
     expect(breadcrumbForPath('/admin/spec?zoom=2')).toEqual([
@@ -163,6 +163,6 @@ describe('breadcrumbForPath', () => {
    * nothing but a redirect, so this only has to not throw.
    */
   it('falls back to the client home for a path outside both profiles', () => {
-    expect(breadcrumbForPath('/')).toEqual([{ label: 'Dashboard', href: '/client' }]);
+    expect(breadcrumbForPath('/')).toEqual([{ label: 'Documents', href: '/client' }]);
   });
 });

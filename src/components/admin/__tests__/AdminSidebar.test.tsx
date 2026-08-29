@@ -44,8 +44,9 @@ describe('AdminSidebar', () => {
 
   describe('client profile', () => {
     /**
-     * Five rows, no headings: Dashboard, the records page (named for the
-     * section, like admin's rail row), then the three library pages.
+     * Five rows, no headings: Documents (the home, which browses everything
+     * issued), the records page (named for the section, like admin's rail
+     * row), then the three library pages.
      */
     it('shows five rows and nothing else', () => {
       renderSidebar({ profile: 'client' });
@@ -53,7 +54,7 @@ describe('AdminSidebar', () => {
         .getAllByRole('link')
         .map((link) => link.textContent);
       expect(labels).toEqual([
-        'Dashboard',
+        'Documents',
         'Clients',
         'Service catalogue',
         'Clause library',
@@ -101,7 +102,9 @@ describe('AdminSidebar', () => {
       renderSidebar({ profile: 'client' });
       const nav = liveNav('client');
       expect(within(nav).queryByText('Library')).not.toBeInTheDocument();
-      expect(within(nav).queryByText('Documents')).not.toBeInTheDocument();
+      // As a *heading*, like Records below. The home row is a link named
+      // Documents, which is the page it goes to rather than a section.
+      expect(within(nav).queryByText('Documents', { selector: 'div' })).not.toBeInTheDocument();
       expect(within(nav).queryByText('Records', { selector: 'div' })).not.toBeInTheDocument();
       expect(within(nav).getByRole('link', { name: 'Service catalogue' })).toHaveAttribute(
         'href',
@@ -250,10 +253,11 @@ describe('AdminSidebar', () => {
     expect(
       within(liveNav('client')).getByRole('link', { name: 'Clients' }),
     ).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    // Scoped to the live nav: the admin nav is rendered too, and its own
+    // Documents row would otherwise make this ambiguous.
+    expect(
+      within(liveNav('client')).getByRole('link', { name: 'Documents' }),
+    ).not.toHaveAttribute('aria-current', 'page');
   });
 
   /**

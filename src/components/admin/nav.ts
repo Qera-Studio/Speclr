@@ -151,7 +151,10 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
   client: {
     label: 'Client',
     icon: Handshake,
-    home: { href: '/client', label: 'Dashboard', icon: LayoutDashboard, jump: 'H' },
+    // "Documents", not "Dashboard": the page browses every document already
+    // issued and shows nothing else. A real dashboard arrives when there is
+    // enough data to summarise, and takes this slot back then.
+    home: { href: '/client', label: 'Documents', icon: FileStack, jump: 'H' },
     // "Clients", not "Records". The section name and the page's own heading
     // were different words for one thing, so the rail, the breadcrumb and the
     // h1 disagreed on what you were looking at. The client side holds exactly

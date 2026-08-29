@@ -4,7 +4,7 @@ import { NAV_BY_PROFILE, SETTINGS_LINK, linksForProfile, shortcutForSlug } from 
 
 describe('nav model', () => {
   it('gives each profile a home at its own root', () => {
-    expect(NAV_BY_PROFILE.client.home).toMatchObject({ href: '/client', label: 'Dashboard' });
+    expect(NAV_BY_PROFILE.client.home).toMatchObject({ href: '/client', label: 'Documents' });
     expect(NAV_BY_PROFILE.admin.home).toMatchObject({ href: '/admin', label: 'Dashboard' });
   });
 
