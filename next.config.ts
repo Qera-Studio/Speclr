@@ -208,6 +208,13 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // The version banner is free reconnaissance. Nothing reads it.
   poweredByHeader: false,
+  // The PDF renderer's two packages are left to Node's own resolver rather than
+  // traced into the bundle. `@sparticuz/chromium` ships a Brotli-compressed
+  // browser it unpacks into /tmp at runtime, and `puppeteer-core` resolves
+  // binaries and native bits by path — bundling either rewrites the paths they
+  // look themselves up by, which fails only in production, only on first
+  // render. See `src/server/pdf/render.ts`.
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   experimental: {
     // Attachments upload through a Server Action, and the default cap is 1 MB,
     // well under the 25 MB `MAX_ATTACHMENT_BYTES` allows, so a real MSA failed

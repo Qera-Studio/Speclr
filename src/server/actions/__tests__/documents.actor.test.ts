@@ -26,6 +26,14 @@ jest.mock('@/db/store', () => ({
 }));
 jest.mock('@/db/counter', () => ({ claimSerial: () => claimSerial() }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
+// The PDF is rendered at finalize and stored (`server/pdf/store.ts`). Mocked
+// here rather than exercised: these tests are about what finalize records, and
+// `storePdfQuietly` deliberately cannot fail a finalize, so a real render would
+// prove nothing about them and would need a browser to do it.
+jest.mock('@/server/pdf/store', () => ({ storePdfQuietly: jest.fn() }));
+jest.mock('@/server/pdf/url', () => ({
+  printUrlFor: () => Promise.resolve('http://localhost/print'),
+}));
 
 import { createDraft, finalizeDocument, duplicateDocument } from '../documents';
 

@@ -203,6 +203,16 @@ that is about correctness rather than comfort.**
 | **Cost** | Vercel Blob: 1 GB free, then **~$0.023/GB stored** and **$0.05/GB served**. S3: **$0.023/GB stored**, $0.09/GB egress, plus request charges. Cloudflare R2: **$0.015/GB stored, zero egress**. |
 | **Beats its two closest competitors** | vs **S3**: identical pricing on storage, materially more setup (IAM, bucket policy, CORS) for a feature holding a few dozen PDFs. vs **Cloudflare R2**: cheaper and egress-free, and the obvious choice if attachments ever became large or heavily read. They are neither. Revisit at the first gigabyte. |
 
+### 2.5 PDF rendering: `@sparticuz/chromium` + `puppeteer-core`
+
+| | |
+|---|---|
+| **Today** | A headless Chromium launched at finalize, which loads the document's own print route and prints it to A4. The bytes are stored private in Blob (2.4) and the download serves them. Locally the system Chrome is driven instead, so the 66 MB binary is a production concern only. Wired 29 August 2026. |
+| **Why** | A contract and a quotation **paginate by measuring boxes after hydration** (`usePagination`), so where a page breaks is decided by a layout engine at runtime and cannot be read off the markup. The only renderer that agrees with the existing `print.css`, the A4 frame and the e2e `worstClip` measurements is the same engine those were written against. Rendering at finalize rather than on download also freezes the *rendering* of a record that CGST s.36 keeps unaltered for 72 months, and makes the download instant. |
+| **Industry substitute** | A hosted rendering API: **Browserless**, **Doppio**, **PDFShift**. Or self-hosted **Gotenberg** on a small VPS. |
+| **Cost** | `@sparticuz/chromium`: free, but ~66 MB against Vercel's 250 MB function limit, ~1 GB memory and a 3–8s cold start. Browserless: **from ~$20/month**. Doppio: **from ~$29/month**. Gotenberg on a VPS: **~$5–10/month** plus the operating. |
+| **Beats its two closest competitors** | vs a **hosted renderer**: the renderer receives the *entire* finalized document, so a breach there is a breach of every client's legal name, GSTIN, registered address and billed amounts. That is a processor relationship under the DPDP Act 2023 taken on to save a few seconds of cold start, and it was refused on those grounds. vs a **code-based PDF library** (jsPDF, `@react-pdf/renderer`): each carries its own layout engine, so every sheet would be rewritten a second time and the app would hold two renderings of one legal document that will eventually disagree, with the whole e2e suite measuring the wrong one. **The intended path is Gotenberg self-hosted**, once there is revenue to justify operating a server: same fidelity, warm and fast, and still nobody else's machine. `server/pdf/render.ts` is the seam that swap goes through. |
+
 ---
 
 ## 3. Framework and language

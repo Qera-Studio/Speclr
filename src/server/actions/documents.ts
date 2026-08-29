@@ -2,6 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { storePdfQuietly } from "@/server/pdf/store";
 import { invalidInput } from "./validation";
 import {
   financialYearCodeOfISODate,
@@ -626,6 +627,25 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     number,
     actor: actor.userId,
   });
+
+  /**
+   * Render the PDF once, here, and store it.
+   *
+   * The document is now immutable and retained 72 months (CGST s.36), so its
+   * *rendering* is frozen with it: generating on each download would let a
+   * Tailwind or font change quietly produce a different-looking PDF of the
+   * same record. Storing the bytes also makes the download instant, because
+   * nothing is generated on the click.
+   *
+   * **Deliberately after the save and deliberately unable to fail it.** The
+   * serial is already claimed, and a burned GST serial is an accounting event
+   * somebody reconciles by hand. A cold Chromium, an out-of-memory function or
+   * a Chrome bump must not be able to stop an invoice being issued. The
+   * document is the record; the PDF is a rendering of it, and the download
+   * route renders it on demand if it is missing.
+   */
+  await storePdfQuietly(finalized);
+
   // Sledgehammer, and the right size of one: a document write can change both
   // profile homes, its type's list page and the document page itself, and after
   // the profile split '/' alone is only a redirect. Same call `studio.ts` uses.

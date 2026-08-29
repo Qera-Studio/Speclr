@@ -3,6 +3,7 @@ import { requireAuthorizedUser } from '@/lib/auth/session';
 import { profileOfDocType, type Profile } from '@/lib/profile';
 import { getDocument, getStudioSettings } from '@/db/store';
 import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
+import { docFilename } from '@/lib/domain/docFilename';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { ContractPrint } from '@/components/docs/ContractPages';
@@ -21,8 +22,6 @@ import '@/styles/print.css';
 function isLetter(doc: AdminDocument): doc is LetterDocument {
   return doc.type === 'OFR' || doc.type === 'EXP' || doc.type === 'EXIT';
 }
-
-const slug = (s: string) => s.replace(/\s+/g, '-');
 
 export default async function PrintRoute({
   params,
@@ -57,7 +56,11 @@ export default async function PrintRoute({
 
   const spec = DOC_TYPES[doc.type];
 
-  const shell = (sheet: React.ReactNode, fileName: string) => (
+  // One home for what a document is called, shared with the stored PDF's
+  // download header — see `domain/docFilename.ts`.
+  const fileName = docFilename(doc);
+
+  const shell = (sheet: React.ReactNode) => (
     <main className="doc-print-page">
       <h1 className="sr-only">
         Print view — {spec.label} {doc.number ?? 'draft'}
@@ -71,31 +74,11 @@ export default async function PrintRoute({
 
   // Sequential returns so each branch narrows `doc`; HR/contract before the
   // financial fallthrough (which needs `doc` narrowed to Invoice|Receipt).
-  if (isSlip(doc)) {
-    return shell(
-      <SlipSheet doc={doc} />,
-      doc.number ?? `${slug(spec.label)}-${slug(doc.employeeSnapshot.name)}-${doc.issueDate}`,
-    );
-  }
-  if (isLetter(doc)) {
-    return shell(
-      <LetterSheet doc={doc} />,
-      `${slug(spec.label)}-${slug(doc.employeeSnapshot.name)}-${doc.issueDate}`,
-    );
-  }
+  if (isSlip(doc)) return shell(<SlipSheet doc={doc} />);
+  if (isLetter(doc)) return shell(<LetterSheet doc={doc} />);
   // The contract prints the same packed pages the preview shows — same blocks,
   // same measuring, same packer — so paper and screen cannot break differently.
-  if (doc.type === 'CON') {
-    return shell(
-      <ContractPrint doc={doc} />,
-      `Contract-${slug(doc.clientSnapshot.name)}-${doc.issueDate}`,
-    );
-  }
-  if (doc.type === 'QTN') {
-    return shell(
-      <QuotationPrint doc={doc} />,
-      doc.number ?? `Quotation-${slug(doc.recipientName ?? doc.issueDate)}`,
-    );
-  }
-  return shell(<DocumentSheet doc={doc} />, doc.number ?? `${spec.code}-draft`);
+  if (doc.type === 'CON') return shell(<ContractPrint doc={doc} />);
+  if (doc.type === 'QTN') return shell(<QuotationPrint doc={doc} />);
+  return shell(<DocumentSheet doc={doc} />);
 }

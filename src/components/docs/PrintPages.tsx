@@ -80,6 +80,16 @@ export default function PrintPages({
 
   return (
     <>
+      {/*
+        The signal the PDF renderer waits on (`server/pdf/render.ts`).
+
+        Pagination measures real boxes after hydration, so a headless browser
+        that printed on `load` would capture the un-paginated flow above —
+        a contract as one enormous page with no breaks. Rendered here rather
+        than set imperatively so it cannot get out of step with the pages: if
+        they are on screen, so is this.
+      */}
+      <div data-paginated="ready" hidden />
       {pages.map((page, i) => (
         <div
           key={i}

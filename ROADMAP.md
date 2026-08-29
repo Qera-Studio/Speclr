@@ -207,20 +207,37 @@ if one of these gets picked up, the reasoning is what to re-examine first.
   line still printed there (billing's "marked for the attention of") is the
   behaviour to keep, because it states a consequence rather than an echo.
 
-- **Server-side PDF renderer** — print-CSS now. Sheets stay pure `data → markup`
-  precisely so this lands later as a non-breaking, additive upgrade. Don't couple
-  sheets to the DOM in the meantime (see §3, which touches the same surface).
-- **One-click download for a finalized document** — blocked on the renderer
-  above, and deferred with it. A browser cannot be made to save a PDF: the print
-  dialog is the only route, and the user still has to choose "Save as PDF"
-  there. So a download *icon* would be a second button doing precisely what
-  Print already does at `DocumentRowActions.tsx` — worse than nothing, because
-  it promises a file it cannot deliver. A real one needs
-  `/api/docs/[id]/pdf`, rendering the sheet through headless Chromium. Two
-  pieces of the groundwork already exist: the sheets are pure `data → markup`,
-  and `PrintToolbar` (`handlePrint`) already derives the right filename per doc
-  type, which that route would reuse verbatim. Raised August 2026; revisit when
-  the renderer is picked up.
+- ~~**Server-side PDF renderer**~~ and ~~**one-click download**~~ — **both
+  built, 29 August 2026.** They were one item, and the note here said a download
+  icon would be "worse than nothing, because it promises a file it cannot
+  deliver". That was right about the print dialog and wrong about the
+  conclusion: a browser cannot be *made* to save a PDF, but a browser saves any
+  file a server sends it, so the missing piece was always the renderer rather
+  than the button. `@sparticuz/chromium` + `puppeteer-core` at finalize
+  (`server/pdf/render.ts`), stored private in Blob (`server/pdf/store.ts`),
+  served by `/api/docs/[id]/pdf`. The predicted reuse happened: the filename
+  logic moved out of `PrintRoute` into `domain/docFilename.ts` and both callers
+  share it, which is where a real bug turned up (a finalized contract was named
+  for its client and date while carrying a perfectly good `QS-CON-2627-nnn`).
+
+  Three decisions worth not re-litigating. **Rendered at finalize, not on
+  download**: the content is already frozen by `studioSnapshot` /
+  `materialiseContent`, but the rendering was not, so generating per click let a
+  Tailwind or font change quietly produce a different-looking PDF of a record
+  CGST s.36 keeps unaltered for 72 months. Storing the bytes also makes the
+  download instant, which is the whole feature. **The render cannot fail a
+  finalize** (`storePdfQuietly`): the serial is claimed atomically and a burned
+  one is an accounting event somebody reconciles by hand, so a cold Chromium
+  must never be able to stop an invoice being issued; the download route renders
+  on demand if the bytes are missing. **A hosted renderer was refused on
+  security grounds**, not cost: it would receive the entire document. See
+  `docs/vendors.md` §2.5, which also records that the intended next step is
+  self-hosted Gotenberg rather than anyone else's API.
+
+  Still open on this surface: Chromium's ~66 MB sits against Vercel's 250 MB
+  function limit and `@sparticuz/chromium` tracks Chrome majors, so a bump can
+  break it. That is the trigger for the Gotenberg move, not a reason to
+  pre-empt it.
 - **Roles/permissions** — allowlist + full access now. **No longer really
   deferred:** §1 needs them, and the original bet was that adding roles "must not
   require a rewrite." §1 is where that bet gets tested.
