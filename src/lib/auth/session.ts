@@ -18,8 +18,32 @@ export interface AuthorizedUser {
   email: string;
 }
 
-/** Resolve the current user's primary email address, or null if none/signed-out. */
+/**
+ * Resolve the current user's primary email address, or null if none/signed-out.
+ *
+ * **The session token first, and that is a latency fix worth ~690ms per
+ * request.** `currentUser()` is an HTTP call to Clerk's Backend API, measured
+ * at 690ms from Dubai, and 56 files in this app call the gate that calls it, so
+ * it was the single largest fixed cost on every authorized page and action.
+ * `auth()` by contrast verifies the session cookie locally and hands back its
+ * claims, so an email carried *in* the token costs nothing to read.
+ *
+ * It is not there by default. Clerk's stock session token carries `sub`, `sid`
+ * and the org claims and no email, so this reads it only if the Clerk dashboard
+ * has been configured with a custom claim:
+ *
+ *     { "email": "{{user.primary_email_address}}" }
+ *
+ * Until that is set the fallback runs and behaviour is exactly as before, which
+ * is the point of writing it this way rather than as a flag day: the security
+ * property is unchanged either way, because the claim is inside a token Clerk
+ * has already verified, and `isEmailAllowed` still decides.
+ */
 async function currentEmail(): Promise<string | null> {
+  const { sessionClaims } = await auth();
+  const claimed = (sessionClaims as { email?: unknown } | null)?.email;
+  if (typeof claimed === 'string' && claimed) return claimed;
+
   const user = await currentUser();
   if (!user) return null;
   const primaryId = user.primaryEmailAddressId;
