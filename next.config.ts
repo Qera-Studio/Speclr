@@ -215,6 +215,25 @@ const nextConfig: NextConfig = {
   // look themselves up by, which fails only in production, only on first
   // render. See `src/server/pdf/render.ts`.
   serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  // ...and then explicitly traced back in, which is not the contradiction it
+  // looks like. `serverExternalPackages` keeps the *code* out of the bundle so
+  // the paths these packages look themselves up by survive. Tracing decides
+  // which *files* are copied into the deployed function, and it works by
+  // following imports — so a 63MB Brotli-compressed browser that nothing
+  // imports, because it is opened by path at runtime, is left behind.
+  //
+  // The symptom is exactly that, and only in production: "The input directory
+  // /var/task/node_modules/@sparticuz/chromium/bin does not exist. Please
+  // provide the location of the brotli files."
+  outputFileTracingIncludes: {
+    '/api/docs/[id]/pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
+    // Finalize renders too, and it is a Server Action rather than a route, so
+    // it is traced against whichever page hosts the form that calls it. A glob
+    // rather than the two editor routes named individually, because an action
+    // can be called from anywhere and a missed entry fails only in production,
+    // only on finalize, and only as a PDF that quietly never got stored.
+    '/**/docs/**': ['./node_modules/@sparticuz/chromium/bin/**'],
+  },
   experimental: {
     // Attachments upload through a Server Action, and the default cap is 1 MB,
     // well under the 25 MB `MAX_ATTACHMENT_BYTES` allows, so a real MSA failed
