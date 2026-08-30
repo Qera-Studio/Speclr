@@ -115,6 +115,27 @@ export async function GET(
     return serve(new Uint8Array(bytes));
   } catch (err) {
     logger.error({ action: 'downloadPdf', event: 'render_failed', documentId: id, error: err });
-    return notFound;
+
+    /**
+     * A render failure says why, and only to a caller already past the gate.
+     *
+     * Every other failure here is a 404 on purpose: telling an unauthenticated
+     * caller apart from a missing document leaks which ids exist. This branch is
+     * different, and the difference is `ok` — auth, ownership and finalized
+     * status have all passed by the time we reach it, so the reader is somebody
+     * entitled to the document, and the only fact disclosed is why their own
+     * document would not render.
+     *
+     * It exists because the alternative was worse. A bare 404 gave the operator
+     * a file called `pdf.txt` reading "Not found", which says nothing about
+     * whether Chromium failed to boot, the print page refused, or the blob store
+     * rejected the write. Three very different problems, one indistinguishable
+     * symptom, and the logs are on a machine they were not looking at.
+     */
+    const reason = err instanceof Error ? err.message : 'Unknown render failure';
+    return new Response(`Could not render this document.\n\n${reason}\n`, {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
   }
 }
