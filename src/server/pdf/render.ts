@@ -91,9 +91,35 @@ export async function renderPdf(url: string, cookie: string): Promise<Buffer> {
   const browser = await launch();
   try {
     const page = await browser.newPage();
-    // The cookie header rather than `setCookie`: we are passing through
-    // whatever the caller had, without parsing or reshaping it.
-    await page.setExtraHTTPHeaders({ cookie });
+
+    /**
+     * The caller's cookies go into the browser's own jar, not onto a header.
+     *
+     * `setExtraHTTPHeaders({ cookie })` looks equivalent and is not. A header
+     * set that way is attached to the first request, and Chrome then manages
+     * cookies itself for everything that follows: the moment anything issues a
+     * `Set-Cookie` on a redirect (which Vercel's protection bypass does, by
+     * design) the jar becomes the authority and the header is no longer what
+     * decides who we are. The observed symptom was the print page redirecting
+     * to `/sign-in`: Clerk saw no session, because the session cookie was on a
+     * header that had stopped applying.
+     *
+     * Parsed rather than passed through, so each cookie is a real jar entry
+     * scoped to the deployment's own domain. Values are left exactly as they
+     * arrived; only the `name=value` split is interpreted.
+     */
+    const domain = new URL(url).hostname;
+    const jar = cookie
+      .split(';')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .flatMap((part) => {
+        const eq = part.indexOf('=');
+        if (eq === -1) return [];
+        return [{ name: part.slice(0, eq), value: part.slice(eq + 1), domain, path: '/' }];
+      });
+
+    if (jar.length > 0) await browser.setCookie(...jar);
     // `networkidle0` rather than `load`: fonts arrive after the document does,
     // and a slip rendered in a fallback font wraps differently from the one the
     // e2e suite measured.

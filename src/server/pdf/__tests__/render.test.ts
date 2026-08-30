@@ -17,6 +17,8 @@ const mockPdf = jest.fn(() => Buffer.from('%PDF-1.4 fake'));
 // The real `close()` returns a promise the renderer calls `.catch()` on.
 const mockClose = jest.fn(() => Promise.resolve());
 
+const mockSetCookie = jest.fn(() => Promise.resolve());
+
 jest.mock('puppeteer-core', () => ({
   launch: async () => ({
     newPage: async () => ({
@@ -26,6 +28,7 @@ jest.mock('puppeteer-core', () => ({
       waitForSelector: jest.fn().mockRejectedValue(new Error('no marker')),
       pdf: mockPdf,
     }),
+    setCookie: mockSetCookie,
     close: mockClose,
   }),
 }));
@@ -69,6 +72,41 @@ describe('renderPdf', () => {
 
     await expect(renderPdf(WANTED, 'session=x')).rejects.toThrow('returned 404');
     expect(mockPdf).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The session goes into the browser's cookie jar, not onto a header.
+   *
+   * A header set via `setExtraHTTPHeaders` stops being what identifies the
+   * request as soon as anything issues a `Set-Cookie` on a redirect, which
+   * Vercel's protection bypass does by design. The symptom was the print page
+   * redirecting to `/sign-in`, because Clerk saw no session.
+   */
+  it('puts the caller session in the cookie jar, scoped to the deployment', async () => {
+    mockGoto.mockResolvedValue({ status: () => 200 });
+    mockPageUrl.mockReturnValue(WANTED);
+    const renderPdf = await load();
+
+    await renderPdf(WANTED, '__session=abc; __client_uat=123');
+
+    expect(mockSetCookie).toHaveBeenCalledWith(
+      { name: '__session', value: 'abc', domain: 'speclr.example', path: '/' },
+      { name: '__client_uat', value: '123', domain: 'speclr.example', path: '/' },
+    );
+  });
+
+  it('survives a cookie value containing an equals sign', async () => {
+    mockGoto.mockResolvedValue({ status: () => 200 });
+    mockPageUrl.mockReturnValue(WANTED);
+    const renderPdf = await load();
+
+    // Base64 session values routinely end in padding, and splitting on every
+    // '=' rather than the first would truncate the session.
+    await renderPdf(WANTED, '__session=aGVsbG8=');
+
+    expect(mockSetCookie).toHaveBeenCalledWith(
+      expect.objectContaining({ name: '__session', value: 'aGVsbG8=' }),
+    );
   });
 
   it('closes the browser even when it refuses', async () => {
