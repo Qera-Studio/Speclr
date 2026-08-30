@@ -242,6 +242,37 @@ in one header, a request landing 15ms away and then flying to Washington DC.
 | **Cost** | `@sparticuz/chromium`: free, but ~66 MB against Vercel's 250 MB function limit, ~1 GB memory and a 3–8s cold start. Browserless: **from ~$20/month**. Doppio: **from ~$29/month**. Gotenberg on a VPS: **~$5–10/month** plus the operating. |
 | **Beats its two closest competitors** | vs a **hosted renderer**: the renderer receives the *entire* finalized document, so a breach there is a breach of every client's legal name, GSTIN, registered address and billed amounts. That is a processor relationship under the DPDP Act 2023 taken on to save a few seconds of cold start, and it was refused on those grounds. vs a **code-based PDF library** (jsPDF, `@react-pdf/renderer`): each carries its own layout engine, so every sheet would be rewritten a second time and the app would hold two renderings of one legal document that will eventually disagree, with the whole e2e suite measuring the wrong one. **The intended path is Gotenberg self-hosted**, once there is revenue to justify operating a server: same fidelity, warm and fast, and still nobody else's machine. `server/pdf/render.ts` is the seam that swap goes through. |
 
+#### 2.5a Four things this needs that are not in the code, and each failed once
+
+Getting a headless browser to photograph your own authenticated page in a
+serverless function took four rounds in production, because each fix uncovered
+the next. All four are load-bearing; removing any one breaks PDFs in production
+only, and locally everything still passes.
+
+1. **`serverExternalPackages` keeps the code out of the bundle**, or the paths
+   these packages look themselves up by are rewritten.
+2. **`outputFileTracingIncludes` copies the browser in.** Tracing follows
+   *imports*, and a 63MB Brotli binary opened by path at runtime is imported by
+   nothing, so it was left behind: *"The input directory
+   /var/task/node_modules/@sparticuz/chromium/bin does not exist."*
+3. **`VERCEL_AUTOMATION_BYPASS_SECRET` gets the renderer past Vercel's SSO wall**
+   on preview deployments. Without it the browser was served a redirect to
+   `vercel.com/sso-api`. Production has no wall, so the variable is absent there
+   and `printUrlFor` appends nothing.
+4. **The caller's session goes into the browser's cookie jar**, not onto a
+   header. `setExtraHTTPHeaders({ cookie })` applies to the first request only;
+   once anything issues a `Set-Cookie` on a redirect (the bypass does, by
+   design) the jar is the authority and Clerk sees no session. The symptom was
+   the print page redirecting to `/sign-in`.
+
+**The reason all four were expensive is worth more than the four.** Download was
+built as `<a download>`, which hands the browser whatever comes back, so every
+failure was *saved to disk* as `pdf.txt` and no error event exists to report it.
+Three deploys produced no diagnosis at all. The rule that came out of it: **a
+feature that can fail needs a path for the failure to be seen**, and the
+renderer now refuses a page that is not the document rather than rendering
+whatever it was served.
+
 ---
 
 ## 3. Framework and language
