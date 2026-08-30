@@ -185,6 +185,35 @@ the free option cannot in principle produce the answer.
 months by law (CGST s.36). **The $19/month Launch tier is the first paid upgrade
 that is about correctness rather than comfort.**
 
+#### 2.2a The region is Singapore, and it is pinned in two places at once
+
+`vercel.json` pins functions to `sin1` and the Neon project sits in
+`ap-southeast-1`. **Those two values are a pair and must never be changed
+independently.** Split them and every query crosses an ocean: the function-to-
+database hop goes from ~5ms to 200ms+, on every query of every request, which is
+far worse than whatever either move was meant to fix.
+
+Measured from Dubai, TCP connect, best of three, on 30 August 2026:
+
+| Region | |
+|---|---|
+| **Singapore** `ap-southeast-1` | **100ms** |
+| Frankfurt `eu-central-1` | 126ms |
+| London `eu-west-2` | 144ms |
+| Virginia `us-east-1` | 194ms |
+| Sydney `ap-southeast-2` | 230ms |
+
+**Mumbai would be closer, and Neon does not have it.** `aws-ap-south-1` is a
+standing community request, not a region, so `bom1` is available for Vercel
+functions and has nothing to pair with. Singapore is the closest region where
+both halves can live together. If Neon ever ships Mumbai, moving both is the
+upgrade, and the pairing rule above is what makes it safe.
+
+Vercel's edge already terminates in Mumbai (`bom1`, ~15ms from Dubai) whatever
+this is set to: the edge is global and this pins only where the function runs.
+Before this was set, `x-vercel-id` read `bom1::iad1`, which is the whole problem
+in one header, a request landing 15ms away and then flying to Washington DC.
+
 ### 2.3 Auth: Clerk
 
 | | |
