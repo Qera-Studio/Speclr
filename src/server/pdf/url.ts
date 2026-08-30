@@ -24,5 +24,28 @@ export async function printUrlFor(doc: AdminDocument): Promise<string> {
   // is what Vercel sets, and is trusted here only to choose a scheme for a
   // request we are making to ourselves.
   const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
-  return `${proto}://${host}${docHref(doc, '/print')}`;
+  const url = new URL(`${proto}://${host}${docHref(doc, '/print')}`);
+
+  /**
+   * Preview deployments sit behind Vercel's own SSO wall, which intercepts
+   * *before* Next runs. The renderer is a second HTTP client carrying the
+   * caller's Clerk cookie and nothing else, so on a preview it was served
+   * `302 -> vercel.com/sso-api` and rendered a login page.
+   *
+   * `VERCEL_AUTOMATION_BYPASS_SECRET` is Vercel's answer for exactly this: a
+   * per-project token that lets a machine through the protection. It is set
+   * automatically on protected deployments and absent in production and locally,
+   * where there is no wall to get past, so this appends nothing there.
+   *
+   * The query parameter form is used rather than the header, because the bypass
+   * must survive the redirect chain Chrome follows, and `setExtraHTTPHeaders`
+   * would also leak the secret to any third-party resource the page requests.
+   */
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypass) {
+    url.searchParams.set('x-vercel-protection-bypass', bypass);
+    url.searchParams.set('x-vercel-set-bypass-cookie', 'true');
+  }
+
+  return url.toString();
 }

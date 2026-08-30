@@ -97,7 +97,30 @@ export async function renderPdf(url: string, cookie: string): Promise<Buffer> {
     // `networkidle0` rather than `load`: fonts arrive after the document does,
     // and a slip rendered in a fallback font wraps differently from the one the
     // e2e suite measured.
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30_000 });
+    const response = await page.goto(url, { waitUntil: 'networkidle0', timeout: 30_000 });
+
+    /**
+     * Refuse to render a page that is not the document.
+     *
+     * Without this the renderer converts whatever it was served, and a redirect
+     * to a sign-in screen becomes a perfectly valid PDF that is then stored as
+     * the document's own record. That is the worst available failure: silent,
+     * and it produces a legal artefact showing a login form. Seen for real on a
+     * preview deployment, where Vercel's SSO wall returned `302` to
+     * `vercel.com/sso-api` before Next ever ran.
+     *
+     * Both halves are needed. A non-OK status catches the plain refusal; the
+     * final URL catches the redirect that answers 200 from somewhere else.
+     */
+    const status = response?.status() ?? 0;
+    if (status >= 400) {
+      throw new Error(`Print page returned ${status} for ${url}`);
+    }
+    const landed = new URL(page.url());
+    const wanted = new URL(url);
+    if (landed.origin !== wanted.origin || landed.pathname !== wanted.pathname) {
+      throw new Error(`Print page redirected to ${landed.origin}${landed.pathname}`);
+    }
     // Pagination runs in a layout effect after hydration. Waiting for the
     // packer's own signal rather than a fixed delay, so a long contract is not
     // cut short and a short invoice is not made to wait.
