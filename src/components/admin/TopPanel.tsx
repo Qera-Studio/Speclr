@@ -23,31 +23,26 @@ import SearchCommand from "./SearchCommand";
  * own; see `AdminSidebar` and `EditorSidebar`.
  *
  * `bg-background` rather than `bg-sidebar`, which is the point of the band.
- * `--background` is taupe 50 and the top of the ramp; `--sidebar` sits two
- * steps below it. Lighter than both rails is what makes this read as one
- * surface above them instead of as a continuation of either.
+ * `--background` is slate 50 and the top of the ramp; `--sidebar` sits a step
+ * below it. Lighter than both rails is what makes this read as one surface
+ * above them instead of as a continuation of either.
  */
 export default function TopPanel({ profile }: { profile: Profile }) {
   return (
     <div
       data-slot="top-panel"
-      className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-3"
+      className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background pl-2 pr-3"
     >
       {/* Flex-1 twins on both sides, so `SearchCommand` centres on the bar's
           full width rather than drifting toward whichever side is lighter. */}
       <div
         data-slot="top-panel-start"
-        // `gap-5` rather than the bar's own `gap-3`: the wordmark is the app's
-        // name and the switcher is a control, so they are two things rather
-        // than a pair, and at 12px they read as one clump.
-        className="flex flex-1 items-center gap-5 pl-1"
+        // The wordmark moved to `AdminSidebar`'s header, where it sits above
+        // the navigation it names. It was here while the header was the only
+        // full-width band; with the rail carrying it, a second copy directly
+        // below the first was two answers to the same question.
+        className="flex flex-1 items-center"
       >
-        {/* A step up from the `text-sm` everything else in this bar uses. It
-            is the app's name rather than a label in it, and at the same size
-            as the profile links beside it there was nothing saying so. */}
-        <span className="truncate text-base font-semibold text-foreground">
-          speclr
-        </span>
         <ProfileSwitcher profile={profile} />
       </div>
 

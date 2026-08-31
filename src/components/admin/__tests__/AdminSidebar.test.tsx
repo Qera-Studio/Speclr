@@ -243,6 +243,104 @@ describe('AdminSidebar', () => {
     expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toBeVisible();
   });
 
+  /**
+   * Collapsing detaches the rail: it leaves its panel and becomes a floating
+   * pill rather than a thin column welded to the window's edge.
+   *
+   * `data-float` is the attribute the position, radius and shadow key off,
+   * while `data-collapsible="icon"` keeps every existing icon-rail rule (the
+   * label hiding, the `size-8` buttons) matching unchanged. Both matter: the
+   * float is a *position* change layered on the collapse, not a replacement
+   * for it, and asserting only one would let the other quietly regress.
+   *
+   * The geometry itself — that it travels rather than snaps, and that the pill
+   * never overlaps the content card — is browser work. jsdom measures every
+   * box as zero.
+   */
+  it('detaches into a floating pill when collapsed', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar();
+    const rail = () => container.querySelector('[data-slot="sidebar"]')!;
+    expect(rail()).not.toHaveAttribute('data-float');
+
+    await clicker.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    expect(rail()).toHaveAttribute('data-float');
+    expect(rail()).toHaveAttribute('data-collapsible', 'icon');
+  });
+
+  /**
+   * Hovering the pill grows it back to full width *without* re-docking it, so
+   * `data-float` survives while `data-collapsible` is cleared. Clearing that
+   * one attribute is the whole mechanism: every label-hiding rule in
+   * `ui/sidebar.tsx` reads it, so the labels come back without a second copy
+   * of a dozen selectors.
+   *
+   * `data-state` deliberately stays `collapsed` throughout — the peek is a
+   * third *visual* state, not a fourth open state, and only the toggle docks.
+   */
+  it('grows on hover without re-docking, and shrinks again on leave', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar();
+    const rail = () => container.querySelector('[data-slot="sidebar"]')!;
+    const pill = () => container.querySelector('[data-slot="sidebar-container"]')!;
+    await clicker.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    // The pointer is still on the rail after that click, and the suppression
+    // above holds until it leaves. This is a hover arriving fresh.
+    await clicker.unhover(pill());
+
+    await clicker.hover(pill());
+    expect(rail()).toHaveAttribute('data-peek');
+    expect(rail()).toHaveAttribute('data-float');
+    expect(rail()).toHaveAttribute('data-collapsible', '');
+    expect(rail()).toHaveAttribute('data-state', 'collapsed');
+
+    await clicker.unhover(pill());
+    expect(rail()).not.toHaveAttribute('data-peek');
+    expect(rail()).toHaveAttribute('data-collapsible', 'icon');
+  });
+
+  /**
+   * Hover is a mouse affordance, so focus must do the same or the app's
+   * primary navigation is behind a pointer (WCAG 2.1.1). Tabbing *between*
+   * rows inside the rail must not read as leaving it, which is what the
+   * containment check on `onBlurCapture` is for.
+   */
+  it('grows on focus too, and holds while focus moves between its rows', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar({ profile: 'client' });
+    const rail = () => container.querySelector('[data-slot="sidebar"]')!;
+    const pill = () => container.querySelector('[data-slot="sidebar-container"]')!;
+    await clicker.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    await clicker.unhover(pill());
+
+    await act(async () => {
+      screen.getByRole('link', { name: 'Documents' }).focus();
+    });
+    expect(rail()).toHaveAttribute('data-peek');
+
+    // Moving *between* rows must not read as leaving the rail.
+    await act(async () => {
+      screen.getByRole('link', { name: 'Clause library' }).focus();
+    });
+    expect(rail()).toHaveAttribute('data-peek');
+  });
+
+  /**
+   * An expanded rail is already its full width in its own panel, so hovering
+   * it has nothing to reveal. Without this guard the peek would fire on every
+   * pass of the mouse and leave a stale `peeking` set for the next collapse.
+   */
+  it('ignores hover while docked', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar();
+    const rail = () => container.querySelector('[data-slot="sidebar"]')!;
+    const pill = () => container.querySelector('[data-slot="sidebar-container"]')!;
+
+    await clicker.hover(pill());
+    expect(rail()).not.toHaveAttribute('data-peek');
+    expect(rail()).toHaveAttribute('data-state', 'expanded');
+  });
+
   it('no longer lists Settings in the nav — it moved into the account menu', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();

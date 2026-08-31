@@ -108,6 +108,34 @@ describe('Sidebar — independent state override', () => {
       'expanded',
     );
   });
+
+  /**
+   * `collapsible="float"` was added for the nav rail alone, and one
+   * `SidebarProvider` holds the `peeking` flag that drives it — so an `icon`
+   * rail under that same provider (the editor panel) must be blind to it.
+   *
+   * Both halves matter. A float that stopped reporting `data-collapsible=icon`
+   * would drop every label-hiding rule; an `icon` rail that started reporting
+   * `data-float` would detach the editor panel nobody asked to detach.
+   */
+  it('leaves collapsible="icon" untouched by the float variant', () => {
+    render(
+      <SidebarProvider defaultOpen={false}>
+        <Sidebar collapsible="icon" data-testid="icon" />
+        <Sidebar collapsible="float" side="right" data-testid="float" />
+      </SidebarProvider>,
+    );
+    const shell = (id: string) =>
+      screen.getByTestId(id).closest('[data-slot="sidebar"]')!;
+
+    expect(shell('icon')).not.toHaveAttribute('data-float');
+    expect(shell('icon')).toHaveAttribute('data-collapsible', 'icon');
+
+    // The float reports itself *as* an icon rail, which is what keeps the
+    // dozen existing `group-data-[collapsible=icon]` rules working for it.
+    expect(shell('float')).toHaveAttribute('data-float');
+    expect(shell('float')).toHaveAttribute('data-collapsible', 'icon');
+  });
 });
 
 describe('SidebarInset', () => {

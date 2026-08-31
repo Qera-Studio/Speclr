@@ -32,9 +32,15 @@ function renderPanel(panelContent?: React.ReactNode) {
 }
 
 describe('TopPanel', () => {
-  it('renders the wordmark', () => {
+  /**
+   * The wordmark moved to the nav rail's header, above the navigation it
+   * names. Asserted here as an absence because it was here for a long time and
+   * a second copy directly below the first is the failure this prevents — see
+   * `AdminSidebar.test.tsx` for the one that checks it renders.
+   */
+  it('holds no wordmark', () => {
     renderPanel();
-    expect(screen.getByText('speclr')).toBeInTheDocument();
+    expect(screen.queryByText('speclr')).not.toBeInTheDocument();
   });
 
   /**

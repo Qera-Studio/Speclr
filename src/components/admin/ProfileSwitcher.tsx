@@ -249,10 +249,10 @@ export default function ProfileSwitcher({
         it per frame.
 
         No shadow, no border and no container around it: the fill is the whole
-        of the state now, which is why `--raised` is a shade *down* the taupe
+        of the state now, which is why `--raised` is a step *down* the slate
         ramp rather than white. `bg-card` and `bg-background` were both tried
-        and are the same 0.986 as the header, so the pill came out identical to
-        the ground behind it and only a hairline said anything.
+        and are the same slate 50 as the header, so the pill came out identical
+        to the ground behind it and only a hairline said anything.
 
         `bg-raised` is the token written for this exact surface: "the pill that
         sits on a track, the active tab, the active profile". Both its values

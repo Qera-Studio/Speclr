@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, PanelLeft, Plus } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { PROFILES, type Profile } from "@/lib/profile";
 import {
   NAV_BY_PROFILE,
@@ -88,7 +90,7 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
  * keycap always showing. That made the app's one job look like a different
  * kind of thing from the places you can go, on a rail whose whole job is a
  * single column of rows. So it takes the menu button's own height, radius,
- * icon size and taupe foreground, and differs from its neighbours only in
+ * icon size and muted foreground, and differs from its neighbours only in
  * opening the palette rather than navigating.
  *
  * The keycap fades in on hover, on the same `group/menu-button` the chevron
@@ -176,7 +178,22 @@ function ProfileNavBody({
       // 100% *of the track* — two rails each — so the second body began two
       // rails along while the track only ever slides one, and the admin nav
       // rendered entirely off-screen.
-      className="flex w-1/2 shrink-0 flex-col pt-4"
+      // `h-0 overflow-hidden` on the dead copy, so the pill's shrink-to-content
+      // height is the *shown* profile's rows and not whichever profile has more
+      // of them. Flex siblings stretch to the tallest, so without this the admin
+      // rail (4 rows) is padded out to the client rail's 6.
+      //
+      // Zero-height rather than `position: absolute`, which was tried and
+      // emptied the pill: taking one child out of flow stops the other being the
+      // second column, while the track's `translateX(-50%)` still assumes it is.
+      // A zero-height item is still in flow, so `w-1/2` and that arithmetic both
+      // hold.
+      className={cn(
+        "flex w-1/2 shrink-0 flex-col pt-4",
+        // `p-0` with it: padding sits outside `height`, so `h-0` alone still
+        // left the dead copy 16px tall and the pill 16px too long.
+        !live && "h-0 overflow-hidden p-0",
+      )}
     >
       {nav.rail ? (
         <FlatNavBody nav={nav} pathname={pathname} />
@@ -272,8 +289,53 @@ export default function AdminSidebar({
   profile: Profile;
 }) {
   const pathname = usePathname();
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state, peeking, setPeeking } = useSidebar();
   const index = PROFILES.indexOf(profile);
+
+  /**
+   * The floating pill's hover preview: it grows back to full width without
+   * leaving the floating position, over the content rather than pushing it.
+   *
+   * Pointer *and* focus, because hover alone would put the app's primary
+   * navigation behind a mouse (WCAG 2.1.1). `onFocusCapture` rather than
+   * `onFocus`: focus does not bubble, and what needs to open the pill is a
+   * focus landing on any row inside it.
+   *
+   * Cleared whenever the rail docks, or a pill peeked open and then toggled
+   * would dock at full width with a stale `peek` waiting to mis-fire the next
+   * time it collapsed.
+   */
+  useEffect(() => {
+    if (state === "expanded") setPeeking(false);
+  }, [state, setPeeking]);
+
+  /**
+   * The toggle lives *inside* the rail, so collapsing it with the mouse leaves
+   * the pointer sitting on the pill that was just created — which peeks it
+   * straight back open, and the collapse never visibly happens.
+   *
+   * So a toggle arms a suppression that only the pointer leaving can disarm.
+   * Not a timer: a timer picks a number out of the air and still re-opens
+   * under a stationary mouse. This is the actual condition, stated once.
+   */
+  const [suppressed, setSuppressed] = useState(false);
+  const startPeek = () => {
+    if (!suppressed) setPeeking(true);
+  };
+
+  // Touch has no hover, so a tap on the pill opens it and a tap anywhere else
+  // closes it. Only while it is actually peeking: a listener that runs on
+  // every document click for the other 99% of the session is a listener that
+  // exists for nothing.
+  useEffect(() => {
+    if (!peeking) return;
+    const close = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest('[data-slot="sidebar"]')) setPeeking(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [peeking, setPeeking]);
 
   // The Arc-style gesture: a horizontal drag anywhere over the rail slides
   // between profiles. `ProfileSwitcher` is the control this accelerates.
@@ -304,7 +366,42 @@ export default function AdminSidebar({
   const shown = PROFILES[index + committed] ?? profile;
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
+    <Sidebar
+      collapsible="float"
+      variant="sidebar"
+      // Pointer, not mouse: this fires for a tap too, which is the touch way
+      // in. `onPointerLeave` never fires for a touch, so the outside-tap
+      // listener above is what closes it there.
+      onPointerEnter={startPeek}
+      onPointerLeave={() => {
+        setPeeking(false);
+        setSuppressed(false);
+      }}
+      // Keyboard focus only, and the `:focus-visible` test is what makes that
+      // precise. Opening on *any* focus is what left the pill hanging open
+      // with the pointer nowhere near it: clicking a row navigates and leaves
+      // focus on it, so the peek was set by the click and could then only be
+      // cleared by a `pointerleave` that never came, because the pointer had
+      // never entered. A mouse click does not match `:focus-visible`; a Tab
+      // does, which is the case this handler exists for.
+      //
+      // Not `startPeek`: the suppression exists only because the toggle sits
+      // under the *mouse* that collapsed the rail. A keyboard user tabbing in
+      // is asking for the labels, and has no pointer to move away to lift it.
+      onFocusCapture={(event) => {
+        if (event.target instanceof Element && event.target.matches(":focus-visible")) {
+          setPeeking(true);
+        }
+      }}
+      // `relatedTarget` is where focus went. Without the containment check
+      // every Tab *between* two rows inside the rail would read as leaving it,
+      // and the pill would shut under the keyboard user moving through it.
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setPeeking(false);
+        }
+      }}
+    >
       {/*
         The rail's own collapse toggle. It was in `TopPanel` while that bar was
         divided into rail-width columns; the bar is one band now, and a control
@@ -320,8 +417,33 @@ export default function AdminSidebar({
         toggle's box up with theirs at the expanded width, and at the collapsed
         one 8 + 32 + 8 fills the 3rem strip with equal air either side, which is
         the same arithmetic that set `--sidebar-width-icon`.
+
+        The wordmark shares the row, name left and toggle hard right. It is the
+        app's name, so it belongs at the top of the column the app's navigation
+        is in, and the toggle keeps its 8px margin against the rail's edge
+        because that arithmetic is what lines it up with the icons below.
+
+        It hides at the collapsed width. Nothing else does — the point of the
+        icon strip is that every row survives it — but a six-letter word has no
+        icon form, and `truncate` in a 3rem strip renders one letter and an
+        ellipsis. The toggle is then the only thing left, which is what centres
+        it in the strip.
+
+        Floating it hides at *both* widths, peek included. A pill is a strip of
+        destinations that grew wide enough to label itself; it did not become
+        the app's masthead, and a title over four rows in a box that is about
+        to shrink again reads as a menu that opened, not a nav that is there.
+
+        Hiding it is also what puts the toggle in the icons' column, at every
+        floating width: `justify-between` with one child left places that child
+        at the start, and the row's `px-2` is the same 8px the strip's
+        arithmetic gives each icon. No float-specific `justify` rule is needed,
+        and one was tried and removed for measuring the same pixel.
       */}
-      <SidebarHeader className="h-12 shrink-0 justify-center px-2 py-0">
+      <SidebarHeader className="h-12 shrink-0 flex-row items-center justify-between gap-2 px-2 py-0 group-data-[collapsible=icon]:justify-center">
+        <span className="truncate pl-1 text-base font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden group-data-float:hidden">
+          speclr
+        </span>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -329,7 +451,14 @@ export default function AdminSidebar({
                 type="button"
                 variant="ghost"
                 size="icon"
-                onClick={toggleSidebar}
+                onClick={() => {
+                  // Arm the suppression *before* the state flips: this button
+                  // is inside the rail, so the pointer is already over the
+                  // pill the collapse is about to create.
+                  setSuppressed(true);
+                  setPeeking(false);
+                  toggleSidebar();
+                }}
                 aria-label="Toggle sidebar"
                 // `size-8`, the same box a collapsed menu button takes, so the
                 // toggle and every icon below it share one column and one
@@ -364,7 +493,10 @@ export default function AdminSidebar({
           has seen enough of the gesture to judge it. */}
       <SidebarContent className="overflow-x-hidden overscroll-x-none">
         <div
-          className="flex w-[200%] flex-1"
+          // `items-start` so the dead copy's `h-0` is honoured; the default
+          // `stretch` would grow it back to the live one's height and the pill
+          // would size to the taller profile again.
+          className="flex w-[200%] flex-1 items-start"
           style={{
             transform: `translateX(${(-index - offset) * 50}%)`,
             // Gated on `dragging`, not `offset === 0`: a committed gesture holds
@@ -388,7 +520,11 @@ export default function AdminSidebar({
       {/* Theme moved into the account card's menu — it configures you, not a
           document surface, and the rail is for going places. `ThemeToggle`'s
           segmented control is still exported if it ever comes back here. */}
-      <SidebarFooter className="gap-3">
+      {/* Hidden while the rail is a floating pill. The pill is a shrink-to-
+          content strip of *destinations*; an account card in it is a second
+          kind of thing in a box small enough that the two read as one list.
+          It comes back the moment the rail docks or peeks open. */}
+      <SidebarFooter className="gap-3 group-data-float:hidden">
         <UserCard user={user} />
       </SidebarFooter>
     </Sidebar>

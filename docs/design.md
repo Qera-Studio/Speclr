@@ -48,19 +48,41 @@ Tokens live in `globals.css` as OKLCH, defined once for light and once for
 it (`--warning` is the model: amber-500 fails AA on our background, so it is a
 token).
 
-**The neutrals are taupe, hue 40, not grey.** Every neutral token is
-`oklch(L C 40)` on the same lightness ramp a grey would use, and the chroma
-follows the curve written at the top of the `:root` block: it peaks near 0.02
-mid-ramp and tapers to almost nothing at both ends, because a near-white or a
-near-black holds a hue badly and starts reading as a cast. A new neutral
-interpolates from that curve. It is not a free choice per token: two surfaces
-at slightly different hues is exactly the "boilerplate" look this replaced,
-arrived at one token at a time.
+**The neutrals are one ramp, and a role never holds a colour of its own.**
+`--slate-50` … `--slate-950` are declared once in `:root` and are the only
+place a neutral value is written. Every neutral role is an *alias* onto a step,
+chosen per theme:
+
+```css
+--muted-foreground: var(--slate-600);   /* :root  */
+--muted-foreground: var(--slate-400);   /* .dark  */
+```
+
+So a surface is described by **where it sits on the ramp** rather than by a
+lightness solved for in isolation, and "two steps darker" is a thing you can
+say. **Enforced:** a raw `oklch()` on a semantic token fails
+`design-tokens.test.ts`, as does a near-neutral outside slate's hue band.
+
+The values are Tailwind's published slate, verbatim, hue drift along the ramp
+included (247.858 → 265.755). This replaced a warm taupe at hue 40 whose tokens
+were each an independent literal, with a chroma curve documented for humans to
+interpolate from; that curve is gone, because it existed as a substitute for
+having a ramp.
+
+**The ramp is deliberately not exposed as utility classes.** There is no
+`bg-slate-300`; `design-tokens.test.ts` bans exactly that name. Roles are the
+interface, which is what lets a surface be restated in `globals.css` without
+touching a component.
+
+**One row is not a free choice: `--ring`.** WCAG 1.4.11 wants 3:1 against the
+surface behind it, and slate 400 (the step that *looks* right) is 2.51:1 on
+slate 50. It is 500 in light and 400 in dark for that reason alone. A focus
+ring is the one piece of UI a keyboard user has no fallback for.
 
 The chromatic tokens keep their own hues, and the dark mode's `--border` /
-`--input` stay a pure white overlay, which composites to a taupe hairline on
-its own. A *fill* may never be an alpha white for that reason: white lends no
-hue, so a wash of it over taupe composites grey however warm the ground is.
+`--input` stay a pure white overlay, which composites to a hairline of whatever
+ground it sits on. A *fill* may never be an alpha white for that reason: white
+lends no hue, so a wash of it over a coloured ground flattens toward grey.
 That is what `--raised` exists to stop, and it is why the active tab and the
 active profile use a token rather than `bg-input/85`.
 
@@ -121,7 +143,7 @@ Plus one fixed number that is not a rhythm step:
 
 ### 1.3 Radius — **house**
 
-One root (`--radius: 0.625rem`) and everything derives from it. Use the named
+One root (`--radius: 0.375rem`) and everything derives from it. Use the named
 steps, never a raw `rounded-[6px]`:
 
 | Class | For |
@@ -228,15 +250,35 @@ in text, a live region or `aria-current`. That is why `globals.css` can kill all
 motion under `prefers-reduced-motion` in one blanket rule instead of per
 animation, and why adding an animation never requires adding an opt-out.
 
-**Three tiers, and a transition belongs to exactly one.** Defined in
+**Four tiers, and a transition belongs to exactly one.** Defined in
 `globals.css`, enforced by `design-system.test.ts`: a duration outside the
-scale fails the build.
+scale fails the build. Each tier is roughly double the one above it, which is
+the interval at which two speeds are actually told apart rather than merely
+measured differently.
 
 | Tier | Duration | For |
 |---|---|---|
 | **State** | **75ms — the default** | Hover, press, focus, a colour, a chevron |
 | **Overlay** | `duration-100` | Popover, dropdown, select, combobox, dialog, an overlay scrim |
 | **Panel** | `duration-200` | Sheet, sidebar, editor rail, a sliding pill indicator |
+| **Reveal** | `duration-400` | Content arriving unasked, for reading rather than acknowledging |
+
+**The Reveal tier is the newest and has one member: the nav pill's hover
+grow.** It exists because the other three all animate a result the operator
+already knows is coming — they clicked for it, and the motion is a receipt. A
+peek is the opposite: nothing was clicked, and the labels that arrive are the
+whole reason the motion happened. At Panel speed they land after the eye has
+moved on, so the preview has to be re-read rather than read. Only the *arriving*
+direction is slowed; the pill shrinking on mouse-out is getting out of the way
+and stays on Panel.
+
+800ms was tried and reverted: past about half a second the pill stops reading
+as a panel opening and starts reading as one that is stuck, and a nav the
+operator is waiting on is worse than one whose labels they have to look at
+twice. 400 is the top of the scale for that reason, not for lack of a rung
+above it.
+
+Reach for it sparingly. A fifth tier would mean the scale stopped being a scale.
 
 **75ms is the default**, set once as `--default-transition-duration` rather
 than per call site. That is deliberate: the state tier was the one nobody ever
@@ -257,8 +299,20 @@ spin. They are exempted **by filename**, so a third cannot join them quietly.
 **Rules:**
 
 - **Animate `transform` and `opacity`.** Not `width`, `height`, `top`, `left`.
-  Where a width must animate (the sidebar collapse), it is one place and it is
-  already written.
+  The nav rail is the one exception and it is deliberate: collapsing detaches
+  it into a floating pill, which is a change of *box* rather than of position,
+  so there is no transform that expresses it. It animates width, height, top,
+  left and radius together in a single declaration in `ui/sidebar.tsx`. Nothing
+  else may reach for that, and a second call site is a signal that the thing
+  wants a transform instead.
+
+  **Both endpoints of an animated `height` must be lengths.** Releasing a
+  fixed box's bottom edge to let it shrink to its content does not tween: the
+  box stops being stretched, drops to its intrinsic height in one frame, and
+  only the remainder animates. Measured at 672px → 360px instantly.
+  `interpolate-size: allow-keywords` (set on `:root`) tweens a length to
+  `fit-content`, but it cannot tween the loss of an anchor. State the docked
+  height as a `calc()` and let the floating one be `h-fit`.
 - **Press gives physical feedback.** `active:translate-y-px` is on every button
   by default (`button.tsx`) and is excluded on menu triggers, which move their
   popover instead.
@@ -1018,3 +1072,49 @@ Append a line when a rule here changes. Keep it to one line and name the
   `ProfileSwitcher`'s own copy had the identical hole. Both now track on
   `window` from pointerdown, which needs no capture at all. New tests in
   `e2e/tabs.spec.ts` and `ProfileSwitcher.test.tsx`, both confirmed red first.
+- **31 August 2026.** **§2.6.** **The collapsed nav rail detaches into a
+  floating pill**, and hovering it grows it back to full width without
+  re-docking. `collapsible="float"` in `ui/sidebar.tsx`, a new variant so
+  `collapsible="icon"` keeps its exact behaviour for the editor rail, which
+  shares the same provider.
+
+  Three things about it are decisions rather than defaults.
+
+  **A float reports itself as `data-collapsible="icon"`.** Roughly a dozen
+  rules — the label hiding, the tooltips, the `size-8` buttons — already key
+  off that attribute, so the variant is a *position* layered on the collapse
+  rather than a second copy of those selectors. The detachment rides on
+  `data-float` instead. **Peeking then clears `data-collapsible` and nothing
+  else**, which restores every label, width and tooltip in one move while the
+  box stays where it is.
+
+  **The strip's width stays reserved.** The content card keeps a left margin of
+  the icon width plus its gutter, so nothing is ever behind the floating rail —
+  which would defeat the point of floating it. It reclaims the other ~172px.
+  Growing on hover overlays the card and reflows nothing, and that is asserted:
+  `e2e/sidebar-float.spec.ts` measures the card's box before and after.
+
+  **The toggle is inside the rail, so collapsing with the mouse leaves the
+  pointer on the pill it just made** — which peeked it straight back open and
+  meant the collapse never visibly happened. A toggle now arms a suppression
+  that only the pointer *leaving* lifts. Not a timer: a timer picks a number
+  out of the air and still re-opens under a stationary mouse. Focus is exempt,
+  because a keyboard user has no pointer to move away.
+
+  **The pill is as tall as the profile on screen.** Both profiles' navs are
+  rendered side by side in the swipe track, and flex siblings stretch to the
+  taller of the two, so the admin rail's four rows sat in a box sized for the
+  client rail's six. The off-screen copy is `h-0 overflow-hidden p-0` and the
+  track is `items-start`; all three are needed, and `h-0` alone leaves 16px of
+  padding behind, since padding sits outside `height`.
+
+  Not `position: absolute`, which was tried and emptied the pill: taking one
+  child out of flow stops the other being the second column, while the track's
+  `translateX(-50%)` still assumes it is. A zero-height item is still in flow.
+
+  jsdom cannot see any of the geometry, and it could not even reproduce the
+  suppression bug (`userEvent.click` fires no `pointerenter` on the container),
+  so that test was deleted rather than left passing vacuously. The three
+  measurements live in `e2e/sidebar-float.spec.ts`, each confirmed red first —
+  including the travel test, whose first version passed with the transition
+  deleted because it sampled too late. It samples one frame in now.

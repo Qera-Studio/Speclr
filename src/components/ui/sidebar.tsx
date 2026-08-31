@@ -40,6 +40,15 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  /**
+   * A `collapsible="float"` rail is hover/focus-expanded: full width, still
+   * floating. Descendants need it because `state` stays `"collapsed"`
+   * throughout — the peek is a third visual state, not a fourth open state,
+   * and anything that stands in for a hidden label (the row tooltips) has to
+   * know the label is back.
+   */
+  peeking: boolean;
+  setPeeking: (peeking: boolean) => void;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -68,6 +77,7 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [peeking, setPeeking] = React.useState(false);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -122,8 +132,19 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      peeking,
+      setPeeking,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+    [
+      state,
+      open,
+      setOpen,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+      peeking,
+    ],
   );
 
   return (
@@ -162,7 +183,7 @@ function Sidebar({
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right";
   variant?: "sidebar" | "floating" | "inset";
-  collapsible?: "offcanvas" | "icon" | "none";
+  collapsible?: "offcanvas" | "icon" | "none" | "float";
   /**
    * Overrides the open/collapsed state from `SidebarContext`.
    *
@@ -181,6 +202,7 @@ function Sidebar({
     state: contextState,
     openMobile,
     setOpenMobile,
+    peeking: contextPeeking,
   } = useSidebar();
   const state = stateProp ?? contextState;
 
@@ -225,11 +247,35 @@ function Sidebar({
     );
   }
 
+  /**
+   * `float` is `icon` that has left its panel. Everything below the container
+   * — the label hiding, the tooltips, the `size-8` menu buttons — keys off
+   * `data-collapsible="icon"`, so a float reports itself as one and carries
+   * the detachment on `data-float` instead. That is what keeps this variant a
+   * position change rather than a second copy of a dozen rules.
+   *
+   * **Peeking clears `data-collapsible` and nothing else.** One attribute
+   * restores every label, every width and every tooltip in one move, while
+   * `data-float` stays set so the box does not travel back to the edge.
+   */
+  const floating = collapsible === "float" && state === "collapsed";
+  // The provider holds one `peeking`, so gating it on `float` here is what
+  // keeps the editor rail — which shares this provider — out of it.
+  const peeking = floating && contextPeeking;
+
   return (
     <div
       className="group peer hidden text-sidebar-foreground md:block"
       data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
+      data-collapsible={
+        state === "collapsed" && !peeking
+          ? collapsible === "float"
+            ? "icon"
+            : collapsible
+          : ""
+      }
+      data-float={floating ? "" : undefined}
+      data-peek={peeking ? "" : undefined}
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
@@ -250,6 +296,17 @@ function Sidebar({
           variant === "floating" || variant === "inset"
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
+          // A float reserves the strip *plus its gutter*, so the pill floats
+          // in space of its own and the content card never sits behind it.
+          // Repeated for the peek because `data-collapsible` is cleared there,
+          // and peeking is the one state that must not move anything: it grows
+          // over the content, not into it.
+          // `!` because this must beat the base `w-(--sidebar-width)` above.
+          // While peeking, `data-collapsible` is cleared — that is what brings
+          // the labels back — so the collapsed rules stop matching and the
+          // full width would otherwise win here and shove the content card
+          // 188px right on every hover.
+          "group-data-float:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]!",
         )}
       />
       <div
@@ -260,11 +317,60 @@ function Sidebar({
           // edges set derives its own height, which is what lets a page-level bar
           // like `TopPanel` claim the strip above this without the panel painting
           // over it. `--top-panel-height` defaults to 0 for any page that has none.
-          "fixed top-[var(--top-panel-height,0px)] bottom-0 z-10 hidden w-(--sidebar-width) transition-[left,right,width] duration-200 ease-standard data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+          "fixed top-[var(--top-panel-height,0px)] bottom-0 z-10 hidden w-(--sidebar-width) transition-[left,right,width,top,bottom,height,border-radius] duration-200 ease-standard data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
+          // The float: the same fixed box, pulled off all three edges so it
+          // reads as detached, and shrunk to its content so it is a pill
+          // rather than a column. The travel between the two is one
+          // interpolation because this is the same element throughout:
+          // nothing is swapped, nothing mounts.
+          //
+          // **`bottom-0` stays set, and the height is governed by `max-height`
+          // instead.** Releasing the bottom edge (`bottom: auto` + `h-fit`)
+          // was tried first and measured: the box lost its second anchor in a
+          // single frame and dropped 672px → 360px before the transition had
+          // run at all, tweening only the last 16px. `interpolate-size` does
+          // not help, because that is not an `auto`-to-length change; it is
+          // the box ceasing to be stretched. A box held by both edges *and*
+          // capped by an animatable `max-height` shrinks from the bottom
+          // smoothly, and `h-fit` then settles it on its content.
+          //
+          // `z-20`, above the inset card, because while peeking it
+          // deliberately covers content. `border-r` is dropped in favour of a
+          // ring: a border is a stroke inside a box, which on a rounded box
+          // that also carries a shadow reads as a doubled edge.
+          // Anchored under the top panel, the same edge the docked rail keeps,
+          // so collapsing moves the box left and shrinks it without also
+          // sliding it down the screen. Centring it on the viewport was tried
+          // and reverted: a pill taller than the space had its top *and*
+          // bottom run off, and a nav whose first row is above the window is
+          // worse than one that simply starts where the docked rail did.
+          //
+          // `max-height` is what keeps it inside the viewport now. The height
+          // is its content's (`h-fit`), so a profile with more rows than fit
+          // would otherwise overflow the bottom edge; capped, `SidebarContent`
+          // scrolls inside it instead and every row stays reachable.
+          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-fit group-data-float:max-h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
+          // Docked, the height is stated as a length rather than left to the
+          // two anchors. `interpolate-size` can tween a length to `fit-content`
+          // (that is what it is for) but it cannot tween "stretched between
+          // top and bottom" to anything — measured: the box dropped 672px in
+          // one frame and only the last 16px animated. With both endpoints
+          // written as heights, the shrink is a real interpolation.
+          "h-[calc(100svh-var(--top-panel-height,0px))]",
+          // Peeking restores the full width without moving the box. It cannot
+          // ride the `data-collapsible` rules above, because clearing that
+          // attribute is exactly what makes the labels come back.
+          // The Reveal tier (`docs/design.md` §1.6), and its only member. A
+          // collapse is a command whose result the operator already knows; a
+          // peek is a preview that has to be *read* as it opens, and at Panel
+          // speed the labels arrive after the eye has moved on. Only the
+          // growing direction is slowed: the shrink on mouse-out is the pill
+          // getting out of the way, and stays on Panel.
+          "group-data-float:group-data-peek:w-(--sidebar-width) group-data-float:group-data-peek:duration-400",
           className,
         )}
         {...props}
@@ -280,7 +386,11 @@ function Sidebar({
           // why `overflow-hidden` comes with it; the header and footer are
           // fixed and the body scrolls inside `SidebarContent`, so nothing here
           // overflowed anyway, and menus and tooltips portal out.
-          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border"
+          // `h-full` rather than `size-full` while floating: the pill's height
+          // is its content's, so a child claiming 100% of a parent that is
+          // sized *by* that child is circular. The container's `h-fit` is the
+          // one that decides.
+          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:h-auto group-data-float:rounded-lg"
         >
           {children}
         </div>
@@ -433,6 +543,22 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-sidebar="content"
       className={cn(
         "no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        // `flex-1` is what stretches this to fill a full-height rail, and is
+        // exactly what a shrink-to-content pill must not do. `flex-none` hands
+        // the height back to the rows.
+        //
+        // `pb-2` because the footer that used to close the box is hidden while
+        // floating, so the last row's own edge became the pill's, and it read
+        // as a list cut off rather than a list that ended. It matches the
+        // header's `p-2` above it. `min-h-0` lets the container's `max-height`
+        // actually shorten this rather than being floored at its content, so
+        // an over-tall nav scrolls in place.
+        // `flex-initial`, not `flex-none`: both stop the grow that stretches a
+        // full-height rail, but `flex-none` also forbids the *shrink*, which
+        // is what the container's `max-height` needs in order to bite. With
+        // shrinking allowed this sizes to its rows when they fit and scrolls
+        // in place when they do not.
+        "group-data-float:flex-initial group-data-float:pb-2",
         className,
       )}
       {...props}
@@ -570,7 +696,7 @@ function SidebarMenuButton({
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state, peeking } = useSidebar();
   const comp = useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(
@@ -601,10 +727,14 @@ function SidebarMenuButton({
   return (
     <Tooltip>
       {comp}
+      {/* A tooltip stands in for the label the icon rail cannot show, so it
+          must go the moment the label is back. `state` alone cannot say that:
+          a peeking float is still `collapsed` while being full width on
+          screen, and the rail showed both at once. */}
       <TooltipContent
         side="right"
         align="center"
-        hidden={state !== "collapsed" || isMobile}
+        hidden={state !== "collapsed" || peeking || isMobile}
         {...tooltip}
       />
     </Tooltip>
