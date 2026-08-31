@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import SlipEditor from '../SlipEditor';
 import { slipEarningsSeed } from '@/lib/domain/hrContent';
 import { paiseToRupees } from '@/lib/domain/money';
+import { todayISO } from '@/lib/domain/dates';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 /**
@@ -274,7 +275,11 @@ describe('SlipEditor — pay slip day counts', () => {
   it('defaults to the whole month, with no loss of pay', () => {
     renderPaySlip();
 
-    const month = new Date().toISOString().slice(0, 7);
+    // `todayISO`, not `toISOString`: the editor's month comes from the local
+    // calendar and this read UTC, so in IST it named the previous month for
+    // the first 5.5 hours of every day. On the 1st of a month that is a real
+    // red build (caught on 1 September 2026, expecting August's 31 days).
+    const month = todayISO().slice(0, 7);
     const daysThisMonth = String(new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate());
 
     expect(screen.getByLabelText('Days paid')).toHaveValue(daysThisMonth);
