@@ -189,6 +189,65 @@ implementation.** No VAT computation, no e-invoicing. What §4's "no country
 selector" meant in practice is now recorded honestly as a deviation rather than
 pretended away.
 
+### 9. The home becomes a dashboard
+
+Agreed in discussion on 31 August 2026 and **parked deliberately**: the
+document types are still being built, and a dashboard summarising flows that do
+not exist yet would be a summary of nothing. It gets picked up once the
+documents are done and the complete flows begin.
+
+Today `/client` is `DocumentsBrowser` under a heading, and that is all it has
+ever been. The heading already says "Documents", not "Dashboard", precisely
+because it is not one yet (`nav.ts`).
+
+**The shape agreed, in order down the page:**
+
+| # | Block | Note |
+|---|---|---|
+| 1 | Page title | |
+| 2 | **Document-type row** | The five types as click-targets, one row. `DocumentTypeList` already renders exactly this inside the ⌘D dialog |
+| 3 | Clients heading + New client | |
+| 4 | Client table, **top 5**, "view all" to `/client/clients` | |
+| 5 | Documents heading + New document | |
+| 6 | Document table, **top 5-8**, "view all" | |
+| 7 | Services heading + New service | |
+
+**Every table is a top slice, not the whole page.** The request was for the
+full client table, the full document table and the entire service kanban, which
+is three pages stacked: it never fits on a screen, it makes the three rail rows
+that navigate to those pages duplicates of what is already on the home, and it
+is three queries deep for content below the fold. A dashboard answers "what
+needs my attention", and three complete tables answer no question. Truncating
+each to its newest rows is what makes every row on the page worth reading.
+
+**The kanban is cut** (decided in the same conversation). A four-column count
+summary was offered as the middle option and was not wanted either. Services
+keep their own page.
+
+**The document-type row is the best part of this and should lead.** Creating a
+document today is ⌘D or the New document button, then a dialog, then a pick —
+a modal in front of a choice already made before it opened. A row of five
+targets makes it one click, and it is the only block on the page that is an
+*action* rather than a report, which is why it sits above the tables rather
+than beside its own table. Build it as a grid that wraps: five items do not
+overflow a 1600px row, and a scroller that never scrolls is a scrollbar added
+for nothing.
+
+**Two blocks to add that were not in the original request**, both agreed:
+
+- **Drafts.** Unfinished work with no number yet, currently invisible until you
+  scan the Number column for "Draft". The most actionable thing in the app.
+- **Unpaid invoices, most overdue first.** `commercial.paymentTermsDays`
+  already derives a due date (`CONTEXT.md` §5d) and nothing surfaces it. **This
+  is blocked**: there is no payment status on a document today, and adding one
+  is its own piece of work, not a homepage detail. It is the highest-value
+  block on the page once it exists.
+
+**One open question, deliberately left open.** "Last touched" per client was
+raised as possibly more useful than a client table, and the user agreed it is
+the more useful of the two *for clients*. Which of the two block 4 becomes is
+decided when this is built, not now.
+
 ---
 
 ## Deliberately deferred (YAGNI — noted, not built)
