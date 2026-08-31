@@ -18,7 +18,15 @@ import { packBlocks, type MeasuredBlock, type PackedPage } from './pagination';
  * either of them.
  *
  * Phase 1 renders the flow un-paginated into `flowRef` so heights can be read;
- * phase 2 renders the packed pages. `pages` is `null` until measured.
+ * phase 2 renders the packed pages.
+ *
+ * The two returned flags answer two different questions, and collapsing them
+ * into one is the bug this hook was fixed for. `pages` is `null` only until the
+ * **first** measurement commits; `measuring` says the flow has to be rendered
+ * again because the content changed. On a re-measure both are true of the same
+ * frame: there is a pagination to keep showing *and* a new one to compute. See
+ * `DocumentPreview`, which renders the new flow out of sight rather than in
+ * place of the pages the reader is looking at.
  */
 
 /**
@@ -97,17 +105,30 @@ export function usePagination(
   const signature = blocksSignature(blocks);
 
   // Committed pagination tagged with the signature it was measured against; a
-  // mismatch means content changed since measuring, so we re-render phase 1.
+  // mismatch means content changed since measuring, so phase 1 runs again.
   const [computed, setComputed] = useState<{ signature: string; pages: PackedPage[] } | null>(
     null,
   );
-  const pages = computed && computed.signature === signature ? computed.pages : null;
+
+  // `pages` is the last pagination that was *committed*, which on a re-measure
+  // is one keystroke out of date. It is returned anyway, and that is the whole
+  // point: dropping it to null while re-measuring tore the packed pages out of
+  // the DOM on every keystroke, replaced them with the one tall un-paginated
+  // flow, and put them back a frame later. The preview flickered and the
+  // scroll position collapsed to the top, because the scroll container's
+  // content had briefly changed height. A page that is one keystroke stale for
+  // one frame is invisible; a page that vanishes is not.
+  const pages = computed?.pages ?? null;
+  // Whether the flow still has to be rendered and measured. Distinct from
+  // `pages === null`: on a re-measure both are true at once, which is exactly
+  // the state that used to be impossible to express.
+  const measuring = computed?.signature !== signature;
 
   // Measure the un-paginated flow and pack blocks into pages. Runs inside a
   // ResizeObserver callback so it also re-fires if the flow settles late.
   useLayoutEffect(() => {
     const container = flowRef.current;
-    if (!container || pages !== null) return;
+    if (!container || !measuring) return;
 
     const measure = () => {
       const nodes = Array.from(container.children) as HTMLElement[];
@@ -131,7 +152,7 @@ export function usePagination(
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [pages, signature, columnHeight, columnsPerPage, forceDark]);
+  }, [measuring, signature, columnHeight, columnsPerPage, forceDark]);
 
-  return { flowRef, pages };
+  return { flowRef, pages, measuring };
 }

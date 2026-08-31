@@ -50,6 +50,9 @@ export default function PrintPages({
   forceDark?: boolean;
 }) {
   const blocks = Children.toArray(children).filter(isValidElement);
+  // `pages === null`, not `measuring`: a print route's document never changes
+  // under it, so this measures once and the two are the same question here.
+  // The preview has to tell them apart because it is being typed into.
   const { flowRef, pages } = usePagination(
     blocks,
     SHEET_HEIGHT - pagePaddingY - chromeHeight - PAGE_SAFETY_MARGIN,

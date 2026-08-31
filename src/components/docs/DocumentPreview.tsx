@@ -155,12 +155,11 @@ export default function DocumentPreview({
   // until the next one would overflow it.
   const pageContentHeight =
     SHEET_HEIGHT - pagePaddingY - chromeHeight - PAGE_SAFETY_MARGIN;
-  const { flowRef, pages: flowPages } = usePagination(
-    flowBlocks,
-    pageContentHeight,
-    columns,
-    forceDark,
-  );
+  const {
+    flowRef,
+    pages: flowPages,
+    measuring: remeasuring,
+  } = usePagination(flowBlocks, pageContentHeight, columns, forceDark);
 
   // Fit the A4 page *width* into the viewport — with a continuously scrolling
   // column the pane is no longer A4-shaped, so height must not bind (it would
@@ -189,9 +188,12 @@ export default function DocumentPreview({
     onPageCountChange?.(pageCount);
   }, [pageCount, onPageCountChange]);
 
-  // Phase 1 — not yet measured: render the flow un-paginated so heights can be
-  // read. The visible pane shows all blocks until measured.
-  const measuring = flowPages === null;
+  // Never measured at all — there are no pages to show, so the flow itself is
+  // the visible pane until one exists. A *re*-measure is a different state
+  // (`remeasuring`): the previous pages stay on screen and the new flow is
+  // measured out of sight, so an edit does not tear the preview down and lose
+  // the scroll position with it.
+  const unmeasured = flowPages === null;
 
   useImperativeHandle(
     ref,
@@ -226,7 +228,7 @@ export default function DocumentPreview({
 
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport || measuring) return;
+    if (!viewport || unmeasured) return;
 
     const pages = pageRefs.current.filter(Boolean) as HTMLDivElement[];
     if (pages.length === 0) return;
@@ -251,7 +253,7 @@ export default function DocumentPreview({
 
     pages.forEach((page) => observer.observe(page));
     return () => observer.disconnect();
-  }, [measuring, pageCount, reportCurrent]);
+  }, [unmeasured, pageCount, reportCurrent]);
 
   // Literal 794/1123 rather than the constants: Tailwind scans source text, so
   // an interpolated arbitrary value never gets a class generated.
@@ -274,13 +276,23 @@ export default function DocumentPreview({
   // flow page has open height (it is the measurement source), so its true
   // height isn't known yet — fall back to `auto` rather than reserving a wrong
   // fixed footprint that would clip the un-paginated flow.
-  const columnHeight = measuring
+  const columnHeight = unmeasured
     ? undefined
     : pageCount * SHEET_HEIGHT + Math.max(0, pageCount - 1) * PAGE_GAP;
 
   const capturePage = (index: number) => (el: HTMLDivElement | null) => {
     pageRefs.current[index] = el;
   };
+
+  // The measurement source: the whole flow in one open-height frame, at full
+  // page width. A block that will sit in a column carries its own width, so the
+  // same paragraph is measured in the box it will really occupy without the
+  // flow having to know which blocks those are.
+  const measureFrame = `paginatorPage w-[794px] ${
+    selfPaddedSheet ? '' : pagePadding
+  } ${flowColumn} box-border ${
+    forceDark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black'
+  } h-auto min-h-[1123px]`;
 
   /** One packed page, with its furniture and its own colour. */
   const renderPage = (page: PackedPage, index: number) => (
@@ -325,7 +337,7 @@ export default function DocumentPreview({
             // column is taken out of flow and scaled over it. While measuring
             // the footprint is unknown, so the column stays in flow (otherwise
             // an absolute child would collapse its auto-height parent).
-            measuring
+            unmeasured
               ? 'flex flex-col [transform-origin:top_left]'
               : 'absolute top-0 left-0 flex flex-col [transform-origin:top_left]'
           }
@@ -344,29 +356,43 @@ export default function DocumentPreview({
             </div>
           ) : null}
 
-          {measuring ? (
-            // Un-measured: render the whole flow in one open-height frame so
-            // per-block heights can be read. Also the jsdom / SSR output.
+          {unmeasured ? (
+            // Nothing has ever been measured, so the flow *is* the pane. Also
+            // the jsdom / SSR output, where every box reads zero and this is
+            // where it stays.
             <div
               ref={(el) => {
                 flowRef.current = el;
                 capturePage(coverCount)(el);
               }}
-              // Measured at full page width. A block that will sit in a column
-              // carries its own width, so the same paragraph is measured in the
-              // box it will really occupy without the flow having to know which
-              // blocks those are.
-              className={`paginatorPage w-[794px] ${
-                selfPaddedSheet ? '' : pagePadding
-              } ${flowColumn} box-border ${
-                forceDark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black'
-              } h-auto min-h-[1123px] ${PAGE_SHADOW}`}
+              className={`${measureFrame} ${PAGE_SHADOW}`}
             >
               {flowBlocks}
             </div>
           ) : (
             flowPages.map(renderPage)
           )}
+
+          {remeasuring && !unmeasured ? (
+            // Re-measuring with pages already on screen. The flow is measured
+            // out of sight instead of replacing them, so an edit never takes
+            // the reader's page away and never moves the scroll.
+            //
+            // `h-0 overflow-hidden` on the wrapper rather than on the flow
+            // itself: a clipped ancestor changes nothing about a child's own
+            // `offsetHeight`, which is all the measurement reads, but it does
+            // keep this from adding a second document's worth of scroll height
+            // to the viewport. `invisible` rather than `hidden`, because
+            // `display: none` has no layout to measure.
+            <div
+              aria-hidden
+              className="pointer-events-none invisible absolute top-0 left-0 h-0 w-[794px] overflow-hidden"
+            >
+              <div ref={flowRef} className={measureFrame}>
+                {flowBlocks}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

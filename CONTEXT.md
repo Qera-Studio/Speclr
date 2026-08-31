@@ -1085,6 +1085,30 @@ The document preview shows **one A4 page at a time in a carousel** (prev/next ar
 
 **jsdom cannot validate this layout** — always verify pagination/print in a real browser.
 
+**A re-measure must never take the committed pages off the screen.** Fixed 31
+August 2026, found while typing into a quotation: the preview flickered on
+every keystroke and threw the reader back to the top of the page.
+`usePagination` had one state for two questions, "is there a pagination" and
+"does it need re-measuring", so a changed block list dropped `pages` to `null`,
+every packed page unmounted, the one tall un-paginated flow took their place,
+and they came back a frame later. The scroll container's content changed height
+twice per keystroke, so the browser clamped the scroll position.
+
+The fix separates the two: `pages` is the last pagination that was *committed*
+(one keystroke stale for one frame, which nobody can see), and `measuring` says
+the flow still has to be rendered. `DocumentPreview` renders the new flow into
+an `invisible`, zero-height, `overflow-hidden` wrapper beside the pages it is
+about to replace. A clipped ancestor changes nothing about a child's own
+`offsetHeight`, which is all the measurement reads, but it keeps a second
+document's worth of scroll height out of the viewport.
+
+It looked like a quotation bug and was not. Every doc type re-measured this way;
+the invoice hid it because its un-paginated flow and its one packed page look
+almost identical, while a seven-page quotation collapsing to one tall column
+does not. Pinned in `DocumentPreview.test.tsx`, which fakes heights and drives
+the ResizeObserver by hand so the intermediate frame is something to assert on,
+and which was confirmed to fail when the two states are collapsed back into one.
+
 ---
 
 ## Decisions already made (do not re-litigate)
