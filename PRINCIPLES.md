@@ -243,6 +243,24 @@ silently fell back to the address. Two places holding one fact is the shape this
 rule exists to stop; the fix is `db/mappers.ts` resolving them on read as well as
 write, and the identity form no longer submitting a field the Tax step owns.
 
+**31 August 2026 — the Service Quotation, where the rule *deleted* seven
+fields.** Rebuilt from the design actually sent to clients, and the interesting
+part is how much of what it stored turned out to be derivable or fixed. The
+subject line is the service names plus the company and the city; the payment
+schedule is the one-time total read against three bands; the summary table is
+pure arithmetic over the pages before it; whether a service has an add-on page
+is `addOns.length > 0`, so the toggle that was going to sit beside the list
+would have been a second place for that answer to live. Four more were studio
+copy that a per-document field only made editable by accident: the cover blurb,
+the offer line, the four terms and the expiry ("valid for 14 days" is one of
+the terms, so `validUntil` was a date nothing printed).
+
+`attentionName`, `offerLine`, `subjectLine`, `validUntil`, `gstCountry`,
+`milestones` and `termsNote` all went, and `LineItem` lost `section` and
+`recurring` with them. The diff removes more model than it adds, which is the
+usual shape of a rule 3 fix and worth expecting: *the compliant path is
+generally the smaller one* (§7, step 2). See `CONTEXT.md` §5l.
+
 ### Rule 4 — snapshotting
 
 Compliant, and the strongest part of the codebase. `snapshot` (client or

@@ -28,6 +28,11 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AddressParts } from "@/lib/domain/address";
 import type { ScheduleKey } from "@/lib/domain/contract/schedules";
+import type {
+  QuotationService,
+  RecurringLine,
+  Salutation,
+} from "@/lib/domain/quotation";
 import type { ServiceContent } from "@/lib/domain/service";
 import type { CurrencyCode } from "@/lib/domain/currency";
 import type { DocContent } from "@/lib/domain/docContent";
@@ -380,15 +385,14 @@ export interface DocumentData {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
-  // QTN — the Service Quotation. See `QuotationDocument` in domain/types.
+  // SQ — the Service Quotation. See `QuotationDocument` in domain/types.
+  // It is the one type that prices through `services` rather than `lineItems`.
+  salutation?: Salutation;
   recipientName?: string;
-  attentionName?: string;
-  offerLine?: string;
-  subjectLine?: string;
-  validUntil?: string;
-  gstCountry?: "IN" | "INTL";
-  milestones?: { label: string; percent: number }[];
-  termsNote?: string;
+  companyName?: string;
+  city?: string;
+  services?: QuotationService[];
+  recurring?: RecurringLine[];
 }
 
 export const documents = pgTable(

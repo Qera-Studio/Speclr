@@ -189,22 +189,22 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
   }
   // The Service Quotation — addressed to nobody in particular. `base` carries
   // neither clientId/clientSnapshot nor employeeId/employeeSnapshot (see the
-  // third branch in createDraft/updateDraft below), and it never carries GST
-  // through the shared `gstRatePercent` machinery — `gstCountry` drives its own
-  // flat estimate (`quotationTotals.ts`).
-  if (base.type === "QTN") {
+  // third branch in createDraft/updateDraft below), and it prices through
+  // `services` rather than `lineItems`, which stays empty only because
+  // `BaseDocument` requires it. Quoted prices are inclusive of tax, so no GST
+  // is computed anywhere (`quotation.ts`).
+  if (base.type === "SQ") {
     return {
       ...base,
       issueDate: fields.issueDate,
-      lineItems: fields.lineItems,
+      lineItems: [],
       gstRatePercent: 0,
+      salutation: fields.salutation,
       recipientName: fields.recipientName,
-      attentionName: fields.attentionName,
-      subjectLine: fields.subjectLine,
-      validUntil: fields.validUntil,
-      gstCountry: fields.gstCountry ?? "IN",
-      milestones: fields.milestones,
-      termsNote: fields.termsNote,
+      companyName: fields.companyName,
+      city: fields.city,
+      services: fields.services ?? [],
+      recurring: fields.recurring ?? [],
       content: fields.content,
     };
   }

@@ -51,7 +51,7 @@ function firstPage(doc: AdminDocument) {
       </div>
     );
   }
-  if (doc.type === "QTN") {
+  if (doc.type === "SQ") {
     // Every page of a quotation is dark, not just a cover — same trick as the
     // contract's cover above: paint the frame black and drop in the first
     // (header) block, which is all that lands in the thumbnail's crop anyway.

@@ -19,6 +19,13 @@ import type { BlankValues } from "./contract/blanks";
 import type { ContractPart } from "./contract/assembly";
 import type { CurrencyCode } from "./currency";
 import type { DocContent } from "./docContent";
+// Type-only, so the cycle with `quotation.ts` (which imports `LineItem` from
+// here) is erased at compile time and never reaches the module graph.
+import type {
+  QuotationService,
+  RecurringLine,
+  Salutation,
+} from "./quotation";
 
 /** Phase 2 adds 'CON'. Phase 3 adds HR docs: 'STP' | 'OFR' | 'EXP' | 'EXIT'. */
 export type DocTypeCode =
@@ -31,7 +38,7 @@ export type DocTypeCode =
   | "OFR"
   | "EXP"
   | "EXIT"
-  | "QTN";
+  | "SQ";
 
 export interface ClientRecord {
   id: string;
@@ -107,8 +114,13 @@ export interface ClientRecord {
 export interface LineItem {
   description: string;
   /**
-   * @deprecated A sub-line under the description, printed by no sheet and
-   * collected by no editor. See `lineItemSchema` in `registry.ts`.
+   * A sub-line under the description, set in a lighter weight.
+   *
+   * Collected and printed on the Service Quotation only, where every
+   * deliverable carries a plain-English explanation of what the client is
+   * actually buying. Every other sheet leaves it unset: an invoice line already
+   * says what it says (`CONTEXT.md` §6a on why a slip line prints its
+   * description and nothing else).
    */
   detail?: string;
   /** Integer paise — never floats. ₹1,500.00 === 150000. */
@@ -127,19 +139,6 @@ export interface LineItem {
    * documents written before it have none, and they must keep loading.
    */
   sacCode?: string;
-  /**
-   * The heading this line prints under on a Service Quotation (e.g.
-   * "Website(s)", "Social Media") — the only doc type with grouped, subtotaled
-   * line items. Consecutive lines sharing a section are grouped by the sheet;
-   * absent on every other document type, which prints a flat list.
-   */
-  section?: string;
-  /**
-   * A recurring (monthly) line on a Service Quotation — printed as '/m' and
-   * excluded from its section subtotal and the grand total, since it is not a
-   * one-time cost the quoted figure represents. Meaningless outside QTN.
-   */
-  recurring?: boolean;
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */
@@ -628,31 +627,33 @@ export interface LetterDocument extends BaseDocument {
  * onboarded at all, so it extends `BaseDocument` directly and never sets
  * `clientId` — the recipient is free text, decoupled from the `clients` table.
  *
- * `gstCountry` is an explicit operator choice, not derived from any client
- * record (there may be none) — see `CONTEXT.md`'s note on this type for why
- * that is deliberate rather than a gap. `gstRatePercent` (inherited from
- * `BaseDocument`) is pinned to 0, the same way a `SlipDocument`'s is: the
- * estimate this type shows is computed by `computeQuotationTotals`, not the
- * shared GST machinery, since there is no place-of-supply to derive.
+ * It is also the one type that does not use `lineItems`. Its pricing lives in
+ * `services`, because a quotation is a fixed-page document whose page break
+ * *is* the service boundary, and an add-on list has to belong to the service it
+ * extends. `lineItems` stays `[]` and `gstRatePercent` stays 0, both only to
+ * satisfy `BaseDocument`: quoted prices are inclusive of tax, so no GST is
+ * computed anywhere (`quotation.ts`).
+ *
+ * What is deliberately *not* here: a subject line, a valid-until date, a terms
+ * note and a milestone schedule. The first is derived from the services and the
+ * company, the last from the total, and the middle two are fixed studio copy —
+ * "valid for 14 days" is one of the four printed terms. A field the operator
+ * types that the document already knows is `PRINCIPLES.md` rule 3.
  */
 export interface QuotationDocument extends BaseDocument {
-  type: "QTN";
-  /** Free text — a prospect's name or company, independent of any client record. */
+  type: "SQ";
+  /** How the cover addresses the recipient: "Miss Mehak,". */
+  salutation?: Salutation;
+  /** The person, not the company — free text, independent of any client record. */
   recipientName?: string;
-  /** "Kind Attention" — the contact person named on the quotation. */
-  attentionName?: string;
-  /** One line addressing the attention name, printed just under it — e.g.
-   * "We are pleased to submit our offer for the above mentioned project." */
-  offerLine?: string;
-  subjectLine?: string;
-  /** ISO date — after which the quoted figures are no longer held. */
-  validUntil?: string;
-  /** India shows an estimated 18% GST line; International shows none. */
-  gstCountry: "IN" | "INTL";
-  /** A free payment-milestone schedule, e.g. Advance 35% / Final 10%. Percentages are not enforced to sum to 100 — this is not a binding contract. */
-  milestones?: { label: string; percent: number }[];
-  /** Freeform terms/notes, printed as-is — not the clause-library machinery invoices/contracts use. */
-  termsNote?: string;
+  /** The company the quote is for. Prints in the derived subject line. */
+  companyName?: string;
+  /** Where they are. Prints in the derived subject line. */
+  city?: string;
+  /** One page each, in order, plus an add-on page wherever `addOns` is non-empty. */
+  services: QuotationService[];
+  /** The recurring-infrastructure page. */
+  recurring: RecurringLine[];
 }
 
 export type AdminDocument =

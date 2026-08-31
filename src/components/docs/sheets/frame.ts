@@ -64,6 +64,21 @@ export const CONTRACT_COLUMN_WIDTH =
   (SHEET_WIDTH - CONTRACT_PADDING_Y - CONTRACT_COLUMN_GAP * (CONTRACT_COLUMNS - 1)) /
   CONTRACT_COLUMNS;
 
+/**
+ * The quotation's page margin. Twice the shared value, for the opposite reason
+ * to the contract's: a quotation is a display document set in 72px and 52px
+ * type, and a 12px margin under a headline that size reads as a printing error
+ * rather than as a margin.
+ *
+ * It costs the packer 24px of page height against the shared value, which is
+ * why the deliverables ceiling in `QuotationSheet.tsx` is a measured number and
+ * not an arithmetic one. Change this and re-measure it.
+ */
+export const QUOTATION_PADDING = "p-[24px]";
+
+/** Total vertical padding `QUOTATION_PADDING` costs a page, in px (24 + 24). */
+export const QUOTATION_PADDING_Y = 48;
+
 /** The offer letter's cover page — roomier margins than the slip sheets. */
 export const OFFER_COVER_PADDING = "p-[36px]";
 

@@ -1,305 +1,531 @@
 import { formatDisplayDate, isISODate } from "@/lib/domain/dates";
-import { formatINR, lineAmountPaise } from "@/lib/domain/money";
+import { lineAmountPaise } from "@/lib/domain/money";
 import {
   computeQuotationTotals,
-  QUOTATION_GST_ESTIMATE_PERCENT,
-} from "@/lib/domain/quotationTotals";
+  formatQuote,
+  formatQuoteRange,
+  paymentPhases,
+  QUOTATION_COVER_BLURB,
+  QUOTATION_OFFER_LINE,
+  QUOTATION_TAX_NOTE,
+  QUOTATION_TERMS,
+  type QuotationService,
+  type RecurringLine,
+} from "@/lib/domain/quotation";
+import { contentOf } from "@/lib/domain/docContent";
+import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf } from "@/lib/domain/studio";
-import type { QuotationDocument } from "@/lib/domain/types";
-import { A4_PADDING, A4_PADDING_Y } from "./frame";
+import type { LineItem, QuotationDocument } from "@/lib/domain/types";
+import { QUOTATION_PADDING, QUOTATION_PADDING_Y } from "./frame";
 import QeraMark from "./QeraMark";
 
 /**
- * The Service Quotation — the one sheet that is dark on every page, not just
- * a cover. A fixed, never-changing cover page and closing page bookend the
- * per-document content: masthead + brand copy on the way in, "let's
- * collaborate" + links + legal lines on the way out. Neither carries any
- * per-document data — that lives in the `details` block, the first thing in
- * the flowing content.
+ * The Service Quotation — a **fixed-page** document, dark on every page.
  *
- * A flat list of atomic blocks, exactly like `contractBlocks`/`letterBlocks` —
- * `DocumentPreview`/`PrintPages` measure and pack them into A4 pages, with
- * `quotationPageProps().forceDark` painting every flowing page black and
- * `data-page="own"` + `data-page-frame="dark"` giving the cover and close a
- * dedicated black page each (`packBlocks` only reads an `own` block's own
- * `dark` flag — `forceDark` does not reach it).
+ * Unlike the contract and the letters, nothing here flows. Every block carries
+ * `data-page="own"`, so `packBlocks` gives each exactly one page and packs
+ * nothing else onto it:
+ *
+ *   cover → service 1 → [service 1 add-ons] → service 2 → … →
+ *   recurring + summary → details → contact
+ *
+ * That is the document's own structure, not a rendering convenience: a service
+ * *is* a page, which is why `QuotationService` is a record carrying its own
+ * add-on list rather than a `section` string on a flat line array.
+ *
+ * The four corners (mark + date above, confidentiality note + page number
+ * below) are chrome in `quotationPageProps`, identical on every page, so no
+ * block draws them itself.
+ *
+ * **There is a ceiling, and it is a hard one.** Nothing here flows onto a
+ * second page, so a service with too many deliverables does not paginate, it
+ * spills off the paper. Measured at **8 deliverables** on a service page that
+ * also carries a blurb; 9 fails. That number moves whenever the type sizes or
+ * `QUOTATION_PADDING` move, so it is measured rather than reasoned about.
+ * `e2e/quotation.spec.ts` asserts no page is
+ * marked `overflows` for exactly that reason, and that assertion was confirmed
+ * to go red before it was trusted. If a service ever genuinely needs more,
+ * split it in two or flow the table through the `Paginator` the way the
+ * contract does — do not quietly raise the limit. jsdom measures every box as
+ * zero, so verify any change to this sheet in a real browser.
  */
 
-/** What the running footer costs a page — reserved by pagination. No running
- * header: the wordmark only appears on the cover and closing pages, as their
- * own content, not as chrome repeated on every page. */
-export const QTN_CHROME_HEIGHT = 28 + 12;
+/**
+ * What the running header and footer cost a page. Reserved by pagination.
+ *
+ * Each band's height **includes its own gap**, and that is the fix for a bug
+ * rather than a stylistic choice. Both boxes are `box-border`, so a height
+ * smaller than the padding inside it is not a shorter box: the used height
+ * floors at the padding and the content is drawn outside its own frame.
+ * `h-[28px] pt-[36px]` on the footer made a 36px box whose text rendered 8px
+ * *below* its floor, which on a fixed-height page is 8px into the bottom
+ * margin. The header did the same thing upwards against the top margin.
+ *
+ * So the gap is part of the height, and these two numbers are the ones on the
+ * boxes in `quotationPageProps`. Keep them in step: what the packer holds back
+ * has to be what the page actually spends, or a service page packs 76px it
+ * does not have and clips at the foot.
+ */
+const SQ_HEADER_HEIGHT = 92; // 28px of mark and date, then a 64px gap
+const SQ_FOOTER_HEIGHT = 64; // a 36px gap, then 28px of note and page number
+export const SQ_CHROME_HEIGHT = SQ_HEADER_HEIGHT + SQ_FOOTER_HEIGHT;
 
-const money = (paise: number) => formatINR(paise);
+/** Every page block: filling the frame's height, so `mt-auto` has something to
+ * resolve against. */
+const PAGE = "relative flex flex-1 flex-col";
 
-/** One section's table: heading, rows, subtotal. */
-function SectionBlock({
-  section,
-}: {
-  section: ReturnType<typeof computeQuotationTotals>["sections"][number];
-}) {
+/** A small label over a value — "Prepared for:", "Subject:", "Reference:". */
+function Caption({ children }: { children: React.ReactNode }) {
+  return <p className="text-[16px] leading-none text-white/50">{children}</p>;
+}
+
+// ── Tables ────────────────────────────────────────────────────────────────
+
+/**
+ * One deliverable, as two rows.
+ *
+ * The second row carries only the `detail`, under the description and in the
+ * description's own column — never spanning the figures, which is what keeps
+ * the explanation reading as a note on the line above rather than as a row of
+ * its own. It renders even when empty, so the rhythm does not change between a
+ * line that carries an explanation and one that does not.
+ */
+function DeliverableRows({ line }: { line: LineItem }) {
   return (
-    <div className="mb-[28px] [break-inside:avoid]" data-keep-next>
-      {section.name ? (
-        <h3 className="mb-[10px] text-[15px] font-semibold text-white">
-          {section.name}
-        </h3>
-      ) : null}
-      <table className="w-full border-collapse text-[12px]">
-        <thead>
-          <tr className="border-b border-white/20 text-white/50">
-            <th className="py-[6px] text-left font-normal">Deliverable</th>
-            <th className="py-[6px] text-right font-normal">Qty.</th>
-            <th className="py-[6px] text-right font-normal">Price</th>
-            <th className="py-[6px] text-right font-normal">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {section.lines.map((line, i) => (
-            <tr key={i} className="border-b border-white/10">
-              <td className="py-[8px] pr-[12px] text-white">
-                {line.description || "—"}
-              </td>
-              <td className="py-[8px] text-right text-white/80">{line.qty}</td>
-              <td className="py-[8px] text-right text-white/80">
-                {money(line.ratePaise)}
-              </td>
-              <td className="py-[8px] text-right text-white">
-                {money(lineAmountPaise(line))}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="mt-[8px] flex justify-end text-[13px] font-semibold text-white">
-        {money(section.subtotalPaise)}
-      </div>
-    </div>
+    <>
+      <tr className="align-baseline">
+        <td className="pt-[14px] pr-[16px] text-[16px] text-white">
+          {line.description}
+        </td>
+        <td className="pt-[14px] text-right text-[16px] text-white">
+          {line.qty}
+        </td>
+        <td className="pt-[14px] text-right text-[16px] text-white">
+          {formatQuote(line.ratePaise)}
+        </td>
+        <td className="pt-[14px] text-right text-[16px] text-white">
+          {formatQuote(lineAmountPaise(line))}
+        </td>
+      </tr>
+      <tr>
+        <td className="border-b border-white/15 max-w-[400px] pr-[16px] pb-[12px] text-[12px] leading-[1.3] text-white/50">
+          {line.detail}
+        </td>
+        <td className="border-b border-white/15" colSpan={3} />
+      </tr>
+    </>
   );
 }
 
-function RecurringNote({
+/**
+ * A deliverables table: the four-column header, the lines, and the One-time
+ * Total with the tax note under it.
+ *
+ * Shared by a service's page and its add-on page, because the add-on page *is*
+ * the same table under a different heading. The heading is a prop rather than
+ * derived here for exactly that reason.
+ */
+function DeliverablesTable({
+  heading,
   lines,
 }: {
-  lines: ReturnType<typeof computeQuotationTotals>["recurringLines"];
+  heading: string;
+  lines: LineItem[];
 }) {
-  if (lines.length === 0) return null;
+  const totalPaise = lines.reduce(
+    (sum, line) => sum + lineAmountPaise(line),
+    0,
+  );
   return (
-    <div className="mb-[28px] [break-inside:avoid]">
-      <h3 className="mb-[10px] text-[15px] font-semibold text-white">
-        Recurring
-      </h3>
-      <p className="mb-[8px] text-[11px] text-white/50">
-        Billed monthly, from the month deliverables go live — not included in
-        the totals below.
-      </p>
-      <table className="w-full border-collapse text-[12px]">
-        <tbody>
-          {lines.map((line, i) => (
-            <tr key={i} className="border-b border-white/10">
-              <td className="py-[8px] pr-[12px] text-white">
-                {line.description || "—"}
-              </td>
-              <td className="py-[8px] text-right text-white">
-                {money(lineAmountPaise(line))}/m
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="text-[13px] text-white">
+          <th className="border-b border-white/40 pb-[10px] text-left font-medium text-[18px]">
+            {heading}
+          </th>
+          <th className="w-[64px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Qty
+          </th>
+          <th className="w-[132px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Amount
+          </th>
+          <th className="w-[132px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Total
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {lines.map((line, i) => (
+          <DeliverableRows key={i} line={line} />
+        ))}
+      </tbody>
+      <tfoot>
+        <tr className="align-baseline">
+          <td className="pt-[14px] text-[16px] text-white">One-time Total</td>
+          <td colSpan={2} />
+          <td className="pt-[14px] text-right text-[16px] text-white">
+            {formatQuote(totalPaise)}
+          </td>
+        </tr>
+        <tr>
+          <td className="pt-[3px] text-[12px] text-white/50">
+            {QUOTATION_TAX_NOTE}
+          </td>
+          <td colSpan={3} />
+        </tr>
+      </tfoot>
+    </table>
   );
 }
 
-function MilestonesBlock({
-  milestones,
-}: {
-  milestones: QuotationDocument["milestones"];
-}) {
-  if (!milestones || milestones.length === 0) return null;
-  return (
-    <div className="mb-[28px] [break-inside:avoid]" data-keep-next>
-      <h3 className="mb-[10px] text-[15px] font-semibold text-white">
-        Payment schedule
-      </h3>
-      <table className="w-full border-collapse text-[12px]">
-        <tbody>
-          {milestones.map((m, i) => (
-            <tr key={i} className="border-b border-white/10">
-              <td className="py-[6px] text-white/80">{m.label || "—"}</td>
-              <td className="py-[6px] text-right text-white">{m.percent}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+/** The amount column of a recurring row: a figure, a range, or a plain note. */
+function recurringAmount(row: RecurringLine): string {
+  if (row.amountNote) return row.amountNote;
+  if (row.amountPaise === undefined) return "";
+  return formatQuoteRange(
+    row.amountPaise,
+    row.amountMaxPaise ?? row.amountPaise,
   );
+}
+
+function RecurringTable({
+  rows,
+  fixed,
+}: {
+  rows: RecurringLine[];
+  fixed: { minPaise: number; maxPaise: number };
+}) {
+  return (
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="text-[13px] text-white">
+          <th className="border-b border-white/40 pb-[10px] text-left font-medium text-[18px]">
+            Deliverables [Recurring Infrastructure]
+          </th>
+          <th className="w-[180px] border-b border-white/40 pb-[10px] text-left font-medium text-[18px]">
+            Frequency
+          </th>
+          <th className="w-[170px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Amount
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i} className="align-baseline">
+            <td className="pt-[14px] pr-[16px] text-[16px] text-white">
+              {row.description}
+              <span className="mt-[3px] block pb-[12px] text-[14px] leading-[1.35] text-white/50">
+                {row.detail}
+              </span>
+            </td>
+            <td className="border-b border-white/15 pt-[14px] text-left text-[16px] text-white">
+              {row.frequency}
+            </td>
+            <td className="border-b border-white/15 pt-[14px] text-right text-[16px] text-white">
+              {recurringAmount(row)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr className="align-baseline">
+          <td colSpan={2} className="pt-[14px] text-[16px] text-white">
+            Recurring Total (Fixed Portion)
+          </td>
+          <td className="pt-[14px] text-right text-[16px] text-white">
+            {formatQuoteRange(fixed.minPaise, fixed.maxPaise)}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  );
+}
+
+/**
+ * The summary, built entirely from the services and the recurring rows.
+ *
+ * Nothing writes into this: it is the one table on the document that is pure
+ * arithmetic over what the pages before it already said (`PRINCIPLES.md`
+ * rule 3). The recurring row carries a total and no base or add-on, because it
+ * has neither, and it prints '[variable]' when the figure beside it is the
+ * bottom of a range rather than a price.
+ */
+function SummaryTable({
+  totals,
+}: {
+  totals: ReturnType<typeof computeQuotationTotals>;
+}) {
+  const { minPaise, maxPaise } = totals.recurringFixed;
+  const cell = "border-b border-white/15 py-[11px] text-[16px] text-white";
+  return (
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="text-[13px] text-white">
+          <th className="border-b border-white/40 pb-[10px] text-left font-medium text-[18px]">
+            Item
+          </th>
+          <th className="w-[132px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Base
+          </th>
+          <th className="w-[132px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px]">
+            Add-on
+          </th>
+          <th className="w-[132px] border-b border-white/40 pb-[10px] text-right font-medium text-[18px] ">
+            Total
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {totals.services.map((service, i) => (
+          <tr key={i} className="align-baseline">
+            <td className={`${cell} pr-[16px]`}>{service.name}</td>
+            <td className={`${cell} text-right`}>
+              {formatQuote(service.basePaise)}
+            </td>
+            <td className={`${cell} text-right`}>
+              {service.addOnPaise > 0 ? formatQuote(service.addOnPaise) : "—"}
+            </td>
+            <td className={`${cell} text-right`}>
+              {formatQuote(service.totalPaise)}
+            </td>
+          </tr>
+        ))}
+        <tr className="align-baseline">
+          <td className={`${cell} pr-[16px]`}>Recurring Infrastructure</td>
+          <td className={`${cell} text-right`}>—</td>
+          <td className={`${cell} text-right`}>—</td>
+          <td className={`${cell} text-right`}>
+            {formatQuote(minPaise)}
+            {maxPaise > minPaise ? (
+              <span className="text-white/50"> [variable]</span>
+            ) : null}
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr className="align-baseline">
+          <td className="pt-[14px] text-[15px] text-white">Total</td>
+          <td colSpan={2} />
+          <td className="pt-[14px] text-right text-[15px] text-white">
+            {formatQuote(totals.totalPaise)}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  );
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────
+
+/**
+ * The subject line, derived rather than typed: the services are already on the
+ * document and the company is already on the cover, so asking an operator to
+ * restate them is asking for the two to disagree (`PRINCIPLES.md` rule 3).
+ */
+export function quotationSubject(doc: QuotationDocument): string {
+  const names = doc.services.map((s) => s.name).filter(Boolean);
+  const where = [doc.companyName, doc.city].filter(Boolean).join(", ");
+  const what = names.length > 0 ? names.join(", ") : "services";
+  return where ? `Quote for ${what} at ${where}` : `Quote for ${what}`;
+}
+
+/** "Miss Mehak," — the salutation and the person, never the company. */
+function addressee(doc: QuotationDocument): string {
+  const named = [doc.salutation, doc.recipientName].filter(Boolean).join(" ");
+  return named ? `${named},` : "—";
 }
 
 /** The full-width A4 flow, used for both preview and print. */
 export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
   const studio = studioOf(doc);
-  const displayDate = isISODate(doc.issueDate)
-    ? formatDisplayDate(doc.issueDate)
-    : "—";
-  const validUntil =
-    doc.validUntil && isISODate(doc.validUntil)
-      ? formatDisplayDate(doc.validUntil)
-      : null;
-  const totals = computeQuotationTotals(doc.lineItems, doc.gstCountry);
+  const content = contentOf(doc, DOC_TYPES.SQ);
+  const totals = computeQuotationTotals(doc.services, doc.recurring);
+  const phases = paymentPhases(totals.oneTimePaise);
 
-  // Fixed, never-changing — no per-document data. See `PRINCIPLES.md` rule 4:
-  // this is studio copy, not a snapshot, so nothing here is frozen at finalize.
   const cover = (
     <div
       key="cover"
       data-page="own"
       data-page-frame="dark"
       aria-label="Cover"
-      className="relative flex flex-1 flex-col justify-center"
+      className={`${PAGE} justify-center`}
     >
-      <span className="absolute top-0 right-0 flex items-center gap-[6px]">
-        <QeraMark size={6.4} />
-        <span className="text-[15px] font-semibold text-white">
-          {studio.brandMark}
-        </span>
-      </span>
-      <h1 className="text-[52px] font-bold uppercase leading-[0.95] tracking-[-0.02em] text-white">
-        Service
-        <br />
-        Quotation
+      {/* `w-min` is what puts SERVICE over QUOTATION: the box shrinks to its
+       * longest word, so the mast wraps at every space however many words the
+       * masthead carries, instead of at whatever width the paper happens to
+       * leave. A hard-coded line break would only be right for this one
+       * string, and `masthead` is editable content (`CONTEXT.md` §5b). */}
+      <h1 className="w-min text-[72px] leading-[0.95] font-bold tracking-[-0.02em] text-white uppercase">
+        {content.masthead}
       </h1>
-      <p className="mt-[16px] max-w-[420px] text-[13px] leading-[1.5] text-white/70">
-        A tailored scope and pricing for the work discussed, prepared by Qera
-        Studio.
+      <p className="mt-[16px] max-w-[470px] text-[16px] leading-[1] text-white">
+        {QUOTATION_COVER_BLURB}
       </p>
+
+      <div className="mt-[96px]">
+        <Caption>Prepared for:</Caption>
+        <p className="mt-[8px] text-[16px] text-white">{addressee(doc)}</p>
+        <p className="mt-[4px] text-[16px] text-white">
+          {QUOTATION_OFFER_LINE}
+        </p>
+      </div>
+
+      <div className="mt-[24px]">
+        <Caption>Subject:</Caption>
+        <p className="mt-[8px] text-[16px] text-white">
+          {quotationSubject(doc)}
+        </p>
+      </div>
+    </div>
+  );
+
+  // One page per service, plus an add-on page wherever there are add-ons. The
+  // service name is the table's heading too — a separate short label would be
+  // one more field for one string, and one more thing to leave stale.
+  const servicePages = doc.services.flatMap(
+    (service: QuotationService, i: number) => {
+      const label = service.name || `Service ${i + 1}`;
+      const page = (
+        <div
+          key={`service-${i}`}
+          data-page="own"
+          data-page-frame="dark"
+          aria-label={label}
+          className={PAGE}
+        >
+          <h2 className="text-[52px] leading-[0.95] font-bold tracking-[-0.02em] text-white uppercase">
+            {service.name}
+          </h2>
+          {service.blurb ? (
+            <p className="mt-[8px] text-[14px] leading-[1.3] text-white">
+              {service.blurb}
+            </p>
+          ) : null}
+          <div className="mt-auto pb-[24px]">
+            <DeliverablesTable
+              heading={`Deliverables [${service.name}]`}
+              lines={service.lines}
+            />
+          </div>
+        </div>
+      );
+      if (service.addOns.length === 0) return [page];
+      return [
+        page,
+        <div
+          key={`add-ons-${i}`}
+          data-page="own"
+          data-page-frame="dark"
+          aria-label={`${label} add-ons`}
+          className={PAGE}
+        >
+          <DeliverablesTable
+            heading="Deliverables [Custom Add-ons]"
+            lines={service.addOns}
+          />
+        </div>,
+      ];
+    },
+  );
+
+  // The recurring table at the top, the summary pinned to the foot by
+  // `mt-auto` — the same mechanism the letters' closing block uses.
+  const recurring = (
+    <div
+      key="recurring"
+      data-page="own"
+      data-page-frame="dark"
+      aria-label="Recurring infrastructure"
+      className={PAGE}
+    >
+      {doc.recurring.length > 0 ? (
+        <RecurringTable rows={doc.recurring} fixed={totals.recurringFixed} />
+      ) : null}
+      <div className="mt-auto pb-[16px]">
+        <SummaryTable totals={totals} />
+      </div>
     </div>
   );
 
   const details = (
-    <div key="details" className="mb-[36px] [break-inside:avoid]">
-      {/* No doc.number here — the running footer already carries it on every
-       * page (or "DRAFT" before finalize), and printing it twice on the same
-       * page is redundant, not reassuring. */}
-      <div className="text-[11px] text-white/60">
-        <span>{displayDate}</span>
-      </div>
-      {doc.subjectLine ? (
-        <p className="mt-[16px] max-w-[520px] text-[13px] leading-[1.5] text-white/70">
-          {doc.subjectLine}
-        </p>
-      ) : null}
-      <div className="mt-[24px] flex justify-between gap-[24px] text-[12px]">
-        <div>
-          <p className="text-white/50">Prepared for</p>
-          <p className="mt-[2px] text-[16px] font-medium text-white">
-            {doc.recipientName || "—"}
-          </p>
-          {doc.attentionName ? (
-            <p className="mt-[2px] text-white/70">
-              Kind Attention: {doc.attentionName}
-            </p>
-          ) : null}
-          {doc.offerLine ? (
-            <p className="mt-[6px] max-w-[420px] text-white/70">
-              {doc.offerLine}
-            </p>
-          ) : null}
-        </div>
-        {validUntil ? (
-          <div className="text-right">
-            <p className="text-white/50">Valid until</p>
-            <p className="mt-[2px] font-medium text-white">{validUntil}</p>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-
-  const pricing = (
-    <div key="pricing" className="mb-[8px]">
-      <h2 className="mb-[20px] text-[13px] font-semibold uppercase tracking-[0.04em] text-white/60">
-        Pricing
-      </h2>
-      {totals.sections.map((section, i) => (
-        <SectionBlock key={i} section={section} />
-      ))}
-      <RecurringNote lines={totals.recurringLines} />
-      <MilestonesBlock milestones={doc.milestones} />
-    </div>
-  );
-
-  const terms = doc.termsNote?.trim() ? (
-    <div key="terms" className="mb-[28px] [break-inside:avoid]">
-      <h2 className="mb-[10px] text-[13px] font-semibold uppercase tracking-[0.04em] text-white/60">
-        Terms
-      </h2>
-      <p className="whitespace-pre-line text-[12px] leading-[1.6] text-white/80">
-        {doc.termsNote}
-      </p>
-    </div>
-  ) : null;
-
-  // Last in the flow, and it stays last: `mt-auto` resolves to the free space
-  // on whichever page it lands on (the same mechanism the letters' closing
-  // block uses — see `usePagination.ts`'s note on the last block's margin),
-  // then `pb-[48px]` holds it a fixed distance off that page's bottom rather
-  // than flush against it.
-  const totalsBlock = (
     <div
-      key="totals"
-      className="mt-auto flex flex-col items-end gap-[4px] border-t border-white/20 pt-[16px] pb-[48px] text-[13px] [break-inside:avoid]"
+      key="details"
+      data-page="own"
+      data-page-frame="dark"
+      aria-label="Reference and payment structure"
+      className={PAGE}
     >
-      <div className="flex w-[280px] justify-between text-white/70">
-        <span>Subtotal</span>
-        <span>{money(totals.subtotalPaise)}</span>
-      </div>
-      {doc.gstCountry === "IN" ? (
-        <div className="flex w-[280px] justify-between text-white/70">
-          <span>Est. GST ({QUOTATION_GST_ESTIMATE_PERCENT}%)</span>
-          <span>{money(totals.gstPaise)}</span>
-        </div>
-      ) : null}
-      <div className="flex w-[280px] justify-between text-[16px] font-semibold text-white">
-        <span>Total</span>
-        <span>{money(totals.totalPaise)}</span>
-      </div>
-      {doc.gstCountry === "IN" ? (
-        <p className="mt-[6px] w-[280px] text-right text-[10px] text-white/40">
-          GST shown as an estimate only — not a tax invoice.
+      <div>
+        <Caption>Reference:</Caption>
+        {/* '#' is presentation. The stored number is the house
+         * `QS-SQ-<fy>-<serial>`, claimed atomically like every other series. */}
+        <p className="mt-[8px] text-[14px] text-white">
+          #{doc.number ?? "DRAFT"}
         </p>
-      ) : null}
+      </div>
+
+      <div className="my-auto">
+        <h2 className="mb-[16px] text-[18px] text-white">
+          Payment structure shall be as follows:
+        </h2>
+        <table className="w-full border-collapse">
+          <tbody>
+            {phases.map((phase, i) => (
+              <tr key={i}>
+                <td className="w-[150px] border-b border-white/15 py-[11px] text-[16px] text-white">
+                  Phase {i + 1}
+                </td>
+                <td className="border-b border-white/15 py-[11px] text-[16px] text-white">
+                  {phase.label}
+                </td>
+                <td className="w-[80px] border-b border-white/15 py-[11px] text-right text-[16px] text-white">
+                  {phase.percent}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <Caption>Terms &amp; Conditions:</Caption>
+        {/* Fixed studio copy in a fixed 2×2 grid, numbered so a reader can cite
+         * one. Nothing on this document edits them. */}
+        <ol className="mt-[10px] grid grid-cols-2 gap-x-[36px] gap-y-[12px] text-[14px] leading-[1.25] text-white/70">
+          {QUOTATION_TERMS.map((term, i) => (
+            <li key={i} className="flex gap-[6px]">
+              <span className="shrink-0">{i + 1}.</span>
+              <span>{term}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   );
 
-  // Fixed, never-changing — the same rule as `cover`. `hello@qera.studio` and
-  // the Instagram handle are marketing contact points printed on this one
-  // page, deliberately distinct from `studioOf(doc).email` (the invoice
-  // identity, `sales@qera.studio`) — this page is never per-document.
+  // Fixed, never-changing studio copy. `hello@qera.studio` and the Instagram
+  // handle are marketing contact points, deliberately distinct from
+  // `studioOf(doc).email` (the invoice identity) — this page is never
+  // per-document.
   const close = (
     <div
       key="close"
       data-page="own"
       data-page-frame="dark"
       aria-label="Let's collaborate"
-      className="relative flex flex-1 flex-col"
+      className={PAGE}
     >
-      <span className="absolute top-0 right-0 flex items-center gap-[6px]">
-        <QeraMark size={6.4} />
-        <span className="text-[15px] font-semibold text-white">
-          {studio.brandMark}
-        </span>
-      </span>
-      <div className="mt-[64px]">
-        <h2 className="max-w-[420px] text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-white">
+      <div className="mt-[128px]">
+        <h2 className="max-w-[560px] text-[44px] leading-[1.1] font-bold tracking-[-0.01em] text-white">
           Let&rsquo;s collaborate on what matters to you.
         </h2>
-        <p className="mt-[12px] max-w-[420px] text-[13px] leading-[1.5] text-white/70">
-          Thank you for considering Qera Studio as your digital
-          infrastructure and growth partner.
+        <p className="mt-[8px] max-w-[440px] text-[14px] leading-[1.25] text-white/70">
+          Thank you for considering Qera Studio as your digital infrastructure
+          and growth partner.
         </p>
       </div>
-      <div className="mt-auto flex gap-[32px] pb-[64px] text-[12px] text-white/70">
+      <div className="mt-auto flex justify-between pb-[256px] text-[18px] text-white/70">
         <span>
           Visit us:{" "}
           <a
@@ -328,7 +554,7 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
           </a>
         </span>
       </div>
-      <div className="flex flex-col gap-[4px] text-[10px] text-white/50">
+      <div className="flex flex-col text-[14px] text-white/70 mb-[24px]">
         <p>© Qera Studio. All rights reserved</p>
         <p>Owned by {studio.legalName}, company registered in India</p>
         <p>CIN: {studio.cin}</p>
@@ -336,29 +562,51 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
     </div>
   );
 
-  return [cover, details, pricing, ...(terms ? [terms] : []), totalsBlock, close];
+  return [cover, ...servicePages, recurring, details, close];
 }
 
 /** Shared props for both the workspace preview and `PrintPages` — the pairing
  * that must never disagree, per `ContractPages.tsx`'s note on the same shape. */
 export function quotationPageProps(doc: QuotationDocument) {
+  const date = isISODate(doc.issueDate)
+    ? formatDisplayDate(doc.issueDate)
+    : "—";
+  const brandMark = studioOf(doc).brandMark;
   return {
-    pagePadding: A4_PADDING,
-    pagePaddingY: A4_PADDING_Y,
+    pagePadding: QUOTATION_PADDING,
+    pagePaddingY: QUOTATION_PADDING_Y,
     selfPaddedSheet: false,
     darkPageClassName: "bg-black text-white",
+    // Every page is dark. `own` pages read the block's own `data-page-frame`,
+    // which each one sets; this covers any page the packer fills itself.
     forceDark: true,
-    chromeHeight: QTN_CHROME_HEIGHT,
+    chromeHeight: SQ_CHROME_HEIGHT,
+    // The mark and the date above, the confidentiality note and the page
+    // number below, identical on all six-plus pages. Chrome rather than block
+    // content, so no page can draw them differently from its neighbour.
+    pageHeader: () => (
+      // h-[92px] is SQ_HEADER_HEIGHT: the 28px band plus the 64px gap it
+      // holds below itself. See that constant for why the padding cannot be
+      // outside the height.
+      <div className="flex h-[92px] shrink-0 items-center justify-between pb-[64px]">
+        <span className="flex items-center gap-[8px]">
+          <QeraMark size={12.8} />
+          <span className="text-[15px] font-semibold text-white">
+            {brandMark}
+          </span>
+        </span>
+        <span className="text-[13px] font-semibold text-white">{date}</span>
+      </div>
+    ),
     pageFooter: (page: number) => (
-      <div className="mt-auto flex h-[28px] shrink-0 items-center justify-between gap-[16px] pt-[12px] text-[10px] text-white/50">
+      // h-[64px] is SQ_FOOTER_HEIGHT: the 36px gap above the 28px band. It
+      // was h-[28px], which floored at the 36px of padding and printed the
+      // note and the page number below the page's own margin.
+      <div className="mt-auto flex h-[64px] shrink-0 items-center justify-between pt-[36px] text-[12px] text-white/70">
         <span>Confidential &amp; Proprietary</span>
-        <span>{studioOf(doc).email}</span>
-        {/* The number alone, no total — a total is a promise about a document
-         * still being edited (see `ContractSheet.tsx`'s `contractPageProps`
-         * for the same reasoning), and a quotation prints "DRAFT" here right
-         * up until it is. */}
-        <span>{doc.number ?? "DRAFT"}</span>
-        <span className="tabular-nums">Page {page + 1}</span>
+        <span className="tabular-nums">
+          Page {String(page + 1).padStart(2, "0")}
+        </span>
       </div>
     ),
   };

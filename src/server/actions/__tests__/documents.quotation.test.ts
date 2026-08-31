@@ -48,12 +48,19 @@ const ACTOR = { userId: 'user_1', email: 'ops@qera.studio' };
 function draftQuotation(overrides: Partial<AdminDocument> = {}): AdminDocument {
   return {
     id: 'qtn-1',
-    type: 'QTN',
+    type: 'SQ',
     status: 'draft',
     issueDate: '2026-08-27',
-    lineItems: [{ description: 'Web design', ratePaise: 1_500_000, qty: 1 }],
+    lineItems: [],
     gstRatePercent: 0,
-    gstCountry: 'IN',
+    services: [
+      {
+        name: 'Custom Website',
+        lines: [{ description: 'Web design', ratePaise: 1_500_000, qty: 1 }],
+        addOns: [],
+      },
+    ],
+    recurring: [],
     createdAt: 0,
     updatedAt: 0,
     ...overrides,
@@ -63,22 +70,22 @@ function draftQuotation(overrides: Partial<AdminDocument> = {}): AdminDocument {
 beforeEach(() => {
   jest.clearAllMocks();
   requireAuthorizedUser.mockResolvedValue(ACTOR);
-  claimSerial.mockResolvedValue({ serial: 1, number: 'QS-QTN-2627-001' });
+  claimSerial.mockResolvedValue({ serial: 1, number: 'QS-SQ-2627-001' });
   getStudioSettings.mockResolvedValue(STUDIO_INFO);
 });
 
 describe('createDraft — the quotation is the one type addressed to nobody', () => {
   it('accepts an empty recipient for a quotation', async () => {
-    const result = await createDraft('QTN', '', {
+    const result = await createDraft('SQ', '', {
       issueDate: '2026-08-27',
-      lineItems: [],
-      gstCountry: 'IN',
+      services: [],
+      recurring: [],
     });
     expect(result.success).toBe(true);
     expect(getClient).not.toHaveBeenCalled();
     expect(getEmployee).not.toHaveBeenCalled();
     const saved = saveDocument.mock.calls.at(-1)?.[0] as AdminDocument;
-    expect(saved.type).toBe('QTN');
+    expect(saved.type).toBe('SQ');
     expect('clientId' in saved).toBe(false);
     expect('employeeId' in saved).toBe(false);
   });
@@ -99,29 +106,36 @@ describe('updateDraft — a quotation draft saves with no recipient', () => {
     getDocument.mockResolvedValue(draftQuotation());
     const result = await updateDraft('qtn-1', '', {
       issueDate: '2026-08-27',
-      lineItems: [{ description: 'Web design', ratePaise: 1_500_000, qty: 1 }],
-      gstCountry: 'INTL',
+      companyName: 'The Colorist',
+      services: [
+        {
+          name: 'Social Media',
+          lines: [{ description: 'Content Creation', ratePaise: 1_535_000, qty: 1 }],
+          addOns: [],
+        },
+      ],
+      recurring: [],
     });
     expect(result.success).toBe(true);
     expect(getClient).not.toHaveBeenCalled();
     expect(saveDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ gstCountry: 'INTL' }),
+      expect.objectContaining({ companyName: 'The Colorist' }),
     );
   });
 });
 
 describe('finalizeDocument — a quotation neither of the subject snapshots applies to', () => {
-  it('claims a QS-QTN number, freezes the studio snapshot, and freezes neither party snapshot', async () => {
+  it('claims a QS-SQ number, freezes the studio snapshot, and freezes neither party snapshot', async () => {
     getDocument.mockResolvedValue(draftQuotation());
     const result = await finalizeDocument('qtn-1');
 
     expect(result.success).toBe(true);
-    expect(claimSerial).toHaveBeenCalledWith('QTN', expect.any(String));
+    expect(claimSerial).toHaveBeenCalledWith('SQ', expect.any(String));
     expect(getClient).not.toHaveBeenCalled();
     expect(getEmployee).not.toHaveBeenCalled();
 
     const saved = saveDocument.mock.calls.at(-1)?.[0] as AdminDocument;
-    expect(saved.number).toBe('QS-QTN-2627-001');
+    expect(saved.number).toBe('QS-SQ-2627-001');
     expect(saved.studioSnapshot).toEqual(STUDIO_INFO);
     expect('clientSnapshot' in saved).toBe(false);
     expect('employeeSnapshot' in saved).toBe(false);

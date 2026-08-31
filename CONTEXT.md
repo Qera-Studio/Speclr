@@ -953,6 +953,86 @@ it copies the rate: it reverses tax that was actually charged, and a note
 crediting the undiscounted figure would credit more than the invoice ever
 billed.
 
+### 5l. The Service Quotation is a fixed-page document, and it clips
+
+Rebuilt 31 August 2026 from the design actually sent to clients. It is the one
+document type in the app where **nothing flows**: every block carries
+`data-page="own"`, so `packBlocks` gives each exactly one page and packs nothing
+else onto it.
+
+```
+cover → service 1 → [service 1 add-ons] → service 2 → … →
+recurring + summary → details → contact
+```
+
+**A service is a page.** That is why `QuotationService` is a record with its own
+`lines` and `addOns` rather than a `section` string on a flat line array, which
+is what it was: a page break is the service boundary, and an add-on list has to
+belong to the service it extends. It is also the one type that does not use
+`lineItems` at all, which stays `[]` only because `BaseDocument` requires it.
+`total_paise` therefore comes from `computeQuotationTotals` in `db/mappers.ts`,
+not from `computeTotals`.
+
+**There is a hard ceiling and it is not a rendering detail.** Nothing paginates
+onto a second page, so a service with too many deliverables spills off the
+paper. Measured at **8 deliverables** on a service page that also carries a
+blurb; 9 fails. `e2e/quotation.spec.ts` asserts **no page is marked
+`overflows`** — the escape hatch that is right for the contract (an unbreakable
+clause spilling visibly beats one silently cut) is a bug here, and skipping
+those pages the way the other specs do would skip exactly the case the spec
+exists to find. Confirmed to go red before it was trusted. If a service ever
+needs more, split it or flow the table through the `Paginator`; do not quietly
+raise the limit.
+
+That number is a **measurement, not an arithmetic result**, and it moves with
+the type sizes and with `QUOTATION_PADDING`. The quotation is the one sheet
+that does not print the shared 12px page margin: it is a display document set
+in 72px and 52px type, and 24px is what a headline that size needs under it.
+The margin costs the packer 24px of page height, which is a deliberate trade
+and the reason this figure is re-measured whenever either changes.
+
+**It charges no tax, and states one.** The listed prices are **inclusive**, so
+'Inclusive of Tax (GST 18%)' is a sentence the sheet prints, not a figure it
+derives. No GST is computed anywhere. A quotation is not a tax invoice: no place
+of supply, no CGST/SGST split, no legal position at all. It also prints money
+without the paise (`formatQuote`) because every figure is a round estimate,
+except where the paise are real, as a ₹0.15 per-message rate is.
+
+**Five things are derived, and none has an input** (`PRINCIPLES.md` rule 3):
+
+| Derived | From |
+|---|---|
+| The subject line | The service names, the company and the city |
+| The payment schedule | The **one-time** total (recurring is billed at cost, never phased) |
+| The summary table | The services and the recurring rows, wholly |
+| Whether a service has an add-on page | `addOns.length > 0` — there is no toggle |
+| The four terms, the cover blurb, the offer line | Fixed studio copy in `quotation.ts` |
+
+The phase bands: under ₹1 lakh, 50/50; to ₹3 lakh, 35/35/30; above it,
+30/25/25/20. The four-phase band exists because at that size the build runs for
+months, and one 30% tail means carrying a third of the project through its
+longest stretch. Splitting it holds unpaid exposure at or under 25% throughout
+while the client still pays no more than 30% before seeing work.
+
+**What a recurring row can hold is three shapes, not one.** A flat monthly cost,
+a usage-dependent range, and a value that is not money ('2% + GST'). A row joins
+the **fixed portion** only when its frequency is `Monthly` *and* it carries
+money with no `amountNote`: a per-transaction percentage cannot be summed, and a
+per-message rate is not a monthly cost. The grand total adds only the **low end**
+of that range.
+
+**The type code is `SQ`, not `QTN`.** Renamed in the same pass so the number
+reads `QS-SQ-2627-001` in the house order every other series uses, printed with
+a `#`. The slug stays `quotation`, so no URL moved.
+
+**Seven fields were deleted, not migrated.** `attentionName`, `offerLine`,
+`subjectLine`, `validUntil`, `gstCountry`, `milestones` and `termsNote` are all
+now either derived or fixed copy. Safe only because no quotation had been
+finalized: there was nothing immutable to preserve, so there is no back-compat
+shim and there should not be one. `LineItem` lost `section` and `recurring` with
+them, and `detail` stopped being deprecated — this sheet is the one that prints
+it.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.

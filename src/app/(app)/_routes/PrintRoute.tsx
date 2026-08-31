@@ -79,6 +79,6 @@ export default async function PrintRoute({
   // The contract prints the same packed pages the preview shows — same blocks,
   // same measuring, same packer — so paper and screen cannot break differently.
   if (doc.type === 'CON') return shell(<ContractPrint doc={doc} />);
-  if (doc.type === 'QTN') return shell(<QuotationPrint doc={doc} />);
+  if (doc.type === 'SQ') return shell(<QuotationPrint doc={doc} />);
   return shell(<DocumentSheet doc={doc} />);
 }

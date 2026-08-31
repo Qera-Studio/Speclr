@@ -54,7 +54,7 @@ export default async function PreviewPage({
     <LetterSheet doc={doc} />
   ) : doc.type === 'CON' ? (
     <ContractPrint doc={doc} />
-  ) : doc.type === 'QTN' ? (
+  ) : doc.type === 'SQ' ? (
     <QuotationPrint doc={doc} />
   ) : (
     <DocumentSheet doc={doc} />

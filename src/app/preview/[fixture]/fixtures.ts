@@ -174,46 +174,178 @@ const invoiceExport = (): AdminDocument =>
   }) as unknown as AdminDocument;
 
 /**
- * A realistic multi-section quotation: two "Pricing" tables, a recurring line
- * per section, and a milestone schedule — the case `e2e/quotation.spec.ts`
- * checks doesn't clip inside the dark A4 frame.
+ * The Colorist quote, the one actually sent: two services, add-ons on the
+ * first, five recurring rows covering all three shapes an amount can take
+ * (a figure, a range, and '2% + GST', which is not money).
+ *
+ * Its density is the point. `e2e/quotation.spec.ts` measures this fixture,
+ * and five deliverables against a blurb is what a real page carries.
  */
 const quotation = (): QuotationDocument => ({
-  id: "qtn-1",
-  type: "QTN",
+  id: "sq-1",
+  type: "SQ",
   status: "finalized",
-  number: "QS-QTN-2627-001",
-  issueDate: "2026-08-27",
-  lineItems: [
-    { description: "Infrastructure set-up", ratePaise: 3000000, qty: 2, section: "Website(s)" },
-    { description: "Web design", ratePaise: 3000000, qty: 2, section: "Website(s)" },
-    { description: "SEO/AEO/GEO", ratePaise: 750000, qty: 2, section: "Website(s)" },
-    { description: "Content Management System (scalable)", ratePaise: 2250000, qty: 1, section: "Website(s)" },
-    { description: "Business Email", ratePaise: 500000, qty: 1, section: "Website(s)" },
-    { description: "Data Privacy Enhancement", ratePaise: 450000, qty: 1, section: "Website(s)" },
-    { description: "Domain Services", ratePaise: 500000, qty: 2, section: "Website(s)" },
-    { description: "Business Email (Google Workspace)", ratePaise: 69000, qty: 1, section: "Website(s)", recurring: true },
-    { description: "Hosting", ratePaise: 287000, qty: 1, section: "Website(s)", recurring: true },
-    { description: "Strategy & Content Planning", ratePaise: 2140000, qty: 1, section: "Social Media" },
-    { description: "Content Creation", ratePaise: 1535000, qty: 1, section: "Social Media" },
-    { description: "Media Management", ratePaise: 420000, qty: 1, section: "Social Media", recurring: true },
-  ],
+  number: "QS-SQ-2627-001",
+  issueDate: "2026-08-30",
+  lineItems: [],
   gstRatePercent: 0,
-  recipientName: "Clayora Private Limited",
-  attentionName: "Priya Shah",
-  offerLine:
-    "We are pleased to submit our offer for the above mentioned project.",
-  subjectLine:
-    "This document contains a list of services and respective quotation estimates for web design, development and social media management.",
-  validUntil: "2026-09-27",
-  gstCountry: "IN",
-  milestones: [
-    { label: "Advance on signing", percent: 40 },
-    { label: "On design approval", percent: 30 },
-    { label: "On delivery", percent: 30 },
+  salutation: "Miss",
+  recipientName: "Mehak",
+  companyName: "The Colorist",
+  city: "Coimbatore",
+  services: [
+    {
+      name: "Custom Website",
+      blurb:
+        "The website is designed as an experience to explore, built around your hand-drawn visual language, so every interaction feels human and yours, never templated or AI-generated. A dedicated booking flow connects directly to a secure token, removing the friction and no-show risk of your current manual process, while a self-editable content system means you are never dependent on a developer for future changes.",
+      lines: [
+        {
+          description: "Infrastructure Set-up",
+          detail:
+            "Getting the technical foundation of your site ready and configured before any design or build work starts.",
+          ratePaise: 2000000,
+          qty: 1,
+        },
+        {
+          description: "Web design",
+          detail:
+            "The full visual design of your website, built around your brand and mascot.",
+          ratePaise: 1500000,
+          qty: 1,
+        },
+        {
+          description: "SEO/AEO/GEO",
+          detail:
+            "Structuring your site so it shows up when people search for you or your services online.",
+          ratePaise: 1500000,
+          qty: 1,
+        },
+        {
+          description: "Data Privacy Enhancement (cookies)",
+          detail:
+            "Standard privacy/cookie notices so your site meets data protection requirements.",
+          ratePaise: 500000,
+          qty: 1,
+        },
+        {
+          description: "Domain Services",
+          detail:
+            "Setting up and connecting your website address (yourdomain.com) to the site.",
+          ratePaise: 500000,
+          qty: 1,
+        },
+      ],
+      addOns: [
+        {
+          description: "Content Management System (scalable)",
+          detail:
+            "A simple dashboard so you can update text, images, and blog posts yourself, no developer needed.",
+          ratePaise: 2500000,
+          qty: 1,
+        },
+        {
+          description: "Custom booking section",
+          detail:
+            "A built-in booking calendar for clients to schedule in-person or virtual sessions.",
+          ratePaise: 2000000,
+          qty: 1,
+        },
+        {
+          description: "Payment Portal Integration (Razorpay)",
+          detail:
+            "Secure online payments and deposit collection, working for both Indian and international clients.",
+          ratePaise: 2000000,
+          qty: 1,
+        },
+        {
+          description: "Interactivity and motion",
+          detail:
+            "The signature animations, scroll effects, and touch interactions that make the site feel alive rather than static.",
+          ratePaise: 3000000,
+          qty: 1,
+        },
+        {
+          description: "Motion design & prototype",
+          detail:
+            "Designing and testing how those animations and interactions actually move and feel before they are built.",
+          ratePaise: 1500000,
+          qty: 1,
+        },
+        {
+          description: "WhatsApp Automation",
+          detail:
+            "Automatic booking confirmations, reminders, questionnaires, and follow-ups sent to clients on WhatsApp.",
+          ratePaise: 5000000,
+          qty: 1,
+        },
+        {
+          description: "Business Email",
+          detail:
+            "Professional email addresses on your own domain (e.g. hello@yourname.com).",
+          ratePaise: 500000,
+          qty: 1,
+        },
+      ],
+    },
+    {
+      name: "Social Media",
+      blurb:
+        "A month-by-month content operation: the strategy, the calendar, and the posts themselves, produced in the same visual language as the site so the two read as one brand.",
+      lines: [
+        {
+          description: "Strategy & Content Planning",
+          detail:
+            "The quarterly plan: what gets posted, when, and why, agreed before anything is made.",
+          ratePaise: 2140000,
+          qty: 1,
+        },
+        {
+          description: "Content Creation",
+          detail:
+            "Producing the posts, stories and reels against that plan.",
+          ratePaise: 1535000,
+          qty: 1,
+        },
+      ],
+      addOns: [],
+    },
   ],
-  termsNote:
-    "Validity of this quotation is 30 days from the date above.\nPrices exclude third-party costs (hosting, domains, licenses) unless stated.\nAll amounts are in Indian Rupees (INR).",
+  recurring: [
+    {
+      description: "Business Email (Google Workspace)",
+      detail: "Monthly cost to keep your professional email running.",
+      frequency: "Monthly",
+      amountPaise: 20000,
+    },
+    {
+      description: "Hosting",
+      detail: "Monthly cost to keep your website live and running smoothly.",
+      frequency: "Monthly",
+      amountPaise: 287000,
+    },
+    {
+      description: "WhatsApp BSP platform",
+      detail: "Monthly cost for the tool that powers your WhatsApp automation.",
+      frequency: "Monthly",
+      amountPaise: 150000,
+      amountMaxPaise: 500000,
+    },
+    {
+      description: "Razorpay transaction fee",
+      detail:
+        "A small percentage taken by the payment provider on each transaction, not by us.",
+      frequency: "Per transaction",
+      amountNote: "2% + GST",
+    },
+    {
+      description: "WhatsApp business-initiated messages",
+      detail:
+        "A small per-message cost only for messages we send (like reminders), not for messages clients send you.",
+      frequency: "Per message",
+      amountPaise: 15,
+      amountMaxPaise: 20,
+    },
+  ],
   studioSnapshot: STUDIO_INFO,
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -233,7 +365,7 @@ export const FIXTURES = {
   invoice,
   /** The wire-transfer block, which is two rows taller than the domestic one. */
   "invoice-export": invoiceExport,
-  /** Two sections, two recurring lines, a milestone schedule — realistic density. */
+  /** Two services, add-ons on the first, five recurring rows: the real thing. */
   quotation,
 } as const;
 

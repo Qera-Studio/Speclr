@@ -40,8 +40,8 @@ describe("DOC_TYPES registry", () => {
       "INV",
       "OFR",
       "PAY",
-      "QTN",
       "REC",
+      "SQ",
       "STP",
     ]);
   });
@@ -415,76 +415,112 @@ describe("clientInputSchema", () => {
   });
 });
 
-describe("QTN registry entry", () => {
+describe("SQ registry entry", () => {
   it("is its own kind, not 'financial' — no clientId/place-of-supply assumptions", () => {
-    expect(DOC_TYPES.QTN.kind).toBe("quotation");
-    expect(DOC_TYPES.QTN.hasPayment).toBe(false);
-    expect(DOC_TYPES.QTN.hasDueDate).toBe(false);
-    expect(DOC_TYPES.QTN.fixedTerms).toHaveLength(0);
+    expect(DOC_TYPES.SQ.kind).toBe("quotation");
+    expect(DOC_TYPES.SQ.hasPayment).toBe(false);
+    expect(DOC_TYPES.SQ.hasDueDate).toBe(false);
+    expect(DOC_TYPES.SQ.fixedTerms).toHaveLength(0);
   });
 
-  it("draft accepts a minimal payload with just gstCountry", () => {
+  it("draft accepts a half-filled service — onboarding a quote is not atomic", () => {
     expect(
       quotationDraftSchema.safeParse({
         issueDate: "2026-08-27",
-        lineItems: [],
-        gstCountry: "IN",
+        services: [{ name: "", lines: [], addOns: [] }],
+        recurring: [],
       }).success,
     ).toBe(true);
   });
 
-  it("finalize refuses an empty line-item list", () => {
+  it("finalize refuses a quotation with no service at all", () => {
     expect(
       quotationFinalizeSchema.safeParse({
         issueDate: "2026-08-27",
-        lineItems: [],
-        gstCountry: "IN",
+        services: [],
+        recurring: [],
       }).success,
     ).toBe(false);
   });
 
-  it("finalize accepts a complete quotation with sections, a recurring line, and milestones", () => {
+  it("finalize refuses a service with no deliverable — a page with an empty table", () => {
     expect(
       quotationFinalizeSchema.safeParse({
         issueDate: "2026-08-27",
-        recipientName: "Clayora",
-        attentionName: "Priya Shah",
-        subjectLine: "Website + social media retainer",
-        validUntil: "2026-09-27",
-        gstCountry: "IN",
-        lineItems: [
-          {
-            description: "Web design",
-            ratePaise: 1500000,
-            qty: 1,
-            section: "Website(s)",
-          },
-          {
-            description: "Hosting",
-            ratePaise: 287000,
-            qty: 1,
-            section: "Website(s)",
-            recurring: true,
-          },
+        services: [{ name: "Custom Website", lines: [], addOns: [] }],
+        recurring: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("finalize accepts a service with no add-ons — that is how it says it has no add-on page", () => {
+    expect(
+      quotationFinalizeSchema.safeParse({
+        issueDate: "2026-08-27",
+        salutation: "Miss",
+        recipientName: "Mehak",
+        companyName: "The Colorist",
+        city: "Coimbatore",
+        services: [
+          { name: "Custom Website", lines: [validLineItem], addOns: [] },
         ],
-        milestones: [
-          { label: "Advance", percent: 50 },
-          { label: "On delivery", percent: 50 },
-        ],
-        termsNote: "Valid for 10 days from the date above.",
+        recurring: [],
       }).success,
     ).toBe(true);
   });
 
-  it("finalize does not require milestone percentages to sum to 100", () => {
+  it("finalize accepts the whole shape: add-ons, a detail line, and all three recurring amounts", () => {
     expect(
       quotationFinalizeSchema.safeParse({
         issueDate: "2026-08-27",
-        gstCountry: "IN",
-        lineItems: [validLineItem],
-        milestones: [{ label: "Advance", percent: 40 }],
+        salutation: "Miss",
+        recipientName: "Mehak",
+        companyName: "The Colorist",
+        city: "Coimbatore",
+        services: [
+          {
+            name: "Custom Website",
+            blurb: "Designed as an experience to explore.",
+            lines: [
+              {
+                description: "Web design",
+                detail: "The full visual design of your website.",
+                ratePaise: 1500000,
+                qty: 1,
+              },
+            ],
+            addOns: [
+              { description: "Custom booking section", ratePaise: 2000000, qty: 1 },
+            ],
+          },
+        ],
+        recurring: [
+          { description: "Hosting", frequency: "Monthly", amountPaise: 287000 },
+          {
+            description: "WhatsApp BSP platform",
+            frequency: "Monthly",
+            amountPaise: 150000,
+            amountMaxPaise: 500000,
+          },
+          {
+            description: "Razorpay transaction fee",
+            frequency: "Per transaction",
+            amountNote: "2% + GST",
+          },
+        ],
       }).success,
     ).toBe(true);
+  });
+
+  it("refuses a salutation that is not one of the four", () => {
+    expect(
+      quotationFinalizeSchema.safeParse({
+        issueDate: "2026-08-27",
+        salutation: "Sir",
+        services: [{ name: "A", lines: [validLineItem], addOns: [] }],
+        recurring: [],
+      }).success,
+    ).toBe(false);
   });
 });
 

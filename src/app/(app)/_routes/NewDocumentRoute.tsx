@@ -76,7 +76,7 @@ export default async function NewDocumentRoute({
   // the next save silently loses the client the draft was written for. Same
   // rule as a saved registration type staying on offer (`CONTEXT.md` §5d-ii).
   const clients = (await listClients()).filter((c) => !c.archived);
-  if (spec.code === 'QTN') {
+  if (spec.code === 'SQ') {
     // A quotation is deliberately not tied to a client record (it is routinely
     // sent pre-onboarding) — `clients` is passed only for the optional
     // "fill from an existing client" autofill, never as a required recipient.

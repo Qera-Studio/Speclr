@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  Controller,
   useWatch,
   type ArrayPath,
   type Control,
@@ -30,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
@@ -110,16 +109,12 @@ interface LineItemsEditorProps<T extends FieldValues> {
    */
   lockNames?: boolean;
   /**
-   * Show a "Section" text input per row — the Service Quotation only. Groups
-   * consecutive same-section lines under a heading with their own subtotal on
-   * the sheet (`quotationTotals.ts`); meaningless on every other document.
+   * Show a "Detail" input per row — the Service Quotation only, which prints
+   * it in a lighter weight under the description. Nothing in Rule 46 asks for
+   * a second account of the same supply, so an invoice or a slip leaves it off
+   * rather than collecting a value that goes nowhere. See `LineItem.detail`.
    */
-  showSection?: boolean;
-  /**
-   * Show a "Recurring (monthly)" checkbox per row — the Service Quotation
-   * only. A recurring line prints as '/m' and is excluded from every subtotal.
-   */
-  showRecurring?: boolean;
+  showDetail?: boolean;
   /**
    * Lines that can be added ready-made, grouped by heading.
    *
@@ -167,8 +162,7 @@ export default function LineItemsEditor<T extends FieldValues>({
   allowEmpty = false,
   showSac = false,
   lockNames = false,
-  showSection = false,
-  showRecurring = false,
+  showDetail = false,
   presets,
   className,
 }: LineItemsEditorProps<T>) {
@@ -300,20 +294,19 @@ export default function LineItemsEditor<T extends FieldValues>({
                       />
                     </Field>
                   ) : null}
-                  {/* No Detail input. No sheet prints one any more: nothing in
-                      Rule 46 asks for a second description of the same supply,
-                      and an input for a value that goes nowhere is a trap. The
-                      `detail` key stays on the schema, deprecated, so drafts
-                      written while it existed still parse. */}
-                  {showSection ? (
+                  {/* Offered only where a sheet prints it. An input for a value
+                      that goes nowhere is a trap, which is why every other
+                      caller leaves this off. */}
+                  {showDetail ? (
                     <Field>
-                      <FieldLabel htmlFor={`${name}-section-${index}`}>
-                        Section
+                      <FieldLabel htmlFor={`${name}-detail-${index}`}>
+                        Detail
                       </FieldLabel>
-                      <Input
-                        id={`${name}-section-${index}`}
-                        placeholder="e.g. Website(s)"
-                        {...register(`${name}.${index}.section` as Path<T>)}
+                      <Textarea
+                        id={`${name}-detail-${index}`}
+                        rows={2}
+                        placeholder="What the client is actually buying, in plain English."
+                        {...register(`${name}.${index}.detail` as Path<T>)}
                       />
                     </Field>
                   ) : null}
@@ -371,21 +364,6 @@ export default function LineItemsEditor<T extends FieldValues>({
                       disabled={!allowEmpty && fields.length === 1}
                     />
                   </div>
-                  {showRecurring ? (
-                    <Controller
-                      control={control}
-                      name={`${name}.${index}.recurring` as Path<T>}
-                      render={({ field }) => (
-                        <label className="flex cursor-pointer items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={Boolean(field.value)}
-                            onCheckedChange={(on) => field.onChange(Boolean(on))}
-                          />
-                          Recurring (monthly) — shown as '/m', excluded from the total
-                        </label>
-                      )}
-                    />
-                  ) : null}
                 </div>
               ) : null}
             </div>

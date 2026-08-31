@@ -22,6 +22,12 @@ import {
 import { contractComplete } from "./contract/completeness";
 import { serviceInputSchema } from "./service";
 import { docContentSchema, type DocContent, type TermItem } from "./docContent";
+import {
+  SALUTATIONS,
+  type QuotationService,
+  type RecurringLine,
+  type Salutation,
+} from "./quotation";
 import { CURRENCY_CODES, type CurrencyCode } from "./currency";
 import { slipTotals } from "./money";
 import type {
@@ -54,10 +60,10 @@ const qtySchema = z
 export const lineItemSchema = z.object({
   description: textSchema(300, { required: "A description is required." }),
   /**
-   * @deprecated Nothing collects one and no sheet prints one. Rule 46(g) asks
-   * for the description of the service, which is the field above; this was a
-   * second, longer account of the same supply. Kept in the schema, and only
-   * here, so drafts written while it existed still parse.
+   * The Service Quotation's plain-English sub-line, and only its. Unset on
+   * every other type, where Rule 46(g) asks for the description of the supply
+   * and a second, longer account of the same supply is one more thing that can
+   * disagree with the first. See `LineItem.detail`.
    */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
@@ -76,7 +82,7 @@ export const lineItemSchema = z.object({
 /** Draft line items may be half-filled — only shape/limits are enforced. */
 export const draftLineItemSchema = z.object({
   description: textSchema(300),
-  /** @deprecated See `lineItemSchema`. */
+  /** See `lineItemSchema`. */
   detail: textSchema(300).optional(),
   ratePaise: z.number().int().min(0).max(1e13),
   qty: qtySchema.refine((q) => q >= 0, {
@@ -427,41 +433,58 @@ export const payslipFinalizeSchema = z
 
 // ── Quotation schema ──────────────────────────────────────────────────────
 
-/** A payment-milestone row. Percentages are not required to sum to 100 — a
- * quotation is not a binding contract, so this is a soft-checked convenience,
- * not a validated schedule. */
-const milestoneSchema = z.object({
-  label: textSchema(120),
-  percent: z.number().min(0).max(100),
+/**
+ * A recurring-infrastructure row. `amountNote` carries the values that are not
+ * money ('2% + GST'); the two paise fields carry a figure or a range. Nothing
+ * here refuses a row that sets both — the note simply wins on the sheet and
+ * takes the row out of the fixed total (`quotation.ts`), which is the same
+ * answer either way.
+ */
+const recurringLineSchema = z.object({
+  description: textSchema(300),
+  detail: textSchema(300).optional(),
+  frequency: textSchema(60),
+  amountPaise: z.number().int().min(0).max(1e13).optional(),
+  amountMaxPaise: z.number().int().min(0).max(1e13).optional(),
+  amountNote: textSchema(60).optional(),
 });
 
-const quotationLineItemShape = {
-  section: textSchema(120).optional(),
-  recurring: z.boolean().optional(),
-};
-const quotationLineItemSchema = lineItemSchema.extend(quotationLineItemShape);
-const quotationDraftLineItemSchema =
-  draftLineItemSchema.extend(quotationLineItemShape);
+/**
+ * A quoted service: its page, its deliverables, its add-ons.
+ *
+ * `lines.min(1)` at finalize because a service *is* a page, and a page with a
+ * heading over an empty table says nothing. Add-ons stay free to be empty:
+ * that is how a service says it has no add-on page.
+ */
+const quotationServiceSchema = z.object({
+  name: textSchema(200, { required: "A service needs a name." }),
+  blurb: multilineSchema(1000).optional(),
+  lines: z.array(lineItemSchema).min(1).max(30),
+  addOns: z.array(lineItemSchema).max(30),
+});
+const quotationDraftServiceSchema = z.object({
+  name: textSchema(200),
+  blurb: multilineSchema(1000).optional(),
+  lines: z.array(draftLineItemSchema).max(30),
+  addOns: z.array(draftLineItemSchema).max(30),
+});
 
 const quotationBaseShape = {
   issueDate: isoDate,
-  recipientName: textSchema(200).optional(),
-  attentionName: personNameSchema(120).optional(),
-  offerLine: textSchema(300).optional(),
-  subjectLine: textSchema(300).optional(),
-  validUntil: isoDate.optional(),
-  gstCountry: z.enum(["IN", "INTL"]),
-  milestones: z.array(milestoneSchema).max(20).optional(),
-  termsNote: multilineSchema(4000).optional(),
+  salutation: z.enum(SALUTATIONS).optional(),
+  recipientName: personNameSchema(120).optional(),
+  companyName: orgNameSchema(200).optional(),
+  city: textSchema(120).optional(),
+  recurring: z.array(recurringLineSchema).max(20),
   content: docContentSchema.optional(),
 };
 export const quotationDraftSchema = z.object({
   ...quotationBaseShape,
-  lineItems: z.array(quotationDraftLineItemSchema).max(50),
+  services: z.array(quotationDraftServiceSchema).max(10),
 });
 export const quotationFinalizeSchema = z.object({
   ...quotationBaseShape,
-  lineItems: z.array(quotationLineItemSchema).min(1).max(50),
+  services: z.array(quotationServiceSchema).min(1).max(10),
 });
 
 const bulletSectionSchema = z.object({
@@ -558,14 +581,13 @@ export interface DocFields {
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
   payAmountPaise?: number;
-  // QTN — the Service Quotation. See `QuotationDocument` in types.ts.
+  // SQ — the Service Quotation. See `QuotationDocument` in types.ts.
+  salutation?: Salutation;
   recipientName?: string;
-  attentionName?: string;
-  subjectLine?: string;
-  validUntil?: string;
-  gstCountry?: "IN" | "INTL";
-  milestones?: { label: string; percent: number }[];
-  termsNote?: string;
+  companyName?: string;
+  city?: string;
+  services?: QuotationService[];
+  recurring?: RecurringLine[];
   /**
    * Editable text overrides. Absent keys resolve to the defaults below via
    * `contentOf`; finalize materialises the lot onto the document so an issued
@@ -754,8 +776,8 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       },
     ],
   },
-  QTN: {
-    code: "QTN",
+  SQ: {
+    code: "SQ",
     slug: "quotation",
     label: "Service Quotation",
     masthead: "SERVICE QUOTATION",
@@ -764,18 +786,29 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     // pulling in invoice-only finalize logic that assumes a client record.
     kind: "quotation",
     hasPayment: false,
-    // Uses `validUntil` instead of the shared due-date mechanism.
+    // Its expiry is one of the four printed terms ("valid for 14 days"), not a
+    // stored date.
     hasDueDate: false,
     draftSchema: quotationDraftSchema,
     finalizeSchema: quotationFinalizeSchema,
     defaultFields: (todayIso) => ({
       issueDate: todayIso,
-      // No pre-seeded blank row — the rail's "Add item" starts the list.
+      // A quotation prices through `services`, not `lineItems`. One empty
+      // service holding one empty deliverable, so a fresh draft opens on a page
+      // to fill rather than on a blank with two buttons to press first.
       lineItems: [],
       gstRatePercent: 0,
-      gstCountry: "IN",
+      services: [
+        {
+          name: "",
+          lines: [{ description: "", ratePaise: 0, qty: 1 }],
+          addOns: [],
+        },
+      ],
+      recurring: [],
     }),
-    // No clause list — `termsNote` is freeform prose, not TERMS clauses.
+    // The four terms are fixed studio copy printed in a 2×2 grid, not TERMS
+    // clauses — see `QUOTATION_TERMS` in `quotation.ts`.
     fixedTerms: [],
   },
   CON: {

@@ -123,7 +123,7 @@ export default async function DocumentRoute({
       );
     }
     const clients = await listClients();
-    if (doc.type === 'QTN') {
+    if (doc.type === 'SQ') {
       return (
         <QuotationEditor
           clients={clients}
@@ -201,7 +201,7 @@ export default async function DocumentRoute({
     });
   // The quotation is dark on every page, not just a cover, so it goes through
   // its own client component too — see `QuotationPages`.
-  if (doc.type === 'QTN')
+  if (doc.type === 'SQ')
     return (
       <QuotationWorkspace doc={doc} title={heading}>
         <FinalizedActions docId={doc.id} isSlip={false} />

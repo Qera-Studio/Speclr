@@ -23,6 +23,12 @@ export interface LineItemFormValues {
   qty: string;
   /** Six digits beginning 99. Empty on a line nothing has classified yet. */
   sacCode: string;
+  /**
+   * The Service Quotation's sub-line, collected behind `showDetail` and left
+   * empty everywhere else. On the shape rather than a separate quotation-only
+   * type so `LineItemsEditor` and `LineItemPreset` stay one thing.
+   */
+  detail?: string;
 }
 
 export interface EditorFormValues {

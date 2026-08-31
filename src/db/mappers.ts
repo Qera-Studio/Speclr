@@ -1,7 +1,7 @@
 import "server-only";
 
 import { computeTotals, slipTotals } from "@/lib/domain/money";
-import { computeQuotationTotals } from "@/lib/domain/quotationTotals";
+import { computeQuotationTotals } from "@/lib/domain/quotation";
 import { isHrDocType } from "@/lib/domain/registry";
 import type {
   Actor,
@@ -171,8 +171,8 @@ export function toRow(doc: AdminDocument): DocumentInsert {
   const totalPaise =
     doc.type === "PAY"
       ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise
-      : doc.type === "QTN"
-        ? computeQuotationTotals(doc.lineItems ?? [], doc.gstCountry).totalPaise
+      : doc.type === "SQ"
+        ? computeQuotationTotals(doc.services, doc.recurring).totalPaise
         : totals.totalPaise;
 
   // Everything type-specific + shared-optional goes into `data`.
@@ -243,19 +243,15 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.bulletSections = doc.bulletSections;
       data.payAmountPaise = doc.payAmountPaise;
       break;
-    case "QTN":
+    case "SQ":
       // Addressed to nobody in particular — no clientId, no snapshot. See
-      // `QuotationDocument` in domain/types. `validUntil` stays in `data`
-      // rather than the `dueDate` column: that column's "Due" framing (used
-      // by the invoice) means something different from a quotation's expiry.
+      // `QuotationDocument` in domain/types.
+      data.salutation = doc.salutation;
       data.recipientName = doc.recipientName;
-      data.attentionName = doc.attentionName;
-      data.offerLine = doc.offerLine;
-      data.subjectLine = doc.subjectLine;
-      data.validUntil = doc.validUntil;
-      data.gstCountry = doc.gstCountry;
-      data.milestones = doc.milestones;
-      data.termsNote = doc.termsNote;
+      data.companyName = doc.companyName;
+      data.city = doc.city;
+      data.services = doc.services;
+      data.recurring = doc.recurring;
       break;
   }
 
@@ -313,18 +309,16 @@ export function fromRow(row: DocumentRow): AdminDocument {
     finalizedBy: actorFrom(row.finalizedBy, row.finalizedByEmail),
   };
 
-  if (row.type === "QTN") {
+  if (row.type === "SQ") {
     return {
       ...base,
-      type: "QTN",
+      type: "SQ",
+      salutation: row.data.salutation,
       recipientName: row.data.recipientName,
-      attentionName: row.data.attentionName,
-      offerLine: row.data.offerLine,
-      subjectLine: row.data.subjectLine,
-      validUntil: row.data.validUntil,
-      gstCountry: row.data.gstCountry ?? "IN",
-      milestones: row.data.milestones,
-      termsNote: row.data.termsNote,
+      companyName: row.data.companyName,
+      city: row.data.city,
+      services: row.data.services ?? [],
+      recurring: row.data.recurring ?? [],
     } satisfies QuotationDocument;
   }
 

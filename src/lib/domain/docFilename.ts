@@ -46,7 +46,7 @@ export function docFilename(doc: AdminDocument): string {
     // under its number. Same rule everywhere: numbered means called by it.
     return doc.number ?? `Contract-${slug(doc.clientSnapshot.name)}-${doc.issueDate}`;
   }
-  if (doc.type === 'QTN') {
+  if (doc.type === 'SQ') {
     return doc.number ?? `Quotation-${slug(doc.recipientName ?? doc.issueDate)}`;
   }
   return doc.number ?? `${spec.code}-draft`;
