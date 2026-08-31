@@ -243,8 +243,16 @@ function GroupedNavBody({
     <SidebarGroup>
       <SidebarGroupContent>
         {/*
-          Dashboard, the create row, records, then the library — one menu, no
+          Dashboard, records, the create row, then the library — one menu, no
           headings and no gap.
+
+          Records sit directly under home, above the create row, because the
+          client record is what every document derives from (`CONTEXT.md` §5d):
+          place of supply, the due date, the signatory and an invoice's line
+          items all come off it, so onboarding a client precedes issuing
+          anything. Under the create row it read as an afterthought to it, and
+          a *destination* below an *action* is the wrong way round in a list
+          that is otherwise all destinations.
 
           The document types are not listed here any more: ⌘D and the create
           row are the way in, and `nav.documents` still feeds both.
@@ -256,16 +264,23 @@ function GroupedNavBody({
             // the prefix rule would leave Dashboard always lit.
             active={pathname === nav.home.href}
           />
+          {nav.records.map((item) => (
+            <MenuLink
+              key={item.href}
+              item={item}
+              active={isActiveHref(pathname, item.href)}
+            />
+          ))}
           <NewDocumentRow />
-          {[...nav.records, ...nav.groups.flatMap((g) => g.links)].map(
-            (item) => (
+          {nav.groups
+            .flatMap((g) => g.links)
+            .map((item) => (
               <MenuLink
                 key={item.href}
                 item={item}
                 active={isActiveHref(pathname, item.href)}
               />
-            ),
-          )}
+            ))}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

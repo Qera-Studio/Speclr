@@ -39,23 +39,35 @@ function renderSidebar({
 }
 
 describe('AdminSidebar', () => {
-  // The wordmark, sidebar toggle and ProfileSwitcher moved to `TopPanel` —
-  // see `TopPanel.test.tsx` and `ProfileSwitcher.test.tsx` for their coverage.
+  // `ProfileSwitcher` is in `TopPanel` — see `ProfileSwitcher.test.tsx`. The
+  // wordmark and this rail's own toggle are here, in its header.
+
+  it('carries the wordmark above the navigation', () => {
+    renderSidebar({ profile: 'client' });
+    expect(screen.getByText('speclr')).toBeInTheDocument();
+  });
 
   describe('client profile', () => {
     /**
-     * Five rows, no headings: Documents (the home, which browses everything
-     * issued), the records page (named for the section, like admin's rail
-     * row), then the three library pages.
+     * Six rows, no headings, and the *order* is the assertion: Documents (the
+     * home), Clients, the create row, then the three library pages.
+     *
+     * Clients sits above the create row rather than below it because the
+     * client record is what every document derives from (`CONTEXT.md` §5d).
+     * Read on links alone this order was unpinned — "New document" is a button,
+     * so the previous version of this test passed either way round, which is
+     * why it queries both roles together.
      */
-    it('shows five rows and nothing else', () => {
+    it('shows six rows, in order, and nothing else', () => {
       renderSidebar({ profile: 'client' });
-      const labels = within(liveNav('client'))
-        .getAllByRole('link')
-        .map((link) => link.textContent);
+      const labels = Array.from(
+        liveNav('client').querySelectorAll('[data-slot="sidebar-menu-item"]'),
+      ).map((el) => el.textContent);
       expect(labels).toEqual([
         'Documents',
         'Clients',
+        // The create row carries its own ⌘D hint.
+        'New documentCtrlD',
         'Service catalogue',
         'Clause library',
         'Checklist',
