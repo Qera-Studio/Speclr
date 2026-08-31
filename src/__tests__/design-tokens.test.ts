@@ -46,20 +46,29 @@ describe('design tokens', () => {
   });
 
   /**
-   * The neutrals are taupe, and all of one taupe.
+   * The neutrals are slate, and all of one slate.
    *
    * A near-neutral is any token under 0.05 chroma: it reads as a surface or as
-   * text on one, not as a signal. Every one of those must sit at hue 40, since
-   * two surfaces a few degrees apart is the drift this palette replaced,
+   * text on one, not as a signal. Every one of those must sit in slate's own
+   * band, since two surfaces at unrelated hues is the drift this replaced,
    * arrived at one token at a time by somebody eyeballing a single line.
    * Pure achromatic is allowed and is what the alpha-white hairlines use.
    *
+   * The band is a range rather than one number because the ramp is Tailwind's
+   * published slate taken verbatim, and its hue drifts along the ramp (247.858
+   * at the top to 265.755 at 900). That drift is the ramp's own and is what
+   * keeps its dark end from reading flat; what this guards is a token wandering
+   * *outside* it — the old hue-40 taupe, or a warm grey somebody typed by hand.
+   *
+   * In practice almost nothing should reach this check any more: a neutral is
+   * an alias (`var(--slate-N)`), so the only literals it sees are the eleven
+   * ramp steps themselves.
+   *
    * The two exemptions are the pale blues that sit *on* `--primary`. They are
    * low-chroma by lightness rather than by role: a foreground on a chromatic
-   * fill belongs to that fill's hue, and warming it would put a taupe label on
-   * a blue button.
+   * fill belongs to that fill's hue.
    */
-  it('keeps every near-neutral token on one hue', () => {
+  it('keeps every near-neutral token in the slate hue band', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     const strays: string[] = [];
     for (const [, name, C, h] of css.matchAll(
@@ -67,7 +76,36 @@ describe('design tokens', () => {
     )) {
       if (name.endsWith('primary-foreground')) continue;
       if (Number(C) >= 0.05 || Number(C) === 0) continue;
-      if (Number(h) !== 40) strays.push(`${name}: chroma ${C} at hue ${h}, not 40`);
+      if (Number(h) < 245 || Number(h) > 270) {
+        strays.push(`${name}: chroma ${C} at hue ${h}, outside slate's 245-270`);
+      }
+    }
+    expect(strays).toEqual([]);
+  });
+
+  /**
+   * A neutral is named by its step, never by a value.
+   *
+   * The ramp is the single place a neutral colour is written; every role is an
+   * alias onto it. A raw `oklch()` on a semantic token is how the ramp quietly
+   * stops being the source of truth — one surface solved for by hand, then
+   * another, and the drift is back.
+   *
+   * Three kinds of literal are legitimate and are the whole exemption list:
+   * the ramp steps themselves, the chromatic signals (which keep their own
+   * hues), and the alpha-white hairlines (an overlay composites to a
+   * proportion of its ground, which is the point of it).
+   */
+  it('defines neutral roles as ramp aliases, not as raw values', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    const CHROMATIC = /^--(sidebar-)?(primary|destructive|warning|chart-\d)(-foreground)?$/;
+    const strays: string[] = [];
+    for (const [, name, C] of css.matchAll(
+      /^\s*(--[a-z0-9-]+):\s*oklch\((?:[\d.]+)\s+([\d.]+)\s+[\d.]+\)/gm,
+    )) {
+      if (name.startsWith('--slate-') || CHROMATIC.test(name)) continue;
+      if (Number(C) === 0) continue;
+      strays.push(`${name} is a raw oklch(); use var(--slate-N)`);
     }
     expect(strays).toEqual([]);
   });

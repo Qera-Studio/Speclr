@@ -29,15 +29,36 @@ import { join } from 'node:path';
 
 const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
 
-/** The custom properties declared in one selector block. */
+/**
+ * The neutral ramp: the only place a neutral colour is actually written.
+ *
+ * Every neutral semantic token is an alias (`--muted-foreground:
+ * var(--slate-600)`), so measuring one means resolving it through here first.
+ * Declared once in `:root` and never redefined per theme — the ramp is a set
+ * of physical colours, and the theme is which end of it each role points at.
+ */
+const RAMP: Record<string, string> = Object.fromEntries(
+  [...css.matchAll(/^\s*(--slate-\d{2,3}):\s*(oklch\([^)]*\));/gm)].map(([, n, v]) => [n, v]),
+);
+
+/**
+ * The custom properties declared in one selector block, with `var(--slate-N)`
+ * aliases resolved to the colour they name.
+ *
+ * An unresolvable alias is left as-is rather than skipped: `toLinearRgb` then
+ * throws with the value in the message, which is what should happen when a
+ * token points at a step that does not exist.
+ */
 function tokensIn(selector: string): Record<string, string> {
   const start = css.indexOf(`${selector} {`);
   const end = css.indexOf('\n}', start);
   const out: Record<string, string> = {};
   for (const [, name, value] of css
     .slice(start, end)
-    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\));/gm)) {
-    out[name] = value;
+    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\)|var\(--slate-\d{2,3}\));/gm)) {
+    out[name] = value.startsWith('var(')
+      ? (RAMP[value.slice(4, -1)] ?? value)
+      : value;
   }
   return out;
 }

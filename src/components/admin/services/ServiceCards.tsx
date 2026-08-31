@@ -88,7 +88,11 @@ export default function ServiceCards({
             <section
               key={schedule.key}
               aria-label={schedule.name}
-              className="flex min-h-0 flex-col rounded-md border border-border bg-sidebar"
+              // Not `bg-sidebar`, which it was: that token is the page's own
+              // ground now, so the column had no fill at all and the cards
+              // floated on nothing. `bg-muted` is one step up the ramp, which
+              // puts the column between the page and the cards' `bg-background`.
+              className="flex min-h-0 flex-col rounded-md border border-border bg-muted"
             >
               {/* Add sits in the column header rather than at the foot of the
                   list: the column *is* the answer to "which Schedule", and up

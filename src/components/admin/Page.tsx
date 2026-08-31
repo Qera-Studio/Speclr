@@ -48,7 +48,7 @@ export function PageBody({
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4",
+        "mx-auto flex w-full max-w-[1440px] flex-col gap-3 p-4",
         className,
       )}
       {...props}

@@ -80,27 +80,60 @@
 }
 
 /*
-  The neutrals are taupe, not grey, and that is the one thing to know before
-  editing a lightness here.
+  The neutrals are one ramp, and a semantic token never holds a colour of its
+  own. That is the one thing to know before editing anything here.
 
-  Every neutral token is `oklch(L C 40)` — the same lightness ramp a pure grey
-  would have, carrying a little warm chroma. The chroma is not constant: it
-  peaks in the middle of the ramp (~0.02) and tapers to almost nothing at both
-  ends, because a near-white or a near-black holds a hue badly and reads as a
-  colour cast rather than as a warm neutral. Hue 40 everywhere, so no two
-  surfaces disagree about which warm this is.
+  `--slate-50` … `--slate-950` below are the only place a neutral value is
+  written. Every neutral role (`--background`, `--muted-foreground`, every
+  sidebar fill) is an *alias*: `var(--slate-N)`, chosen per theme. So a surface
+  is described by where it sits on the ramp rather than by a lightness somebody
+  solved for in isolation, and "two steps darker" is a thing you can say.
 
-  Chroma by lightness, the curve to interpolate from when adding a token:
+  This replaced a warm taupe ramp at hue 40 whose tokens were each an
+  independent `oklch(L C 40)` literal, with a chroma curve written here for
+  humans to interpolate from. The curve is gone: it existed as a substitute for
+  having a ramp, and there is a ramp now.
 
-    0.99 → 0.002   0.92 → 0.005   0.71 → 0.014   0.44 → 0.017   0.15 → 0.005
-    0.97 → 0.003   0.87 → 0.007   0.55 → 0.021   0.27 → 0.011
+  The hues are Tailwind's slate, including the drift along the ramp (247.858 at
+  the top → 264.695 at the bottom), which is deliberately not renormalised: the
+  drift is what keeps the dark end from reading flat. The lightnesses and
+  chromas are ours, for two reasons.
 
-  Two deliberate exceptions. The chromatic tokens (`--primary`, `--destructive`,
-  `--warning`, the charts) keep their own hues: they are signals, and a signal
-  that drifts toward the surface it sits on is a weaker signal. And the dark
-  mode's `--border` / `--input` stay a *pure white* overlay, because an alpha
-  white over a taupe surface composites to a taupe hairline on its own; giving
-  it a hue of its own would double the warmth on exactly the edges.
+  **Chroma is damped as the ramp darkens.** Slate is Tailwind's most saturated
+  neutral and it holds chroma all the way down — published slate-950 is 0.042,
+  *more* than slate-200 carries. Above L≈0.7 that is invisible; below it, it is
+  not, and in dark mode it appears not once but on the page, the card, the rail
+  and every alpha hairline at the same hue, with nothing to cancel it. It read
+  as blue rather than as a cool grey. Chroma now peaks at 0.036 in the middle
+  and tapers toward both ends, which is where a near-white or near-black holds a
+  hue badly anyway.
+
+  **The ramp is monotonic and its gaps form an arc**, and both of those are
+  load-bearing rather than tidy. Monotonic because the whole value of naming a
+  step is that 500 is darker than 300; a ramp that reverses makes every
+  conversation about it mean the opposite of what it looks like. The arc — ΔL
+  around 0.02 at the ends, 0.15 in the middle — is because the eye resolves
+  lightness differences far better near white and near black, so even steps
+  there would look like a jump in the middle and like nothing at the ends.
+
+    50 .984  100 .962  200 .922  300 .855  400 .700  500 .560
+    600 .430  700 .330  800 .245  900 .178  950 .129
+
+  Before changing a lightness, check the two steps either side of it. A step
+  moved on its own to fix one surface is what produces a cliff somewhere else,
+  and the mid-range is where borders, disabled controls and secondary labels all
+  have to fit.
+
+  The ramp is deliberately **not** exposed as `bg-slate-300` utility classes.
+  `design-tokens.test.ts` bans exactly that. Components consume roles, so a
+  surface can be restated here without touching a component.
+
+  Two deliberate exceptions to the aliasing. The chromatic tokens
+  (`--primary`, `--destructive`, `--warning`, the charts) keep their own hues:
+  they are signals, and a signal that drifts toward the surface it sits on is a
+  weaker signal. And the dark mode's `--border` / `--input` stay a *pure white*
+  overlay, because an alpha white composites to a hairline of whatever ground
+  it sits on, which stays correct for free.
 
   `color-scheme` is the half of theming that is not ours to paint: the canvas
   the browser fills before the first stylesheet lands, the native form controls,
@@ -110,66 +143,78 @@
 */
 :root {
   color-scheme: light;
-  /* Taupe 50, not white. Three surfaces share it (the page, a card, a popover)
+
+  /* `height: auto` is not an animatable value: a transition to or from it
+     normally snaps. This opts the whole document into interpolating the
+     intrinsic size keywords, which is what lets the nav rail *travel* between
+     its docked full height and its floating shrink-to-content pill instead of
+     jumping between them. The motion is the feature there — see
+     `ui/sidebar.tsx`'s `collapsible="float"`.
+
+     Progressive: a browser without it renders every state correctly and only
+     loses the tween. */
+  interpolate-size: allow-keywords;
+
+  /* The ramp. Defined once, never redefined in `.dark` — these are physical
+     colours; the theme is which end of them each role points at. */
+  --slate-50: oklch(0.984 0.003 247.858);
+  --slate-100: oklch(0.962 0.006 247.896);
+  --slate-200: oklch(0.922 0.011 255.508);
+  --slate-300: oklch(0.855 0.017 252.894);
+  --slate-400: oklch(0.7 0.032 256.788);
+  --slate-500: oklch(0.56 0.036 257.417);
+  --slate-600: oklch(0.43 0.036 257.281);
+  --slate-700: oklch(0.33 0.03 257.287);
+  --slate-800: oklch(0.245 0.023 260.031);
+  --slate-900: oklch(0.178 0.016 264.695);
+  --slate-950: oklch(0.129 0.008 264.695);
+
+  /* Slate 50, not white. Three surfaces share it (the page, a card, a popover)
      because separation here is drawn with a hairline, never with a fill. It is
-     the top of the ramp and the rail sits two steps below it; anything darker
+     the top of the ramp and the rail sits one step below it; anything darker
      for the page closes that gap and the shell reads flat. */
-  --background: oklch(0.986 0.002 40);
-  --foreground: oklch(0.145 0.005 40);
+  --background: var(--slate-50);
+  --foreground: var(--slate-900);
   /* The pill that sits *on* a track: the active tab, the active profile.
 
-     Taupe 300 in light mode: three steps *down* the ramp from the taupe 50 the
-     page and the header are, straight off the chroma curve above (0.92 →
-     0.005). Pure white was tried first and is the wrong direction: the ramp
-     already ends at 0.986, so a white pill is separated from its ground by the
-     last 1.4% of lightness and reads as a smudge rather than as a selection. A
-     shade darker is a real edge, and with no border and no container outline
-     it is the only thing carrying the state.
+     Slate 200 in light mode, two steps down from the 50 the page and the
+     header are. Pure white was tried first and is the wrong direction: the
+     ramp already ends at 0.984, so a white pill is separated from its ground
+     by the last 1.6% of lightness and reads as a smudge rather than as a
+     selection. A shade darker is a real edge, and with no border and no
+     container outline it is the only thing carrying the state.
 
-     **This value and `--muted-foreground` are a pair, and every step down here
-     costs a step down there.** The *inactive* profile label is
-     muted-foreground and a pill mid-drag passes under it, so the two are
-     measured against each other in `TEXT_PAIRS`. 200 failed at 4.40:1 against
-     the 0.54 this token had for months; 300 needs 0.5125 to break even. That
-     is not a local cost: muted-foreground is every muted row, tooltip and
-     secondary column in the app, and it has now moved twice for this pill.
-     Taupe 400 would want roughly 0.48, at which point the "muted" ramp is no
-     longer meaningfully muted. See the note on `--muted-foreground` below.
+     This value and `--muted-foreground` are a pair: the *inactive* profile
+     label is muted-foreground and a pill mid-drag passes under it, so the two
+     are measured against each other in `TEXT_PAIRS`. On the ramp that pairing
+     is no longer something to solve for by hand — 600 on 200 is 6.14:1.
 
      In dark mode a raised thing has to go the other way, because it sits on a
      darker track. It was an alpha white over the ground, which composites grey
      however warm the ground is: white has no hue to lend. So the dark value is
-     a real taupe, and this token exists so the two themes stop disagreeing
+     a real ramp step, and this token exists so the two themes stop disagreeing
      about what "raised" means.
 
      Both values are measured by `src/__tests__/contrast.test.ts`, which is why
      this is a token rather than a `bg-white` written onto the pill. */
-  --raised: oklch(0.92 0.005 40);
-  --card: oklch(0.986 0.002 40);
-  --card-foreground: oklch(0.145 0.005 40);
-  --popover: oklch(0.986 0.002 40);
-  --popover-foreground: oklch(0.145 0.005 40);
+  --raised: var(--slate-200);
+  --card: var(--slate-50);
+  --card-foreground: var(--slate-900);
+  --popover: var(--slate-50);
+  --popover-foreground: var(--slate-900);
   --primary: oklch(0.488 0.243 264.376);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.967 0.003 40);
-  --secondary-foreground: oklch(0.21 0.009 40);
-  --muted: oklch(0.97 0.003 40);
-  /* 0.556 was 4.34:1 on --muted, which is where this colour most often
-     actually lands (hovered rows, tooltips, muted panels). It read as passing
-     because it was only ever measured against white.
-
-     0.54 then moved twice as `--raised` was stepped down the taupe ramp: to
-     0.53 for taupe 200, and to 0.51 for taupe 300. This colour is the
-     *inactive* profile label and a pill mid-drag passes under it, so the
-     darkest surface it lands on is no longer --muted but --raised, and each
-     step darker there raises this token's floor. Break-even against a 0.92
-     pill is 0.5125; 0.51 is one rounding step clear, at 4.57:1. Solved for
-     rather than nudged, and the direction of the dependency is worth keeping
-     in mind: the darkest surface this token sits on sets its ceiling, so
-     darkening any of them moves this one too. */
-  --muted-foreground: oklch(0.51 0.021 40);
-  --accent: oklch(0.97 0.003 40);
-  --accent-foreground: oklch(0.205 0.009 40);
+  --secondary: var(--slate-100);
+  --secondary-foreground: var(--slate-900);
+  --muted: var(--slate-100);
+  /* The darkest surface this token lands on sets its floor, and that is
+     `--raised` (a pill mid-drag passes under the inactive profile label), not
+     `--muted`. 600 clears it at 6.14:1 and is 6.90:1 on --muted. The old
+     value was solved for by hand and moved twice as `--raised` stepped down
+     the ramp; picking a step instead is what stopped that. */
+  --muted-foreground: var(--slate-600);
+  --accent: var(--slate-100);
+  --accent-foreground: var(--slate-900);
   --destructive: oklch(0.577 0.245 27.325);
   /* What sits *on* a solid destructive fill: the confirm button inside a
      destructive dialog, and the offline bar. White is 4.76:1 on the light
@@ -182,38 +227,58 @@
      is only 2.15:1 here, which is why this is a token and not a palette
      class. Same hue (70) in both modes so the state doesn't shift colour. */
   --warning: oklch(0.555 0.14 70);
-  --border: oklch(0.922 0.005 40);
-  --input: oklch(0.922 0.005 40);
+  --border: var(--slate-200);
+  --input: var(--slate-200);
   /* The focus indicator, and the one token that has to clear 3:1 against the
-     surface behind it (WCAG 1.4.11). 0.708 was 2.59:1 on white. */
-  --ring: oklch(0.64 0.019 40);
+     surface behind it (WCAG 1.4.11). This is the row where the ramp does not
+     get to choose freely: slate 400 is the shade that *looks* right here and
+     it measures 2.51:1 on slate 50, under the floor. 500 is 4.55:1. A focus
+     ring is the one piece of UI a keyboard user has no fallback for, so it
+     takes the darker step. */
+  --ring: var(--slate-500);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
   --radius: 0.375rem;
-  /* Two steps down the ramp from the page, not one. The rail is a different
-     surface from the content, and at 0.985 on a 0.995 background it was
-     announcing that with a 1% difference nobody sees on a bright screen. Its
-     three fills move together: a rail whose hover is the same value as its
-     ground has no hover. */
-  --sidebar: oklch(0.955 0.004 40);
+  /* The page's own ground, deliberately, matching dark mode where the rail and
+     the page have always shared --slate-950. The rail was a step down the ramp
+     while it was a full-height panel welded to the window edge, where a seam
+     was what told you the two were different surfaces. It floats now: a rounded
+     pill with a ring and a shadow under it is already unmistakably a separate
+     object, so a second announcement in fill just made the collapsed strip look
+     like a smudge on the page.
+
+     Its hover and active fills are unchanged and still two steps clear of this,
+     which is what they have to be: a rail whose hover equals its ground has no
+     hover, and one whose hover equals its active has no "you are here".
+
+     Written as the ramp step rather than `var(--background)`, though that is
+     what it means: every token here resolves one alias deep, which is what
+     `contrast.test.ts` reads them through, and a token pointing at another
+     token is a value that test cannot measure. */
+  --sidebar: var(--slate-50);
   /* The rail is scenery, not content: muted so the *current* page (which keeps
-     --sidebar-accent-foreground) is the one thing that reads loud. 6.9:1 on
+     --sidebar-accent-foreground) is the one thing that reads loud. 7.74:1 on
      --sidebar, so it still clears AA as body text. */
-  --sidebar-foreground: oklch(0.44 0.017 40);
+  --sidebar-foreground: var(--slate-600);
   --sidebar-primary: oklch(0.546 0.245 262.881);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.925 0.005 40);
-  --sidebar-accent-foreground: oklch(0.205 0.009 40);
+  --sidebar-accent: var(--slate-200);
+  --sidebar-accent-foreground: var(--slate-900);
   /* Hover and active must not be the same fill, or "you are here" is invisible
      the moment the cursor rests on any other row. Active is the darker of the
-     two in both modes. */
-  --sidebar-hover: oklch(0.925 0.005 40);
-  --sidebar-active: oklch(0.878 0.007 40);
-  --sidebar-border: oklch(0.892 0.006 40);
-  --sidebar-ring: oklch(0.708 0.014 40);
+     two in both modes, and on the ramp that is simply the next step.
+
+     Both stepped down one on 31 August 2026, once --sidebar became the page's
+     own ground: against slate-50 the old slate-300 active read as a hard block
+     rather than a marked row. They move as a pair, or the gap between them
+     closes and one of the two stops saying anything. */
+  --sidebar-hover: var(--slate-100);
+  --sidebar-active: var(--slate-200);
+  --sidebar-border: var(--slate-200);
+  --sidebar-ring: var(--slate-500);
 }
 
 /*
@@ -248,48 +313,45 @@
 */
 .dark {
   color-scheme: dark;
-  /* Taupe 950 for the page, taupe 800 for the raised tier. Both went down a
-     step on 29 August 2026: the page read closer to a dark grey card than to
-     the ground under one, and the panels sitting on it were light enough that
-     the shell had no clear floor.
+  /* Slate 950 for the page, 800 for the raised tier, 900 for the panels
+     between them. The order is what matters and it is preserved throughout:
+     page < card/popover < muted/secondary/raised.
 
-     0.155 is as dark as this can go and still be *taupe*. Below roughly 0.14 a
-     hue has too little lightness under it to be seen at all (the same reason
-     the chroma curve at the top of this file tapers at both ends), and the page
-     starts reading as flat black with the warmth only visible where two
-     surfaces meet. Chroma follows the curve down with it: 0.005 at 0.15.
+     The whole surface is one dark field. What separates a card from the page
+     it sits on is the hairline between them, which is the same thing that
+     separates them in light mode; panels lift off their ground by a step you
+     can find when you look for it, not by one that announces itself. Dropping
+     the page alone was tried once and made things worse, because the chrome
+     stayed where it was and the shell came apart into a bright frame around a
+     dark hole.
 
-     **The gap between the two tiers closed from 0.05 to 0.02**, and that is the
-     substance of the change rather than the absolute values. Dropping the page
-     alone had made things worse: the chrome stayed where it was, so the rails
-     and the header read as *lighter* panels on a near-black page and the shell
-     came apart into a bright frame around a dark hole. The whole surface is one
-     dark field now, and what separates a rail from the page it sits beside is
-     the hairline between them, which is the same thing that separates them in
-     light mode. Panels lift off their ground by a step you can find when you
-     look for it, not by one that announces itself.
-
-     Everything above the chrome compressed with it, or a hover fill would have
-     been the brightest thing on screen. The order is what matters and it is
-     preserved throughout: page < chrome < muted < secondary < raised. */
-  --background: oklch(0.155 0.005 40);
-  --foreground: oklch(0.7 0.013 40);
-  --raised: oklch(0.21 0.011 40);
-  --card: oklch(0.175 0.006 40);
-  --card-foreground: oklch(0.75 0.013 40);
-  --popover: oklch(0.175 0.006 40);
-  --popover-foreground: oklch(0.75 0.013 40);
+     Text is slate 200, not 50. Pure white on a near-black page haloes: the
+     glyph blooms into its own background and long labels get harder to read
+     the longer you look. 200 is 14.49:1 on the card, three times what AA asks,
+     and it is what stops a dense table reading as glare. Every foreground
+     moves together or none of them do, or the same sentence sits brighter on a
+     popover than on the page behind it. */
+  --background: var(--slate-950);
+  --foreground: var(--slate-200);
+  --raised: var(--slate-800);
+  --card: var(--slate-900);
+  --card-foreground: var(--slate-200);
+  --popover: var(--slate-900);
+  --popover-foreground: var(--slate-200);
   --primary: oklch(0.424 0.199 265.638);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: oklch(0.212 0.009 40);
-  --secondary-foreground: oklch(0.75 0.013 40);
-  --muted: oklch(0.207 0.008 40);
-  --muted-foreground: oklch(0.708 0.014 40);
-  --accent: oklch(0.207 0.008 40);
-  --accent-foreground: oklch(0.75 0.013 40);
+  --secondary: var(--slate-800);
+  --secondary-foreground: var(--slate-100);
+  --muted: var(--slate-800);
+  /* 5.58:1 on --muted and on --raised, which are the darkest surfaces this
+     lands on. The quiet tier stays quiet; it does not move with the
+     foregrounds above. */
+  --muted-foreground: var(--slate-400);
+  --accent: var(--slate-800);
+  --accent-foreground: var(--slate-100);
   --destructive: oklch(0.704 0.191 22.216);
-  /* Near-black, not white: 6.84:1 on this fill against white's 2.89:1. */
-  --destructive-foreground: oklch(0.145 0.005 40);
+  /* Near-black, not white: 6.85:1 on this fill against white's 2.89:1. */
+  --destructive-foreground: var(--slate-950);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
   /* See the note above the block for why these are a pure white overlay.
@@ -314,54 +376,68 @@
      low brightness, which in practice is around 5%: a table whose rows do not
      separate is worse than one whose rules are slightly loud.
 
-     6% is one step off that floor, reached on the third pass. The two before it
-     (14 → 9 → 6) were each judged against a lighter set of surfaces than the
-     one below them, which is the whole reason this took three: an alpha white
-     is a *proportion* of its ground, so every time the surfaces went down these
-     had further to fall than they looked. Anything under 6% and the dashboard's
-     row rules stop reading as a table. */
-  --border: oklch(1 0 0 / 5%);
-  --input: oklch(1 0 0 / 5%);
-  --ring: oklch(0.556 0.021 40);
+     The number went 14 → 9 → 6 → 5 as the surfaces got darker, each pass
+     judged against a lighter set than the one below it, because an alpha white
+     is a *proportion* of its ground.
+
+     It goes back up to 10% here, and the reason is structural rather than a
+     change of mind. The rail now shares the page's step (see `--sidebar`), so
+     the border is no longer decorating a division that a fill already made —
+     it *is* the division. An edge carrying that job has to be seen, and at 5%
+     on a 0.129 ground it was at the bottom of what a 60Hz panel resolves at
+     low brightness. The tab list and the tab's own active outline are the same
+     story: both already carry `border-border`, and at 5% neither was visible,
+     which read as a missing border rather than a faint one. */
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 10%);
+  /* Same 3:1 rule as light mode, measured the other way: slate 600 is 2.36:1
+     on the card and fails. 400 is 6.79:1. */
+  --ring: var(--slate-400);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  /* Taupe 900, a hair above the page rather than below it.
+  /* The rail shares the page's step, and the seam is what separates them.
 
-     The pass before this had it at 0.142, below the page, on the reasoning that
-     chrome should recede. Tried on a real screen that was too far: a rail that
-     dark stops reading as a surface at all and the app looks like a table
-     floating on nothing. 0.19 is the smallest lift that still says "this is a
-     panel" — 0.035 above the page, where the earlier passes had it 0.05 to 0.08
-     above and it read as lit.
+     This was tried once at 900, a step above the page, because chrome recedes
+     below content in both themes and a lifted rail is the obvious way to say
+     "panel". It works, but it spends a step of the ramp on a job an edge does
+     better: with the rail lifted, the card at 900 and the rail at 900 are the
+     same surface, and the shell has two greys doing three jobs.
 
-     The direction is a judgement, not a rule, and it was worth getting wrong
-     once to find the distance. What made the rail loud was never purely which
-     side of the page it sat on; it was the size of the step, plus a
-     `--sidebar-active` pill brighter than either. */
-  --sidebar: oklch(0.16 0.007 40);
-  /* 8.1:1 on --sidebar. */
-  --sidebar-foreground: oklch(0.78 0.012 40);
+     At 950 the page and the rail are one field and the border draws the
+     division. That is only true while the border is actually visible — the
+     first attempt at this put the rail at 950 while `--sidebar-border` was a
+     5% white overlay, and with no seam anywhere the shell read as one
+     undivided field. Contrast tests all passed, because contrast was not what
+     was wrong; it was caught in the browser, which is the only place it shows.
+     So this line and the 10% below it are a pair. Do not lower one without
+     looking at the other. */
+  --sidebar: var(--slate-950);
+  /* 7.68:1 on --sidebar. */
+  --sidebar-foreground: var(--slate-400);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: oklch(0.222 0.009 40);
-  --sidebar-accent-foreground: oklch(0.75 0.013 40);
+  --sidebar-accent: var(--slate-800);
+  --sidebar-accent-foreground: var(--slate-100);
   /* Hover and active keep a real step between them, or "you are here"
-     disappears the moment the cursor rests on another row. This is the one
-     place the compression stops short: these two fills are the only feedback a
-     nav row gives.
+     disappears the moment the cursor rests on another row. These two fills are
+     the only feedback a nav row gives.
 
-     `--sidebar-active` is the widest bright shape in the column and was doing
-     most of the work of making the rail look lit — a 0.255 pill on a 0.175
-     ground is a brighter thing than the ground it announces itself against. It
-     tracks the rail wherever the rail goes and keeps a 0.04 step, rather than
-     being set against the page. */
-  --sidebar-hover: oklch(0.222 0.009 40);
-  --sidebar-active: oklch(0.21 0.011 40);
-  --sidebar-border: oklch(1 0 0 / 5%);
-  --sidebar-ring: oklch(0.556 0.021 40);
+     Active is now the *lighter* of the two, the reverse of what this pair used
+     to do. That followed from the rail dropping to 950: with the rail at the
+     page's own step, a row lifted out of it reads as selected, whereas the old
+     arrangement (active darker than hover) depended on the rail being lifted
+     to have something to sink below. Hover sits between the rail and the
+     active row, so the cursor moves toward the selected state rather than past
+     it. */
+  --sidebar-hover: var(--slate-900);
+  --sidebar-active: var(--slate-800);
+  /* Paired with `--sidebar: var(--slate-950)` above: this hairline is the only
+     thing dividing the rail from the page now. */
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: var(--slate-400);
 }
 
 /*
@@ -375,26 +451,26 @@
 
   Scoped rather than global, because the fault is the density and not the
   palette: raising `--border` app-wide would redraw every table and every card
-  as a harder grid to fix a problem only this column has. Each value moves one
-  step along the ramp in the note at the top of this file, so it stays on the
-  hue-40 curve rather than becoming a colour of its own. Contrast only ever goes
-  up here, in both themes, so `contrast.test.ts`'s floors still hold.
+  as a harder grid to fix a problem only this column has. Each value moves
+  exactly one step along the ramp, which is now something the file can say
+  literally rather than a lightness interpolated by hand. Contrast only ever
+  goes up here, in both themes, so `contrast.test.ts`'s floors still hold.
 */
 [data-editor-rail] {
-  --border: oklch(0.87 0.007 40);
-  --sidebar-border: oklch(0.85 0.007 40);
-  --muted-foreground: oklch(0.44 0.017 40);
-  --sidebar-foreground: oklch(0.27 0.011 40);
+  --border: var(--slate-300);
+  --sidebar-border: var(--slate-300);
+  --muted-foreground: var(--slate-700);
+  --sidebar-foreground: var(--slate-700);
 }
 
 .dark [data-editor-rail] {
-  /* One step of extra ink, not a fixed percentage: these track the app-wide
-     values down (14/10 → 9/7 → 6/5) so the rail stays *a step firmer than*
-     everything else rather than becoming the one surface with bright edges. */
+  /* One step of extra ink, not a fixed percentage: the hairlines track the
+     app-wide values so the rail stays *a step firmer than* everything else
+     rather than becoming the one surface with bright edges. */
   --border: oklch(1 0 0 / 10%);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --muted-foreground: oklch(0.78 0.012 40);
-  --sidebar-foreground: oklch(0.93 0.004 40);
+  --muted-foreground: var(--slate-300);
+  --sidebar-foreground: var(--slate-300);
 }
 
 @layer base {

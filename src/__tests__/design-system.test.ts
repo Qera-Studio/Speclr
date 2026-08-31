@@ -197,7 +197,7 @@ const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
  * sliding at 1500ms. Nobody chose those; they are shadcn defaults that were
  * never read. One control, three speeds, and no test that could see it.
  */
-const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b)\[?[0-9]+m?s?\]?/g;
+const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b|400\b)\[?[0-9]+m?s?\]?/g;
 const SIGNATURE_MOTION = [
   'src/components/ui/tray-arrow-icon.tsx',
   'src/components/spec/ResetProgressButton.tsx',
