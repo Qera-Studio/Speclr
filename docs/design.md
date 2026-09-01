@@ -1244,3 +1244,34 @@ Append a line when a rule here changes. Keep it to one line and name the
   busy December rather than between its neighbours. Noted in §2.8 as a rule for
   both boards.
 
+- **1 September 2026.** The account card comes back into the floating rail. It
+  was hidden for the whole float on the grounds that a pill carries
+  destinations and the card is not one, which was the right observation and the
+  wrong fix: with it gone the pill had no route to settings, the theme or
+  sign-out without docking first. What the card needed was air, not absence.
+  `SidebarContent`'s `pb-2` plus the footer's `group-data-float:pt-4` put 24px
+  between the last icon and the avatar, which is exactly what the header leaves
+  above the first one, and its `p-2` keeps the pill's bottom margin equal to
+  the 8px either side of the icon column. The wordmark still goes: that one
+  really is a masthead. Both halves and the gap are measured in
+  `e2e/sidebar-float.spec.ts`, the gap confirmed red first.
+
+- **1 September 2026.** The floating pill's height is a measured length now,
+  not `fit-content`, and that single change fixes two pieces of motion that
+  looked unrelated. Expanding the rail left everything inside it pinned at the
+  collapsed height for the whole 200ms and then dropped it ~310px in the
+  closing frame, which read as the account card arriving late and glitching
+  into place; and switching profile in the pill resized the box in one frame,
+  mid-swipe, because the two navs have different row counts. One cause:
+  **`height: fit-content` does not animate.** Its computed value never changes
+  when its content changes, only its used value, and transitions fire on
+  computed values. `interpolate-size` does not reach it, nor does
+  `transition-behavior: allow-discrete`, nor a grid track; animating the two
+  nav copies instead is worse, because they are flex siblings, so the box is
+  `max(a, b)` and mid-flight both are partial, dipping the pill under both
+  endpoints whatever the easing. So `AdminSidebar` measures the live nav plus
+  the chrome around it and publishes `--rail-height`, which the float's
+  `height` reads with `fit-content` as the fallback. Both are measured in
+  `e2e/sidebar-float.spec.ts` by sampling mid-transition, which is the only
+  way to see either: the endpoints were always right. Both confirmed red on
+  the one-line revert.

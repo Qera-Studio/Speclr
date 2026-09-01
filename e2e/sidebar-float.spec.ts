@@ -101,8 +101,16 @@ test.describe('the floating nav rail', () => {
 
     expect((await dead.boundingBox())!.height).toBe(0);
     const nav = (await live.boundingBox())!;
-    // Header above, the `pb-2` that closes the box below, and nothing else.
-    expect(pill.height).toBeCloseTo(nav.height + (nav.y - pill.y) + 8, 0);
+    const footer = (await page
+      .locator('[data-slot="sidebar-footer"]')
+      .first()
+      .boundingBox())!;
+    // Header above; below the nav, the content's own 8px and then the account
+    // card, whose box carries the pill's closing 8px in its padding.
+    expect(pill.height).toBeCloseTo(
+      nav.height + (nav.y - pill.y) + 8 + footer.height,
+      0,
+    );
   });
 
   /**
@@ -138,14 +146,16 @@ test.describe('the floating nav rail', () => {
   });
 
   /**
-   * A floating rail carries destinations and nothing else. The account card and
-   * the wordmark are both hidden for the whole float, peek included — a pill
-   * that grew wide enough to label its rows did not become the app's masthead.
+   * The account card survives the float and the wordmark does not, and the two
+   * go different ways for different reasons. The card is the only route to
+   * settings, the theme and sign-out, so a pill without it is a nav you have to
+   * dock before you can leave; the wordmark is a masthead, and a strip of icons
+   * that grew wide enough to label itself did not become one.
    *
-   * `isVisible` rather than a className check: these are CSS variants, and
+   * `toBeVisible` rather than a className check: these are CSS variants, and
    * jsdom would only be reading the source back.
    */
-  test('carries no account card and no wordmark while floating, peeking included', async ({
+  test('keeps the account card while floating but drops the wordmark, peek included', async ({
     page,
   }) => {
     await page.goto('/preview/shell');
@@ -155,13 +165,131 @@ test.describe('the floating nav rail', () => {
     await expect(wordmark).toBeVisible();
 
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-    await expect(footer).toBeHidden();
+    await page.waitForTimeout(400);
+    await expect(footer).toBeVisible();
     await expect(wordmark).toBeHidden();
+
+    // Inside the pill, not merely in the DOM beside it: a footer that overflowed
+    // the box would still report visible.
+    const pill = (await page.locator(RAIL).first().boundingBox())!;
+    const box = (await footer.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(pill.y + pill.height + 1);
 
     await page.locator(RAIL).first().hover();
     await page.waitForTimeout(500);
-    await expect(footer).toBeHidden();
+    await expect(footer).toBeVisible();
     await expect(wordmark).toBeHidden();
+  });
+
+  /**
+   * The air asked for around it, measured. 24px between the last destination
+   * and the avatar, which is what the header leaves above the first one, and
+   * 8px under it, which is the margin either side of the icon column.
+   *
+   * Worth a test of its own because it is three paddings in two files adding
+   * up (`SidebarContent`'s `pb-2`, the footer's `pt-4`, its `p-2`), and any one
+   * of them changing leaves the markup looking right.
+   */
+  test('holds the account card off the rows by the header\'s own gap', async ({ page }) => {
+    await page.goto('/preview/shell');
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await page.waitForTimeout(400);
+
+    const pill = (await page.locator(RAIL).first().boundingBox())!;
+    const rows = page.locator('nav[aria-label$="navigation"]:not([inert]) [data-slot="sidebar-menu-button"]');
+    const lastRow = (await rows.last().boundingBox())!;
+    // The footer's own button, not `[data-slot="sidebar-menu-button"]`: the
+    // account row is a `DropdownMenuTrigger` *rendering* one, so the trigger's
+    // slot is what ends up on the element.
+    const avatar = (await page
+      .locator('[data-slot="sidebar-footer"] button')
+      .first()
+      .boundingBox())!;
+    const toggle = (await page.getByRole('button', { name: 'Toggle sidebar' }).boundingBox())!;
+    const firstRow = (await rows.first().boundingBox())!;
+
+    expect(avatar.y - (lastRow.y + lastRow.height)).toBeCloseTo(
+      firstRow.y - (toggle.y + toggle.height),
+      0,
+    );
+    expect(pill.y + pill.height - (avatar.y + avatar.height)).toBeCloseTo(8, 0);
+  });
+
+  /**
+   * The account card travels with the box on expand instead of arriving late.
+   *
+   * It presented as a fault of the card and was not: the pill's floating height
+   * was `fit-content`, which does not animate, so *everything* inside stayed at
+   * the collapsed height for the whole 200ms and then jumped ~310px in the
+   * closing frame. The card is simply the row far enough down the box for
+   * 310px to be obvious. See `--rail-height` in `AdminSidebar`.
+   *
+   * Sampling mid-transition is the only way to see it: the endpoints are
+   * identical either way, which is how it survived a suite that measures both.
+   */
+  test('carries the account card down with the box, not after it', async ({ page }) => {
+    await page.goto('/preview/shell');
+    const footer = page.locator('[data-slot="sidebar-footer"]').first();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await page.waitForTimeout(400);
+    const collapsed = (await footer.boundingBox())!.y;
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    // Early in the 200ms, because `ease-standard` front-loads: by 90ms the card
+    // is already within 40px of home, and a window that late cannot tell a
+    // travelling card from one that has arrived.
+    await page.waitForTimeout(30);
+    const mid = (await footer.boundingBox())!.y;
+    await page.waitForTimeout(500);
+    const docked = (await footer.boundingBox())!.y;
+
+    // Genuinely between the two, not still parked at the collapsed position
+    // waiting to jump. The margins keep this away from both endpoints: pinned,
+    // `mid` equals `collapsed`; snapping early, it equals `docked`.
+    expect(docked).toBeGreaterThan(collapsed + 200);
+    expect(mid).toBeGreaterThan(collapsed + 40);
+    expect(mid).toBeLessThan(docked - 40);
+  });
+
+  /**
+   * Switching profile in the pill changes its height, because the two navs have
+   * different row counts, and that change has to travel too.
+   *
+   * It is driven here by moving `--rail-height`, which is exactly what a
+   * profile change does: the pill's floating height is that variable, measured
+   * from the live nav in `AdminSidebar`. The fixture sits outside both profiles
+   * so its swipe has nowhere to commit to, and the variable is the seam.
+   *
+   * Why a variable at all, rather than the `fit-content` this replaced:
+   * `height: fit-content` never changes as a *computed* value when its content
+   * changes, only as a used one, and transitions fire on computed values. So
+   * the old pill snapped to the new profile's height in a single frame while
+   * the track was still sliding sideways.
+   */
+  test('interpolates the height when the profile changes', async ({ page }) => {
+    await page.goto('/preview/shell');
+    const rail = page.locator(RAIL).first();
+    const wrapper = page.locator('[data-slot="sidebar"][data-side="left"]').first();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await page.waitForTimeout(400);
+    const start = (await rail.boundingBox())!.height;
+
+    const target = start - 96;
+    await wrapper.evaluate(
+      (node, height) =>
+        (node as HTMLElement).style.setProperty('--rail-height', `${height}px`),
+      target,
+    );
+    await page.waitForTimeout(60);
+    const mid = (await rail.boundingBox())!.height;
+    await page.waitForTimeout(400);
+
+    expect((await rail.boundingBox())!.height).toBeCloseTo(target, 0);
+    // Under way, and not there yet. A snap satisfies neither bound.
+    expect(mid).toBeLessThan(start - 10);
+    expect(mid).toBeGreaterThan(target + 5);
   });
 
   /**

@@ -350,10 +350,25 @@ function Sidebar({
           // worse than one that simply starts where the docked rail did.
           //
           // `max-height` is what keeps it inside the viewport now. The height
-          // is its content's (`h-fit`), so a profile with more rows than fit
-          // would otherwise overflow the bottom edge; capped, `SidebarContent`
+          // is its content's, so a profile with more rows than fit would
+          // otherwise overflow the bottom edge; capped, `SidebarContent`
           // scrolls inside it instead and every row stays reachable.
-          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-fit group-data-float:max-h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
+          //
+          // **That height is `--rail-height`, a measured length, and
+          // `fit-content` is only the fallback.** The keyword was here first
+          // and was wrong twice over, both times because a `fit-content` box
+          // does not animate: its *computed* value never changes when its
+          // content does, only its used value, and transitions fire on computed
+          // values. So changing profile in the pill resized it in a single
+          // frame mid-swipe, and expanding it left every child pinned at the
+          // collapsed height for the whole 200ms before jumping ~310px in the
+          // closing frame — the account card's late arrival was this, not
+          // anything of the card's own. A length interpolates, and one
+          // consumer measures it: `AdminSidebar`, which is also where the
+          // reasoning for measuring rather than computing is written down.
+          // The fallback keeps the pill correct on the first frame and
+          // wherever nothing publishes the variable (the editor rail).
+          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-[var(--rail-height,fit-content)] group-data-float:max-h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
           // Docked, the height is stated as a length rather than left to the
           // two anchors. `interpolate-size` can tween a length to `fit-content`
           // (that is what it is for) but it cannot tween "stretched between
@@ -388,8 +403,8 @@ function Sidebar({
           // overflowed anyway, and menus and tooltips portal out.
           // `h-full` rather than `size-full` while floating: the pill's height
           // is its content's, so a child claiming 100% of a parent that is
-          // sized *by* that child is circular. The container's `h-fit` is the
-          // one that decides.
+          // sized *by* that child is circular. The container's own height above
+          // is the one that decides.
           className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:h-auto group-data-float:rounded-lg"
         >
           {children}
@@ -547,10 +562,10 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
         // exactly what a shrink-to-content pill must not do. `flex-none` hands
         // the height back to the rows.
         //
-        // `pb-2` because the footer that used to close the box is hidden while
-        // floating, so the last row's own edge became the pill's, and it read
-        // as a list cut off rather than a list that ended. It matches the
-        // header's `p-2` above it. `min-h-0` lets the container's `max-height`
+        // `pb-2` is the top half of the gap under the last row: with the
+        // footer's own `group-data-float:pt-4` it separates the destinations
+        // from the account card by the same 24px the header leaves above the
+        // first one. `min-h-0` lets the container's `max-height`
         // actually shorten this rather than being floored at its content, so
         // an over-tall nav scrolls in place.
         // `flex-initial`, not `flex-none`: both stop the grow that stretches a
