@@ -45,6 +45,7 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-raised: var(--raised);
+  --color-hover: var(--hover);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -198,6 +199,21 @@
      Both values are measured by `src/__tests__/contrast.test.ts`, which is why
      this is a token rather than a `bg-white` written onto the pill. */
   --raised: var(--slate-200);
+  /* The fill a card or a row takes under the pointer.
+
+     Not `--muted` and not `--accent`, which is what a hover reaches for by
+     habit. On a board a card sits *inside* a `--muted` well, so hovering to
+     that value paints the card the colour of the column behind it, which is
+     the one thing a hover must not do. Both values here move the card a step
+     away from its well instead: down the ramp past it in light, down to the
+     page's own step in dark.
+
+     It shares light's value with `--raised` and dark's with `--background`,
+     and is still its own token, because no existing role holds that pair:
+     `--raised` goes *up* in dark, to the column's exact value. Both are
+     measured by `src/__tests__/contrast.test.ts`, muted text included, since
+     that is what a card is mostly made of. */
+  --hover: var(--slate-200);
   --card: var(--slate-50);
   --card-foreground: var(--slate-900);
   --popover: var(--slate-50);
@@ -334,6 +350,10 @@
   --background: var(--slate-950);
   --foreground: var(--slate-200);
   --raised: var(--slate-800);
+  /* See the light block. `--slate-700` would be the symmetrical answer and it
+     fails: `--muted-foreground` lands on it at 3.94:1, and half of what a card
+     prints is muted. */
+  --hover: var(--slate-950);
   --card: var(--slate-900);
   --card-foreground: var(--slate-200);
   --popover: var(--slate-900);

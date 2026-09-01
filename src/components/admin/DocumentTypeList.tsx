@@ -9,7 +9,7 @@ import { shortcutForSlug } from "./nav";
 import DocumentsBrowser from "./DocumentsBrowser";
 import { PageBody, PageHeader } from "./Page";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
-import { isHrDocType, type DocTypeSpec } from "@/lib/domain/registry";
+import type { DocTypeSpec } from "@/lib/domain/registry";
 import type { AdminDocument } from "@/lib/domain/types";
 import { newDocHref } from "@/lib/profile";
 
@@ -42,7 +42,8 @@ export default function DocumentTypeList({
   const shortcut = shortcutForSlug(spec.slug);
 
   return (
-    <PageBody>
+    // Full height for the same reason as the profile homes: see `HomeRoute`.
+    <PageBody className="h-full min-h-0">
       <PageHeader title={`${spec.label}s`}>
         {latestInvoice?.number ? (
           <ReceiptForInvoiceButton
@@ -72,8 +73,10 @@ export default function DocumentTypeList({
         emptyTitle={`No ${label}s yet`}
         emptyDescription={`Nothing here yet — create the first ${label}.`}
         // Every row here is already this type, so that filter would do nothing.
+        // What the party field is *called* used to be passed from here too; it
+        // is derived from the rows now, so the profile homes get it right as
+        // well (`partyFieldLabel`).
         hideTypeFilter
-        partyLabel={isHrDocType(spec.code) ? "Employee" : "Client"}
       />
     </PageBody>
   );

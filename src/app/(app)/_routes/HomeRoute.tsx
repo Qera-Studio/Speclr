@@ -26,7 +26,10 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
   const documents = await listDocumentsByProfile(profile);
 
   return (
-    <PageBody>
+    // `h-full` for the board view, which fills the page and scrolls inside its
+    // columns rather than making the page scroll for one busy column. The other
+    // two views overflow it and the shell scrolls them, as they always did.
+    <PageBody className="h-full min-h-0">
       {/* The heading is the rail's own label, so the two cannot drift: the
           client side calls this "Documents", the admin side "Dashboard". */}
       <PageHeader title={NAV_BY_PROFILE[profile].home.label}>

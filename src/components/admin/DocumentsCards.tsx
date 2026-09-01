@@ -38,6 +38,62 @@ export interface DocumentsCardsProps {
   emptyDescription?: string;
 }
 
+/**
+ * One document as a card.
+ *
+ * Its own export because the board (`DocumentsKanban`) stacks the same card in
+ * columns. Two views drawing a document two ways is the drift `StatusBadge` and
+ * `DateCell` exist to stop, one level up (`CONTEXT.md` §5e).
+ *
+ * The stretched link is the whole reason this is one anchor and not a click
+ * handler: middle-click, ⌘-click and "copy link" all work, and the actions
+ * block is positioned and later in DOM order so it paints above the overlay and
+ * keeps its own hit area.
+ */
+export function DocumentCard({ doc }: { doc: AdminDocument }) {
+  // Letters carry no line items — a ₹0 total would mislead, so show NIL.
+  const hasMoney = hasTotal(doc);
+  const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
+
+  return (
+    // `hover:bg-hover`, not the `hover:bg-muted/40` a table row uses. On the
+    // board this card sits in a `bg-muted` column, and 40% of the column's own
+    // fill over a card that is one step lighter lands within a hair of the
+    // column: the hover read as the card *disappearing* into the well. See the
+    // token's note in `globals.css`.
+    <Card size="sm" className="group/row relative h-full gap-2 transition-colors hover:bg-hover">
+      <CardContent className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Link
+            href={docHref(doc)}
+            className="truncate font-medium underline underline-offset-4 after:absolute after:inset-0 after:content-['']"
+          >
+            {doc.number ?? 'Draft'}
+          </Link>
+          <span className="truncate text-muted-foreground">
+            {DOC_TYPES[doc.type].label}
+          </span>
+        </div>
+        <StatusBadge status={doc.status} />
+      </CardContent>
+
+      <CardContent className="flex flex-col gap-0.5">
+        <span className="truncate">{partyName(doc) || NIL}</span>
+        <span className="text-muted-foreground">
+          {formatDisplayDate(doc.issueDate)}
+        </span>
+      </CardContent>
+
+      <CardContent className="relative mt-auto flex items-center justify-between gap-2">
+        <span className="font-medium">
+          {hasMoney ? formatINR(totals.totalPaise) : NIL}
+        </span>
+        <DocumentRowActions doc={doc} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DocumentsCards({
   documents,
   emptyTitle = 'No documents yet',
@@ -59,52 +115,11 @@ export default function DocumentsCards({
 
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {documents.map((doc) => {
-        // Letters carry no line items — a ₹0 total would mislead, so show —.
-        const hasMoney = hasTotal(doc);
-        const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
-        return (
-          <li key={doc.id}>
-            {/*
-              Same stretched-link pattern as the table row: one real anchor
-              covering the card, so middle-click, ⌘-click and "copy link" all
-              work and no client-side row handler is needed. The actions block
-              is positioned and later in DOM order, so it paints above the
-              overlay and keeps its own hit area.
-            */}
-            <Card size="sm" className="group/row relative h-full gap-2 transition-colors hover:bg-muted/40">
-              <CardContent className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <Link
-                    href={docHref(doc)}
-                    className="truncate font-medium underline underline-offset-4 after:absolute after:inset-0 after:content-['']"
-                  >
-                    {doc.number ?? 'Draft'}
-                  </Link>
-                  <span className="truncate text-muted-foreground">
-                    {DOC_TYPES[doc.type].label}
-                  </span>
-                </div>
-                <StatusBadge status={doc.status} />
-              </CardContent>
-
-              <CardContent className="flex flex-col gap-0.5">
-                <span className="truncate">{partyName(doc) || NIL}</span>
-                <span className="text-muted-foreground">
-                  {formatDisplayDate(doc.issueDate)}
-                </span>
-              </CardContent>
-
-              <CardContent className="relative mt-auto flex items-center justify-between gap-2">
-                <span className="font-medium">
-                  {hasMoney ? formatINR(totals.totalPaise) : NIL}
-                </span>
-                <DocumentRowActions doc={doc} />
-              </CardContent>
-            </Card>
-          </li>
-        );
-      })}
+      {documents.map((doc) => (
+        <li key={doc.id}>
+          <DocumentCard doc={doc} />
+        </li>
+      ))}
     </ul>
   );
 }

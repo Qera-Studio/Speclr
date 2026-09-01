@@ -1,5 +1,7 @@
 import {
+  groupDocuments,
   matchesFilters,
+  partyFieldLabel,
   sortDocuments,
   type FilterRow,
   type SortState,
@@ -18,6 +20,9 @@ function doc(over: Partial<Record<string, unknown>>): AdminDocument {
     clientSnapshot: { name: 'Acme Co.' },
     lineItems: line(100000), // ₹1,000
     gstRatePercent: 0,
+    // Every fixture is equally old unless a test says otherwise, so the board's
+    // recency tie-break is a thing a test opts into rather than a coin toss.
+    createdAt: 0,
     ...over,
   } as unknown as AdminDocument;
 }
@@ -208,5 +213,140 @@ describe('sortDocuments', () => {
       direction: 'asc',
     });
     expect(sorted.map((d) => d.id)).toEqual(['inv', 'rec', 'big']);
+  });
+});
+
+/**
+ * The board's columns. What is guarded here is which columns exist, in what
+ * order, holding what — the part that can be quietly wrong. What a column is
+ * *called* is `DocumentsKanban`'s business and is tested there.
+ */
+describe('groupDocuments', () => {
+  const keys = (docs: AdminDocument[], by: 'status' | 'type' | 'month', types?: string[]) =>
+    groupDocuments(docs, by, types).map((group) => group.key);
+
+  /**
+   * The headline rule: a board is read for how much is in each column, so the
+   * fullest one should not be somewhere in the middle. Every case below puts
+   * the busy column where its axis's own order would *not* have put it, or it
+   * would pass on the base order alone.
+   */
+  it('puts the busiest column first, on every axis', () => {
+    const second = doc({ id: 'inv2', issueDate: '2026-06-28' });
+    expect(keys([receipt, invoice, second], 'status')).toEqual(['finalized', 'draft']);
+    expect(keys([invoice, receipt, doc({ id: 'rec2', type: 'REC' })], 'type', ['INV', 'REC'])).toEqual([
+      'REC',
+      'INV',
+    ]);
+    expect(keys([invoice, receipt, second], 'month')).toEqual(['2026-06', '2026-07']);
+  });
+
+  /**
+   * By when the document was *made*, not by the issue date it carries: the
+   * question the tie answers is which column is still being added to. The
+   * receipt has the later issue date and the earlier `createdAt`, so a
+   * tie-break that reached for `issueDate` puts it first and fails here.
+   */
+  it('breaks a tie on the newest document made', () => {
+    const fresh = doc({ id: 'fresh', createdAt: 2 });
+    const stale = doc({ id: 'stale', type: 'REC', status: 'draft', createdAt: 1 });
+    expect(keys([stale, fresh], 'status')).toEqual(['finalized', 'draft']);
+    expect(keys([stale, fresh], 'type', ['INV', 'REC'])).toEqual(['INV', 'REC']);
+  });
+
+  /**
+   * With nothing to separate them the axis's own order stands: the lifecycle
+   * left to right, the registry order, the calendar newest first. Without a
+   * stable base a board of equal columns would reshuffle on every render.
+   */
+  it('keeps the axis order when the counts and the recency both tie', () => {
+    expect(keys([invoice, receipt], 'status')).toEqual(['draft', 'finalized']);
+    // The receipt is first in the input and the invoice comes first in
+    // `DOC_TYPE_LIST`, so a pass-through of the input order fails this.
+    expect(keys([receipt, invoice, contract], 'type', ['INV', 'REC', 'CON'])).toEqual([
+      'INV',
+      'REC',
+      'CON',
+    ]);
+    expect(keys([contract, invoice, receipt], 'month')).toEqual([
+      '2026-07',
+      '2026-06',
+      '2026-05',
+    ]);
+  });
+
+  /**
+   * The opposite of the rule the filter choices follow, and deliberately: an
+   * empty column is an answer ("nothing is in draft"), where an empty filter
+   * value is a click that does nothing.
+   */
+  it('keeps a column with nothing in it', () => {
+    // Behind the one that holds something, which is the busiest-first rule.
+    const [finalized, draft] = groupDocuments([invoice], 'status');
+    expect(finalized.documents).toEqual([invoice]);
+    expect(draft).toEqual({ key: 'draft', documents: [] });
+
+    expect(keys([invoice], 'type', ['INV', 'REC'])).toEqual(['INV', 'REC']);
+  });
+
+  /** Dropping the column would drop the documents in it. */
+  it('draws a type on screen even when the caller did not ask for it', () => {
+    expect(keys([invoice, receipt], 'type', ['CON'])).toEqual(['INV', 'REC', 'CON']);
+  });
+
+  /**
+   * A month with nothing in it is a fact about the year. Closing the gap up
+   * would draw a quiet quarter as an unbroken run of work.
+   */
+  it('fills the months between the earliest and latest, and stops there', () => {
+    const march = doc({ id: 'mar', issueDate: '2026-03-04' });
+    // Busiest first sends the two months that hold work to the front and the
+    // three quiet ones behind, in calendar order among themselves.
+    expect(keys([march, receipt], 'month')).toEqual([
+      '2026-07',
+      '2026-03',
+      '2026-06',
+      '2026-05',
+      '2026-04',
+    ]);
+  });
+
+  it('counts a gap across a year boundary in months, not in numbers', () => {
+    const december = doc({ id: 'dec', issueDate: '2025-12-01' });
+    const february = doc({ id: 'feb', issueDate: '2026-02-01' });
+    // The quiet January existing is the point here, not where the sort files it.
+    expect(keys([december, february], 'month').sort()).toEqual([
+      '2025-12',
+      '2026-01',
+      '2026-02',
+    ]);
+  });
+
+  it('keeps every document, in the order it arrived', () => {
+    const second = doc({ id: 'inv2', issueDate: '2026-06-28' });
+    const [june] = groupDocuments([invoice, second], 'month');
+    expect(june.documents.map((d) => d.id)).toEqual(['inv', 'inv2']);
+  });
+});
+
+/**
+ * The label was a prop with a 'Client / employee' default, and the default is
+ * what each profile's home rendered — the client side offering to filter by an
+ * employee it cannot contain.
+ */
+describe('partyFieldLabel', () => {
+  const letter = doc({ id: 'ofr', type: 'OFR', status: 'draft', number: null });
+
+  it('says Client on a list of client documents', () => {
+    expect(partyFieldLabel([invoice, receipt, contract])).toBe('Client');
+  });
+
+  it('says Employee on a list of HR documents', () => {
+    expect(partyFieldLabel([letter])).toBe('Employee');
+  });
+
+  /** Sealed profiles mean this cannot happen today; it is still the honest answer. */
+  it('says both only when a list actually holds both', () => {
+    expect(partyFieldLabel([invoice, letter])).toBe('Client / employee');
   });
 });

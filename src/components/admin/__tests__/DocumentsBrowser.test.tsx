@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -444,5 +444,271 @@ describe('DocumentsBrowser pagination', () => {
       );
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
+  });
+});
+
+/**
+ * The board — the third reading of the same rows. What is tested here is what
+ * a reader sees: which columns, holding which documents, and the controls that
+ * belong to this view and not the others. The ordering rules themselves are
+ * `groupDocuments`' and are tested in `documentQuery.test.ts`.
+ */
+describe('board view', () => {
+  afterEach(() => localStorage.clear());
+
+  const openBoard = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Board' }));
+  };
+
+  const columns = () =>
+    screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+
+  /** All three cuts are on the page, so re-cutting is one click. */
+  const regroup = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(within(groupRow()).getByRole('button', { name }));
+  };
+
+  const groupRow = () => screen.getByRole('group', { name: 'Group by' });
+
+  /**
+   * Type is what a list of documents is mostly read for, so it is where the
+   * board opens. It is also the axis whose empty columns offer to fill
+   * themselves, which none of the others can.
+   */
+  it('opens cut by type', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    await openBoard(user);
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(columns().slice(0, 2)).toEqual(['Invoice', 'Receipt']);
+    expect(
+      within(groupRow()).getByRole('button', { name: 'Type' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('cuts by status, which is where a document actually moves', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+
+    await regroup(user, 'Status');
+
+    expect(columns()).toEqual(['Draft', 'Finalized']);
+    // Each column holds its own document, not a copy of the whole list.
+    expect(
+      screen.getByRole('region', { name: 'Draft' }).textContent,
+    ).toContain('Beta Ltd.');
+    expect(
+      screen.getByRole('region', { name: 'Finalized' }).textContent,
+    ).toContain('Acme Co.');
+  });
+
+  /**
+   * Every type this profile can hold, not only the two on screen. An empty
+   * column is the board's answer to "has a credit note ever gone out", and a
+   * board whose columns appeared and vanished with the data would change shape
+   * under every filter.
+   */
+  it("re-cuts by type from the group row, this profile's types and all", async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+
+    await regroup(user, 'Type');
+
+    expect(columns()).toEqual([
+      'Invoice',
+      'Receipt',
+      'Credit note',
+      'Service Quotation',
+      'Contract',
+    ]);
+    // The other profile's types are not columns here — they cannot arrive.
+    expect(columns()).not.toContain('Pay slip');
+  });
+
+  /**
+   * An empty type column names something that can be created, so it offers to,
+   * and the offer is the whole column rather than a button in the corner of it.
+   * Neither other axis can: a month is past and a status is what finalizing
+   * produces, so "new document in June" and "new finalized document" are offers
+   * the app cannot honour.
+   */
+  it('offers to create the type an empty column is named after', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+
+    await regroup(user, 'Type');
+
+    expect(screen.getByRole('link', { name: 'New contract' })).toHaveAttribute(
+      'href',
+      '/client/docs/new/contract',
+    );
+    expect(screen.getByRole('link', { name: 'New credit note' })).toBeInTheDocument();
+    // The two columns holding something show their cards instead.
+    expect(screen.queryByRole('link', { name: 'New invoice' })).not.toBeInTheDocument();
+  });
+
+  it('offers nothing of the kind on an empty status column', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={[documents[0]]} />);
+    await openBoard(user);
+
+    await regroup(user, 'Status');
+
+    expect(columns()).toEqual(['Finalized', 'Draft']);
+    expect(screen.queryByRole('link', { name: /^New / })).not.toBeInTheDocument();
+  });
+
+  /** Four empty columns on a list that is one type by construction. */
+  it('offers only the type it is a list of, on a per-type list', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={[documents[0]]} hideTypeFilter />);
+    await openBoard(user);
+
+    await regroup(user, 'Type');
+
+    expect(columns()).toEqual(['Invoice']);
+  });
+
+  it('re-cuts by month, newest first', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+
+    await regroup(user, 'Month');
+
+    expect(columns()).toEqual(['July 2026', 'June 2026']);
+  });
+
+  /**
+   * A board is read for how much is in each column, so one that quietly held
+   * back page two would misreport the only thing it is for.
+   */
+  it('shows every filtered document, with no pager', async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 24 }, (_, i) => ({
+      ...documents[0],
+      id: `many-${i}`,
+      number: `QS-INV-2627-${String(i + 1).padStart(3, '0')}`,
+    })) as unknown as AdminDocument[];
+    render(<DocumentsBrowser documents={many} />);
+
+    await openBoard(user);
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(24);
+    expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+  });
+
+  it('still narrows to the filters, columns and all', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+    await regroup(user, 'Status');
+
+    await addFilter(user, /^status$/i);
+    await user.click(screen.getByRole('button', { name: /status value/i }));
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: /^draft$/i }));
+
+    // Both columns stay: the board's shape is the lifecycle, not the result
+    // set. What the filter empties is the column, which is the answer.
+    expect(columns()).toEqual(['Draft', 'Finalized']);
+    expect(screen.getByRole('region', { name: 'Draft' }).textContent).toContain(
+      'Beta Ltd.',
+    );
+    expect(
+      screen.getByRole('region', { name: 'Finalized' }).textContent,
+    ).not.toContain('Acme Co.');
+  });
+
+  /**
+   * Each view gets the one control it can act on: sorting is the table's column
+   * headers, grouping is the board's columns, and cards have neither.
+   */
+  it('swaps the sort toggle for the group row, and only here', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    expect(screen.queryByRole('group', { name: 'Group by' })).not.toBeInTheDocument();
+    await openBoard(user);
+
+    expect(groupRow()).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sort' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.queryByRole('group', { name: 'Group by' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * There are three cuts and they are cheap to try, so all three are on the
+   * page rather than two of them behind a menu. Which one is in force is the
+   * pressed state, not a word in a trigger label.
+   */
+  it('offers every cut at once, saying which is in force', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+
+    const cut = (name: string) => within(groupRow()).getByRole('button', { name });
+    expect(['Type', 'Status', 'Month'].map((n) => cut(n).getAttribute('aria-pressed'))).toEqual(
+      ['true', 'false', 'false'],
+    );
+
+    await user.click(cut('Month'));
+
+    expect(cut('Month')).toHaveAttribute('aria-pressed', 'true');
+    expect(cut('Status')).toHaveAttribute('aria-pressed', 'false');
+    expect(columns()).toEqual(['July 2026', 'June 2026']);
+  });
+
+  it('remembers the choice across a remount, like the other two', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<DocumentsBrowser documents={documents} />);
+    await openBoard(user);
+    unmount();
+
+    render(<DocumentsBrowser documents={documents} />);
+    expect(await screen.findByRole('button', { name: 'Board' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+});
+
+/**
+ * The client side cannot hold an HR document, so offering to filter its list by
+ * an employee named a party it can never contain. The label is derived from the
+ * rows now (`partyFieldLabel`), which is what makes both profile homes right.
+ */
+describe('the party filter’s name', () => {
+  it('says Client on a list of client documents', async () => {
+    const user = userEvent.setup();
+    render(<DocumentsBrowser documents={documents} />);
+
+    await user.click(screen.getByRole('button', { name: /add filter/i }));
+
+    expect(await screen.findByRole('menuitem', { name: /^client$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /employee/i })).not.toBeInTheDocument();
+  });
+
+  it('says Employee on a list of HR documents', async () => {
+    const user = userEvent.setup();
+    const letter = {
+      ...documents[0],
+      id: 'ofr',
+      type: 'OFR',
+      number: null,
+      status: 'draft',
+      employeeSnapshot: { name: 'Ananya' },
+    } as unknown as AdminDocument;
+    render(<DocumentsBrowser documents={[letter]} />);
+
+    await user.click(screen.getByRole('button', { name: /add filter/i }));
+
+    expect(await screen.findByRole('menuitem', { name: /^employee$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /client/i })).not.toBeInTheDocument();
   });
 });

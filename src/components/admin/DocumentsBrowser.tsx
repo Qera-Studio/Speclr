@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   FilterX,
+  Columns3,
   LayoutGrid,
   Rows3,
   Calendar,
@@ -15,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useTabDrag } from "@/components/ui/tabs";
 import {
   Empty,
@@ -33,6 +35,7 @@ import { cn } from "@/lib/utils";
 import SortToggle, { useShowSort } from "./SortToggle";
 import FilterBar from "./FilterBar";
 import DocumentsCards from "./DocumentsCards";
+import DocumentsKanban from "./DocumentsKanban";
 import DocumentsTable from "./DocumentsTable";
 import { BulkBar, useBulkSelect } from "./BulkSelect";
 import { DELETE_DRAFT_CONSEQUENCE } from "@/lib/domain/registry";
@@ -40,16 +43,21 @@ import { DEV_UNLIMITED } from "@/lib/devMode";
 import { deleteDraftAction } from "@/server/actions/documents";
 import {
   FILTER_FIELDS,
+  GROUP_BY_LIST,
+  groupDocuments,
   hasTotal,
   matchesFilters,
+  partyFieldLabel,
   sortDocuments,
   type FilterField,
   type FilterOption,
   type FilterRow,
+  type GroupBy,
   type SortColumn,
   type SortState,
 } from "@/lib/domain/documentQuery";
 import { partyName } from "@/lib/domain/party";
+import { profileOfDocType } from "@/lib/profile";
 import { DOC_TYPE_LIST, DOC_TYPES } from "@/lib/domain/registry";
 import type { AdminDocument } from "@/lib/domain/types";
 
@@ -66,8 +74,12 @@ import type { AdminDocument } from "@/lib/domain/types";
  * — conflating them would make an over-narrow filter look like data loss.
  */
 /**
- * Where the table-or-cards choice is remembered. Table by default: it is the
- * denser of the two and the one this tool was built around.
+ * Where the view choice is remembered. Table by default: it is the densest of
+ * the three and the one this tool was built around.
+ *
+ * The board's grouping is deliberately *not* remembered alongside it. The view
+ * is a habit ("I read lists as cards"); which way a board is cut is a question
+ * about the thing being looked at right now, and it opens on type every time.
  */
 const VIEW_KEY = "speclr:doc-view";
 
@@ -83,16 +95,38 @@ const FIELD_ICONS: Record<FilterField, LucideIcon> = {
   total: IndianRupee,
 };
 
-type View = "table" | "cards";
+type View = "table" | "cards" | "board";
 
 const VIEW_TABS = [
   { value: "table", label: "List", icon: Rows3 },
   { value: "cards", label: "Cards", icon: LayoutGrid },
+  { value: "board", label: "Board", icon: Columns3 },
 ] as const satisfies readonly {
   value: View;
   label: string;
   icon: LucideIcon;
 }[];
+
+const isView = (value: unknown): value is View =>
+  VIEW_TABS.some((tab) => tab.value === value);
+
+/** What the group row calls each cut, and the icon it carries. */
+const GROUP_LABELS: Record<GroupBy, string> = {
+  status: "Status",
+  type: "Type",
+  month: "Month",
+};
+
+/**
+ * The same glyph the filter pill for that field uses, so "Status" means the
+ * same thing on both rows. Month has no filter field of its own, and takes the
+ * date field's calendar.
+ */
+const GROUP_ICONS: Record<GroupBy, LucideIcon> = {
+  status: CircleDot,
+  type: FileText,
+  month: Calendar,
+};
 
 export default function DocumentsBrowser({
   documents,
@@ -100,28 +134,30 @@ export default function DocumentsBrowser({
   emptyDescription,
   /** Hidden on a per-type list, where every row is already the same type. */
   hideTypeFilter = false,
-  /** What the party column holds here: "Client", "Employee", or both. */
-  partyLabel = "Client / employee",
 }: {
   documents: AdminDocument[];
   emptyTitle?: string;
   emptyDescription?: string;
   hideTypeFilter?: boolean;
-  partyLabel?: string;
 }) {
   const [rows, setRows] = useState<FilterRow[]>([]);
   const [sort, setSort] = useState<SortState | null>(null);
   const [showSort, toggleShowSort] = useShowSort();
   const [view, setView] = useState<View>("table");
+  const [groupBy, setGroupBy] = useState<GroupBy>(GROUP_BY_LIST[0]);
   /** The pill is draggable here exactly as it is on a real tab strip. */
   const viewDrag = useTabDrag();
 
   // Read on mount, not in a lazy initializer: this component server-renders,
   // and reading localStorage during the first render would mismatch hydration.
+  // Validated rather than cast: the key is client-writable, and a third view
+  // arriving meant a stored 'cards' check would have silently kept working
+  // while a stored anything-else drew nothing.
   useEffect(() => {
     try {
+      const stored = localStorage.getItem(VIEW_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (localStorage.getItem(VIEW_KEY) === "cards") setView("cards");
+      if (isView(stored)) setView(stored);
     } catch {
       // Private browsing / storage disabled — the default holds for the session.
     }
@@ -151,10 +187,11 @@ export default function DocumentsBrowser({
   //
   // The pill glides rather than blinking, and it does so without measuring
   // anything: the segments are an equal-width grid, so the pill is exactly one
-  // segment wide and a 100% translate lands precisely on the second. That is
-  // why the labels are not free-width — `TabsIndicator` needs Base UI to
+  // segment wide and each 100% of translate lands precisely on the next. That
+  // is why the labels are not free-width — `TabsIndicator` needs Base UI to
   // measure the active tab onto CSS variables, and there is no tab here to
-  // measure. Add a third view and the grid columns go with it.
+  // measure. The grid columns, the pill's width and the translate all read off
+  // `VIEW_TABS`, so a fourth view is a row in that table and nothing else.
   const viewToggle = (
     <div
       role="group"
@@ -170,8 +207,11 @@ export default function DocumentsBrowser({
         // other control on this row is. A hand-written control that sets its
         // own height is how one row comes to have two, and the difference is
         // small enough to look like a rendering artefact rather than a bug.
-        "group/tabs-list relative grid h-7 w-fit shrink-0 grid-cols-2 cursor-grab items-center data-dragging:cursor-grabbing data-dragging:select-none",
+        "group/tabs-list relative grid h-7 w-fit shrink-0 cursor-grab items-center data-dragging:cursor-grabbing data-dragging:select-none",
       )}
+      // An arbitrary class can't be composed from a value, and `grid-cols-3`
+      // written out is a second place to count the tabs.
+      style={{ gridTemplateColumns: `repeat(${VIEW_TABS.length}, minmax(0, 1fr))` }}
     >
       {/* `data-drag-pill` / `data-drag-segment` are what `useTabDrag` looks for
           in a strip Base UI did not build. The transform is written out rather
@@ -180,13 +220,14 @@ export default function DocumentsBrowser({
         aria-hidden="true"
         data-drag-pill=""
         style={{
-          transform: `translateX(calc(${view === "cards" ? "100%" : "0px"} + var(--tab-drag, 0px)))`,
+          width: `${100 / VIEW_TABS.length}%`,
+          transform: `translateX(calc(${VIEW_TABS.findIndex((tab) => tab.value === view) * 100}% + var(--tab-drag, 0px)))`,
         }}
         className={cn(
           // Flat `bg-raised`, no border and no shadow: with the trough gone
           // the fill is the whole of the state, and the offsets re-zero with
           // the padding that used to inset them.
-          "pointer-events-none absolute inset-y-0 left-0 z-0 w-1/2 rounded-md bg-raised",
+          "pointer-events-none absolute inset-y-0 left-0 z-0 rounded-md bg-raised",
           "transition-transform duration-200 ease-standard motion-reduce:transition-none",
           // Untransitioned under the hand; the offset is already per-frame.
           "group-data-dragging/tabs-list:transition-none",
@@ -201,7 +242,7 @@ export default function DocumentsBrowser({
           onClick={() => chooseView(value)}
           className={cn(
             // `px-3` and the switcher's own two weights. The pill is exactly
-            // half the control and the halves are adjacent by construction, so
+            // one segment and the segments are adjacent by construction, so
             // the air between the labels is the segments' own padding.
             "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-md px-3",
             "text-xs font-medium whitespace-nowrap transition-colors",
@@ -214,6 +255,53 @@ export default function DocumentsBrowser({
           {label}
         </button>
       ))}
+    </div>
+  );
+
+  // How the board is cut: three cuts, all three on the page, in a row of their
+  // own under the filters.
+  //
+  // It was a dropdown at the left end of the filter bar, and the two things
+  // wrong with that are the same thing twice. There are exactly three cuts and
+  // they are cheap to try, so a menu hid two of them behind a click for no
+  // saving in space; and the filter row answers "which rows", while this
+  // answers "how are they arranged", which is a different question and reads
+  // as one when it is on its own line.
+  //
+  // Drawn as a tab strip rather than as buttons: no strokes anywhere, each cut
+  // a label and its glyph, and the one in force sitting on `bg-raised` — the
+  // same surface `TabsIndicator` and the view toggle's pill use, so the app has
+  // one way of saying "this one". No visible group label either; three named
+  // cuts under a filter row say what they are. The name is still on the group
+  // for anything that cannot see the arrangement.
+  const groupRow = (
+    <div role="group" aria-label="Group by" className="flex w-fit items-center gap-1">
+      {GROUP_BY_LIST.map((value) => {
+        const Icon = GROUP_ICONS[value];
+        const on = groupBy === value;
+        return (
+          <Button
+            key={value}
+            type="button"
+            variant="ghost"
+            aria-pressed={on}
+            onClick={() => setGroupBy(value)}
+            className={cn(
+              "px-2.5 whitespace-nowrap transition-colors",
+              // `hover:bg-raised` is not redundant: `ghost` brings its own
+              // `hover:bg-muted`, which would drop the active one a step on
+              // hover, and a pill that changes under the cursor reads as a
+              // control that is about to do something.
+              on
+                ? "bg-raised text-foreground hover:bg-raised"
+                : "text-muted-foreground",
+            )}
+          >
+            <Icon className="size-3.5" aria-hidden="true" />
+            {GROUP_LABELS[value]}
+          </Button>
+        );
+      })}
     </div>
   );
 
@@ -242,6 +330,19 @@ export default function DocumentsBrowser({
         })),
     } satisfies Record<"type" | "party" | "status", FilterOption[]>;
   }, [documents]);
+
+  // Which type columns the board draws, empty ones included. Every type this
+  // profile can hold, so "no credit note this year" is something the board
+  // says rather than something it omits — except on a per-type list, where
+  // four empty columns would be four answers to a question nobody asked.
+  const columnTypes = useMemo(() => {
+    const present = new Set(documents.map((doc) => doc.type));
+    if (hideTypeFilter) return [...present];
+    const profiles = new Set(documents.map((doc) => profileOfDocType(doc.type)));
+    return DOC_TYPE_LIST.filter((spec) =>
+      profiles.has(profileOfDocType(spec.code)),
+    ).map((spec) => spec.code);
+  }, [documents, hideTypeFilter]);
 
   const hiddenFields = useMemo(() => {
     const hidden: FilterField[] = [];
@@ -345,7 +446,17 @@ export default function DocumentsBrowser({
     // rows below say — and at 16px the bar floated between the page title and a
     // table it had no visible connection to. Matching the bar's own internal
     // spacing is what makes the two read as one block.
-    <div className="flex flex-col gap-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2",
+        // The board fills the page and scrolls inside its columns, which is
+        // the catalogue's arrangement and needs a height to resolve against
+        // all the way up (`PageBody className="h-full min-h-0"`). Only here:
+        // a table given a definite height would have to grow its own
+        // scrollbar, and the page's is the one that should move.
+        view === "board" && "min-h-0 flex-1",
+      )}
+    >
       <FilterBar
         rows={rows}
         onChange={onFiltersChange}
@@ -353,9 +464,10 @@ export default function DocumentsBrowser({
         icons={FIELD_ICONS}
         options={options}
         hiddenFields={hiddenFields}
-        labels={{ party: partyLabel }}
-        // The sort control's only UI is the column headers, which cards don't
-        // have — offering it there would toggle nothing.
+        labels={{ party: partyFieldLabel(documents) }}
+        // The sort control's only UI is the column headers, which neither the
+        // cards nor the board have — offering it there would toggle nothing.
+        // The board's own arrangement control is a row below, not here.
         leading={
           view === "table" ? (
             <SortToggle showSort={showSort} onToggle={toggleShowSort} />
@@ -365,6 +477,20 @@ export default function DocumentsBrowser({
         // apart from the controls that decide what is in it.
         trailing={viewToggle}
       />
+
+      {/* Its own row, and only the view that has an arrangement to change. It
+          stays above the "n of m shown" status line, so the two controls that
+          decide what the board looks like are adjacent.
+
+          The rule under it is what a strip with no strokes of its own needs:
+          the pill says which cut is in force, and the line says where the
+          controls stop and the board starts. */}
+      {view === "board" ? (
+        <>
+          {groupRow}
+          <Separator />
+        </>
+      ) : null}
 
       <p className="sr-only" role="status">
         {visible.length} of {documents.length} documents shown
@@ -395,7 +521,15 @@ export default function DocumentsBrowser({
         </Empty>
       ) : (
         <>
-          {view === "cards" ? (
+          {view === "board" ? (
+            // Every filtered row, not one page of them, and so no pager: see
+            // `DocumentsKanban` on why a board that holds cards back misreports
+            // the one thing it is for.
+            <DocumentsKanban
+              groups={groupDocuments(visible, groupBy, columnTypes)}
+              groupBy={groupBy}
+            />
+          ) : view === "cards" ? (
             <>
               <DocumentsCards documents={pageRows} />
               {/* Cards have no card to sit in, so the pager stays under them. */}

@@ -138,6 +138,11 @@ const TEXT_PAIRS: Array<[string, string]> = [
   // most likely to be nudged in one theme without the other being checked.
   ['foreground', 'raised'],
   ['muted-foreground', 'raised'],
+  // A card under the pointer, which is a whole card's worth of text and not a
+  // label: the type, the party and the date on it are all muted. This is the
+  // pair that ruled out the symmetrical dark value (`--slate-700`, 3.94:1).
+  ['foreground', 'hover'],
+  ['muted-foreground', 'hover'],
 ];
 
 /**

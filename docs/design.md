@@ -92,12 +92,21 @@ active profile use a token rather than `bg-input/85`.
 | A raised surface (card, popover, dialog) | `bg-card`, `bg-popover` |
 | A pill sitting on a track (active tab, active profile) | `bg-raised` |
 | Anything quieter than body text | `text-muted-foreground` |
-| A resting fill (hover, selected, chip) | `bg-muted` / `bg-accent` |
+| A resting fill (selected, chip) | `bg-muted` / `bg-accent` |
+| A card or a row under the pointer | `hover:bg-hover` |
 | The action colour | `primary` |
 | Destructive | `destructive` as a **tint** (`bg-destructive/10 text-destructive`) everywhere it sits among other controls; solid (`bg-destructive text-destructive-foreground`) only as the confirming button inside its own dialog |
 | Advisory, between pass and fail | `warning` |
 | Any hairline | `border-border` |
 | Focus | `ring-ring` |
+
+`--hover` is the newest of these and the reason it exists is worth keeping: a
+hover reaches for `--muted` or `--accent` by habit, and on a board a card sits
+*inside* a `bg-muted` column, so that hover paints the card the colour of the
+well behind it. `--hover` moves a step away from the well instead, which means
+down the ramp in light (slate 200) and down to the page's own step in dark
+(slate 950). The symmetrical dark answer, slate 700, fails: muted text lands on
+it at 3.94:1, and most of what a card prints is muted.
 
 **Never mix a token with a palette class to get an in-between shade.** Use
 `color-mix(in oklch, var(--token), …)`, as `button.tsx`'s `secondary` hover and
@@ -752,9 +761,9 @@ a segment, or pick the pill up and drop it. It is one hook, `useTabDrag` in
 `ui/tabs.tsx`, and `TabsList` calls it for you, so an ordinary strip built from
 `Tabs` / `TabsList` / `TabsTrigger` has the gesture without asking.
 
-A control that is *not* built from `Tabs` (there is one: the list/cards toggle
-in `DocumentsBrowser`, which has no panels to reveal and so must not claim tab
-roles) spreads the hook onto its container and marks its parts:
+A control that is *not* built from `Tabs` (there is one: the list/cards/board
+toggle in `DocumentsBrowser`, which has no panels to reveal and so must not
+claim tab roles) spreads the hook onto its container and marks its parts:
 `data-drag-pill` on the sliding surface, `data-drag-segment` on each choice. The
 pill's transform then adds `var(--tab-drag, 0px)`, which is 0 at rest.
 
@@ -802,6 +811,79 @@ Verified in `e2e/tabs.spec.ts` against `/preview/tabs` and in
 a single un-interpolated jump past the strip's own edge in the first case, a
 `pointermove` fired on `document.body` (outside the render root's ancestor
 chain, so React's delegated listener cannot see it either) in the second.
+
+### 2.8 Boards
+
+Two: `services/ServiceCards` (the catalogue, one column per Schedule) and
+`DocumentsKanban` (the third view of the documents list). **They are the same
+board.** The first was built and tuned; the second copies its chrome rather than
+deciding any of it again, and a change to one is a change to both.
+
+- **The column is a well, not a bare list.** `rounded-md border border-border
+  bg-muted`, one step up the neutral ramp from the page, with the cards on their
+  own fill inside it. That is what makes a column read as a container rather
+  than as three stacks that happen to be side by side.
+- **Its header is `px-3 py-2`**, the name at `text-sm font-medium` on the left
+  and the count at `text-xs text-muted-foreground tabular-nums` on the right.
+  Anything else the column offers (the catalogue's add button) joins the count.
+- **The scroll is the column's, not the page's**, so the header stays put and
+  one busy column cannot push the others off the bottom. That needs a height all
+  the way up: the page passes `PageBody className="h-full min-h-0"` and every
+  box between it and the column's list is `flex-1 min-h-0`. A board on a page
+  that scrolls normally is a board whose columns are as tall as their contents,
+  which is a list with headings in it.
+- **A board reuses its list's card.** `DocumentCard` is exported for it. Three
+  views drawing a document three ways is exactly the drift `StatusBadge` and
+  `DateCell` exist to stop (§4).
+- **A column is one quarter of the page, whatever the count.** Four is what the
+  catalogue grids to (`xl:grid-cols-4`) and it is the width both boards use: a
+  variable count writes it out as
+  `auto-cols-[max(15rem,calc((100%_-_3rem)/4))]` on a `grid-flow-col` row, so
+  two columns are two quarters and fourteen scroll sideways at the same size.
+  `gap-4` between them either way. Stretching two columns to half the page each
+  would draw the same card at two widths a page apart.
+- **An empty column is still a column.** This is the opposite of the rule filter
+  choices follow (§2.6), and deliberately: an unmatched filter value is a click
+  that does nothing, while an empty column is an answer, and a board whose
+  columns came and went with the data would change shape under every keystroke.
+  So a board draws every value its axis *can* hold: both statuses, every
+  document type the profile can contain, every month between the first and the
+  last on screen, gaps included.
+- **Busiest column first, and recency breaks a tie.** The fullest column should
+  not be somewhere in the middle, so the count orders them and the newest
+  document *made* in each separates two that are level: the one still being
+  added to leads. The per-axis order (the lifecycle, the registry, the calendar)
+  is what a genuine tie falls back on, which is also what keeps the empty
+  columns still. `sort` being stable is load-bearing here, not incidental.
+- **An empty column that names something creatable is the create control.** Only
+  the type axis qualifies, and there the whole column body becomes one dashed
+  target reading "New credit note", so the emptiness is an invitation rather than
+  an absence. Not a button in the corner: at a quarter-page wide the column is
+  already the right size for the gesture. The other two axes get nothing, because
+  a month is past and a status is what finalizing produces, so both offers would
+  be ones the app cannot honour.
+- **The board shows every filtered row rather than one page of them.** A board
+  is read for how much sits in each column, so a pager would misreport the only
+  thing it is for.
+- **Nothing drags between columns unless the move it implies is lawful and
+  reversible.** Today none is: type and issue month cannot be changed by
+  dropping, and a drop into "Finalized" would finalize a document, which claims
+  an FY number and makes it immutable for 72 months. Finalizing is a decision
+  taken in the editor.
+- **The grouping control is a row of its own, under the filters, with all three
+  cuts on it.** The filter row answers "which rows"; this answers "how are they
+  arranged", and the two read as one question when they share a line. Three
+  options are also too few to hide: a menu cost a click to see two of them and
+  saved no space, so all three are on the row, drawn as a tab strip. No strokes
+  and no visible group label, each cut a glyph and a word, and the one in force
+  on `bg-raised` with `aria-pressed` — the surface `TabsIndicator` and the view
+  toggle's pill already use, because the app should have one way of saying
+  "this one". **Type leads and is where the board opens**: it is what a list of
+  documents is mostly read for, and the one axis whose empty columns offer to
+  fill themselves. A full-width `Separator` closes the row, which a strip with
+  no strokes of its own needs: the pill says which cut is in force, the rule
+  says where the controls stop and the board starts. Only the view that has an
+  arrangement to change is shown any of it.
 
 ---
 
@@ -1118,3 +1200,47 @@ Append a line when a rule here changes. Keep it to one line and name the
   measurements live in `e2e/sidebar-float.spec.ts`, each confirmed red first —
   including the travel test, whose first version passed with the transition
   deleted because it sampled too late. It samples one frame in now.
+
+- **1 September 2026.** **§2.8, new.** A board view on the documents list, cut
+  by status, type or issue month. Its card is the card view's, exported for it.
+  The two rules worth having written down are that nothing drags between
+  columns (a drop into "Finalized" would finalize a document) and that the board
+  shows every filtered row with no pager. Same pass: the view toggle's geometry
+  now reads off `VIEW_TABS`, so a fourth view is a row in that table and not
+  three hand-counted numbers.
+
+  **Rewritten the same day, and the reason is the section's point.** The first
+  version was drawn from scratch — bare columns, a hairline under each heading,
+  cards on the page ground — while `services/ServiceCards` had been a tuned
+  board for weeks. Nobody had written the board down, so the second one decided
+  everything again and landed somewhere else, which is the §4 failure one level
+  up from a component: **a surface that exists twice needs its rules in here, not
+  just its code in the repo.** §2.8 now describes the shared board and names both
+  callers, and the documents board is that chrome with one departure (a variable
+  column count) and the reason for it.
+
+  **And a third pass, which is where the copy actually finished.** Matching the
+  chrome was not matching the board: the columns were still full-width and
+  page-height, so the same card was drawn at 700px here and 340px on the
+  catalogue. Four things landed together, and three are now rules in §2.8 rather
+  than facts about one component. A column is a **quarter of the page in both
+  boards**, written out as `max(15rem,calc((100%_-_3rem)/4))` where the count
+  varies, and the row scrolls past the fourth. The board runs **full height**,
+  which took `h-full min-h-0` on the two pages that host the documents list, the
+  same thing the catalogue's page has always passed. And an **empty column is
+  still a column** (both statuses, every type the profile can hold, every month
+  in the span), which is the inverse of the filter rule and needed saying,
+  because the old behaviour was deliberate and tested.
+
+  The fourth is `--hover`, a new token, added because the card's
+  `hover:bg-muted/40` composited to within a hair of the `bg-muted` column it
+  now sits in: hovering a card made it *vanish into the well*. §1 carries the
+  value and why the symmetrical dark answer fails its contrast check.
+
+  **A fourth pass ordered the columns by how full they are**, with the newest
+  document made in each breaking a tie. That demotes the three per-axis orders
+  to the base a tie falls back on, which is a smaller change than it sounds for
+  status and type and a real one for month: a quiet January now files behind a
+  busy December rather than between its neighbours. Noted in §2.8 as a rule for
+  both boards.
+
