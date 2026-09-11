@@ -252,6 +252,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.city = doc.city;
       data.services = doc.services;
       data.recurring = doc.recurring;
+      data.paymentPhases = doc.paymentPhases;
       break;
   }
 
@@ -319,6 +320,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
       city: row.data.city,
       services: row.data.services ?? [],
       recurring: row.data.recurring ?? [],
+      paymentPhases: row.data.paymentPhases,
     } satisfies QuotationDocument;
   }
 

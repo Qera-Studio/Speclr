@@ -57,6 +57,10 @@ const editor = () =>
 const service = (n: number) =>
   screen.getByRole('group', { name: `Service ${n}` });
 
+/** The payment-schedule fieldset — derived phases and the editor for them. */
+const schedule = () =>
+  screen.getByRole('group', { name: 'Payment schedule' });
+
 beforeEach(() => {
   jest.clearAllMocks();
   createDraft.mockResolvedValue({ success: true, id: 'sq-1' });
@@ -168,16 +172,74 @@ describe('QuotationEditor (new)', () => {
   it('shows the two-phase schedule under ₹1 lakh and the three-phase one above it', async () => {
     const u = userEvent.setup();
     editor();
-    const totals = () => screen.getByRole('region', { name: 'Totals' });
 
     await u.type(within(service(1)).getByLabelText(/^description$/i), 'Web design');
     await u.type(screen.getByLabelText(/^rate/i), '50000');
-    await waitFor(() => expect(totals()).toHaveTextContent('Balance prior launch'));
-    expect(totals()).not.toHaveTextContent('Design delivery');
+    await waitFor(() => expect(schedule()).toHaveTextContent('Balance prior launch'));
+    expect(schedule()).not.toHaveTextContent('Design delivery');
 
     await u.clear(screen.getByLabelText(/^rate/i));
     await u.type(screen.getByLabelText(/^rate/i), '200000');
-    await waitFor(() => expect(totals()).toHaveTextContent('Design delivery'));
+    await waitFor(() => expect(schedule()).toHaveTextContent('Design delivery'));
+  });
+
+  /**
+   * The rule 3 exception, both halves. Derived until somebody says otherwise,
+   * and what "otherwise" opens on is the band it would have printed rather than
+   * an empty list — a schedule typed from nothing is a schedule that forgets a
+   * phase.
+   */
+  it('seeds the editable phases from the derived band, then lets them be changed', async () => {
+    const u = userEvent.setup();
+    editor();
+    await u.type(within(service(1)).getByLabelText(/^description$/i), 'Web design');
+    await u.type(screen.getByLabelText(/^rate/i), '200000');
+    await waitFor(() => expect(schedule()).toHaveTextContent('Design delivery'));
+
+    await u.click(screen.getByRole('button', { name: /edit the phases/i }));
+
+    // Three inputs carrying the three-phase band (35/35/30), not three empty
+    // ones. Two of them read 35, which is why this is an `All` query.
+    expect(screen.getByLabelText('Phase 1')).toHaveValue(
+      'Advance on signing contract',
+    );
+    expect(screen.getByLabelText('Phase 3')).toHaveValue('Balance prior launch');
+    expect(within(schedule()).getAllByDisplayValue('35')).toHaveLength(2);
+    expect(within(schedule()).getByDisplayValue('30')).toBeInTheDocument();
+    expect(schedule()).toHaveTextContent('100% of the one-time total');
+
+    await u.click(screen.getByRole('button', { name: /add phase/i }));
+    expect(screen.getByLabelText('Phase 4')).toBeInTheDocument();
+    // A fourth phase at nothing leaves the schedule still at 100.
+    expect(schedule()).toHaveTextContent('100% of the one-time total');
+  });
+
+  it('says so while the stated phases do not add up to 100%', async () => {
+    const u = userEvent.setup();
+    editor();
+    await u.click(screen.getByRole('button', { name: /edit the phases/i }));
+
+    await u.clear(screen.getByLabelText('%', { selector: '#qtn-phase-percent-0' }));
+    await u.type(
+      screen.getByLabelText('%', { selector: '#qtn-phase-percent-0' }),
+      '30',
+    );
+    await waitFor(() =>
+      expect(schedule()).toHaveTextContent('80% of the one-time total'),
+    );
+    expect(schedule()).toHaveTextContent(/must add up to 100%/);
+  });
+
+  /** Removing the last phase is how the document stops carrying its own. */
+  it('goes back to the derived schedule', async () => {
+    const u = userEvent.setup();
+    editor();
+    await u.click(screen.getByRole('button', { name: /edit the phases/i }));
+    expect(screen.getByLabelText('Phase 1')).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: /use the derived schedule/i }));
+    expect(screen.queryByLabelText('Phase 1')).toBeNull();
+    expect(schedule()).toHaveTextContent('Balance prior launch');
   });
 
   it('collects a recurring row with a note instead of an amount', async () => {

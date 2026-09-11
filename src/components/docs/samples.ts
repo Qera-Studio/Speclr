@@ -151,6 +151,28 @@ export const DOC_SAMPLES: Record<string, DocSample> = {
       },
     } as unknown as AdminDocument,
   },
+  quotation: {
+    blurb: 'Quotes a build, one page per service, before there is a contract.',
+    doc: {
+      ...base,
+      id: 'sample-quotation',
+      type: 'SQ',
+      number: 'QS-SQ-2627-001',
+      lineItems: [],
+      salutation: 'Miss',
+      recipientName: 'Mehak',
+      companyName: 'The Colorist',
+      city: 'Coimbatore',
+      // The cover is all the thumbnail crops to, and it derives its subject
+      // line from the service names. One service is enough to draw it; the
+      // deliverables are what the pages after it would carry.
+      services: [
+        { name: 'Custom Website', lines: [], addOns: [] },
+        { name: 'Social Media', lines: [], addOns: [] },
+      ],
+      recurring: [],
+    } as unknown as AdminDocument,
+  },
   'credit-note': {
     blurb: 'Reduces an invoice already issued, under section 34.',
     doc: {

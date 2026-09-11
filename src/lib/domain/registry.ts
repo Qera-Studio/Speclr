@@ -24,6 +24,7 @@ import { serviceInputSchema } from "./service";
 import { docContentSchema, type DocContent, type TermItem } from "./docContent";
 import {
   SALUTATIONS,
+  type PaymentPhase,
   type QuotationService,
   type RecurringLine,
   type Salutation,
@@ -469,6 +470,18 @@ const quotationDraftServiceSchema = z.object({
   addOns: z.array(draftLineItemSchema).max(30),
 });
 
+/**
+ * One row of a document's own payment schedule.
+ *
+ * Only present when the quotation departs from the band its one-time total
+ * lands in (`phasesOf`). The percentages are checked as a set at finalize, not
+ * here: a half-written schedule is an ordinary state for a draft.
+ */
+const paymentPhaseSchema = z.object({
+  label: textSchema(120),
+  percent: z.number().min(0).max(100),
+});
+
 const quotationBaseShape = {
   issueDate: isoDate,
   salutation: z.enum(SALUTATIONS).optional(),
@@ -476,16 +489,37 @@ const quotationBaseShape = {
   companyName: orgNameSchema(200).optional(),
   city: textSchema(120).optional(),
   recurring: z.array(recurringLineSchema).max(20),
+  paymentPhases: z.array(paymentPhaseSchema).max(8).optional(),
   content: docContentSchema.optional(),
 };
 export const quotationDraftSchema = z.object({
   ...quotationBaseShape,
   services: z.array(quotationDraftServiceSchema).max(10),
 });
-export const quotationFinalizeSchema = z.object({
-  ...quotationBaseShape,
-  services: z.array(quotationServiceSchema).min(1).max(10),
-});
+export const quotationFinalizeSchema = z
+  .object({
+    ...quotationBaseShape,
+    services: z.array(quotationServiceSchema).min(1).max(10),
+  })
+  /**
+   * A stated schedule bills the whole project or it is wrong.
+   *
+   * Refused rather than normalised: phases at 30/30/30 is somebody's arithmetic
+   * slipping, and silently scaling them to 100 would issue a schedule nobody
+   * wrote. Nothing to check when the phases are derived, because the bands
+   * already sum to 100.
+   */
+  .superRefine((doc, ctx) => {
+    if (!doc.paymentPhases?.length) return;
+    const total = doc.paymentPhases.reduce((sum, p) => sum + p.percent, 0);
+    if (Math.abs(total - 100) > 0.001) {
+      ctx.addIssue({
+        code: "custom",
+        message: `The payment phases add up to ${total}%, not 100%.`,
+        path: ["paymentPhases"],
+      });
+    }
+  });
 
 const bulletSectionSchema = z.object({
   heading: textSchema(200),
@@ -588,6 +622,8 @@ export interface DocFields {
   city?: string;
   services?: QuotationService[];
   recurring?: RecurringLine[];
+  /** Absent is the derived schedule. See `phasesOf` in `quotation.ts`. */
+  paymentPhases?: PaymentPhase[];
   /**
    * Editable text overrides. Absent keys resolve to the defaults below via
    * `contentOf`; finalize materialises the lot onto the document so an issued

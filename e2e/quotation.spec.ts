@@ -170,3 +170,101 @@ test.describe('the quotation fits its page', () => {
     }
   });
 });
+
+/**
+ * The plain build quote, and it is measured for what is *missing*.
+ *
+ * One service, no add-ons, nothing running after it: the commonest shape, and
+ * the one where the recurring page is a heading over an empty table and the
+ * summary restates the single figure on the page before. Both are dropped, so
+ * this is four pages.
+ */
+test.describe('a quotation with no add-ons and nothing recurring', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/preview/quotation-plain');
+    await settled(page);
+  });
+
+  test('prints no recurring page and no summary', async ({ page }) => {
+    const pages = pagesOf(page);
+    // cover + 1 service + details + contact.
+    expect(await pages.count()).toBe(4);
+    await expect(
+      page.getByText('Deliverables [Recurring Infrastructure]'),
+    ).toHaveCount(0);
+    await expect(page.getByText('Recurring Total (Fixed Portion)')).toHaveCount(0);
+    // The summary's own header row, which nothing else on the document prints.
+    await expect(page.getByRole('columnheader', { name: 'Add-on' })).toHaveCount(0);
+  });
+
+  test('still runs cover to contact, with the payment structure between', async ({
+    page,
+  }) => {
+    const pages = pagesOf(page);
+    await expect(pages.nth(1).getByText('Deliverables [Custom Website]')).toBeVisible();
+    await expect(pages.nth(2).getByText('Phase 1')).toBeVisible();
+    await expect(
+      pages.nth(3).getByText(/collaborate on what matters to you/i),
+    ).toBeVisible();
+  });
+
+  test('keeps every block inside its page', async ({ page }) => {
+    const pages = pagesOf(page);
+    for (let i = 0; i < (await pages.count()); i++) {
+      const frame = pages.nth(i);
+      expect(await frame.evaluate((el) => el.classList.contains('overflow-visible')))
+        .toBe(false);
+      const clip = await worstClip(frame);
+      expect(clip, clip ? `page ${i + 1} hides ${clip.px}px of "${clip.text}"` : '')
+        .toBeNull();
+    }
+  });
+});
+
+/**
+ * The overflow case, and the reason `DELIVERABLES_PER_PAGE` is a measurement.
+ *
+ * Twelve deliverables against a limit of 8, so four carry over and the add-on
+ * table follows them onto the same page. That second page is the tallest this
+ * document type produces: two tables, two headers and two totals inside one
+ * frame that clips. If this ever goes red, the limit is wrong, not the page.
+ */
+test.describe('a service with more deliverables than one page holds', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/preview/quotation-overflow');
+    await settled(page);
+  });
+
+  test('carries the rest onto the next page, above the add-ons', async ({ page }) => {
+    const pages = pagesOf(page);
+    // cover + service + continuation/add-ons + summary + details + contact.
+    // The fixture has no recurring rows, but it has add-ons, so the summary
+    // page prints without a recurring table above it.
+    expect(await pages.count()).toBe(6);
+
+    const second = pages.nth(2);
+    await expect(
+      second.getByText('Deliverables [Custom Website, continued]'),
+    ).toBeVisible();
+    await expect(second.getByText('Deliverables [Custom Add-ons]')).toBeVisible();
+  });
+
+  test('states the service total once, below the rows it covers', async ({ page }) => {
+    const pages = pagesOf(page);
+    // The first page holds rows and no sum; the sum is under the last of them.
+    await expect(pages.nth(1).getByText('One-time Total')).toHaveCount(0);
+    await expect(pages.nth(2).getByText('One-time Total')).toHaveCount(2);
+  });
+
+  test('keeps both tables inside the page they share', async ({ page }) => {
+    const pages = pagesOf(page);
+    for (let i = 0; i < (await pages.count()); i++) {
+      const frame = pages.nth(i);
+      expect(await frame.evaluate((el) => el.classList.contains('overflow-visible')))
+        .toBe(false);
+      const clip = await worstClip(frame);
+      expect(clip, clip ? `page ${i + 1} hides ${clip.px}px of "${clip.text}"` : '')
+        .toBeNull();
+    }
+  });
+});

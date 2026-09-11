@@ -22,6 +22,7 @@ import type { DocContent } from "./docContent";
 // Type-only, so the cycle with `quotation.ts` (which imports `LineItem` from
 // here) is erased at compile time and never reaches the module graph.
 import type {
+  PaymentPhase,
   QuotationService,
   RecurringLine,
   Salutation,
@@ -652,8 +653,19 @@ export interface QuotationDocument extends BaseDocument {
   city?: string;
   /** One page each, in order, plus an add-on page wherever `addOns` is non-empty. */
   services: QuotationService[];
-  /** The recurring-infrastructure page. */
+  /**
+   * The recurring-infrastructure page. Empty is the ordinary case and prints
+   * no page at all: most quotes are a build with nothing running after it.
+   */
   recurring: RecurringLine[];
+  /**
+   * The payment schedule, when this quotation states its own.
+   *
+   * Absent is the ordinary case and means the band derived from the one-time
+   * total (`phasesOf`). Rule 3's stated exception rather than a free field:
+   * derived by default, and an untouched quotation prints what it always did.
+   */
+  paymentPhases?: PaymentPhase[];
 }
 
 export type AdminDocument =

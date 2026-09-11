@@ -352,6 +352,72 @@ const quotation = (): QuotationDocument => ({
 });
 
 /**
+ * The plain build quote: one service, no add-ons, nothing running after it.
+ *
+ * The commonest shape and the one with the fewest pages, which is exactly why
+ * it is measured. It exercises the two conditional pages by their absence: no
+ * recurring page, and therefore no summary, so this is a four-page document
+ * (cover, service, details, contact).
+ */
+const quotationPlain = (): QuotationDocument => ({
+  ...quotation(),
+  services: [
+    {
+      name: "Custom Website",
+      blurb:
+        "A single-page site built around the work itself: what you make, who it is for, and how to reach you, with nothing between a visitor and those three answers.",
+      lines: [
+        {
+          description: "Web design",
+          detail: "The full visual design, built around your brand.",
+          ratePaise: 4500000,
+          qty: 1,
+        },
+        {
+          description: "Build & launch",
+          detail: "Turning the design into the live site, tested on real devices.",
+          ratePaise: 3500000,
+          qty: 1,
+        },
+      ],
+      addOns: [],
+    },
+  ],
+  recurring: [],
+});
+
+/**
+ * A service with more deliverables than one page holds, and add-ons after it.
+ *
+ * Twelve against a limit of 8, so four overflow onto the second page and the
+ * add-on table follows them there. That page is the tallest this document type
+ * produces, which is the measurement: two tables, two headers and two totals
+ * inside one A4 frame that clips.
+ *
+ * It carries no recurring rows but does carry add-ons, which makes it the
+ * second thing worth measuring here: a summary page printed with no recurring
+ * table above it, so `mt-auto` has the whole frame to resolve against.
+ */
+const quotationOverflow = (): QuotationDocument => {
+  const base = quotation();
+  const [first] = base.services;
+  return {
+    ...base,
+    services: [
+      {
+        ...first,
+        lines: [
+          ...first.lines,
+          ...first.addOns.slice(0, 7).map((line) => ({ ...line })),
+        ],
+        addOns: first.addOns.slice(0, 3),
+      },
+    ],
+    recurring: [],
+  };
+};
+
+/**
  * Every fixture the preview route serves, and the only ones it will serve: the
  * segment is looked up here rather than parsed, so there is nothing to traverse.
  */
@@ -367,6 +433,10 @@ export const FIXTURES = {
   "invoice-export": invoiceExport,
   /** Two services, add-ons on the first, five recurring rows: the real thing. */
   quotation,
+  /** One service, no add-ons, nothing recurring: the two optional pages absent. */
+  "quotation-plain": quotationPlain,
+  /** Twelve deliverables against a limit of 8, with add-ons on the same page. */
+  "quotation-overflow": quotationOverflow,
 } as const;
 
 export type FixtureName = keyof typeof FIXTURES;

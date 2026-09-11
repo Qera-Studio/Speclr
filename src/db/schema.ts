@@ -29,6 +29,7 @@ import {
 import type { AddressParts } from "@/lib/domain/address";
 import type { ScheduleKey } from "@/lib/domain/contract/schedules";
 import type {
+  PaymentPhase,
   QuotationService,
   RecurringLine,
   Salutation,
@@ -393,6 +394,8 @@ export interface DocumentData {
   city?: string;
   services?: QuotationService[];
   recurring?: RecurringLine[];
+  /** Absent means the schedule derived from the one-time total (`phasesOf`). */
+  paymentPhases?: PaymentPhase[];
 }
 
 export const documents = pgTable(

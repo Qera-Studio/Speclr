@@ -1,6 +1,10 @@
 import {
   computeQuotationTotals,
+  DELIVERABLES_PER_PAGE,
   paymentPhases,
+  phasesOf,
+  phasesTotal,
+  splitDeliverables,
   type QuotationService,
   type RecurringLine,
 } from "../quotation";
@@ -168,6 +172,65 @@ describe("paymentPhases", () => {
       const phases = paymentPhases(paise);
       expect(phases[0].label).toBe("Advance on signing contract");
       expect(phases[phases.length - 1].label).toBe("Balance prior launch");
+    }
+  });
+});
+
+describe("splitDeliverables", () => {
+  const lines = (count: number) =>
+    Array.from({ length: count }, () => line(100000));
+
+  it("leaves a service inside the limit whole, with nothing to carry over", () => {
+    const { first, overflow } = splitDeliverables(lines(DELIVERABLES_PER_PAGE));
+    expect(first).toHaveLength(DELIVERABLES_PER_PAGE);
+    expect(overflow).toEqual([]);
+  });
+
+  it("carries only what does not fit, in order", () => {
+    const all = lines(DELIVERABLES_PER_PAGE + 3);
+    const { first, overflow } = splitDeliverables(all);
+    expect(first).toEqual(all.slice(0, DELIVERABLES_PER_PAGE));
+    expect(overflow).toEqual(all.slice(DELIVERABLES_PER_PAGE));
+    // Nothing is dropped and nothing is printed twice.
+    expect([...first, ...overflow]).toEqual(all);
+  });
+
+  it("handles a service with no deliverables at all", () => {
+    expect(splitDeliverables([])).toEqual({ first: [], overflow: [] });
+  });
+});
+
+/**
+ * Rule 3's stated exception: derived by default, override explicit. An
+ * untouched quotation must print exactly the band it always did.
+ */
+describe("phasesOf", () => {
+  it("falls back to the band when the document states nothing", () => {
+    expect(phasesOf(50_00_000)).toEqual(paymentPhases(50_00_000));
+    expect(phasesOf(50_00_000, undefined)).toEqual(paymentPhases(50_00_000));
+  });
+
+  it("reads an empty list as stating nothing, not as a schedule of no phases", () => {
+    expect(phasesOf(50_00_000, [])).toEqual(paymentPhases(50_00_000));
+  });
+
+  it("prefers the document's own phases, whatever band the total lands in", () => {
+    const own = [{ label: "On signing", percent: 100 }];
+    expect(phasesOf(50_00_000, own)).toEqual(own);
+    expect(phasesOf(500_00_000, own)).toEqual(own);
+  });
+});
+
+describe("phasesTotal", () => {
+  it("sums what was written, so a short schedule can be caught", () => {
+    expect(phasesTotal([{ label: "a", percent: 30 }, { label: "b", percent: 50 }]))
+      .toBe(80);
+    expect(phasesTotal([])).toBe(0);
+  });
+
+  it("agrees with every band, which is why a derived schedule needs no check", () => {
+    for (const paise of [0, 100_00_000, 300_00_000]) {
+      expect(phasesTotal(paymentPhases(paise))).toBe(100);
     }
   });
 });

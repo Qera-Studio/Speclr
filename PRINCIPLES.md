@@ -364,6 +364,44 @@ Specific standing pushbacks:
 
 ### Logged deviations
 
+**3 September 2026 — the quotation's payment phases became editable.** Written
+down here because §3 records the schedule as one of the seven things the
+Service Quotation *derives*, and `quotation.ts` said outright that nothing
+about it was editable per document. It is now, on request.
+
+This is rule 3's **stated exception** rather than a departure from the rule,
+and the shape is the one the rule asks for:
+
+- **Derived by default and shown read-only.** A quotation carrying no
+  `paymentPhases` prints the band its one-time total lands in, exactly as
+  before. `phasesOf` is the single reader, and it treats an absent list and an
+  empty one as the same answer, so removing the last phase returns the document
+  to the derivation rather than leaving it with a schedule of nothing.
+- **The override opens on the derived answer.** "Edit the phases" seeds the
+  list from the band it would have printed, so departing from the schedule
+  starts from it. A schedule typed from an empty list is a schedule that
+  forgets a phase.
+- **A stated schedule is checked.** `quotationFinalizeSchema` refuses phases
+  that do not add up to 100%, naming the figure. Refused rather than
+  normalised: 30/30/30 is somebody's arithmetic slipping, and scaling it to
+  100 silently would issue a schedule nobody wrote. Nothing is checked when
+  the schedule is derived, because every band already sums to 100.
+
+What it gives up, stated plainly: the bands encode a real commercial position
+(unpaid exposure at or under 25% at every point above ₹3 lakh, and the client
+paying no more than 30% before seeing work), and a hand-written schedule can
+depart from it silently. That is a pricing decision rather than a correctness
+one, which is why it is an exception the rule allows rather than one it
+forbids. A quotation is also pre-sale: nothing in it is a tax position, and
+`computeTotals` never sees these figures.
+
+One thing fell out of it that is not a deviation but a fix. `finalizeDocument`
+collapsed every schema failure into "Document is incomplete, fill every
+required field first", which is right for a blank and sends the reader hunting
+for a blank that does not exist when the failure is a value that *was* stated
+and does not hold. It now passes through the message of a `custom` issue,
+which is the §5f superRefine-over-refine argument applied one layer out.
+
 **23 August 2026 — the place-of-supply override was removed, on instruction.**
 Rule 3's stated exception is *derived by default, override explicit and
 recorded*, and this was the reference implementation of it: a switch, a

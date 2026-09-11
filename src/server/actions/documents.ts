@@ -205,6 +205,11 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
       city: fields.city,
       services: fields.services ?? [],
       recurring: fields.recurring ?? [],
+      // Absent is the derived schedule, so this passes through undefined as
+      // readily as a list. It was missing here while the schema validated it
+      // and the mapper stored it, so every save and every finalize wrote the
+      // document back with the band it started from.
+      paymentPhases: fields.paymentPhases,
       content: fields.content,
     };
   }
@@ -404,9 +409,21 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   const spec = DOC_TYPES[existing.type];
   const parsed = spec.finalizeSchema.safeParse(existing);
   if (!parsed.success) {
+    /*
+      A missing field and a wrong one need different sentences.
+      "Fill every required field" is right for a blank and sends the reader
+      looking for a blank that does not exist when the failure is a value that
+      was stated and does not hold: payment phases adding to 60%, deductions
+      over gross. Those are raised as `custom` issues by a `superRefine` that
+      already worked out what is wrong, so the finding is passed through rather
+      than thrown away. Same reasoning as §5f's superRefine-over-refine.
+    */
+    const stated = parsed.error.issues.find((issue) => issue.code === "custom");
     return {
       success: false,
-      error: "Document is incomplete — fill every required field first.",
+      error:
+        stated?.message ??
+        "Document is incomplete — fill every required field first.",
     };
   }
 

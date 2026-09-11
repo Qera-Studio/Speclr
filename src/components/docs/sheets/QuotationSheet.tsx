@@ -4,7 +4,8 @@ import {
   computeQuotationTotals,
   formatQuote,
   formatQuoteRange,
-  paymentPhases,
+  phasesOf,
+  splitDeliverables,
   QUOTATION_COVER_BLURB,
   QUOTATION_OFFER_LINE,
   QUOTATION_TAX_NOTE,
@@ -26,8 +27,8 @@ import QeraMark from "./QeraMark";
  * `data-page="own"`, so `packBlocks` gives each exactly one page and packs
  * nothing else onto it:
  *
- *   cover → service 1 → [service 1 add-ons] → service 2 → … →
- *   recurring + summary → details → contact
+ *   cover → service 1 → [service 1 continued / add-ons] → service 2 → … →
+ *   [recurring + summary] → details → contact
  *
  * That is the document's own structure, not a rendering convenience: a service
  * *is* a page, which is why `QuotationService` is a record carrying its own
@@ -37,17 +38,19 @@ import QeraMark from "./QeraMark";
  * below) are chrome in `quotationPageProps`, identical on every page, so no
  * block draws them itself.
  *
- * **There is a ceiling, and it is a hard one.** Nothing here flows onto a
- * second page, so a service with too many deliverables does not paginate, it
- * spills off the paper. Measured at **8 deliverables** on a service page that
- * also carries a blurb; 9 fails. That number moves whenever the type sizes or
- * `QUOTATION_PADDING` move, so it is measured rather than reasoned about.
- * `e2e/quotation.spec.ts` asserts no page is
- * marked `overflows` for exactly that reason, and that assertion was confirmed
- * to go red before it was trusted. If a service ever genuinely needs more,
- * split it in two or flow the table through the `Paginator` the way the
- * contract does — do not quietly raise the limit. jsdom measures every box as
- * zero, so verify any change to this sheet in a real browser.
+ * **Two pages are conditional, and both are absent by default.** A service
+ * gets a second page when it carries add-ons or more deliverables than one
+ * page holds; the recurring page prints only where there are recurring rows or
+ * an add-on somewhere to summarise. The ordinary quote is a build with nothing
+ * running after it, and neither page has anything to say about one.
+ *
+ * **The ceiling is still real, it just paginates now.** A service page holds
+ * `DELIVERABLES_PER_PAGE` (8, measured, not reasoned about) and the rest move
+ * to the page after it. That number moves whenever the type sizes or
+ * `QUOTATION_PADDING` move, and nothing catches a page that still overflows:
+ * `e2e/quotation.spec.ts` asserts no page is marked `overflows`, and that
+ * assertion was confirmed to go red before it was trusted. jsdom measures every
+ * box as zero, so verify any change to this sheet in a real browser.
  */
 
 /**
@@ -124,18 +127,23 @@ function DeliverableRows({ line }: { line: LineItem }) {
  * Shared by a service's page and its add-on page, because the add-on page *is*
  * the same table under a different heading. The heading is a prop rather than
  * derived here for exactly that reason.
+ *
+ * `total` is a prop for the same reason. A service whose deliverables run past
+ * `DELIVERABLES_PER_PAGE` prints as two tables, and each summing its own rows
+ * would print two partial One-time Totals for one price. So the table that
+ * ends the service carries the whole figure and the one before it carries
+ * none: `total` absent is how this table says the sum belongs further on.
  */
 function DeliverablesTable({
   heading,
   lines,
+  total,
 }: {
   heading: string;
   lines: LineItem[];
+  /** Omitted on a continuation table, whose total was stated on the page before. */
+  total?: number;
 }) {
-  const totalPaise = lines.reduce(
-    (sum, line) => sum + lineAmountPaise(line),
-    0,
-  );
   return (
     <table className="w-full border-collapse">
       <thead>
@@ -159,21 +167,23 @@ function DeliverablesTable({
           <DeliverableRows key={i} line={line} />
         ))}
       </tbody>
-      <tfoot>
-        <tr className="align-baseline">
-          <td className="pt-[14px] text-[16px] text-white">One-time Total</td>
-          <td colSpan={2} />
-          <td className="pt-[14px] text-right text-[16px] text-white">
-            {formatQuote(totalPaise)}
-          </td>
-        </tr>
-        <tr>
-          <td className="pt-[3px] text-[12px] text-white/50">
-            {QUOTATION_TAX_NOTE}
-          </td>
-          <td colSpan={3} />
-        </tr>
-      </tfoot>
+      {total === undefined ? null : (
+        <tfoot>
+          <tr className="align-baseline">
+            <td className="pt-[14px] text-[16px] text-white">One-time Total</td>
+            <td colSpan={2} />
+            <td className="pt-[14px] text-right text-[16px] text-white">
+              {formatQuote(total)}
+            </td>
+          </tr>
+          <tr>
+            <td className="pt-[3px] text-[12px] text-white/50">
+              {QUOTATION_TAX_NOTE}
+            </td>
+            <td colSpan={3} />
+          </tr>
+        </tfoot>
+      )}
     </table>
   );
 }
@@ -341,7 +351,7 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
   const studio = studioOf(doc);
   const content = contentOf(doc, DOC_TYPES.SQ);
   const totals = computeQuotationTotals(doc.services, doc.recurring);
-  const phases = paymentPhases(totals.oneTimePaise);
+  const phases = phasesOf(totals.oneTimePaise, doc.paymentPhases);
 
   const cover = (
     <div
@@ -364,28 +374,35 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
       </p>
 
       <div className="mt-[96px]">
+        <Caption>Subject:</Caption>
+        <p className="mt-[8px] text-[16px] text-white">
+          {quotationSubject(doc)}
+        </p>
+      </div>
+
+      <div className="mt-[24px]">
         <Caption>Prepared for:</Caption>
         <p className="mt-[8px] text-[16px] text-white">{addressee(doc)}</p>
         <p className="mt-[4px] text-[16px] text-white">
           {QUOTATION_OFFER_LINE}
         </p>
       </div>
-
-      <div className="mt-[24px]">
-        <Caption>Subject:</Caption>
-        <p className="mt-[8px] text-[16px] text-white">
-          {quotationSubject(doc)}
-        </p>
-      </div>
     </div>
   );
 
-  // One page per service, plus an add-on page wherever there are add-ons. The
-  // service name is the table's heading too — a separate short label would be
-  // one more field for one string, and one more thing to leave stale.
+  // One page per service, plus a second page wherever it carries more
+  // deliverables than fit or has add-ons. The service name is the table's
+  // heading too — a separate short label would be one more field for one
+  // string, and one more thing to leave stale.
   const servicePages = doc.services.flatMap(
     (service: QuotationService, i: number) => {
       const label = service.name || `Service ${i + 1}`;
+      const { first, overflow } = splitDeliverables(service.lines);
+      const servicePaise = service.lines.reduce(
+        (sum, line) => sum + lineAmountPaise(line),
+        0,
+      );
+
       const page = (
         <div
           key={`service-${i}`}
@@ -405,48 +422,95 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
           <div className="mt-auto pb-[24px]">
             <DeliverablesTable
               heading={`Deliverables [${service.name}]`}
-              lines={service.lines}
+              lines={first}
+              // The whole service's figure, stated once. It moves to the
+              // continuation page when the deliverables run past this one, so
+              // the sum a reader sees is always below every row it covers.
+              total={overflow.length > 0 ? undefined : servicePaise}
             />
           </div>
         </div>
       );
-      if (service.addOns.length === 0) return [page];
+
+      if (overflow.length === 0 && service.addOns.length === 0) return [page];
+
+      // The second page carries whatever did not fit and then the add-ons.
+      // Two tables, never one: the overflow is priced in the service's own
+      // total and the add-ons are priced separately, and merging them would
+      // print a figure that covers both.
       return [
         page,
         <div
-          key={`add-ons-${i}`}
+          key={`service-${i}-more`}
           data-page="own"
           data-page-frame="dark"
-          aria-label={`${label} add-ons`}
+          aria-label={
+            overflow.length > 0 && service.addOns.length > 0
+              ? `${label} continued and add-ons`
+              : overflow.length > 0
+                ? `${label} continued`
+                : `${label} add-ons`
+          }
           className={PAGE}
         >
-          <DeliverablesTable
-            heading="Deliverables [Custom Add-ons]"
-            lines={service.addOns}
-          />
+          {overflow.length > 0 ? (
+            <DeliverablesTable
+              heading={`Deliverables [${service.name}, continued]`}
+              lines={overflow}
+              total={servicePaise}
+            />
+          ) : null}
+          {service.addOns.length > 0 ? (
+            <div className={overflow.length > 0 ? "mt-[40px]" : undefined}>
+              <DeliverablesTable
+                heading="Deliverables [Custom Add-ons]"
+                lines={service.addOns}
+                total={service.addOns.reduce(
+                  (sum, line) => sum + lineAmountPaise(line),
+                  0,
+                )}
+              />
+            </div>
+          ) : null}
         </div>,
       ];
     },
   );
 
-  // The recurring table at the top, the summary pinned to the foot by
-  // `mt-auto` — the same mechanism the letters' closing block uses.
-  const recurring = (
-    <div
-      key="recurring"
-      data-page="own"
-      data-page-frame="dark"
-      aria-label="Recurring infrastructure"
-      className={PAGE}
-    >
-      {doc.recurring.length > 0 ? (
-        <RecurringTable rows={doc.recurring} fixed={totals.recurringFixed} />
-      ) : null}
-      <div className="mt-auto pb-[16px]">
-        <SummaryTable totals={totals} />
+  /**
+   * The recurring page is the exception, not the rule, and so is the summary
+   * under it.
+   *
+   * Most quotes are a build with nothing running after it, and a page headed
+   * "Recurring Infrastructure" over an empty table is a page saying there is
+   * something to say. So it prints only where there are rows.
+   *
+   * The summary goes with it for the same reason one page up: it restates the
+   * service pages, and where there is one price and no add-ons and no
+   * recurring cost, every figure it holds was already stated on the page
+   * before. A table that repeats the page above it is not a summary, it is the
+   * same table twice.
+   */
+  const hasAddOns = doc.services.some((service) => service.addOns.length > 0);
+  const showSummary = doc.recurring.length > 0 || hasAddOns;
+  const recurring = !showSummary ? null : (
+      // The recurring table at the top, the summary pinned to the foot by
+      // `mt-auto` — the same mechanism the letters' closing block uses.
+      <div
+        key="recurring"
+        data-page="own"
+        data-page-frame="dark"
+        aria-label="Recurring infrastructure"
+        className={PAGE}
+      >
+        {doc.recurring.length > 0 ? (
+          <RecurringTable rows={doc.recurring} fixed={totals.recurringFixed} />
+        ) : null}
+        <div className="mt-auto pb-[16px]">
+          <SummaryTable totals={totals} />
+        </div>
       </div>
-    </div>
-  );
+    );
 
   const details = (
     <div
@@ -562,7 +626,9 @@ export function quotationBlocks(doc: QuotationDocument): React.ReactNode[] {
     </div>
   );
 
-  return [cover, ...servicePages, recurring, details, close];
+  // `recurring` is the one page that can be absent, so the list is filtered
+  // rather than assembled conditionally: the packer counts what it is handed.
+  return [cover, ...servicePages, recurring, details, close].filter(Boolean);
 }
 
 /** Shared props for both the workspace preview and `PrintPages` — the pairing

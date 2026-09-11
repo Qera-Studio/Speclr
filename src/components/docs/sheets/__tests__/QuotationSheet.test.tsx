@@ -98,10 +98,155 @@ describe("quotationBlocks page structure", () => {
 
   it("drops every service page when there are no services", () => {
     const { container } = render(
-      <>{quotationBlocks({ ...baseDoc, services: [] })}</>,
+      <>{quotationBlocks({ ...baseDoc, services: [], recurring: [] })}</>,
     );
-    // Cover, recurring, details, close — the four fixed pages, always present.
-    expect(container.querySelectorAll('[data-page="own"]')).toHaveLength(4);
+    // Cover, details, close. Nothing to summarise and nothing recurring, so
+    // the middle page has nothing to say either.
+    expect(container.querySelectorAll('[data-page="own"]')).toHaveLength(3);
+  });
+});
+
+/**
+ * The recurring page is the exception, and the summary goes with it.
+ *
+ * The plain build quote — one service, no add-ons, nothing running after it —
+ * is what most quotations are, and neither page has anything to say about one:
+ * a heading over an empty table, and a summary restating the single figure on
+ * the page before.
+ */
+describe("the recurring page is optional", () => {
+  const plain: QuotationDocument = {
+    ...baseDoc,
+    services: [{ name: "Custom Website", lines: [line("Web design", 1500000)], addOns: [] }],
+    recurring: [],
+  };
+
+  it("prints no recurring page and no summary for a build with neither", () => {
+    render(<>{quotationBlocks(plain)}</>);
+    expect(screen.queryByLabelText("Recurring infrastructure")).toBeNull();
+  });
+
+  it("prints the summary once a service carries add-ons, with no recurring table", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...plain,
+          services: [{ ...plain.services[0], addOns: [line("CMS", 2500000)] }],
+        })}
+      </>,
+    );
+    const sheet = page("Recurring infrastructure");
+    // The summary is there; the recurring table it usually sits under is not.
+    expect(within(sheet).getByText("Item")).toBeInTheDocument();
+    expect(
+      within(sheet).queryByText("Deliverables [Recurring Infrastructure]"),
+    ).toBeNull();
+  });
+
+  it("prints both once there is a recurring row", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...plain,
+          recurring: [
+            { description: "Hosting", frequency: "Monthly", amountPaise: 287000 },
+          ],
+        })}
+      </>,
+    );
+    const sheet = page("Recurring infrastructure");
+    expect(
+      within(sheet).getByText("Deliverables [Recurring Infrastructure]"),
+    ).toBeInTheDocument();
+    expect(within(sheet).getByText("Item")).toBeInTheDocument();
+  });
+});
+
+/**
+ * More deliverables than a page holds go onto the service's next page.
+ *
+ * They are not add-ons: they are priced in the service's own One-time Total,
+ * which is why the figure moves to the continuation table with them. Two
+ * partial totals for one price is the failure this guards.
+ */
+describe("a service with more deliverables than fit", () => {
+  const many = (count: number) =>
+    Array.from({ length: count }, (_, i) => line(`Deliverable ${i + 1}`, 100000));
+
+  it("keeps the first eight and moves the rest to a continuation page", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...baseDoc,
+          services: [{ name: "Custom Website", lines: many(11), addOns: [] }],
+        })}
+      </>,
+    );
+    const first = page("Custom Website");
+    expect(within(first).getByText("Deliverable 8")).toBeInTheDocument();
+    expect(within(first).queryByText("Deliverable 9")).toBeNull();
+
+    const rest = page("Custom Website continued");
+    expect(within(rest).getByText("Deliverable 9")).toBeInTheDocument();
+    expect(within(rest).getByText("Deliverable 11")).toBeInTheDocument();
+    expect(
+      within(rest).getByText("Deliverables [Custom Website, continued]"),
+    ).toBeInTheDocument();
+  });
+
+  it("states the service's whole total once, on the page its rows end", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...baseDoc,
+          services: [{ name: "Custom Website", lines: many(11), addOns: [] }],
+        })}
+      </>,
+    );
+    // 11 x 1,000. Stated on the continuation, not split across two pages.
+    expect(within(page("Custom Website")).queryByText("One-time Total")).toBeNull();
+    const rest = page("Custom Website continued");
+    expect(within(rest).getByText("One-time Total")).toBeInTheDocument();
+    expect(within(rest).getByText("₹ 11,000")).toBeInTheDocument();
+  });
+
+  it("puts the overflow above the add-ons on one page, as two tables", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...baseDoc,
+          services: [
+            {
+              name: "Custom Website",
+              lines: many(10),
+              addOns: [line("CMS", 2500000)],
+            },
+          ],
+        })}
+      </>,
+    );
+    const second = page("Custom Website continued and add-ons");
+    expect(
+      within(second).getByText("Deliverables [Custom Website, continued]"),
+    ).toBeInTheDocument();
+    expect(
+      within(second).getByText("Deliverables [Custom Add-ons]"),
+    ).toBeInTheDocument();
+    // Two One-time Totals, never one covering both: the overflow is priced in
+    // the service's own figure and the add-ons are priced separately.
+    const totals = within(second)
+      .getAllByRole("row")
+      .filter((row) => row.textContent?.startsWith("One-time Total"));
+    expect(totals).toHaveLength(2);
+    expect(totals[0].textContent).toContain("₹ 10,000");
+    expect(totals[1].textContent).toContain("₹ 25,000");
+  });
+
+  it("leaves a service inside the limit on one page, totalled there", () => {
+    render(<>{quotationBlocks(baseDoc)}</>);
+    const service = page("Custom Website");
+    expect(within(service).getByText("One-time Total")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Custom Website continued")).toBeNull();
   });
 });
 
@@ -128,6 +273,22 @@ describe("the cover", () => {
   it("carries no per-document figure — pricing starts on the next page", () => {
     render(<>{quotationBlocks(baseDoc)}</>);
     expect(within(page("Cover")).queryByText(/One-time Total/)).toBeNull();
+  });
+
+  /**
+   * What the quote is for, then who it is for. The subject names the services
+   * and the company, so it is the line that tells a reader which document they
+   * are holding; the addressee is who it was sent to, which they already know.
+   * This is document order rather than geometry, so jsdom can see it.
+   */
+  it("puts the subject above the addressee", () => {
+    render(<>{quotationBlocks(baseDoc)}</>);
+    const cover = page("Cover");
+    const subject = within(cover).getByText(/^Quote for /);
+    const addressee = within(cover).getByText("Miss Mehak,");
+    expect(
+      subject.compareDocumentPosition(addressee) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
@@ -240,6 +401,33 @@ describe("the details page", () => {
     const details = page("Reference and payment structure");
     expect(within(details).getByText("Phase 4")).toBeInTheDocument();
     expect(within(details).getByText("Build handover (staging)")).toBeInTheDocument();
+  });
+
+  it("prints the document's own phases over the band's, whatever the total", () => {
+    render(
+      <>
+        {quotationBlocks({
+          ...baseDoc,
+          paymentPhases: [
+            { label: "On signing", percent: 40 },
+            { label: "On delivery", percent: 60 },
+          ],
+        })}
+      </>,
+    );
+    const details = page("Reference and payment structure");
+    expect(within(details).getByText("On signing")).toBeInTheDocument();
+    expect(within(details).getByText("40%")).toBeInTheDocument();
+    // The band this total lands in says "Advance on signing contract" at 50%.
+    expect(within(details).queryByText("Advance on signing contract")).toBeNull();
+  });
+
+  it("falls back to the band when the stated phases are emptied", () => {
+    render(<>{quotationBlocks({ ...baseDoc, paymentPhases: [] })}</>);
+    const details = page("Reference and payment structure");
+    expect(
+      within(details).getByText("Advance on signing contract"),
+    ).toBeInTheDocument();
   });
 
   it("prints all four fixed terms, and no editable ones", () => {

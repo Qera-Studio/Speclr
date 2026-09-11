@@ -17,8 +17,11 @@ import {
   formatQuote,
   formatQuoteRange,
   paymentPhases,
+  phasesOf,
+  phasesTotal,
   RECURRING_FREQUENCIES,
   SALUTATIONS,
+  type PaymentPhase,
   type QuotationService,
   type RecurringLine,
   type Salutation,
@@ -57,14 +60,22 @@ import { useProfile } from "@/lib/useProfile";
  *
  * Its shape follows the document's: a cover block, then one collapsible per
  * **service** carrying that service's deliverables and add-ons, then the
- * recurring rows. Nothing here writes the subject line, the payment schedule,
- * the terms or the totals — all four are derived and shown read-only, because
- * a field an operator types that the document already knows is exactly what
- * `PRINCIPLES.md` rule 3 exists to stop.
+ * recurring rows, then the payment schedule. Nothing here writes the subject
+ * line, the terms or the totals — all three are derived and shown read-only,
+ * because a field an operator types that the document already knows is exactly
+ * what `PRINCIPLES.md` rule 3 exists to stop.
  *
- * There is deliberately **no add-ons toggle**. Whether a service has an add-on
- * page is `addOns.length > 0`, so a switch beside the list would be a second
- * place for the same answer to live, and a place for the two to disagree.
+ * The payment schedule is that rule's stated exception rather than a departure
+ * from it: derived from the one-time total and shown read-only until somebody
+ * presses "Edit the phases", which seeds the list from the band it would have
+ * printed. An untouched quotation carries no `paymentPhases` at all and prints
+ * exactly what it always did.
+ *
+ * There is deliberately **no add-ons toggle and no recurring toggle**. Whether
+ * a service has an add-on page is `addOns.length > 0` and whether the document
+ * has a recurring page is `recurring.length > 0`, so a switch beside either
+ * list would be a second place for the same answer to live, and a place for the
+ * two to disagree.
  */
 
 interface ServiceFormValues {
@@ -83,6 +94,13 @@ interface RecurringFormValues {
   amountNote: string;
 }
 
+/** The percent is a string like every other numeric input here: `numericField`
+ *  filters it, and an empty box is a phase being typed rather than a zero. */
+interface PhaseFormValues {
+  label: string;
+  percent: string;
+}
+
 interface QuotationFormValues {
   salutation: string;
   recipientName: string;
@@ -91,6 +109,8 @@ interface QuotationFormValues {
   issueDate: string;
   services: ServiceFormValues[];
   recurring: RecurringFormValues[];
+  /** Empty means the derived schedule. See `phasesOf`. */
+  paymentPhases: PhaseFormValues[];
 }
 
 const emptyLine = (): LineItemFormValues => ({
@@ -160,6 +180,10 @@ function defaultsFor(doc?: QuotationDocument | null): QuotationFormValues {
           : paiseToRupees(row.amountMaxPaise),
       amountNote: row.amountNote ?? "",
     })),
+    paymentPhases: (doc?.paymentPhases ?? []).map((phase) => ({
+      label: phase.label,
+      percent: String(phase.percent),
+    })),
   };
 }
 
@@ -191,9 +215,26 @@ function toRecurring(values: QuotationFormValues): RecurringLine[] {
   }));
 }
 
+/**
+ * An empty list is `undefined`, not `[]`, and that is the whole override.
+ *
+ * `phasesOf` reads both as "use the band", but the document should not carry a
+ * field saying nothing: removing the last phase is how the editor gets back to
+ * the derived schedule, and it should leave the document as it was before
+ * anybody touched it.
+ */
+function toPhases(values: QuotationFormValues): PaymentPhase[] | undefined {
+  if (values.paymentPhases.length === 0) return undefined;
+  return values.paymentPhases.map((phase) => ({
+    label: phase.label,
+    percent: Number(phase.percent) || 0,
+  }));
+}
+
 function toPayload(values: QuotationFormValues) {
   return {
     issueDate: values.issueDate,
+    paymentPhases: toPhases(values),
     salutation: (values.salutation || undefined) as Salutation | undefined,
     recipientName: values.recipientName || undefined,
     companyName: values.companyName || undefined,
@@ -226,6 +267,7 @@ function buildPreviewDoc(
     city: fields.city,
     services: fields.services,
     recurring: fields.recurring,
+    paymentPhases: fields.paymentPhases,
     createdAt: doc?.createdAt ?? Date.now(),
     updatedAt: doc?.updatedAt ?? Date.now(),
   };
@@ -356,6 +398,7 @@ export default function QuotationEditor({
     });
   const serviceRows = useFieldArray({ control, name: "services" });
   const recurringRows = useFieldArray({ control, name: "recurring" });
+  const phaseRows = useFieldArray({ control, name: "paymentPhases" });
 
   // MUST be useWatch, never `form.watch` — the React Compiler caches an
   // ordinary function call's first result for the component's life, which
@@ -374,7 +417,9 @@ export default function QuotationEditor({
 
   const previewDoc = buildPreviewDoc(values, doc, studio);
   const totals = computeQuotationTotals(payload.services, payload.recurring);
-  const phases = paymentPhases(totals.oneTimePaise);
+  const phases = phasesOf(totals.oneTimePaise, payload.paymentPhases);
+  /** Only meaningful once the schedule is stated: the bands always make 100. */
+  const phasesSum = phasesTotal(phases);
 
   const heading = workspaceTitle(
     title,
@@ -608,6 +653,15 @@ export default function QuotationEditor({
             <legend className="mb-1 text-sm font-medium">
               Recurring infrastructure
             </legend>
+            {/* No rows is the ordinary case, and the sheet prints no page for
+                it. Said here so an empty section does not read as one that
+                failed to load. */}
+            {recurringRows.fields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Optional. Adding a row gives the quotation its own recurring
+                page, with the summary under it.
+              </p>
+            ) : null}
             {recurringRows.fields.map((field, index) => (
               <div
                 key={field.id}
@@ -746,16 +800,129 @@ export default function QuotationEditor({
               {formatQuote(totals.totalPaise)}
             </span>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Payment schedule, from the one-time total:
-          </p>
-          {phases.map((phase, i) => (
-            <div key={i} className="flex justify-between text-xs">
-              <span className="text-muted-foreground">{phase.label}</span>
-              <span className="tabular-nums">{phase.percent}%</span>
-            </div>
-          ))}
         </section>
+
+        {/*
+          The payment schedule: derived from the one-time total until somebody
+          states one, which is `PRINCIPLES.md` rule 3's stated exception rather
+          than a free field. Until then this shows the band's phases read-only,
+          exactly as it always did, and "Edit the phases" copies them in as a
+          starting point rather than opening an empty list — a schedule typed
+          from nothing is a schedule that forgets a phase.
+        */}
+        <FieldGroup size="form">
+          <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+            <legend className="mb-1 text-sm font-medium">
+              Payment schedule
+            </legend>
+
+            {phaseRows.fields.length === 0 ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  From the one-time total, {formatQuote(totals.oneTimePaise)}.
+                </p>
+                {phases.map((phase, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{phase.label}</span>
+                    <span className="tabular-nums">{phase.percent}%</span>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() =>
+                    phaseRows.replace(
+                      paymentPhases(totals.oneTimePaise).map((phase) => ({
+                        label: phase.label,
+                        percent: String(phase.percent),
+                      })),
+                    )
+                  }
+                >
+                  Edit the phases
+                </Button>
+              </>
+            ) : (
+              <>
+                {phaseRows.fields.map((field, index) => (
+                  <div key={field.id} className="flex items-end gap-2">
+                    <Field className="flex-1">
+                      <FieldLabel htmlFor={`qtn-phase-label-${index}`}>
+                        Phase {index + 1}
+                      </FieldLabel>
+                      <Input
+                        id={`qtn-phase-label-${index}`}
+                        size="form"
+                        placeholder="e.g. Advance on signing contract"
+                        {...register(`paymentPhases.${index}.label` as const)}
+                      />
+                    </Field>
+                    <Field className="w-24">
+                      <FieldLabel htmlFor={`qtn-phase-percent-${index}`}>
+                        %
+                      </FieldLabel>
+                      <Input
+                        id={`qtn-phase-percent-${index}`}
+                        size="form"
+                        {...numericField(
+                          register(`paymentPhases.${index}.percent` as const),
+                          "money",
+                        )}
+                      />
+                    </Field>
+                    <RemoveButton
+                      label={`Remove phase ${index + 1}`}
+                      onConfirm={() => phaseRows.remove(index)}
+                    />
+                  </div>
+                ))}
+
+                {/*
+                  Stated as a running figure rather than only as a finalize
+                  error: the arithmetic is what somebody is doing while they
+                  type, and finding out at finalize that four phases make 95%
+                  means re-deriving which one is short.
+                */}
+                <p
+                  aria-live="polite"
+                  className={`text-xs ${
+                    Math.abs(phasesSum - 100) > 0.001
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {phasesSum}% of the one-time total
+                  {Math.abs(phasesSum - 100) > 0.001
+                    ? ". The phases must add up to 100% before this can be finalized."
+                    : "."}
+                </p>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() =>
+                      phaseRows.append({ label: "", percent: "" })
+                    }
+                  >
+                    Add phase
+                  </Button>
+                  {/* Back to derived. `toPhases` turns the empty list into
+                      `undefined`, so the document stops carrying the field. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => phaseRows.replace([])}
+                  >
+                    Use the derived schedule
+                  </Button>
+                </div>
+              </>
+            )}
+          </fieldset>
+        </FieldGroup>
       </form>
     </DocumentWorkspace>
   );

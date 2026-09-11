@@ -156,6 +156,35 @@ export interface PaymentPhase {
   percent: number;
 }
 
+/**
+ * How many deliverables a service page holds before the rest overflow.
+ *
+ * A **measurement, not an arithmetic result**: it is what fits under a 52px
+ * heading and a blurb inside `QUOTATION_PADDING`, and it moves whenever either
+ * moves. `e2e/quotation.spec.ts` is what re-measures it, by asserting no page
+ * overflows. Raising this number without watching that spec stay green is how
+ * a deliverable goes off the edge of the paper again.
+ */
+export const DELIVERABLES_PER_PAGE = 8;
+
+/**
+ * A service's deliverables, split into the page they start on and the rest.
+ *
+ * The overflow lands on the service's *next* page, above its add-ons where it
+ * has them and on a continuation page where it does not. It is deliberately
+ * not an add-on: it is priced in the service's own One-time Total, and the
+ * heading the sheet gives it says so.
+ */
+export function splitDeliverables(lines: LineItem[]): {
+  first: LineItem[];
+  overflow: LineItem[];
+} {
+  return {
+    first: lines.slice(0, DELIVERABLES_PER_PAGE),
+    overflow: lines.slice(DELIVERABLES_PER_PAGE),
+  };
+}
+
 /** ₹1,00,000 and ₹3,00,000, in paise — the two band boundaries below. */
 const ONE_LAKH_PAISE = 100_00_000;
 const THREE_LAKH_PAISE = 300_00_000;
@@ -165,9 +194,11 @@ const THREE_LAKH_PAISE = 300_00_000;
  * total: recurring tooling is billed monthly at cost as it is incurred, so it
  * is never phased.
  *
- * Three bands, each a fixed template. Nothing here is editable per document —
- * a schedule the operator retypes per quote is a schedule that drifts, and the
- * band the total lands in is derived (`PRINCIPLES.md` rule 3).
+ * Three bands, each a fixed template, and the **default** rather than the last
+ * word: `phasesOf` below lets a document carry its own. The band the total
+ * lands in is still what a quotation prints unless somebody says otherwise,
+ * which is `PRINCIPLES.md` rule 3's stated exception (derived by default,
+ * override explicit) rather than a free field.
  *
  * The four-phase band exists because at this size the build phase alone runs
  * for months, and a single 30% tail means carrying a third of the project
@@ -195,6 +226,31 @@ export function paymentPhases(oneTimePaise: number): PaymentPhase[] {
     { label: "Build handover (staging)", percent: 25 },
     { label: "Balance prior launch", percent: 20 },
   ];
+}
+
+/**
+ * What a quotation actually prints: its own phases, else the band's.
+ *
+ * The override is the whole list or none of it. A per-phase override would be
+ * a document half-derived and half-typed, where changing the total silently
+ * re-cuts the phases somebody had already agreed. Once a quotation states its
+ * own schedule it states all of it, and moving into another band changes
+ * nothing.
+ *
+ * `undefined` and `[]` are the same answer deliberately: deleting the last
+ * phase is how the editor gets back to the derived schedule, and a quotation
+ * printing no payment structure at all is not a document anybody wants.
+ */
+export function phasesOf(
+  oneTimePaise: number,
+  phases?: PaymentPhase[],
+): PaymentPhase[] {
+  return phases && phases.length > 0 ? phases : paymentPhases(oneTimePaise);
+}
+
+/** The phases as written add up to 100%. Off by anything is refused at finalize. */
+export function phasesTotal(phases: PaymentPhase[]): number {
+  return phases.reduce((total, phase) => total + phase.percent, 0);
 }
 
 // ── Fixed copy ────────────────────────────────────────────────────────────
