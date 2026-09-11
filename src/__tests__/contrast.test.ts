@@ -38,7 +38,7 @@ const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
  * of physical colours, and the theme is which end of it each role points at.
  */
 const RAMP: Record<string, string> = Object.fromEntries(
-  [...css.matchAll(/^\s*(--slate-\d{2,3}):\s*(oklch\([^)]*\));/gm)].map(([, n, v]) => [n, v]),
+  [...css.matchAll(/^\s*(--slate-\d{1,3}):\s*(oklch\([^)]*\));/gm)].map(([, n, v]) => [n, v]),
 );
 
 /**
@@ -55,7 +55,7 @@ function tokensIn(selector: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [, name, value] of css
     .slice(start, end)
-    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\)|var\(--slate-\d{2,3}\));/gm)) {
+    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\)|var\(--slate-\d{1,3}\));/gm)) {
     out[name] = value.startsWith('var(')
       ? (RAMP[value.slice(4, -1)] ?? value)
       : value;

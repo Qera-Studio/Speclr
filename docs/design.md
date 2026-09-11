@@ -49,7 +49,7 @@ it (`--warning` is the model: amber-500 fails AA on our background, so it is a
 token).
 
 **The neutrals are one ramp, and a role never holds a colour of its own.**
-`--slate-50` … `--slate-950` are declared once in `:root` and are the only
+`--slate-0` … `--slate-950` are declared once in `:root` and are the only
 place a neutral value is written. Every neutral role is an *alias* onto a step,
 chosen per theme:
 
@@ -64,7 +64,12 @@ say. **Enforced:** a raw `oklch()` on a semantic token fails
 `design-tokens.test.ts`, as does a near-neutral outside slate's hue band.
 
 The values are Tailwind's published slate, verbatim, hue drift along the ramp
-included (247.858 → 265.755). This replaced a warm taupe at hue 40 whose tokens
+included (247.858 → 265.755). **`--slate-0` is the one step that is not
+Tailwind's**: plain white, chroma 0, added when the shell became an inset. The
+card had to sit above its ground and the page and the rails were both on
+slate-50, so there was no step left above them. Achromatic rather than the
+ramp's hue, because a document preview renders on this surface and white with
+a hint of blue in it is a tint. This replaced a warm taupe at hue 40 whose tokens
 were each an independent literal, with a chroma curve documented for humans to
 interpolate from; that curve is gone, because it existed as a substitute for
 having a ramp.
@@ -160,7 +165,16 @@ steps, never a raw `rounded-[6px]`:
 | `rounded-sm` | Chips, badges, the smallest icon buttons |
 | `rounded-md` | **Buttons, inputs, menu rows.** The default. |
 | `rounded-lg` | Cards, panels, popovers |
-| `rounded-xl` and up | The inset shell frame only |
+| `rounded-xl` and up | Nothing, currently |
+
+**The inset shell frame is `rounded-md`, and it is the exception to the nesting
+rule.** It used to be the one thing at `rounded-xl` and up, on the reasoning
+that the largest box takes the largest corner. That is backwards at this size:
+a frame the height of the window reads its radius as a *hint* of one, and a
+visible curve on it makes the shell look like a widget floated on the page
+rather than one surface with a seam in it. So it takes the smallest named step
+above square, and the cards inside it keep `rounded-lg` rather than stepping
+down from it.
 
 A nested corner is one step *smaller* than its parent, never equal. A button
 inside a card is `rounded-md` inside `rounded-lg`. Where the maths matters,
@@ -634,11 +648,19 @@ declare the same number, so a field row cannot come out three heights. Pinned in
   actions rail, and "Duplicate as new draft" as the primary action. Absence of
   an edit control is not a message.
 
-**Feedback, settled:** toasts are bottom-right, 4s, three at a time
+**Feedback, settled:** toasts are bottom-center, 4s, three at a time
 (`ui/sonner.tsx`). A toast fires only when the success is **not** already
 visible, or when it carries an **undo**; list mutations apply optimistically
 via `useOptimistic` and revert themselves on refusal, with the reason inline.
-Errors are never a toast: four seconds is not long enough to read a reason.
+
+A field-level validation error is still never a toast (§2.6): it belongs
+under the field, where the operator is already looking. What toasts instead
+is a **server-side refusal with nowhere on the page to attach to** ("Qera has
+documents and cannot be deleted"), and that one class gets its own styling:
+`toast.error(...)` prints in `--destructive`/`--destructive-foreground`, the
+same red `StatusBadge`'s danger variant uses, holds for **10 seconds** rather
+than 4, and every toast (this class included) carries a manual close. Four
+seconds was never enough to read a reason; it was enough for a confirmation.
 
 **The table, settled:** rows are 44px (`h-11` on the row, 12px cell padding,
 `leading-none`), hover is `bg-muted/40`, the header is sticky, the whole row is

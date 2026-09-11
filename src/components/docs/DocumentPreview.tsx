@@ -29,10 +29,16 @@ const PAGE_GAP = 24;
  * The page drop shadow. Neutral and light — the sheet is the artifact, the
  * shadow only lifts it off the muted viewport. Dark mode gets a faint light
  * rim instead of a dark blur, which would be invisible on a dark background.
+ *
+ * That rim is a *rim*, not a bloom. A 10px white blur under a white A4 page on
+ * a near-black ground reads as the sheet glowing rather than sitting on
+ * something: the spread is wider than the contrast it is carrying, so the eye
+ * sees light leaking out of the paper. A hairline ring plus a 4px lift states
+ * the edge, which is the only thing the shadow was ever for here.
  */
 const PAGE_SHADOW =
   'shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ' +
-  'dark:shadow-[0_2px_10px_rgba(255,255,255,0.07),0_1px_3px_rgba(255,255,255,0.04)]';
+  'dark:shadow-[0_1px_4px_rgba(255,255,255,0.035),0_0_0_1px_rgba(255,255,255,0.05)]';
 
 export type DocumentPreviewHandle = {
   /** Scroll the page at `index` (0-based) to the top of the viewport. */

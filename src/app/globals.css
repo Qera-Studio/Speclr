@@ -158,6 +158,13 @@
 
   /* The ramp. Defined once, never redefined in `.dark` — these are physical
      colours; the theme is which end of them each role points at. */
+  /* The top of the ramp, and it is plain white. Added when the shell became an
+     inset: the card had to sit *above* its ground, and with the page and the
+     rails both on slate-50 there was no step left above them to put it on.
+     Chroma 0 rather than the ramp's hue, because white with a hint of blue in
+     it is a tint, and the one surface a document preview renders on should not
+     be tinted. */
+  --slate-0: oklch(1 0 0);
   --slate-50: oklch(0.984 0.003 247.858);
   --slate-100: oklch(0.962 0.006 247.896);
   --slate-200: oklch(0.922 0.011 255.508);
@@ -170,11 +177,15 @@
   --slate-900: oklch(0.178 0.016 264.695);
   --slate-950: oklch(0.129 0.008 264.695);
 
-  /* Slate 50, not white. Three surfaces share it (the page, a card, a popover)
-     because separation here is drawn with a hairline, never with a fill. It is
-     the top of the ramp and the rail sits one step below it; anything darker
-     for the page closes that gap and the shell reads flat. */
-  --background: var(--slate-50);
+  /* White, and that is the inset card rather than the page. The shell's own
+     ground is `--sidebar` (slate-50): the nav, the header band and the margin
+     the card floats in are all that value, and this is the one step above it.
+
+     It was slate-50 too, shared with the rails, back when separation here was
+     drawn with a hairline and never with a fill. The inset is a fill: a card
+     inset from a ground it matches exactly is a card with no inside, so the
+     ring was doing all of the work and the corners none. */
+  --background: var(--slate-0);
   --foreground: var(--slate-900);
   /* The pill that sits *on* a track: the active tab, the active profile.
 
@@ -347,7 +358,22 @@
      and it is what stops a dense table reading as glare. Every foreground
      moves together or none of them do, or the same sentence sits brighter on a
      popover than on the page behind it. */
-  --background: var(--slate-950);
+  /* Slate 900, a step above the rails, which is the mirror of light's white
+     card on a slate-50 shell. The inset asked the question the note below
+     `--sidebar` had already answered the other way: at 950 the page and the
+     rail were one field with the border drawing the division, and the nav's
+     border is gone. Two identical fills with no seam between them is a card
+     with no inside.
+
+     That note's objection stands and is now paid for rather than dodged: it
+     said a lifted rail spends a step of the ramp to say "panel" when an edge
+     does it better. This lifts the *card* instead, so the direction is the
+     same in both themes (content above chrome) and the step buys the one thing
+     an edge cannot, which is an inside. `--card` is 900 too, so a card on the
+     inset is now flush with it; that is the same trade light has made since
+     `--card` and `--background` were both slate-50, and it is why `--raised`
+     exists for anything that has to lift off the page. */
+  --background: var(--slate-900);
   --foreground: var(--slate-200);
   --raised: var(--slate-800);
   /* See the light block. `--slate-700` would be the symmetrical answer and it
