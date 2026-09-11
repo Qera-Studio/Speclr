@@ -37,6 +37,11 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
             `button.tsx`. Every other create button is still `default`. */}
         <NewDocumentButton variant="raised" />
       </PageHeader>
+      {/* No tab strip. The client side's dashboard was a tab over this list,
+          which had one page answering to two names — the rail said one thing,
+          the strip offered another, and the heading agreed with neither once a
+          tab was picked. It is a rail row and a route of its own now
+          (`/client/dashboard`), so both sides' homes are the same shape. */}
       <DocumentsBrowser documents={documents} />
     </PageBody>
   );

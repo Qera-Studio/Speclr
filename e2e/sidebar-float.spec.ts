@@ -183,12 +183,19 @@ test.describe('the floating nav rail', () => {
 
   /**
    * The air asked for around it, measured. 24px between the last destination
-   * and the avatar, which is what the header leaves above the first one, and
-   * 8px under it, which is the margin either side of the icon column.
+   * and the footer's first row, which is what the header leaves above the first
+   * destination, and 8px under the account card, which is the margin either
+   * side of the icon column.
    *
    * Worth a test of its own because it is three paddings in two files adding
    * up (`SidebarContent`'s `pb-2`, the footer's `pt-4`, its `p-2`), and any one
    * of them changing leaves the markup looking right.
+   *
+   * Measured to the footer's **first** row rather than to the avatar. It was
+   * the avatar while the card was the only thing down there; the footer holds
+   * the profile switcher above it now, so measuring to the avatar measures the
+   * switcher's own height and gap as well and asserts nothing about the air
+   * this test is named for.
    */
   test('holds the account card off the rows by the header\'s own gap', async ({ page }) => {
     await page.goto('/preview/shell');
@@ -207,8 +214,16 @@ test.describe('the floating nav rail', () => {
       .boundingBox())!;
     const toggle = (await page.getByRole('button', { name: 'Toggle sidebar' }).boundingBox())!;
     const firstRow = (await rows.first().boundingBox())!;
+    // Whatever leads the footer: the profile switcher's collapsed row here, the
+    // account card wherever that row is hidden. Read from the box rather than
+    // named, so the gap this asserts stays the gap above the footer and not the
+    // gap above one particular control.
+    const footerTop = (await page
+      .locator('[data-slot="sidebar-footer"] a, [data-slot="sidebar-footer"] button')
+      .first()
+      .boundingBox())!;
 
-    expect(avatar.y - (lastRow.y + lastRow.height)).toBeCloseTo(
+    expect(footerTop.y - (lastRow.y + lastRow.height)).toBeCloseTo(
       firstRow.y - (toggle.y + toggle.height),
       0,
     );

@@ -100,6 +100,11 @@ export interface ProfileNav {
   label: string;
   icon: LucideIcon;
   home: NavLink;
+  /**
+   * A dashboard row above `home`, where the profile has one that is not already
+   * its home. Only the client side does; see the field's note there.
+   */
+  dashboard?: NavLink;
   records: NavLink[];
   documents: NavLink[];
   /** Trailing groups — Client's Library, Admin's Tools. Empty renders nothing. */
@@ -152,9 +157,23 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
     label: 'Client',
     icon: Handshake,
     // "Documents", not "Dashboard": the page browses every document already
-    // issued and shows nothing else. A real dashboard arrives when there is
-    // enough data to summarise, and takes this slot back then.
+    // issued and shows nothing else. The dashboard is its own rail row above
+    // this one (`dashboard` below), so the two are destinations rather than
+    // tabs on one page.
     home: { href: '/client', label: 'Documents', icon: FileStack, jump: 'H' },
+    /**
+     * The dashboard that is coming, as a row of its own at the top of the rail.
+     *
+     * It was a tab strip over the documents list, which made one page answer to
+     * two names: the rail said "Documents", the strip offered "Dashboard", and
+     * the page's own heading agreed with neither once a tab was picked. A
+     * destination in the rail is what it actually is.
+     *
+     * Client-only, and that is not an oversight. The admin home already *is* a
+     * dashboard (`home` below), so a second row pointing at the same idea would
+     * name it twice.
+     */
+    dashboard: { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard, jump: 'B' },
     // "Clients", not "Records". The section name and the page's own heading
     // were different words for one thing, so the rail, the breadcrumb and the
     // h1 disagreed on what you were looking at. The client side holds exactly
@@ -223,6 +242,7 @@ export function linksForProfile(profile: Profile): NavLink[] {
     // breadcrumb, which is what that page's own heading says. What the rail
     // contributes here is the index hrefs, which exist nowhere else.
     ...(nav.rail?.map((entry) => entry.link) ?? []),
+    ...(nav.dashboard ? [nav.dashboard] : []),
     nav.home,
     ...nav.records,
     ...nav.documents,

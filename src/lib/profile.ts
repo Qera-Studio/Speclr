@@ -96,6 +96,24 @@ export function docHref(doc: { id: string; type: DocTypeCode }, suffix = ''): st
   return `/${profileOfDocType(doc.type)}/docs/${doc.id}${suffix}`;
 }
 
+/**
+ * Where a row opens when somebody clicks it.
+ *
+ * A finalized document lives on its **print view**: the pages as they print,
+ * with the sealed card, Duplicate and Download beside them. `DocumentRoute`
+ * redirects there anyway, which is what keeps a bookmark, a ⌘K hit and a mailed
+ * link landing right; this saves the round trip on the common path.
+ *
+ * Here rather than in whichever list asked first, because three of them ask:
+ * the table, the cards and the board's cards. Two of them writing the rule and
+ * one forgetting is how a list comes to send you somewhere different depending
+ * on which view you happened to be in.
+ */
+export function openDocHref(doc: { id: string; type: DocTypeCode; status: string }): string {
+  if (doc.status === 'finalized') return docHref(doc, '/print');
+  return docHref(doc);
+}
+
 /** Where a blank document of `type` is started. */
 export function newDocHref(type: DocTypeCode, slug: string): string {
   return `/${profileOfDocType(type)}/docs/new/${slug}`;

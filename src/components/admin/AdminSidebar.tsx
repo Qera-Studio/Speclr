@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, PanelLeft, Plus } from "lucide-react";
 import { Shortcut } from "@/components/ui/kbd";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -31,7 +32,7 @@ import {
   type ProfileNav,
   type RailEntry,
 } from "./nav";
-import { useStepProfile } from "./ProfileSwitcher";
+import ProfileSwitcher, { useStepProfile } from "./ProfileSwitcher";
 import { useProfileDrag } from "./useProfileDrag";
 import UserCard, { type UserCardUser } from "./UserCard";
 import { useNewDocument } from "./NewDocumentCommand";
@@ -262,10 +263,19 @@ function GroupedNavBody({
           row are the way in, and `nav.documents` still feeds both.
         */}
         <SidebarMenu>
+          {/* The dashboard leads, above the documents list, because it is the
+              summary of what that list holds. It was a tab on that page; a
+              destination in the rail is what it actually is. */}
+          {nav.dashboard ? (
+            <MenuLink
+              item={nav.dashboard}
+              active={isActiveHref(pathname, nav.dashboard.href)}
+            />
+          ) : null}
           <MenuLink
             item={nav.home}
             // Home matches exactly — every URL on this side starts with it, so
-            // the prefix rule would leave Dashboard always lit.
+            // the prefix rule would leave Documents always lit.
             active={pathname === nav.home.href}
           />
           {nav.records.map((item) => (
@@ -433,7 +443,8 @@ export default function AdminSidebar({
     const measure = () =>
       setRailHeight(
         [...column.children].reduce((total, child) => {
-          if (!child.contains(nav)) return total + (child as HTMLElement).offsetHeight;
+          if (!child.contains(nav))
+            return total + (child as HTMLElement).offsetHeight;
           const style = getComputedStyle(child);
           return (
             total +
@@ -483,7 +494,10 @@ export default function AdminSidebar({
       // under the *mouse* that collapsed the rail. A keyboard user tabbing in
       // is asking for the labels, and has no pointer to move away to lift it.
       onFocusCapture={(event) => {
-        if (event.target instanceof Element && event.target.matches(":focus-visible")) {
+        if (
+          event.target instanceof Element &&
+          event.target.matches(":focus-visible")
+        ) {
           setPeeking(true);
         }
       }}
@@ -629,6 +643,38 @@ export default function AdminSidebar({
           keeps the pill's bottom margin equal to the 8px either side of the
           icon column. */}
       <SidebarFooter className="gap-3 group-data-float:pt-4">
+        {/*
+          The profile switcher, above the account card.
+
+          It was in `TopPanel`. It chooses which *navigation* is on screen — the
+          rail, the home, ⌘D and ⌘K all belong to whichever half is selected —
+          so it belongs on the column that navigation is in, directly above the
+          rows it swaps, rather than in a band that has nothing else to do with
+          them. It is also now beside the gesture it accelerates: a drag across
+          the rail and a drag across the pill are the same motion in the same
+          place.
+
+          Handed the live `offset` and `dragging` so the pill tracks the rail's
+          own swipe per frame instead of snapping after it. That is the whole
+          reason it sits inside this component rather than in `SidebarFooter`'s
+          caller: those two values are the drag hook's, and they are here.
+
+          The *pill* hides in the icon strip: 3rem cannot hold two labelled
+          halves. What replaces it there is a single row carrying the active
+          profile's icon, because which side you are on is a reading the strip
+          was giving no answer to at all, and a rail that hides where you are is
+          worse than one that hides where you could go. See `CollapsedSwitcher`;
+          the hide rule for each width lives with the thing it hides.
+        */}
+        <ProfileSwitcher profile={profile} offset={offset} dragging={dragging} />
+        {/* A rule between the switcher and the account card. They are two
+            different kinds of thing stacked in one footer — one chooses a
+            navigation, the other is you — and with only `gap-3` between them
+            the pill read as the top half of the card. `-mx-2` so the line runs
+            the footer's full width rather than stopping inside its padding;
+            hidden in the strip, where the two rows are already an icon apart
+            and a hairline across 3rem is just clutter. */}
+        <Separator className="-mx-2 w-auto group-data-[collapsible=icon]:hidden" />
         <UserCard user={user} />
       </SidebarFooter>
     </Sidebar>

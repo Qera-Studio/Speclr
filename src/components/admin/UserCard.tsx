@@ -29,9 +29,9 @@ function initials(name: string, email: string): string {
 }
 
 /**
- * Bottom-of-sidebar account card: avatar + name + email + chevron. Clicking
- * opens a dropdown with Sign out. Collapses gracefully to just the avatar when
- * the sidebar is in icon mode.
+ * Bottom-of-sidebar account card: avatar + name + email + chevron. Hovering or
+ * clicking opens a dropdown with the theme, Settings and Sign out. Collapses
+ * gracefully to just the avatar when the sidebar is in icon mode.
  */
 export default function UserCard({ user }: { user: UserCardUser }) {
   const { isMobile } = useSidebar();
@@ -50,6 +50,27 @@ export default function UserCard({ user }: { user: UserCardUser }) {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
+            /*
+              Hover opens it too, not click alone.
+
+              The primitive's own prop rather than handlers of our own: it
+              already knows that a menu opened on hover must not close while the
+              pointer is travelling to it, which is the part a pair of
+              `onPointerEnter`/`onPointerLeave` gets wrong and the reason
+              hover menus written by hand feel broken diagonally.
+
+              Click still works and still toggles, and the trigger is still a
+              button, so nothing changes for a keyboard or a touch: neither
+              has a hover to give, and `openOnHover` adds no path that only a
+              pointer can walk.
+            */
+            openOnHover
+            // No hover delay. The primitive's default is 100ms, which is there
+            // to stop a menu flashing open as a pointer crosses a *menubar* of
+            // triggers on its way somewhere else. This is one card in the
+            // corner of the rail: nothing is on the way past it, so the delay
+            // buys nothing and only reads as the card being slow to answer.
+            delay={0}
             render={
               <SidebarMenuButton
                 size="lg"

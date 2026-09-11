@@ -39,31 +39,97 @@ function renderSidebar({
 }
 
 describe('AdminSidebar', () => {
-  // `ProfileSwitcher` is in `TopPanel` — see `ProfileSwitcher.test.tsx`. The
-  // wordmark and this rail's own toggle are here, in its header.
+  // The wordmark and this rail's own toggle are here, in its header. The
+  // profile switcher is here too, at the foot — its own behaviour is covered
+  // in `ProfileSwitcher.test.tsx`; what this file pins is the placement.
 
   it('carries the wordmark above the navigation', () => {
     renderSidebar({ profile: 'client' });
     expect(screen.getByText('speclr')).toBeInTheDocument();
   });
 
+  /**
+   * The switcher moved out of `TopPanel` and into this rail's footer, above the
+   * account card. It chooses which navigation is on screen, so it belongs on
+   * the column that navigation is in.
+   *
+   * Asserted as *order within the footer* rather than mere presence: "above the
+   * account card" is the whole of what was asked for, and a switcher rendered
+   * below it would pass a presence check.
+   */
+  it('carries the profile switcher above the account card', () => {
+    renderSidebar({ profile: 'client' });
+    const footer = document.querySelector('[data-slot="sidebar-footer"]');
+    expect(footer).not.toBeNull();
+
+    const switcher = within(footer as HTMLElement).getByRole('navigation', { name: 'Profile' });
+    const account = within(footer as HTMLElement).getByRole('button', { name: /qera\.studio/i });
+
+    expect(
+      switcher.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  /**
+   * A rule between the two, because they are different kinds of thing: one
+   * chooses a navigation, the other is the person using it. Asserted as
+   * *between*, not merely present, since a separator above the switcher or
+   * below the card would satisfy a presence check and fix nothing.
+   */
+  it('rules off the switcher from the account card', () => {
+    renderSidebar({ profile: 'client' });
+    const footer = document.querySelector('[data-slot="sidebar-footer"]') as HTMLElement;
+
+    const switcher = within(footer).getByRole('navigation', { name: 'Profile' });
+    const rule = footer.querySelector('[data-slot="separator"]');
+    const account = within(footer).getByRole('button', { name: /qera\.studio/i });
+    expect(rule).not.toBeNull();
+
+    expect(switcher.compareDocumentPosition(rule!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(rule!.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  /**
+   * The collapsed strip says which profile is showing.
+   *
+   * It said nothing before: the pill hides at 3rem, so the one thing the rail
+   * could not tell you was which of two applications you were in. The row that
+   * replaces it is the active profile's icon, and it switches, so the name it
+   * announces has to carry both halves — where you are and where the click
+   * goes. Both widths render it; CSS decides which is seen, which jsdom cannot,
+   * so what is pinned here is the name rather than the visibility.
+   */
+  it('names the active profile in a row that switches away from it', () => {
+    renderSidebar({ profile: 'client' });
+    const footer = document.querySelector('[data-slot="sidebar-footer"]') as HTMLElement;
+
+    const row = within(footer).getByRole('link', { name: /Client, switch to Admin/i });
+    expect(row).toHaveAttribute('href', '/admin');
+  });
+
   describe('client profile', () => {
     /**
-     * Six rows, no headings, and the *order* is the assertion: Documents (the
-     * home), Clients, the create row, then the three library pages.
+     * Seven rows, no headings, and the *order* is the assertion: Dashboard,
+     * Documents (the home), Clients, the create row, then the three library
+     * pages.
+     *
+     * Dashboard leads because it is the summary of what Documents lists. It was
+     * a tab over that page, which had one page answering to two names; it is a
+     * destination of its own now, so it is a row like every other.
      *
      * Clients sits above the create row rather than below it because the
      * client record is what every document derives from (`CONTEXT.md` §5d).
      * Read on links alone this order was unpinned — "New document" is a button,
-     * so the previous version of this test passed either way round, which is
-     * why it queries both roles together.
+     * so an earlier version of this test passed either way round, which is why
+     * it queries both roles together.
      */
-    it('shows six rows, in order, and nothing else', () => {
+    it('shows seven rows, in order, and nothing else', () => {
       renderSidebar({ profile: 'client' });
       const labels = Array.from(
         liveNav('client').querySelectorAll('[data-slot="sidebar-menu-item"]'),
       ).map((el) => el.textContent);
       expect(labels).toEqual([
+        'Dashboard',
         'Documents',
         'Clients',
         // The create row carries its own ⌘D hint.
@@ -72,6 +138,14 @@ describe('AdminSidebar', () => {
         'Clause library',
         'Checklist',
       ]);
+    });
+
+    it('sends Dashboard to its own page', () => {
+      renderSidebar({ profile: 'client' });
+      expect(within(liveNav('client')).getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+        'href',
+        '/client/dashboard',
+      );
     });
 
     it('sends Records to the clients page', () => {

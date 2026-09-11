@@ -9,7 +9,8 @@ import { useProfileEntries } from "@/lib/useProfile";
 import { NAV_BY_PROFILE } from "./nav";
 
 /**
- * The Client / Admin switcher, beside the wordmark in `TopPanel`.
+ * The Client / Admin switcher, at the foot of the nav rail above the account
+ * card (`AdminSidebar`).
  *
  * speclr is two applications sharing one shell, and this is the only control
  * that crosses between them — the nav, the home, ⌘D and ⌘K all belong to
@@ -94,6 +95,46 @@ const COMMIT_AT = 0.4;
  */
 const DRAG_SLOP = 0.05;
 
+/**
+ * The switcher at the collapsed width: the active profile's icon, alone.
+ *
+ * 3rem cannot hold two labelled halves, and two unlabelled glyphs would put the
+ * whole of the choice into the difference between them. What the strip can say
+ * is *which side you are on*, which is the half of this control that is a
+ * reading rather than an action, and it was saying nothing at all.
+ *
+ * So it states the current profile and switches on click, the way a toggle
+ * does. Not a second copy of the pill: there is no track, no drag and no
+ * second target, because none of those fit.
+ *
+ * A plain link, not a `SidebarMenuButton`. The menu primitive would have cost
+ * this component the `useSidebar` context, which it has never needed and which
+ * is not present wherever it is rendered on its own — and what it would buy is
+ * a tooltip and a list role for a single row that is neither a list nor
+ * ambiguous. The size and radius below are the collapsed menu button's own
+ * (`size-8 rounded-md`), so the icon lands in the same 8px column as every row
+ * above it, which is the only part of that primitive this actually wanted.
+ *
+ * The name carries both halves, where you are and where the click goes,
+ * because an icon alone in a 3rem strip announces neither.
+ */
+function CollapsedSwitcher({ profile }: { profile: Profile }) {
+  const entries = useProfileEntries();
+  const other = otherProfile(profile);
+  const Icon = NAV_BY_PROFILE[profile].icon;
+  return (
+    <Link
+      href={entryHref(other, entries)}
+      className="hidden size-8 shrink-0 items-center justify-center self-center rounded-md text-sidebar-foreground transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:flex"
+    >
+      <Icon className="size-4" aria-hidden="true" />
+      <span className="sr-only">
+        {NAV_BY_PROFILE[profile].label}, switch to {NAV_BY_PROFILE[other].label}
+      </span>
+    </Link>
+  );
+}
+
 export default function ProfileSwitcher({
   profile,
   /**
@@ -104,10 +145,12 @@ export default function ProfileSwitcher({
   offset = 0,
   /** True only while fingers are down — see `ProfileDrag`. */
   dragging = false,
+  className,
 }: {
   profile: Profile;
   offset?: number;
   dragging?: boolean;
+  className?: string;
 }) {
   const entries = useProfileEntries();
   const router = useRouter();
@@ -222,9 +265,11 @@ export default function ProfileSwitcher({
   };
 
   return (
-    // No tooltips expanded: the labels are right there, and a tooltip repeating
-    // a visible word is noise the pointer has to wait out.
-    <nav
+    <>
+      <CollapsedSwitcher profile={profile} />
+      {/* No tooltips expanded: the labels are right there, and a tooltip
+          repeating a visible word is noise the pointer has to wait out. */}
+      <nav
       aria-label="Profile"
       onPointerDown={beginDrag}
       // A release that travelled is a drag, and the link underneath it must not
@@ -239,8 +284,9 @@ export default function ProfileSwitcher({
         // No border, no fill, no shadow. The active pill is the whole of the
         // control's visible state, and an outline around it was a second edge
         // saying what the fill already says on a header that is one flat band.
-        "relative flex items-center",
+        "relative flex items-center group-data-[collapsible=icon]:hidden",
         drag ? "cursor-grabbing select-none" : "cursor-grab",
+        className,
       )}
     >
       {/*
@@ -311,7 +357,8 @@ export default function ProfileSwitcher({
             <span>{nav.label}</span>
           </Link>
         );
-      })}
-    </nav>
+        })}
+      </nav>
+    </>
   );
 }
