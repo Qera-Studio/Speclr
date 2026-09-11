@@ -20,7 +20,7 @@ function renderPanel(panelContent?: React.ReactNode) {
   return render(
     <EditorPanelProvider>
       <SidebarProvider>
-        <TopPanel profile="client" />
+        <TopPanel />
         {/* A bare rail, standing in for `AdminSidebar`, so the toggle button
             has a real `data-state` to flip. */}
         <Sidebar collapsible="icon" />
@@ -53,11 +53,20 @@ describe('TopPanel', () => {
     expect(screen.queryByRole('button', { name: /toggle sidebar/i })).not.toBeInTheDocument();
   });
 
-  it('renders the profile switcher and the search field', () => {
+  /**
+   * The switcher moved to the nav rail's footer, above the account card: it
+   * chooses which *navigation* is on screen, so it belongs on that column. An
+   * absence here, a presence there — see `AdminSidebar.test.tsx` — for the same
+   * reason the wordmark is asserted both ways: the failure worth preventing is
+   * two copies, one in each place.
+   */
+  it('holds no profile switcher', () => {
     renderPanel();
-    expect(screen.getByRole('navigation', { name: 'Profile' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Client' })).toHaveAttribute('href', '/client');
-    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+    expect(screen.queryByRole('navigation', { name: 'Profile' })).not.toBeInTheDocument();
+  });
+
+  it('renders the search field', () => {
+    renderPanel();
     expect(screen.getByRole('combobox', { name: /search/i })).toBeInTheDocument();
   });
 
@@ -97,20 +106,18 @@ describe('TopPanel', () => {
     ).toBeTruthy();
   });
 
-  it('expands and collapses the editor rail from its own toggle', async () => {
-    const user = userEvent.setup();
+  /**
+   * The editor rail's collapse toggle is gone entirely, not moved here. It was
+   * the only control anywhere that could reopen the rail, so a bar offering to
+   * shut it would be offering a one-way trip. See `EditorSidebar.test.tsx`.
+   */
+  it('offers no way to collapse the editor rail', () => {
     renderPanel(
       <EditorPanelContent>
         <p>Form</p>
       </EditorPanelContent>,
     );
-
-    expect(railEl()).toHaveAttribute('data-state', 'collapsed');
-    await user.click(screen.getByRole('button', { name: /expand edit panel/i }));
-    expect(railEl()).toHaveAttribute('data-state', 'expanded');
-
-    await user.click(screen.getByRole('button', { name: /collapse edit panel/i }));
-    expect(railEl()).toHaveAttribute('data-state', 'collapsed');
+    expect(screen.queryByRole('button', { name: /edit panel/i })).not.toBeInTheDocument();
   });
 
   it('names its parts for inspection', () => {

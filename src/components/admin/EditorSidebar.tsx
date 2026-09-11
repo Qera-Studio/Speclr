@@ -1,22 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, PanelRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { parentHref } from "./breadcrumb";
 import { useEditorPanel } from "./EditorPanel";
 
 /**
@@ -37,18 +24,31 @@ export const EDITOR_RAIL_WIDTH = 352;
  * Document editors fill it with their form; the record pages fill it with the
  * add/edit form that used to open as a screen-darkening modal.
  *
- * It lives under the *same* `SidebarProvider` as the nav but drives its own
- * open state via `Sidebar`'s `state` override, so the two rails collapse
- * independently. For the same reason it must not use `SidebarTrigger` or
- * `SidebarRail` — both toggle the shared nav state through context — hence the
- * plain `Button` below.
+ * It lives under the *same* `SidebarProvider` as the nav but pins itself
+ * expanded via `Sidebar`'s `state` override, so the nav's collapse leaves it
+ * alone. For the same reason it must not use `SidebarTrigger` or `SidebarRail`
+ * — both toggle the shared nav state through context.
  *
- * Collapsed to an icon strip by default. The expand button is disabled when no
- * page content has registered, and says why.
+ * **It has no collapse control.** That went when the app header became one row:
+ * a rail that can be shut needs a way back, and the toggle was the only control
+ * anywhere that reopened it, so on a document page the rail is simply always
+ * there.
+ *
+ * Its header row stayed, holding the page's title. It is levelled against the
+ * inset's back-and-trail row, the other 48px row inside the content card: the
+ * two are what read as one band across the card, and a rail whose form began at
+ * the top while the column beside it carried a band was the odd one out.
+ *
+ * The nav's own wordmark row is no longer one of them. The nav runs the
+ * window's full height with the header band starting where it ends, so its row
+ * sits above the card rather than beside these two. Pinned in
+ * `e2e/document-header.spec.ts`.
+ *
+ * `open` is still real, because the record managers drive it: Clients,
+ * Employees and Services open the rail on "Add" and close it on save
+ * (`useRecordPanel`). What is gone is a *user-facing* collapse, not the state.
  */
 export default function EditorSidebar() {
-  const router = useRouter();
-  const pathname = usePathname();
   const panel = useEditorPanel();
   if (!panel) return null;
 
@@ -60,6 +60,7 @@ export default function EditorSidebar() {
     setDrawer,
     count,
     open,
+    title,
   } = panel;
   /*
     A page with nothing editable has no rail at all, rather than a disabled
@@ -81,7 +82,12 @@ export default function EditorSidebar() {
     <Sidebar
       side="right"
       variant="sidebar"
-      collapsible="icon"
+      // `offcanvas`, not `icon`. The icon strip existed to hold the expand
+      // button, and that button is gone. The only remaining collapsed state is
+      // a record page that has not been asked for a form yet, and there the
+      // honest width is zero: a 3rem strip with nothing in it is a column
+      // announcing a control the page no longer has.
+      collapsible="offcanvas"
       data-editor-rail=""
       // No seam of its own. `variant="sidebar"` draws a `border-l` here, which
       // is a stroke on the *inside* of this box: the rail is `bg-sidebar`, a
@@ -90,23 +96,41 @@ export default function EditorSidebar() {
       // panels. It also cut a pixel out of the rail's own 352px while the nav's
       // seam cuts one out of the nav, so the two were not mirror images.
       //
-      // Both seams are drawn by the middle column now: the nav's `border-r` on
-      // its own right edge, and the inset's `border-r` in `AdminShell` on its
-      // right. Same box, same ink, symmetric, and neither one lands on the
-      // sidebar fill. That also settles the colour problem this class used to
-      // solve by hand: the inset is outside `[data-editor-rail]`, so `--border`
-      // there is the app's value with no override to work around.
-      className="group-data-[side=right]:border-l-0"
+      // The seam against this rail is the inset's `border-r`, drawn in
+      // `AdminShell` from the middle column, so it lands on the inset's fill
+      // rather than on the sidebar's. The card's outer edge is its own ring,
+      // also drawn there.
+      /*
+        Pulled inside the inset card.
+
+        The panel underneath is `position: fixed` and anchored to the viewport's
+        own right and bottom edges, which is right while the rail is a column of
+        the window and wrong now that it is a column *of the card*: it spanned
+        the header band and overhung the card's inset edges by 8px on two sides.
+
+        So its box is restated against the card: below the header band, and in
+        by the same 8px margin the card carries. `className` lands on the
+        container itself (the primitive forwards it to the fixed box, which is
+        also what carries `data-editor-rail`), so these are plain utilities and
+        the `!` is what beats the base `top-[var(--top-panel-height,0px)]` and
+        `bottom-0` written into `ui/sidebar.tsx`.
+
+        The spacer sibling keeps its full height and is not touched: it is what
+        reserves the column's width in the flex row, and it has no edges to see.
+
+        `[&>div]:bg-background` is the last of it, and it is what makes the rail
+        part of the card rather than a column parked against it. The primitive
+        fills its inner box `bg-sidebar`, which is the *shell's* ground now: in
+        light that happens to look right, because the card is white and the rail
+        is the one thing on it that is not, but in dark the shell is a step below
+        the card and the rail read as a separate darker column with a border
+        between. The card is one surface holding two columns, so both take the
+        card's fill and the `border-r` is the only thing dividing them.
+      */
+      className="top-12! right-2! bottom-2! overflow-hidden rounded-r-md group-data-[side=right]:border-l-0 [&>div]:bg-background"
       state={expanded ? "expanded" : "collapsed"}
       style={
-        {
-          "--sidebar-width": `${EDITOR_RAIL_WIDTH}px`,
-          // 3rem, matching the nav's collapsed strip. It is also what the
-          // toggle's alignment needs: at 2.5rem a right-aligned 28px button
-          // with 12px of padding leaves 0 on its left and reads as pushed
-          // against the seam.
-          "--sidebar-width-icon": "3rem",
-        } as React.CSSProperties
+        { "--sidebar-width": `${EDITOR_RAIL_WIDTH}px` } as React.CSSProperties
       }
     >
       {/*
@@ -126,51 +150,10 @@ export default function EditorSidebar() {
         it flips at the end of the slide out and at the start of the slide in,
         which is exactly the behaviour wanted at both ends.
 
-        The track is `overflow-hidden` only while the rail is expanded: it is
-        what clips the pane on its way past the edge, and a collapsed rail is
-        3rem wide with a tooltip-bearing button in it.
+        The track is `overflow-hidden`: it is what clips the pane on its way
+        past the edge.
       */}
-      {/*
-        The rail's collapse toggle, floated over the header row rather than
-        placed in it.
-
-        It was in `TopPanel` while that bar was divided into rail-width columns.
-        The bar is one band now, and a control that opens this column belongs on
-        the column. But it cannot go *inside* the track below: that pane is
-        `inert` while the drawer is over it, and hidden entirely at the icon
-        width, and this is the one control that has to survive both.
-
-        So it is a sibling of the track, absolutely placed in the same 3rem
-        the two panes give their own headers, at the right edge where the
-        titles' text runs out. A second stacked row would have been the obvious
-        way to keep it outside, and would have given the rail two header bars.
-
-        `z-20` clears the drawer, which is `absolute inset-0` over the same box.
-
-        It keeps `px-3` and its right alignment at *both* widths, rather than
-        centring in the collapsed strip. That is what puts it directly under the
-        notifications bell: the header also pads 12px from the right edge and
-        its bell is the same 28px box, so both centres land 26px in. Centring in
-        the 3rem strip would have put this one 24px in — two pixels off, which
-        is exactly the kind of miss that reads as sloppy rather than as a
-        different decision.
-      */}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden group-data-[collapsible=icon]:overflow-visible">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-end px-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              expanded ? panel.requestClose() : panel.setOpen(true)
-            }
-            aria-label={expanded ? "Collapse edit panel" : "Expand edit panel"}
-            className="pointer-events-auto size-7 shrink-0 text-muted-foreground"
-          >
-            <PanelRight className="size-4" />
-          </Button>
-        </div>
-
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col duration-200 ease-standard",
@@ -181,68 +164,44 @@ export default function EditorSidebar() {
           style={{ transitionProperty: "transform, opacity" }}
           // Whichever pane is off screen is not a pane you can reach. `inert`
           // takes its subtree out of the tab order and `aria-hidden` off the
-          // accessibility tree, which is also what stops the two collapse toggles
-          // from both answering to the same name.
+          // accessibility tree.
           inert={drawer !== null}
           aria-hidden={drawer !== null}
         >
           {/*
-        The rail's own header, matching the drawer's row below it.
+            The document's title, on the rail's own 48px row.
 
-        It sat in `TopPanel` while that bar was divided into three columns of
-        rail width. The bar is one unbroken band now, so a document title in it
-        would appear and disappear mid-header as this rail opened, which is the
-        thing that band exists to stop. A title belongs to the panel it names.
+            It is `panel.title`, which every `EditorPanelContent` already sets
+            and nothing was reading — the title used to travel to the app header
+            by portal instead, which was a second route for a value the panel
+            context was already carrying. One route now: the page names its
+            panel, the panel's column prints the name.
 
-        The collapse toggle is not in this row: it sits above the track, where
-        it survives both the drawer sliding over this pane and the rail
-        collapsing to its icon strip. This row goes with the form it names.
+            `h-12 px-3` matches the drawer's row below and the nav's header
+            across the shell. No `border-b`: `TopPanel` draws the only rule up
+            here, and the three columns' rows read as one band because they are
+            the same height, not because each one underlines itself.
 
-        The back arrow leaves the page, so it confirms first: the draft's
-        unsaved edits live in the form, not the server. It is a different
-        control from the drawer's, which returns to the form behind it.
-      */}
-          {/* `pr-10` clears the floated collapse toggle above (12px of padding
-              plus its 28px box), so a long title truncates before it reaches
-              the button rather than under it. */}
-          <div className="flex h-12 shrink-0 items-center gap-1 border-b pr-10 pl-3 group-data-[collapsible=icon]:hidden">
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Go back"
-                    className="size-7 shrink-0 text-muted-foreground"
-                  >
-                    <ArrowLeft className="size-4" />
-                  </Button>
-                }
-              />
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Leave this page?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Anything you have not saved will be lost.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Stay</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => router.push(parentHref(pathname))}
-                  >
-                    Leave
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <span className="truncate text-sm font-semibold">
-              {panel.title ?? "Edit"}
-            </span>
-          </div>
+            `empty:hidden` is not needed — a panel with no title renders no row
+            at all rather than an empty 48px band, which is the same judgement
+            `AdminHeader` makes on a primary path.
 
-          <SidebarContent className="no-scrollbar gap-0 p-4 group-data-[collapsible=icon]:hidden">
+            An `h1`, and that is not decoration. This string is the name of the
+            document the whole screen is about, and it was an `h1` where it used
+            to render. Demoting it to a span while moving it would leave a
+            document page with no top-level heading at all, which is the one
+            thing a screen-reader user uses to find out what a page is.
+          */}
+          {title && (
+            <div className="flex h-12 shrink-0 items-center px-3">
+              <h1 className="truncate text-sm font-medium">{title}</h1>
+            </div>
+          )}
+
+          {/* `pt-0` only under a title row: that row already leaves the form
+              its air, and 48 + 16 would sit it a row and a half down. With no
+              row the rail's own `p-4` is what holds it off the top. */}
+          <SidebarContent className={cn("no-scrollbar gap-0 p-4", title && "pt-0")}>
             {/* The portal target. Kept mounted so panels can fill it at any time. */}
             <div ref={setHost} data-slot="editor-panel-host" />
           </SidebarContent>
@@ -255,27 +214,33 @@ export default function EditorSidebar() {
           <div
             ref={setFooterHost}
             data-slot="editor-panel-footer-host"
-            className="shrink-0 border-t py-4 empty:hidden group-data-[collapsible=icon]:hidden"
+            // `p-4`, matching the form above it: the footer's buttons sit in the
+            // same column as the fields they submit. It was `py-4`, so the
+            // primary action ran edge to edge while every input above it was
+            // held off the rail by 16px.
+            className="shrink-0 border-t p-4 empty:hidden"
           />
         </div>
 
         {/*
-        The drawer, covering the pane above along with its header. Its back
-        arrow is a different control from the form pane's: that one leaves the
-        page, this one returns to the form behind it. The collapse toggle is
-        above both, floated over this row, which is why it alone still answers
-        while this is open.
+        The drawer, sliding over the form pane. Its back arrow returns to the
+        form behind it, which is a different job from the header's "Back": that
+        one leaves the page.
       */}
         <div
           className={cn(
-            "invisible absolute inset-0 flex translate-x-full flex-col bg-sidebar opacity-0 duration-200 ease-standard group-data-[collapsible=icon]:hidden",
+            // `bg-background`, matching the pane it slides over: the drawer is
+            // the same column showing something else, not a panel from
+            // elsewhere. It has to be opaque, or the form behind it reads
+            // through mid-slide.
+            "invisible absolute inset-0 flex translate-x-full flex-col bg-background opacity-0 duration-200 ease-standard",
             drawer && "visible translate-x-0 opacity-100",
           )}
           style={{ transitionProperty: "transform, opacity, visibility" }}
           inert={drawer === null}
           aria-hidden={drawer === null}
         >
-          <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b pr-10 pl-3">
+          <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b pr-3 pl-3">
             <div className="flex min-w-0 items-center gap-1">
               <Button
                 type="button"

@@ -474,6 +474,13 @@ export default function AdminSidebar({
       }
       collapsible="float"
       variant="sidebar"
+      // No seam on the right, the same call the editor rail already makes for
+      // itself. A border is a stroke on the *inside* of its own box, so this
+      // one sat on the nav's fill, and the nav and the shell beside it are the
+      // same fill now: a hairline between two identical surfaces is a line
+      // drawn for no join. What separates the nav from the content is the
+      // inset card's own edge, 8px further in, and it is drawn by the card.
+      className="group-data-[side=left]:border-r-0"
       // Pointer, not mouse: this fires for a tap too, which is the touch way
       // in. `onPointerLeave` never fires for a touch, so the outside-tap
       // listener above is what closes it there.

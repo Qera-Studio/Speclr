@@ -23,16 +23,14 @@ beforeEach(() => {
 });
 
 /**
- * The rail carries its own expand/collapse toggle again, floated over its
- * header row rather than placed in `TopPanel`. `TopPanel` is still rendered
- * beside it, exactly as `AdminShell` does, so this file would notice if the
- * two ever started answering to the same name.
+ * `TopPanel` is rendered beside the rail exactly as `AdminShell` does, so this
+ * file would notice if the two ever started answering to the same name.
  */
 function renderRail(panel?: React.ReactNode) {
   return render(
     <EditorPanelProvider>
       <SidebarProvider>
-        <TopPanel profile="admin" />
+        <TopPanel />
         <EditorSidebar />
         {panel}
       </SidebarProvider>
@@ -40,53 +38,100 @@ function renderRail(panel?: React.ReactNode) {
   );
 }
 
-const expandButton = () => screen.getByRole('button', { name: /edit panel/i });
+const rail = () => document.querySelector('[data-side="right"][data-slot="sidebar"]');
 
 describe('EditorSidebar', () => {
   /**
    * The rail is not there at all on a page with nothing editable, rather than
-   * present and disabled. A permanently collapsed strip beside every list was
-   * chrome that named a capability the page did not have; the registration that
-   * now decides this is the same `count` the expand button used to read.
+   * present and empty. A permanently collapsed strip beside every list was
+   * chrome that named a capability the page did not have.
    */
   it('renders nothing when the page has nothing editable', () => {
     renderRail();
-    expect(screen.queryByRole('button', { name: /edit panel/i })).toBeNull();
+    expect(rail()).toBeNull();
   });
 
-  it('enables the expand button once a panel registers', () => {
-    renderRail(
-      <EditorPanelContent>
-        <p>Form</p>
-      </EditorPanelContent>,
-    );
-    expect(expandButton()).toBeEnabled();
-  });
-
-  it('expands and collapses on click', async () => {
-    const user = userEvent.setup();
-    renderRail(
-      <EditorPanelContent>
-        <p>Form</p>
-      </EditorPanelContent>,
-    );
-    const rail = () => document.querySelector('[data-side="right"][data-slot="sidebar"]');
-
-    expect(rail()).toHaveAttribute('data-state', 'collapsed');
-    await user.click(screen.getByRole('button', { name: /expand edit panel/i }));
-    expect(rail()).toHaveAttribute('data-state', 'expanded');
-
-    await user.click(screen.getByRole('button', { name: /collapse edit panel/i }));
-    expect(rail()).toHaveAttribute('data-state', 'collapsed');
-  });
-
-  it('shows the panel title when one is published', () => {
+  /**
+   * The collapse toggle is gone, and this is the test that has to hold.
+   *
+   * It was the only control in the app that set the rail back to open, so
+   * leaving a way to shut it would have made collapsing a one-way trip: the
+   * form for the document you are editing would be gone until a reload. The
+   * rail is simply always open now, and the back arrow that shared its header
+   * moved to `AdminHeader`.
+   */
+  it('offers no collapse control and no way back of its own', () => {
     renderRail(
       <EditorPanelContent title="New contract" autoOpen>
         <p>Form</p>
       </EditorPanelContent>,
     );
-    expect(screen.getByText('New contract')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: /edit panel/i })).toBeNull();
+    // "Go back" belongs to the app header now, and the rail must not carry a
+    // second one: two controls with one name is the ambiguity this removes.
+    expect(screen.queryByRole('button', { name: /^go back$/i })).toBeNull();
+  });
+
+  /**
+   * The header row itself stayed, and what it holds is the title of whatever
+   * the form is editing. That is `panel.title`, which `EditorPanelContent`
+   * has always set and nothing read for a while: the title travelled to the
+   * app header by portal instead, which put the name of the form in a
+   * different column from the form.
+   */
+  it('titles itself from the panel it is showing', () => {
+    renderRail(
+      <EditorPanelContent title="New contract" autoOpen>
+        <p>Form</p>
+      </EditorPanelContent>,
+    );
+    const title = screen.getByText('New contract');
+    expect(rail()!.contains(title)).toBe(true);
+  });
+
+  /**
+   * A panel with no title gets no band. The record managers open this rail for
+   * an add/edit form that the page above already names, and an empty 48px row
+   * over it is a header announcing nothing — the same judgement `AdminHeader`
+   * makes when it renders nothing at all on a primary path.
+   */
+  it('draws no header row for a panel that does not name itself', () => {
+    renderRail(
+      <EditorPanelContent autoOpen>
+        <p>Form</p>
+      </EditorPanelContent>,
+    );
+    // The scrolling form area is the first thing in the pane: nothing sits
+    // above it, which is what "no header row" means here.
+    const content = rail()!.querySelector('[data-slot="sidebar-content"]')!;
+    expect(content.previousElementSibling).toBeNull();
+  });
+
+  /** The form is the point of the page, so the rail arrives open. */
+  it('is expanded once a panel asks for it', () => {
+    renderRail(
+      <EditorPanelContent title="New contract" autoOpen>
+        <p>Form</p>
+      </EditorPanelContent>,
+    );
+    expect(rail()).toHaveAttribute('data-state', 'expanded');
+    expect(screen.getByText('Form')).toBeInTheDocument();
+  });
+
+  /**
+   * The record managers still drive the rail programmatically — Clients,
+   * Employees and Services open it on "Add" and close it on save — so the open
+   * state had to survive the toggle's removal. A panel that has not asked for
+   * the rail leaves it shut.
+   */
+  it('stays shut for a panel that does not ask to open', () => {
+    renderRail(
+      <EditorPanelContent>
+        <p>Form</p>
+      </EditorPanelContent>,
+    );
+    expect(rail()).toHaveAttribute('data-state', 'collapsed');
   });
 
   /**
@@ -106,59 +151,6 @@ describe('EditorSidebar', () => {
 
     await user.keyboard('{Meta>}b{/Meta}');
     expect(rail()).toHaveAttribute('data-state', 'expanded');
-  });
-});
-
-/**
- * People reach for a back arrow before a collapse icon, so the rail header has
- * one. It leaves the page — where a draft's unsaved edits live — so it asks
- * first rather than navigating on the click.
- */
-describe('the back arrow', () => {
-  const openRail = async (user: ReturnType<typeof userEvent.setup>) => {
-    renderRail(
-      <EditorPanelContent title="Nirmit Agarwal's exit letter" autoOpen>
-        <p>Form</p>
-      </EditorPanelContent>,
-    );
-    await user.click(screen.getByRole('button', { name: 'Go back' }));
-  };
-
-  it('asks before leaving, and does not navigate on the click alone', async () => {
-    const user = userEvent.setup();
-    await openRail(user);
-
-    expect(screen.getByText('Leave this page?')).toBeInTheDocument();
-    expect(push).not.toHaveBeenCalled();
-  });
-
-  it('goes to the document type list once confirmed', async () => {
-    const user = userEvent.setup();
-    await openRail(user);
-    await user.click(screen.getByRole('button', { name: 'Leave' }));
-
-    expect(push).toHaveBeenCalledWith('/admin/docs/exit-letter');
-  });
-
-  /**
-   * The rail lives in the admin layout, which navigation does not unmount — so
-   * unlike every other confirmation in the app, nothing else takes this dialog
-   * off screen. It stayed up over the newly loaded page.
-   */
-  it('dismisses itself on leaving, not relying on the page unmounting it', async () => {
-    const user = userEvent.setup();
-    await openRail(user);
-    await user.click(screen.getByRole('button', { name: 'Leave' }));
-
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-  });
-
-  it('stays put when the user cancels', async () => {
-    const user = userEvent.setup();
-    await openRail(user);
-    await user.click(screen.getByRole('button', { name: 'Stay' }));
-
-    expect(push).not.toHaveBeenCalled();
   });
 });
 
@@ -204,37 +196,17 @@ describe('EditorSidebar drawer', () => {
   });
 
   /**
-   * The drawer covers the rail's own header along with its form, because the
-   * two belong to the same pane — the header sits *inside* the sliding track,
-   * so it goes with it. That is why "Go back" is unreachable here rather than
-   * duplicated: its pane is `inert`, and a control on a pane nobody can see
-   * must not be in the tab order either.
-   *
-   * What stays reachable is the collapse toggle, floated over this row and
-   * outside the track for exactly this reason. And the drawer's own "Back to the form"
-   * arrow, which is a different control with a different name: that one
-   * returns to the form, while "Go back" leaves the page.
+   * The drawer covers the form pane whole. Its own back arrow is the only one
+   * in the rail, and it is a different control from the header's "Back": this
+   * one returns to the form, that one leaves the page.
    */
-  it('covers the rail header along with the form, keeping the toggle above it', async () => {
+  it('covers the form pane and offers exactly one way back', async () => {
     const user = userEvent.setup();
     renderWithDrawer();
 
     await user.click(screen.getByRole('button', { name: /wording/i }));
 
-    expect(screen.queryByRole('button', { name: /^go back$/i })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /back to the form/i })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: /collapse edit panel/i })).toHaveLength(1);
-  });
-
-  /** A drawer left open behind a collapsed rail is what you reopen it onto. */
-  it('closes the drawer when the rail is collapsed', async () => {
-    const user = userEvent.setup();
-    renderWithDrawer();
-
-    await user.click(screen.getByRole('button', { name: /wording/i }));
-    await user.click(screen.getByRole('button', { name: /collapse edit panel/i }));
-    await user.click(screen.getByRole('button', { name: /expand edit panel/i }));
-
-    expect(screen.queryByText('Masthead field')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^go back$/i })).not.toBeInTheDocument();
   });
 });

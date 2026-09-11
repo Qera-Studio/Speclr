@@ -16,6 +16,7 @@ import {
 } from "./SidebarResizeHandle";
 import { EditorPanelProvider } from "./EditorPanel";
 import EditorSidebar from "./EditorSidebar";
+import { PageHeaderSlotProvider } from "./PageHeaderSlot";
 import { NewDocumentProvider } from "./NewDocumentCommand";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import type { UserCardUser } from "./UserCard";
@@ -85,6 +86,9 @@ export default function AdminShell({
 
   return (
     <EditorPanelProvider>
+      {/* Wraps the header and the page together: the header registers the host,
+          the page portals its title and pager into it. */}
+      <PageHeaderSlotProvider>
       {/* Records the profile *and* the page, so each side reopens where it was
           left. Suspense because it reads the search params: see the component. */}
       <Suspense fallback={null}>
@@ -105,13 +109,27 @@ export default function AdminShell({
           // that walks up every ancestor scroll box. That pushed the header off
           // the top of the shell with no way to bring it back. `clip` creates no
           // scroll container at all, so there is nothing left to shift.
-          className="h-svh min-h-svh flex-col overflow-clip"
+          // `bg-sidebar` is the shell's ground, and it is what the inset card
+          // is inset *from*: the nav, the header band and the 8px margin the
+          // card floats in are all one field, with the card the one step above
+          // it. Set here rather than on `body`, which carries `bg-background`
+          // for every page in the app including the ones with no shell at all.
+          className="h-svh min-h-svh flex-col overflow-clip bg-sidebar"
           style={
             {
-              // `Sidebar`'s fixed panel reads this to start below `TopPanel`
-              // instead of at the true viewport top — see `ui/sidebar.tsx`.
-              // Matches `TopPanel`'s own `h-12`.
-              "--top-panel-height": "3rem",
+              // Zero, and that is the whole of the full-height nav.
+              //
+              // `Sidebar`'s fixed panel offsets its top by this, so it used to
+              // begin below the header band. The band no longer spans the
+              // window: it starts where the nav ends, so the nav runs from the
+              // true viewport top to the bottom and the header is one of the
+              // things sitting beside it rather than above it.
+              //
+              // Set rather than dropped. `ui/sidebar.tsx` defaults it to 0 on
+              // its own, but the float's `max-h` arithmetic reads it too, and
+              // naming it here keeps the shell's own statement of the layout in
+              // one place instead of half here and half in a fallback.
+              "--top-panel-height": "0px",
               "--sidebar-width": `${NAV_WIDTH}px`,
               // 3rem, not 2.5. `SidebarGroup` carries `px-2` and a collapsed
               // menu button is `size-8`, so a row needs 8 + 32 + 8 = 48px to
@@ -136,52 +154,94 @@ export default function AdminShell({
               provider so it sits under the same profile, outside the sidebar
               so both work from the editor rail as well. */}
           <KeyboardShortcuts profile={profile} />
-          <TopPanel profile={profile} />
-          {/* `has-[[data-editor-rail]]` so the inset's seam below follows the
-              rail's existence. The rail unmounts on a page with nothing
-              editable, and a border drawn against nothing is a stroke down the
-              right edge of the window. Done here rather than by passing a prop,
-              because `AdminShell` renders inside `EditorPanelProvider` and so
-              cannot read the panel count itself. */}
+          {/*
+            The nav, then everything else.
+
+            The nav runs the window's full height, so the header band starts
+            where the nav ends rather than crossing above it. That is the whole
+            of the change: the nav is the app's one permanent column, and a bar
+            drawn over the top of it made the wordmark and the account card look
+            like they belonged to different surfaces.
+
+            `has-[[data-editor-rail]]` so the inset's seam follows the rail's
+            existence. The rail unmounts on a page with nothing editable, and a
+            border drawn against nothing is a stroke down the right edge of the
+            window. Done here rather than by passing a prop, because `AdminShell`
+            renders inside `EditorPanelProvider` and so cannot read the panel
+            count itself.
+          */}
           <div className="group/shell-row flex min-h-0 flex-1">
             <AdminSidebar user={user} profile={profile} />
             {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
-            <SidebarInset
-              // `overflow-clip` for the same reason as the shell above: this only
-              // ever needed to clip the inset's rounded corners, and being a
-              // scroll container was an accident the browser could exploit.
-              //
-              // `border-r` is the seam against the editor rail, drawn here
-              // rather than by the rail itself. A border is a stroke on the
-              // inside of its own box, so a `border-l` on the rail sat on the
-              // rail's `bg-sidebar` fill and read as a line *inside* the panel.
-              // Owning both seams from the middle column makes them mirror
-              // images: nav's right edge, inset's right edge, one ink. It is
-              // drawn only when there is a rail to be a seam against, which is
-              // what the wrapper's `group/shell-row` above is for.
-              className="min-h-0 overflow-clip border-border group-has-[[data-editor-rail]]/shell-row:border-r"
-            >
+            {/*
+              The right-hand column: the header band, then the inset card.
+
+              `min-w-0` because the inset below holds a horizontally scrolling
+              document preview, and a flex child's `min-width` is `auto` — which
+              floors this column at its widest content and pushes the whole
+              layout off the right of the window instead of scrolling inside.
+            */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               {/* Above the header rather than over the content: it is a fact
                   about the whole app, and it must not cover a control. */}
               <OfflineBar />
-              <AdminHeader />
-              {/* The skip link's target. Not the `<main>` itself: `SidebarInset`
-                  already is one, and it holds the header the link exists to skip.
-                  `tabIndex` because a div is not focusable, and a skip link that
-                  moves the scroll without moving the focus leaves the next Tab
-                  back at the rail it just skipped. */}
-              <div
-                id="main-content"
-                tabIndex={-1}
-                className="min-h-0 flex-1 overflow-y-auto outline-none"
-              >
-                {children}
+              <TopPanel />
+              {/*
+                The inset: one card holding the content and the editor rail,
+                floated off the shell on all four sides.
+
+                `m-2 mt-0`: the header band above already leaves its own air, so
+                a top margin here would read as a gap in the column rather than
+                as the card's inset. The nav's right edge is the left bound, and
+                `ml-0` is deliberately *not* used — the card is inset from the
+                nav too, which is what makes it read as a layer above the shell
+                rather than as the other half of a split.
+              */}
+              {/*
+                `rounded-md` (4.8px), the smallest named step above a square
+                corner. A frame this large reads its radius as a *hint* of one:
+                at `rounded-lg` the card looked like a widget floated on the
+                page, and the shell is meant to read as one surface with a seam
+                in it. Named rather than `rounded-[4px]`, per `docs/design.md`
+                §1.3, which is also where the shell-frame row was corrected.
+              */}
+              <div className="group/inset m-2 mt-0 flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md ring-1 ring-sidebar-border">
+                <SidebarInset
+                  // `overflow-clip` for the same reason as the shell above: this
+                  // only ever needed to clip the inset's rounded corners, and
+                  // being a scroll container was an accident the browser could
+                  // exploit.
+                  //
+                  // `border-r` is the seam against the editor rail, drawn here
+                  // rather than by the rail itself. A border is a stroke on the
+                  // inside of its own box, so a `border-l` on the rail sat on
+                  // the rail's `bg-sidebar` fill and read as a line *inside* the
+                  // panel. It is drawn only when there is a rail to be a seam
+                  // against, which is what `group/shell-row` above is for.
+                  className="min-h-0 min-w-0 overflow-clip border-border group-has-[[data-editor-rail]]/shell-row:border-r"
+                >
+                  <AdminHeader />
+                  {/* The skip link's target. Not the `<main>` itself:
+                      `SidebarInset` already is one, and it holds the header the
+                      link exists to skip. `tabIndex` because a div is not
+                      focusable, and a skip link that moves the scroll without
+                      moving the focus leaves the next Tab back at the rail it
+                      just skipped. */}
+                  <div
+                    id="main-content"
+                    tabIndex={-1}
+                    className="min-h-0 flex-1 overflow-y-auto outline-none"
+                  >
+                    {children}
+                  </div>
+                </SidebarInset>
+                <EditorSidebar />
               </div>
-            </SidebarInset>
-            <EditorSidebar />
+            </div>
           </div>
         </SidebarProvider>
       </NewDocumentProvider>
+      </PageHeaderSlotProvider>
     </EditorPanelProvider>
   );
 }

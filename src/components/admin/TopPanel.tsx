@@ -1,15 +1,18 @@
 "use client";
 
 import { Separator } from "@/components/ui/separator";
-import type { Profile } from "@/lib/profile";
 import Clock from "./Clock";
 import Notifications from "./Notifications";
-import ProfileSwitcher from "./ProfileSwitcher";
 import SearchCommand from "./SearchCommand";
 
 /**
- * The app's one header: a single band across the full width, above the three
- * columns rather than divided into them.
+ * The app's one header: a single band above the content, starting where the nav
+ * rail ends rather than crossing over it.
+ *
+ * It spanned the whole window once, nav included. The nav is the app's one
+ * permanent column and now runs the full height, so a bar drawn across the top
+ * of it split that column in two and left the wordmark and the account card
+ * looking like they belonged to different surfaces.
  *
  * It used to be three sections whose widths tracked the two rails, with
  * vertical hairlines where their seams fell. That made the header a fourth
@@ -17,34 +20,52 @@ import SearchCommand from "./SearchCommand";
  * appeared and disappeared inside it as the editor opened. Nothing below can
  * influence it now: the rails collapse under a bar that does not move.
  *
- * **Neither rail's toggle is here.** A control that opens and closes a panel
- * belongs on the panel, where you are already looking when you want it, not in
- * a bar that has nothing else to do with either column. Each rail carries its
- * own; see `AdminSidebar` and `EditorSidebar`.
+ * **Neither rail's toggle is here, and neither is the profile switcher.** A
+ * control that opens and closes a panel belongs on the panel, where you are
+ * already looking when you want it, not in a bar that has nothing else to do
+ * with either column. Each rail carries its own toggle; see `AdminSidebar` and
+ * `EditorSidebar`. The switcher went the same way and for the same reason: it
+ * chooses which *navigation* is on screen, so it lives at the foot of the nav
+ * rail, above the account card.
  *
- * `bg-background` rather than `bg-sidebar`, which is the point of the band.
- * `--background` is slate 50 and the top of the ramp; `--sidebar` sits a step
- * below it. Lighter than both rails is what makes this read as one surface
- * above them instead of as a continuation of either.
+ * What is left is the three things that belong to no column: search, the clock
+ * and notifications.
+ *
+ * `bg-sidebar`, not `bg-background`, and that swapped when the inset arrived.
+ * The band used to be the lightest thing on screen so it read as one surface
+ * *above* the rails. It now sits on the shell beside the nav, with the content
+ * card floated off it, so it is ground rather than surface: `--background` is
+ * the card's, and the band matching it would have made the card's top edge
+ * disappear into the header it is inset from.
  */
-export default function TopPanel({ profile }: { profile: Profile }) {
+export default function TopPanel() {
   return (
     <div
       data-slot="top-panel"
-      className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background pl-2 pr-3"
+      // Chrome, so it does not print. The two rails are hidden by their slot
+      // and the breadcrumb trail carries this attribute already; this band was
+      // the one piece of navigation neither selector reached, so it came out
+      // across the top of every printed document and every ⌘P of a list.
+      data-print-hidden
+      // No `border-b`. The band sits directly above the inset card now, and the
+      // card draws its own ring: a rule here would be a second line 8px above
+      // the first, with a strip of shell showing between them.
+      className="flex h-12 shrink-0 items-center gap-3 bg-sidebar pl-2 pr-3"
     >
       {/* Flex-1 twins on both sides, so `SearchCommand` centres on the bar's
           full width rather than drifting toward whichever side is lighter. */}
-      <div
-        data-slot="top-panel-start"
-        // The wordmark moved to `AdminSidebar`'s header, where it sits above
-        // the navigation it names. It was here while the header was the only
-        // full-width band; with the rail carrying it, a second copy directly
-        // below the first was two answers to the same question.
-        className="flex flex-1 items-center"
-      >
-        <ProfileSwitcher profile={profile} />
-      </div>
+      {/*
+        Empty, and deliberately still here: it is the twin that balances
+        `top-panel-end`, so `SearchCommand` centres on the band's full width
+        instead of drifting toward whichever side is lighter.
+
+        The wordmark moved to `AdminSidebar`'s header, above the navigation it
+        names. The profile switcher followed it into that rail, at the foot
+        above the account card — it chooses which *navigation* you are looking
+        at, so it belongs on the column that navigation is in rather than in a
+        bar that has nothing else to do with it.
+      */}
+      <div data-slot="top-panel-start" className="flex flex-1 items-center" />
 
       <SearchCommand />
 

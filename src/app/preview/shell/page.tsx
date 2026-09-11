@@ -1,19 +1,14 @@
 import { notFound } from 'next/navigation';
 import AdminShell from '@/components/admin/AdminShell';
-import { PageBody, PageHeader, TableCard } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/admin/Page';
 import { Button } from '@/components/ui/button';
 import { EditorPanelContent } from '@/components/admin/EditorPanel';
+import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import DocumentPager from '@/components/docs/DocumentPager';
+import DocumentsTable from '@/components/admin/DocumentsTable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NIL } from '@/lib/utils';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import type { AdminDocument } from '@/lib/domain/types';
 
 /**
  * `/preview/shell`: the whole admin chrome — `TopPanel`, the nav rail, the
@@ -43,12 +38,32 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Fixed rows for the real table, in the shape it reads. A finalized row and a
+ * draft row, because the two link to different places and both are measured.
+ */
 const ROWS = [
-  { number: 'Draft', type: 'Service Quotation', client: NIL, date: '27 Aug 2026' },
-  { number: 'Draft', type: 'Invoice', client: 'Clayora', date: '27 Aug 2026' },
-  { number: 'Draft', type: 'Contract', client: 'Clayora', date: '27 Aug 2026' },
-  { number: 'QS-INV-2627-001', type: 'Invoice', client: 'Clayora', date: '30 Jul 2026' },
-];
+  {
+    id: 'sq-1',
+    type: 'SQ',
+    status: 'draft',
+    number: null,
+    issueDate: '2026-08-27',
+    gstRatePercent: 0,
+    lineItems: [],
+    clientSnapshot: { name: 'Clayora' },
+  },
+  {
+    id: 'inv-1',
+    type: 'INV',
+    status: 'finalized',
+    number: 'QS-INV-2627-001',
+    issueDate: '2026-07-30',
+    gstRatePercent: 18,
+    lineItems: [{ description: 'Design', ratePaise: 100000, qty: 1 }],
+    clientSnapshot: { name: 'Clayora' },
+  },
+] as unknown as AdminDocument[];
 
 export default function ShellPreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
@@ -62,28 +77,27 @@ export default function ShellPreviewPage() {
         <PageHeader title="Dashboard">
           <Button type="button">New document</Button>
         </PageHeader>
-        <TableCard count={`${ROWS.length} documents`}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Number</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ROWS.map((row, i) => (
-                <TableRow key={i}>
-                  <TableCell>{row.number}</TableCell>
-                  <TableCell>{row.type}</TableCell>
-                  <TableCell>{row.client}</TableCell>
-                  <TableCell>{row.date}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableCard>
+        {/*
+          The real `DocumentsTable`, not a hand-built one. It used to be four
+          plain `TableRow`s here, which measured the fixture rather than the
+          component: the stretched row link, the copy cell that sits over it and
+          the hover actions are all things only a browser can see, and none of
+          them existed in the copy. A row-wide click was broken for exactly as
+          long as this fixture drew its own rows.
+        */}
+        <DocumentsTable documents={ROWS} />
+        {/* The header row's page-owned half: the pager a document editor
+            portals up there. The row is the thing this fixture exists to
+            measure now — back, breadcrumbs and pager on one line, levelled
+            with the nav's header to its left and the rail's title row to its
+            right. Three separately-owned columns that have to share a band, and
+            jsdom reports every box as zero, so it cannot see any of it. */}
+        <PageHeaderSlot>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <DocumentPager currentPage={0} pageCount={4} />
+          </div>
+        </PageHeaderSlot>
+
         {/* Opens the edit rail, so the right-hand column can be measured in
             its expanded state — where its title sits, where its seam falls.
             Collapsed, there is nothing there to measure. */}
