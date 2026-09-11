@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { EditorPanelProvider, useEditorPanel } from '@/components/admin/EditorPanel';
 import DocumentWorkspace from '../DocumentWorkspace';
 import { A4_PADDING } from '@/components/docs/sheets/frame';
 
 describe('DocumentWorkspace', () => {
-  it('renders the title, the preview and the rail contents together', () => {
+  it('renders the preview and the rail contents together', () => {
     render(
       <DocumentWorkspace title="New contract" preview={<div>Sheet body</div>}>
         <label>
@@ -14,15 +15,40 @@ describe('DocumentWorkspace', () => {
       </DocumentWorkspace>,
     );
 
-    expect(screen.getByRole('heading', { name: 'New contract' })).toBeInTheDocument();
     expect(screen.getByText('Sheet body')).toBeInTheDocument();
     expect(screen.getByLabelText('Client')).toBeInTheDocument();
   });
 
   /**
+   * The title names what the *form* is editing, so it goes to the rail with the
+   * form rather than onto the app header's row. `EditorSidebar` is what prints
+   * it; the contract this asserts is the one between them, which is the panel
+   * context carrying the title at all — it was there and unread for a while,
+   * with the title travelling by portal instead.
+   */
+  it('names its panel, so the rail can title itself', () => {
+    let seen: string | null = null;
+    function Probe() {
+      seen = useEditorPanel()?.title ?? null;
+      return null;
+    }
+
+    render(
+      <EditorPanelProvider>
+        <DocumentWorkspace title="New contract" preview={<div>Body</div>}>
+          <div />
+        </DocumentWorkspace>
+        <Probe />
+      </EditorPanelProvider>,
+    );
+
+    expect(seen).toBe('New contract');
+  });
+
+  /**
    * jsdom measures every box as zero, so the paginator reports one page. That
    * is also the real answer for every document this editor makes, and a
-   * one-page document shows no pager at all — see `DocumentWorkspaceBar`.
+   * one-page document shows no pager at all — see `DocumentPager`.
    */
   it('shows no pager for a single-page document, and does show the status', () => {
     render(
@@ -90,6 +116,6 @@ describe('DocumentWorkspace', () => {
     // Single page in jsdom, so there is nowhere to page to — the assertion is
     // that the handler is wired and does not throw or move past the bounds.
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
+    expect(screen.getByText('Body')).toBeInTheDocument();
   });
 });

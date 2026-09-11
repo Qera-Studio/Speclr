@@ -2,15 +2,16 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { EditorPanelContent } from '@/components/admin/EditorPanel';
+import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
 import DocumentPreview, {
   type DocumentPreviewHandle,
   type PageChrome,
 } from './DocumentPreview';
-import DocumentWorkspaceBar from './DocumentWorkspaceBar';
+import DocumentPager from './DocumentPager';
 
 /**
- * The document workspace: the preview subheader above the scrolling A4 column,
- * filling the app's content card.
+ * The document workspace: the scrolling A4 column filling the app's content
+ * card, with its title and page controls up on the app header's one row.
  *
  * The edit form is passed as `children` and *portalled* into the app-level
  * editor rail (`EditorSidebar`), which lives up in `AdminShell`. Keeping the
@@ -19,8 +20,12 @@ import DocumentWorkspaceBar from './DocumentWorkspaceBar';
  * form state in every editor, so they must stay in one React tree. Only the
  * DOM lands elsewhere.
  *
- * Owns the view state (page count, current page) that the bar renders and
- * the preview reports into.
+ * Owns the view state (page count, current page) that the header renders and
+ * the preview reports into. The header is a different subtree, so the autosave
+ * line and the pager travel there by portal (`PageHeaderSlot`) exactly as the
+ * form travels to the rail: the state stays here, only the DOM lands elsewhere.
+ * The `title` goes to the rail with the form, because it names what the form is
+ * editing.
  */
 export default function DocumentWorkspace({
   title,
@@ -44,7 +49,7 @@ export default function DocumentWorkspace({
   children,
 }: {
   title: string;
-  /** The autosave line, rendered in the bar. See `DocumentWorkspaceBar`. */
+  /** The autosave line, rendered up on the app header's row. */
   status?: React.ReactNode;
   preview?: React.ReactNode;
   /**
@@ -120,14 +125,32 @@ export default function DocumentWorkspace({
         if (e.key === 'ArrowLeft') goToPage(safePage - 1);
       }}
     >
-      <DocumentWorkspaceBar
-        title={title}
-        status={status}
-        currentPage={safePage}
-        pageCount={main ? undefined : pageCount}
-        onPrev={() => goToPage(safePage - 1)}
-        onNext={() => goToPage(safePage + 1)}
-      />
+      <PageHeaderSlot>
+        {/* The title is not here: it names what the rail is editing, so it
+            prints on the rail's own header row, which `EditorPanelContent`
+            below already hands it. What stays on this row is the state of the
+            document you are looking at — saved or not, and which page. */}
+        <div className="ml-auto flex shrink-0 items-center gap-3">
+          {status}
+
+          {/* Nothing to page through on a one-page document, and "Page 1 / 1"
+              with both arrows greyed out is a control that exists only to say
+              so. Every invoice, receipt, credit note and slip is one page.
+              `main` is the contract's service picker: a pager over a page that
+              is not on screen would be counting something nobody is looking
+              at. */}
+          {main || pageCount <= 1 ? null : (
+            <DocumentPager
+              currentPage={safePage}
+              pageCount={pageCount}
+              onPrev={() => goToPage(safePage - 1)}
+              onNext={() => goToPage(safePage + 1)}
+              onGoToPage={goToPage}
+            />
+          )}
+        </div>
+      </PageHeaderSlot>
+
       {main ? (
         <div className="min-h-0 flex-1 overflow-y-auto">{main}</div>
       ) : (

@@ -147,7 +147,12 @@ export function useEditorPanel(): EditorPanelContextValue | null {
  * component may be rendered on its own in a test — the content falls back to
  * rendering *in place* rather than disappearing. Dropping it would mean a
  * missing shell silently costs the page its form; rendering in place degrades
- * to the pre-rail layout instead.
+ * to the pre-rail layout instead. `title` degrades with it, because it is the
+ * page's `h1`.
+ *
+ * `title` names what the form is editing, and the rail prints it on its own
+ * header row (`EditorSidebar`). It travelled to the app header by portal for a
+ * while, which put the name of the form in a different column from the form.
  *
  * `autoOpen` expands the rail on mount; document editors want this (the form is
  * the point of the page), record managers do not (the rail opens on "Add").
@@ -189,6 +194,11 @@ export function EditorPanelContent({
   if (!panel?.host) {
     return (
       <>
+        {/* The rail prints the title on its own header row. With no rail it
+            renders here instead, for the same reason the form does: a missing
+            shell must not cost the page its `h1`, which is the one thing a
+            screen-reader user has to find out what the page is. */}
+        {title && <h1 className="truncate text-sm font-medium">{title}</h1>}
         {children}
         {footer}
       </>

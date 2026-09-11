@@ -17,15 +17,7 @@ import ContractEditor from '@/components/docs/editors/ContractEditor';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
 import QuotationEditor from '@/components/docs/editors/QuotationEditor';
-import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
-import { ContractWorkspace } from '@/components/docs/ContractPages';
-import { QuotationWorkspace } from '@/components/docs/QuotationPages';
-import { letterBlocks, LETTER_COVER_CLASSNAME } from '@/components/docs/sheets/LetterSheet';
-import { LETTER_PADDING, LETTER_PADDING_Y } from '@/components/docs/sheets/frame';
-import SlipSheet from '@/components/docs/sheets/SlipSheet';
 import DocumentTypeList from '@/components/admin/DocumentTypeList';
-import DocumentWorkspace from '@/components/docs/DocumentWorkspace';
-import FinalizedActions from '@/components/docs/FinalizedActions';
 
 /**
  * `/<profile>/docs/<id>` — one document, or a document type's list.
@@ -86,75 +78,56 @@ export default async function DocumentRoute({
   const docProfile = profileOfDocType(doc.type);
   if (docProfile !== profile) redirect(`/${docProfile}/docs/${doc.id}`);
 
+  // A finalized document opens on the print view, which is what somebody
+  // reaching for an issued document actually wants: the pages as they print,
+  // with the sealed card and the download beside them. The read-only workspace
+  // this used to render offered the same actions over a one-page-at-a-time
+  // carousel of a document nobody can change.
+  //
+  // Here rather than only on the list's link, so every route in lands the same
+  // way: ⌘K, the ⌘D palette, a bookmark, a mailed link, the redirect after a
+  // duplicate. A rule enforced in one caller is a rule the next caller misses.
+  if (doc.status === 'finalized') redirect(`/${docProfile}/docs/${doc.id}/print`);
+
   const spec = DOC_TYPES[doc.type];
-  const heading =
-    doc.status === 'draft'
-      ? `Edit ${spec.label.toLowerCase()} draft`
-      : `${spec.label} ${doc.number ?? ''}`.trim();
+  const heading = `Edit ${spec.label.toLowerCase()} draft`;
 
   // ── Draft → editor ──────────────────────────────────────────────
-  // The editors own the full-height workspace layout; the route adds no wrapper.
-  if (doc.status === 'draft') {
-    // Drafts have no frozen studio snapshot yet, so the preview reads the live
-    // settings — same values the document would print if finalized now.
-    const studio = await getStudioSettings();
-    if (isSlip(doc)) {
-      const employees = await listEmployees();
-      return (
-        <SlipEditor
-          type={doc.type}
-          employees={employees}
-          doc={doc}
-          studio={studio}
-          title={heading}
-        />
-      );
-    }
-    if (isLetter(doc)) {
-      const employees = await listEmployees();
-      return (
-        <LetterEditor
-          type={doc.type}
-          employees={employees}
-          doc={doc}
-          studio={studio}
-          title={heading}
-        />
-      );
-    }
-    const clients = await listClients();
-    if (doc.type === 'SQ') {
-      return (
-        <QuotationEditor
-          clients={clients}
-          services={await listServices()}
-          doc={doc}
-          studio={studio}
-          title={heading}
-        />
-      );
-    }
-    if (doc.type === 'CON') {
-      const [services, exclusions, clientInputs] = await Promise.all([
-        listServices(),
-        listExclusions(),
-        listClientInputs(),
-      ]);
-      return (
-        <ContractEditor
-          clients={clients}
-          services={services}
-          exclusions={exclusions}
-          clientInputs={clientInputs}
-          doc={doc}
-          studio={studio}
-          title={heading}
-        />
-      );
-    }
+  // The only branch left: a finalized document was redirected to its print view
+  // above. The editors own the full-height workspace layout; the route adds no
+  // wrapper.
+  //
+  // Drafts have no frozen studio snapshot yet, so the preview reads the live
+  // settings — same values the document would print if finalized now.
+  const studio = await getStudioSettings();
+  if (isSlip(doc)) {
+    const employees = await listEmployees();
     return (
-      <DocumentEditor
-        typeCode={doc.type}
+      <SlipEditor
+        type={doc.type}
+        employees={employees}
+        doc={doc}
+        studio={studio}
+        title={heading}
+      />
+    );
+  }
+  if (isLetter(doc)) {
+    const employees = await listEmployees();
+    return (
+      <LetterEditor
+        type={doc.type}
+        employees={employees}
+        doc={doc}
+        studio={studio}
+        title={heading}
+      />
+    );
+  }
+  const clients = await listClients();
+  if (doc.type === 'SQ') {
+    return (
+      <QuotationEditor
         clients={clients}
         services={await listServices()}
         doc={doc}
@@ -163,58 +136,32 @@ export default async function DocumentRoute({
       />
     );
   }
-
-  // ── Finalized → read-only sheet + actions (immutable — no edit/delete) ──
-  // Same workspace as the editors, but the rail holds actions rather than a
-  // form: a finalized document has nothing editable by design.
-  const shell = (
-    preview: React.ReactNode,
-    opts?: {
-      coverFirst?: boolean;
-      firstPageClassName?: string;
-      selfPaddedSheet?: boolean;
-      pagePadding?: string;
-      pagePaddingY?: number;
-    },
-  ) => (
-    <DocumentWorkspace title={heading} preview={preview} {...opts}>
-      <FinalizedActions docId={doc.id} isSlip={isSlip(doc)} />
-    </DocumentWorkspace>
+  if (doc.type === 'CON') {
+    const [services, exclusions, clientInputs] = await Promise.all([
+      listServices(),
+      listExclusions(),
+      listClientInputs(),
+    ]);
+    return (
+      <ContractEditor
+        clients={clients}
+        services={services}
+        exclusions={exclusions}
+        clientInputs={clientInputs}
+        doc={doc}
+        studio={studio}
+        title={heading}
+      />
+    );
+  }
+  return (
+    <DocumentEditor
+      typeCode={doc.type}
+      clients={clients}
+      services={await listServices()}
+      doc={doc}
+      studio={studio}
+      title={heading}
+    />
   );
-
-  // Sequential returns so each branch narrows `doc`.
-  if (isSlip(doc)) return shell(<SlipSheet doc={doc} />);
-  // Letters feed their block list too, for the same reason as the contract: the
-  // monolithic sheet arrives as one over-tall block, gets a single page, and
-  // everything past 1123px is clipped — a finalized offer letter previewed as
-  // its cover and nothing else. The draft editor was fixed for this; the
-  // finalized path was not.
-  if (isLetter(doc))
-    return shell(letterBlocks(doc), {
-      coverFirst: doc.type === 'OFR',
-      firstPageClassName: doc.type === 'OFR' ? LETTER_COVER_CLASSNAME : undefined,
-      selfPaddedSheet: false,
-      // All three letters print the same roomier page. The pair must agree —
-      // `pagePaddingY` is the height pagination reserves.
-      pagePadding: LETTER_PADDING,
-      pagePaddingY: LETTER_PADDING_Y,
-    });
-  // The quotation is dark on every page, not just a cover, so it goes through
-  // its own client component too — see `QuotationPages`.
-  if (doc.type === 'SQ')
-    return (
-      <QuotationWorkspace doc={doc} title={heading}>
-        <FinalizedActions docId={doc.id} isSlip={false} />
-      </QuotationWorkspace>
-    );
-  // The contract carries a running header and footer, so its chrome has to be
-  // built inside a client component — see `ContractPages`. Same workspace, same
-  // actions rail.
-  if (doc.type === 'CON')
-    return (
-      <ContractWorkspace doc={doc} title={heading}>
-        <FinalizedActions docId={doc.id} isSlip={false} />
-      </ContractWorkspace>
-    );
-  return shell(<DocumentSheet doc={doc} />);
 }

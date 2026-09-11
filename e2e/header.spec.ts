@@ -32,6 +32,21 @@ test.describe('the header band', () => {
     const rule = end.locator('[data-slot="separator"]');
     const bell = end.getByRole('button', { name: /notifications/i });
 
+    /*
+      Wait for the clock to have *read* the time, not merely to exist.
+
+      `Clock` holds `now` as null until its first effect runs and renders an
+      empty placeholder span until then — same classes, no content, and so no
+      box at all. `span.first()` matches that placeholder perfectly well, and
+      `boundingBox()` then returns null and this test dies on "element has no
+      box" rather than on anything about alignment.
+
+      It is a race that was always here and only surfaced when the profile
+      switcher left this band and the header began hydrating sooner. Waiting on
+      the text is waiting on the state that gives the span its box.
+    */
+    await expect(clock).toContainText(/\d/);
+
     const [clockMid, ruleMid, bellMid] = await Promise.all([
       midOf(clock),
       midOf(rule),

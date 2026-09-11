@@ -85,15 +85,19 @@ describe('/docs/[id]', () => {
     expect(screen.getByRole('button', { name: /finalize/i })).toBeInTheDocument();
   });
 
-  it('renders the finalized sheet + actions (no edit) for a finalized invoice', async () => {
+  /**
+   * A finalized document lives on its print view: the pages as they print,
+   * with the sealed card, Duplicate and Download beside them. This route no
+   * longer renders one at all, and the redirect is here rather than only on
+   * the list's link so that ⌘K, the ⌘D palette, a bookmark and a mailed link
+   * all land the same way.
+   */
+  it('sends a finalized document to its print view', async () => {
     requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
     getDocument.mockResolvedValue(finalInvoice);
-    await renderPage();
-    expect(screen.getByRole('button', { name: /duplicate/i })).toBeInTheDocument();
-    // No editor at all: a finalized document is immutable, so the route never
-    // mounts one — and with it no Finalize button and no autosave.
-    expect(screen.queryByRole('button', { name: /finalize/i })).not.toBeInTheDocument();
-    expect(screen.getByText('Acme Co.')).toBeInTheDocument();
+    await expect(
+      DocumentPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' }),
+    ).rejects.toThrow('REDIRECT:/client/docs/doc-1/print');
   });
 
   it('renders the type list — not a document — for a doc-type slug', async () => {
