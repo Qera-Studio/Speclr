@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
  * top. So: mark the few, never the many, and never both ways in one app.
  *
  * The word sits *inside* the `<label>`, unlike the icon beside it. It is part
- * of what the field is, so "Phone, optional" is the correct announcement; an
+ * of what the field is, so "Phone optional" is the correct announcement; an
  * icon in there would rename the field with something unreadable instead.
  */
 export default function FieldInfo({
@@ -85,7 +85,7 @@ export default function FieldInfo({
  */
 export function OptionalMark() {
   return (
-    <span className="font-normal text-muted-foreground">, optional</span>
+    <span className="font-normal text-muted-foreground"> optional</span>
   );
 }
 

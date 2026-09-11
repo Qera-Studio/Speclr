@@ -6,8 +6,8 @@ import type { ClientRecord } from '@/lib/domain/types';
 const refresh = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 
-const toast = jest.fn();
-jest.mock('sonner', () => ({ toast: (...args: unknown[]) => toast(...args) }));
+jest.mock('sonner', () => ({ toast: Object.assign(jest.fn(), { error: jest.fn() }) }));
+const { toast } = jest.requireMock('sonner') as { toast: jest.Mock & { error: jest.Mock } };
 
 const deleteClientAction = jest.fn();
 const setClientArchivedAction = jest.fn();
@@ -138,7 +138,10 @@ describe('ClientManager', () => {
     render(<ClientManager clients={clients} />);
 
     await deleteFirstClient(user);
-    expect(await screen.findByRole('alert')).toHaveTextContent(/has documents and cannot be deleted/i);
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringMatching(/has documents and cannot be deleted/i),
+      expect.objectContaining({ duration: 10000 }),
+    );
     expect(refresh).not.toHaveBeenCalled();
   });
 
@@ -164,14 +167,14 @@ describe('ClientManager', () => {
     expect(setClientArchivedAction).toHaveBeenCalledWith('c1', false);
   });
 
-  it('says nothing on the toast when the archive is refused', async () => {
+  it('shows the refusal on an error toast, not the undo toast', async () => {
     const user = userEvent.setup();
     setClientArchivedAction.mockResolvedValue({ success: false, error: 'Nope.' });
     render(<ClientManager clients={clients} />);
 
     await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nope.');
+    expect(toast.error).toHaveBeenCalledWith('Nope.', expect.objectContaining({ duration: 10000 }));
     expect(toast).not.toHaveBeenCalled();
   });
   /**

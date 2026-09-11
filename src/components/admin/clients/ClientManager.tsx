@@ -3,8 +3,7 @@
 import { startTransition, useCallback, useMemo, useOptimistic, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Archive, Calendar, CircleAlert, CircleDashed, Globe, FilterX, Users } from 'lucide-react';
-import { Alert, AlertTitle } from '@/components/ui/alert';
+import { Archive, Calendar, CircleDashed, Globe, FilterX, Users } from 'lucide-react';
 import {
   Empty,
   EmptyContent,
@@ -60,7 +59,6 @@ const FIELD_ICONS: Record<ClientFilterField, typeof Globe> = {
 
 export default function ClientManager({ clients }: { clients: ClientRecord[] }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   /**
    * Which list you are looking at. Component state, not the URL: it is a
    * two-way toggle on one page rather than a place, and archived clients are
@@ -82,7 +80,7 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
    * and the round trip to Neon is long enough that the row sits there looking
    * ignored. React reverts this by itself the moment the transition ends, so a
    * refusal needs no rollback code: the row simply comes back, and the reason
-   * is in the alert above it.
+   * is in the toast that follows.
    */
   const [rows, applyOptimistic] = useOptimistic(
     clients,
@@ -136,15 +134,15 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
   */
   const onBulkDelete = async () => {
     const chosen = selection.chosen;
-    setError(null);
     const results = await Promise.all(
       chosen.map((client) => deleteClientAction(client.id)),
     );
     const refused = results.filter((r) => !r.success).length;
     selection.clear();
     if (refused > 0) {
-      setError(
+      toast.error(
         `${refused} of ${chosen.length} could not be deleted. A client that has been on a document can't be removed.`,
+        { duration: 10000 },
       );
     }
     router.refresh();
@@ -179,11 +177,10 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
    */
   const onDelete = (client: ClientRecord) =>
     startTransition(async () => {
-      setError(null);
       applyOptimistic({ id: client.id, deleted: true });
       const result = await deleteClientAction(client.id);
       if (!result.success) {
-        setError(result.error ?? 'Failed to delete client.');
+        toast.error(result.error ?? 'Failed to delete client.', { duration: 10000 });
         return;
       }
       router.refresh();
@@ -200,11 +197,10 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
    */
   const onArchive = (client: ClientRecord, next: boolean) =>
     startTransition(async () => {
-      setError(null);
       applyOptimistic({ id: client.id, archived: next });
       const result = await setClientArchivedAction(client.id, next);
       if (!result.success) {
-        setError(result.error ?? 'Failed to update client.');
+        toast.error(result.error ?? 'Failed to update client.', { duration: 10000 });
         return;
       }
       router.refresh();
@@ -264,13 +260,6 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Clients" />
-
-      {error ? (
-        <Alert variant="destructive">
-          <CircleAlert aria-hidden />
-          <AlertTitle>{error}</AlertTitle>
-        </Alert>
-      ) : null}
 
       {/* Nothing to filter yet — the table's own empty state says what to do
           instead, and a filter bar over no rows is a control with no subject.

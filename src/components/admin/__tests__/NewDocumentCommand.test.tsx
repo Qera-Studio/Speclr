@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Profile } from '@/lib/profile';
+import { DOC_SAMPLES } from '@/components/docs/samples';
 import { NewDocumentProvider, useNewDocument, newDocumentHref } from '../NewDocumentCommand';
+import { NAV_BY_PROFILE } from '../nav';
 
 const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -152,5 +154,21 @@ describe('NewDocumentCommand', () => {
     await u.click(screen.getByRole('textbox', { name: 'Clause' }));
     await u.keyboard('{Alt>}{i}{/Alt}');
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The Service Quotation shipped with no sample, so its card fell back to the
+   * bare icon while every other card showed the page it would make — a hole
+   * nothing could see, because `DOC_SAMPLES` is keyed by slug and a missing key
+   * is a valid lookup. This joins the two lists so the *next* document type
+   * cannot arrive the same way.
+   */
+  it('shows a preview of every type it offers, on both sides', () => {
+    for (const profile of ['client', 'admin'] as const) {
+      for (const link of NAV_BY_PROFILE[profile].documents) {
+        const slug = link.href.slice(link.href.lastIndexOf('/') + 1);
+        expect(DOC_SAMPLES[slug]?.doc.type).toBeDefined();
+      }
+    }
   });
 });

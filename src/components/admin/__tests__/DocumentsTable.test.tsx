@@ -29,9 +29,29 @@ const invoice = {
 describe('DocumentsTable', () => {
   it('renders a row with number link, client, status', () => {
     render(<DocumentsTable documents={[invoice]} />);
-    expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toHaveAttribute('href', '/client/docs/doc-1');
+    // Straight to the print view: a finalized document lives there, and
+    // `/client/docs/doc-1` would only redirect to it.
+    expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toHaveAttribute(
+      'href',
+      '/client/docs/doc-1/print',
+    );
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
     expect(screen.getByText('Finalized')).toBeInTheDocument();
+  });
+
+  /** A draft opens in its editor, which is the whole difference. */
+  it('links a draft to its editor rather than to a print view', () => {
+    render(
+      <DocumentsTable
+        documents={
+          [{ ...invoice, id: 'draft-1', status: 'draft', number: null }] as unknown as AdminDocument[]
+        }
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Draft' })).toHaveAttribute(
+      'href',
+      '/client/docs/draft-1',
+    );
   });
 
   /**

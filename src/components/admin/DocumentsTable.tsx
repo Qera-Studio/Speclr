@@ -25,7 +25,7 @@ import { CopyCell } from './CopyCell';
 import DocumentRowActions from './DocumentRowActions';
 import { computeTotals, formatINR } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
-import { docHref } from '@/lib/profile';
+import { openDocHref } from '@/lib/profile';
 import { partyName } from '@/lib/domain/party';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -120,14 +120,21 @@ export default function DocumentsTable({
             const hasMoney = hasTotal(doc);
             const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
             /*
-              The whole row opens the document, via one stretched link rather than
-              a row `onClick`: it stays a real anchor (middle-click, ⌘-click,
-              keyboard, "copy link"), and the table stays server-rendered with no
-              client JS.
+              The whole row opens the document, via one stretched link rather
+              than a row `onClick`: it stays a real anchor (middle-click,
+              ⌘-click, keyboard, "copy link"), and the table stays
+              server-rendered with no client JS.
 
-              The overlay stops short of the actions cell — that cell is
-              positioned, so being later in DOM order it paints above the `after`
-              layer and its buttons keep their own hit area.
+              `relative` on the row is what the overlay resolves against, and it
+              is load-bearing: an absolutely positioned box takes its nearest
+              *positioned* ancestor, so a `relative` on any cell between the two
+              shrinks the hit area to that column. `CopyCell` used to carry one,
+              which is precisely how clicking anywhere but the number came to do
+              nothing. Its note says why it no longer does.
+
+              What still paints above the overlay does so by being positioned
+              *and* later in DOM order: the actions cell below, and the copy
+              button's own `relative z-10`.
             */
             return (
               <TableRow key={doc.id} className="group/row relative cursor-pointer">
@@ -139,7 +146,7 @@ export default function DocumentsTable({
                   className="tabular-nums"
                   display={
                     <Link
-                      href={docHref(doc)}
+                      href={openDocHref(doc)}
                       className="after:absolute after:inset-0 after:content-['']"
                     >
                       {doc.number ?? 'Draft'}

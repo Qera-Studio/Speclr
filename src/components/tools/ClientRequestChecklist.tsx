@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { CircleHelp, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 import { draftKey, useDraft } from '@/lib/draft';
 
 /**
@@ -150,17 +153,55 @@ export default function ClientRequestChecklist() {
   const [ticked, setTicked] = useState<string[]>([]);
   useDraft(draftKey(undefined, 'request-checklist'), ticked, setTicked);
 
+  // Marked separately from ticked: whether a line is asked for at all is one
+  // decision, whether it is optional for *this* client is another, and a line
+  // can be ticked without being optional or the reverse.
+  const [optional, setOptional] = useState<string[]>([]);
+  useDraft(draftKey(undefined, 'request-checklist-optional'), optional, setOptional);
+  const toggleOptional = (text: string) =>
+    setOptional((prev) => (prev.includes(text) ? prev.filter((t) => t !== text) : [...prev, text]));
+
+  const downloadTicked = () => {
+    const lines = CHECKLIST.flatMap((group) => {
+      const checked = group.items
+        .filter((item) => (!item.only || item.only === scope) && ticked.includes(item.text))
+        .map((item) => `- [ ] ${item.text}${optional.includes(item.text) ? ' (optional)' : ''}`);
+      return checked.length > 0 ? [`## ${group.heading}`, '', ...checked, ''] : [];
+    });
+    const blob = new Blob(
+      [`# To request from client\n\n${lines.join('\n')}`],
+      { type: 'text/markdown' },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'client-request-checklist.md';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
-        <TabsList>
-          {SCOPES.map((s) => (
-            <TabsTrigger key={s.value} value={s.value}>
-              {s.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center justify-between gap-4">
+        <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
+          <TabsList>
+            {SCOPES.map((s) => (
+              <TabsTrigger key={s.value} value={s.value}>
+                {s.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={ticked.length === 0}
+          onClick={downloadTicked}
+        >
+          <Download className="h-4 w-4" />
+          Download checked ({ticked.length})
+        </Button>
+      </div>
 
       {/* Two columns by CSS multicol rather than a grid: the groups are
           different lengths, and multicol flows them down one column and on into
@@ -178,7 +219,7 @@ export default function ClientRequestChecklist() {
             {group.items
               .filter((item) => !item.only || item.only === scope)
               .map(({ text }) => (
-                <div key={text} className="flex items-start gap-3">
+                <div key={text} className="group flex items-start gap-3">
                   <Checkbox
                     // The line itself is the id, minus everything an id may not
                     // hold. Stable because the text is, and unique because no
@@ -194,7 +235,24 @@ export default function ClientRequestChecklist() {
                   />
                   <Label htmlFor={idOf(text)} className="font-normal leading-snug">
                     {text}
+                    {optional.includes(text) && (
+                      <span className="text-muted-foreground"> (optional)</span>
+                    )}
                   </Label>
+                  <button
+                    type="button"
+                    onClick={() => toggleOptional(text)}
+                    aria-label={
+                      optional.includes(text) ? `Mark "${text}" as required` : `Mark "${text}" as optional`
+                    }
+                    aria-pressed={optional.includes(text)}
+                    className={cn(
+                      'ml-auto shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100',
+                      optional.includes(text) && 'opacity-100 text-foreground',
+                    )}
+                  >
+                    <CircleHelp className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ))}
           </fieldset>

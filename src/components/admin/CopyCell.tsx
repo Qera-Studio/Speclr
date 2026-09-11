@@ -62,9 +62,22 @@ export function CopyCell({
   const Icon = copied ? CheckCheck : Copy;
 
   return (
-    // `relative` so the contents paint above a stretched row link's overlay,
-    // which is absolutely positioned and would otherwise swallow the click.
-    <TableCell className={cn('group/cell relative', className)}>
+    /*
+      Deliberately *not* `relative`, and that is a bug fix rather than a tidy-up.
+
+      A stretched row link is an `::after` with `inset-0`, and an absolutely
+      positioned box resolves against its nearest *positioned* ancestor. The
+      documents list prints its link inside this cell, so a `relative` here made
+      the cell the containing block and the overlay covered one column instead
+      of the row: clicking the number opened the document and clicking anywhere
+      else on the row did nothing. Confirmed in a browser, where the Type and
+      Date cells hit-tested to themselves rather than to the anchor.
+
+      Nothing is lost by dropping it. The copy control in either branch below
+      carries its own `relative z-10`, which is what actually keeps it above the
+      overlay, and every table using this cell puts `relative` on the row.
+    */
+    <TableCell className={cn('group/cell', className)}>
       {iconOnly ? (
         <span className="inline-flex max-w-full items-center gap-1">
           <span
