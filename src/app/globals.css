@@ -540,6 +540,22 @@
   }
 
   /*
+    A scrolling box with no bar at all.
+
+    Standard property only, for the reason above: `::-webkit-scrollbar` is the
+    non-standard spelling of the same thing. Used by the print view's page rail,
+    which scrolls against the document's own ground with no panel around it, so
+    a bar would draw a column edge where there is deliberately no container.
+
+    Only correct where the scroll is not the only way to reach the content. The
+    page rail has the header's pager beside it and the document itself scrolls;
+    a box whose sole affordance was an invisible bar would be a trap.
+  */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  /*
     The caret follows the text, not the accent.
 
     Left alone a browser draws it in `color`, which is already right everywhere
@@ -562,10 +578,16 @@
     `data-print-hidden` rather than a class per component: it is an intent
     ("this is chrome"), and an attribute says that without a component having to
     import anything to say it.
+
+    A **descendant** of the wrapper, not a child of it. This was `>` and matched
+    nothing: `AdminShell` wraps both rails in the row that draws the inset's
+    seam, so they are grandchildren, and every list printed with the navigation
+    still down its side. `print.css` had the descendant form all along, which is
+    why documents printed clean and only the ordinary pages did not.
   */
   @media print {
     [data-print-hidden],
-    [data-slot="sidebar-wrapper"] > [data-slot="sidebar"],
+    [data-slot="sidebar-wrapper"] [data-slot="sidebar"],
     [data-sonner-toaster] {
       display: none !important;
     }
@@ -656,6 +678,99 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/*
+  The toast overrides, and the one thing about them that is not negotiable:
+  they are **outside every `@layer`**, and they have to be.
+
+  Sonner ships its stylesheet unlayered. An unlayered rule beats every layered
+  rule in the cascade, whatever the specificity and whatever the source order,
+  because the browser compares layers before it ever looks at either. So a
+  `toastOptions.classNames` utility (Tailwind, `@layer utilities`) and these
+  same selectors written inside `@layer base` both lose to sonner by default,
+  and they lose silently. Two attempts died there before the cause was found.
+
+  Moving them into a layer to tidy the file up puts the bug straight back.
+
+  Danger red does not wait on sonner's own `richColors`, which repaints every
+  type (success, info) in sonner's stock palette rather than the house one.
+  `data-type='error'` is sonner's own attribute and is enough by itself.
+*/
+[data-sonner-toast][data-styled='true'] {
+  align-items: flex-start;
+}
+
+/*
+  The icon sits on the first line, not in the middle of the block.
+
+  `align-items` on the toast is not enough on its own: sonner gives `[data-icon]`
+  a fixed 16px box and its own `align-items: center`, so the box still resolves
+  against the whole stack. `align-self` is what takes it out of that. The 2px
+  puts its centre on the first line's centre rather than its cap height, which
+  is where the eye reads it as aligned.
+*/
+[data-sonner-toast][data-styled='true'] [data-icon] {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/*
+  One step below sonner's own 500. Geist is loaded here as a variable font over
+  the full `100 900` axis, so this is a real instance rather than a weight the
+  browser fakes by thinning the outline.
+
+  `!important` because this one is a genuine tie. Sonner sets
+  `[data-sonner-toast][data-styled=true] [data-title]{font-weight:500}` at the
+  same specificity as the rule below, and it appends its stylesheet to
+  `document.head` at import time, so it always lands after ours and wins on
+  source order. The background and border above need no `!important` (sonner
+  has no rule for `[data-type='error']` outside its `richColors` path); this
+  property is the one it states outright. The `@media print` block above uses
+  `!important` against the same library for the same reason.
+*/
+[data-sonner-toast][data-styled='true'] [data-title],
+[data-sonner-toast][data-styled='true'] [data-description] {
+  font-weight: 400 !important;
+}
+
+/*
+  The close button is there on hover, not standing over every toast.
+
+  A toast dismisses itself, so the button is the exception rather than the
+  control: it earns its place when somebody reaches for the toast and is noise
+  the rest of the time. Sonner already transitions `opacity` on it, which is
+  what makes this two rules rather than a component change.
+
+  It stays for keyboard users whatever the pointer is doing: `focus-visible` is
+  the half that keeps this from hiding the only dismiss control from anybody
+  tabbing to it, and `opacity: 0` (rather than `display: none`) is what keeps
+  it focusable at all.
+*/
+[data-sonner-toast][data-styled='true'] [data-close-button] {
+  opacity: 0;
+}
+
+[data-sonner-toast][data-styled='true'][data-front='true']:hover [data-close-button],
+[data-sonner-toast][data-styled='true'] [data-close-button]:focus-visible {
+  opacity: 1;
+}
+
+/*
+  The same muted red the badge and the alert use: a tinted ground and a red
+  hairline, not a solid fill. `ui/alert.tsx`'s destructive variant is the exact
+  pair (`border-destructive/40 bg-destructive/10`), and the text stays
+  `--foreground` there for the same reason it does here: the tint is the second
+  reading, and a red-on-red sentence is the one people cannot read.
+*/
+[data-sonner-toast][data-styled='true'][data-type='error'] {
+  background: color-mix(in oklab, var(--destructive) 10%, var(--popover));
+  border-color: color-mix(in oklab, var(--destructive) 40%, transparent);
+  color: var(--popover-foreground);
+}
+
+[data-sonner-toast][data-styled='true'][data-type='error'] [data-icon] {
+  color: var(--destructive);
 }
 
 /*
