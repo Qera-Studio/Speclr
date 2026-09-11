@@ -24,6 +24,16 @@
     0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
+/*
+ * A paginated document brings its own page rail, which is wider than one sheet.
+ * The shadow and the 794px cap belong to the single-sheet case; here the pages
+ * carry their own frames and the wrap is only a positioning box.
+ */
+.doc-sheet-wrap:has(.doc-print-body) {
+  width: auto;
+  box-shadow: none;
+}
+
 /* Force exact color rendering of the paper on screen and in print. */
 .doc-sheet-wrap {
   print-color-adjust: exact;
@@ -49,6 +59,37 @@
   .doc-sheet-wrap .paginatorPage + .paginatorPage {
     margin-top: 24px;
   }
+}
+
+/*
+ * A paginated document and its page rail, side by side.
+ *
+ * The rail is a sibling of the page column rather than a child of it, so the
+ * pages stay exactly 794px and centred while the thumbnails sit in the gutter
+ * beside them. `align-items: start` is what bounds the rail's own scroll box to
+ * the viewport instead of stretching it to the height of a twenty-page
+ * contract.
+ *
+ * The column is centred against the *whole* row, not against the space the rail
+ * leaves: a document that shifts sideways when a rail appears reads as the page
+ * having moved. `margin-inline: auto` on the column plus a rail that takes its
+ * own width does that without either knowing the other's size.
+ */
+.doc-print-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  justify-content: center;
+}
+
+.doc-print-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* The paper's own width. Never shrink: a page squeezed to fit the rail is a
+     page that no longer matches what prints. */
+  flex: 0 0 auto;
+  width: 794px;
 }
 
 @media print {
@@ -87,6 +128,17 @@
     min-height: 0;
     margin: 0;
     box-shadow: none;
+  }
+
+  /* The rail is `data-print-hidden` and goes with the rest of the chrome; what
+     is left is the page column, which must flatten back to a plain block. A
+     flex row with one child still establishes a formatting context that the
+     page-break rules have to fight. */
+  .doc-print-body,
+  .doc-print-column {
+    display: block;
+    width: auto;
+    gap: 0;
   }
 
   /* Chrome is hidden in the printed output: the print toolbar and the header

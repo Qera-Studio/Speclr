@@ -20,6 +20,16 @@ const buttonVariants = cva(
         // `default` if it holds up, or delete it — do not leave it half-adopted.
         raised:
           "bg-primary text-primary-foreground border-[color-mix(in_oklch,var(--primary),black_18%)] shadow-[inset_0_1px_0_color-mix(in_oklch,white,transparent_78%),inset_0_-1px_0_color-mix(in_oklch,black,transparent_88%)] hover:bg-[color-mix(in_oklch,var(--primary),white_6%)]",
+        // Solid, and the one neutral fill in the set. `secondary` is a *light*
+        // slate fill; this is the ink colour itself, so it reads as black on a
+        // light theme and inverts with the token rather than staying black in
+        // dark mode, where a black button on a slate-950 ground disappears.
+        //
+        // It exists for a row where more than one action is solid and only one
+        // of them is the primary: the print view's Download is `default` blue,
+        // and Print and Duplicate are these. Without it the row was two blues
+        // and nothing said which one to press.
+        neutral: "bg-foreground text-background hover:bg-foreground/85",
         outline:
           "border-border hover:bg-input/50 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/30",
         secondary:

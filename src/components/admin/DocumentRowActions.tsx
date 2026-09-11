@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { CalendarPlus, Copy, Download, Pencil, Printer } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
@@ -16,6 +15,7 @@ import {
 } from '@/server/actions/documents';
 import { DELETE_DRAFT_CONSEQUENCE, isSlip } from '@/lib/domain/registry';
 import { DEV_UNLIMITED } from '@/lib/devMode';
+import { useDownloadPdf } from '@/lib/useDownloadPdf';
 import { docHref } from '@/lib/profile';
 import type { AdminDocument } from '@/lib/domain/types';
 
@@ -39,43 +39,7 @@ import type { AdminDocument } from '@/lib/domain/types';
 export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-
-  /**
-   * Fetch the PDF, then hand the bytes to the browser to save.
-   *
-   * The object URL is revoked immediately after the click: the blob is a
-   * client's tax document held in memory, and an un-revoked URL keeps it alive
-   * for the life of the tab.
-   */
-  const onDownload = async () => {
-    setBusy(true);
-    try {
-      const response = await fetch(`/api/docs/${doc.id}/pdf`);
-      if (!response.ok) {
-        // The route sends a plain-text reason on a render failure, and 'Not
-        // found' on anything else. Either is more use than a saved file.
-        toast.error('Could not download the PDF', {
-          description: (await response.text()).trim() || `Request failed (${response.status}).`,
-        });
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      // The server's Content-Disposition already names the file; this is what
-      // names it when the bytes come from an object URL, which has no headers.
-      link.download = `${doc.number ?? doc.id}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast.error('Could not download the PDF', {
-        description: err instanceof Error ? err.message : 'The request did not complete.',
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
+  const { download: onDownload, downloading } = useDownloadPdf(doc.id, doc.number);
 
   const onDuplicate = async () => {
     setBusy(true);
@@ -150,7 +114,7 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  disabled={busy}
+                  disabled={downloading}
                   onClick={onDownload}
                   aria-label="Download PDF"
                   className="text-muted-foreground transition-colors hover:text-foreground"

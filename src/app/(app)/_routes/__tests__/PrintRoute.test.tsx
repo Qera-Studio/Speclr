@@ -25,6 +25,14 @@ jest.mock('next/navigation', () => ({
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
   useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: jest.fn() }),
+}));
+// The toolbar carries `FinalizedActions` now, which reaches the Server Actions
+// module — stub it so this file doesn't drag a DB connection in.
+jest.mock('@/server/actions/documents', () => ({
+  duplicateDocument: jest.fn(),
+  copySlipForNextMonth: jest.fn(),
+  deleteDraftAction: jest.fn(),
 }));
 
 import PrintPage from '../PrintRoute';
@@ -52,7 +60,22 @@ describe('/docs/[id]/print', () => {
     getDocument.mockResolvedValue(invoice);
     await renderPage();
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/client/docs/doc-1');
+    expect(screen.getByText(/finalized and sealed/i)).toBeInTheDocument();
+  });
+
+  /**
+   * The route used to hand the toolbar a `backHref`, and both halves of that
+   * rule were pinned here. There is no Back on this page any more: the app
+   * header one row up carries the only one, so a second in the toolbar was two
+   * controls pointing at the same place. What the route still owes the page is
+   * the sealed card for a finalized document and none for a draft.
+   */
+  it('offers a draft no sealed card', async () => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    getDocument.mockResolvedValue({ ...invoice, status: 'draft', number: null });
+    await renderPage();
+    expect(screen.queryByText(/finalized and sealed/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /print/i })).toBeInTheDocument();
   });
 
   it('redirects an unauthorized user', async () => {

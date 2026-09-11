@@ -66,7 +66,17 @@ export async function worstClip(frame: Locator, tolerance = 1): Promise<Clip | n
 }
 
 /** Every packed page of a paginated document, in order. */
-export const pagesOf = (page: Page): Locator => page.locator('.paginatorPage');
+/**
+ * The document's pages — the real ones, not the rail's.
+ *
+ * The print view draws each page twice: once at full size in the column, and
+ * once scaled inside `PageThumbnails`. Both are `.paginatorPage`, because the
+ * thumbnail *is* the page (that is the whole reason it cannot drift). So every
+ * selector here excludes the rail, or a two-page document counts as four and
+ * `worstClip` reads the thumbnail's deliberate crop as a clipped row.
+ */
+export const pagesOf = (page: Page): Locator =>
+  page.locator('.doc-print-column > .paginatorPage, .doc-sheet-wrap > .paginatorPage');
 
 /**
  * Waits for `usePagination` to settle.
@@ -77,7 +87,12 @@ export const pagesOf = (page: Page): Locator => page.locator('.paginatorPage');
  */
 export async function settled(page: Page): Promise<void> {
   await page.waitForFunction(() => {
-    const pages = document.querySelectorAll('.paginatorPage');
+    // Same scoping as `pagesOf`, and for the same reason: before measurement
+    // the un-paginated flow is a `.paginatorPage` too, and it is not inside the
+    // column. Waiting on the column appearing is waiting on the pack.
+    const pages = document.querySelectorAll(
+      '.doc-print-column > .paginatorPage, .doc-sheet-wrap > .paginatorPage',
+    );
     return pages.length > 0 && (pages[0] as HTMLElement).offsetHeight === 1123;
   });
 }

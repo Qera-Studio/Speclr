@@ -55,6 +55,7 @@ export default async function PrintRoute({
     : ({ ...stored, studioSnapshot: await getStudioSettings() } as AdminDocument);
 
   const spec = DOC_TYPES[doc.type];
+  const finalized = doc.status === 'finalized';
 
   // One home for what a document is called, shared with the stored PDF's
   // download header — see `domain/docFilename.ts`.
@@ -65,9 +66,17 @@ export default async function PrintRoute({
       <h1 className="sr-only">
         Print view — {spec.label} {doc.number ?? 'draft'}
       </h1>
-      <div data-print-hidden>
-        <PrintToolbar backHref={`/${profile}/docs/${doc.id}`} fileName={fileName} />
-      </div>
+      {/*
+        No `backHref`: the toolbar carries no Back of its own any more. The app
+        header one row up already has one, and two of them pointing at the same
+        place was the reader having to work out whether they differed.
+      */}
+      <PrintToolbar
+        fileName={fileName}
+        docId={doc.id}
+        finalized={finalized}
+        isSlip={isSlip(doc)}
+      />
       <div className="doc-sheet-wrap">{sheet}</div>
     </main>
   );

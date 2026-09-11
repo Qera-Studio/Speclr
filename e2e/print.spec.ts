@@ -63,3 +63,33 @@ test.describe('print output', () => {
     }
   });
 });
+
+/**
+ * The chrome around a document, named one piece at a time.
+ *
+ * The test above cannot find a missing `data-print-hidden`, because it only
+ * looks at elements that already carry one: chrome nobody marked is chrome it
+ * never asks about, and it passed for as long as the top band printed across
+ * the head of every document and every ⌘P of a list. So this names each piece
+ * of furniture by what it *is*, and `/preview/shell` is where they exist — the
+ * document fixtures render outside `(app)` and so have no shell at all, which
+ * is the other half of why nothing caught this.
+ */
+test.describe('the app chrome under print media', () => {
+  test('leaves the content and takes the navigation', async ({ page }) => {
+    await page.goto('/preview/shell');
+    await page.emulateMedia({ media: 'print' });
+
+    // The band across the top: profile switcher, search, clock, bell. This is
+    // the one that reached the paper.
+    await expect(page.locator('[data-slot="top-panel"]')).toBeHidden();
+    for (const rail of await page.locator('[data-slot="sidebar"]').all()) {
+      await expect(rail).toBeHidden();
+    }
+
+    // And the page itself is still there, or the rule above is hiding the
+    // document rather than the furniture around it.
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'QS-INV-2627-001' })).toBeVisible();
+  });
+});
