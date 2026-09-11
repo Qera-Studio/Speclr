@@ -961,9 +961,18 @@ document type in the app where **nothing flows**: every block carries
 else onto it.
 
 ```
-cover → service 1 → [service 1 add-ons] → service 2 → … →
-recurring + summary → details → contact
+cover → service 1 → [service 1 continued / add-ons] → service 2 → … →
+[recurring + summary] → details → contact
 ```
+
+**Two of those pages are conditional, and both are absent by default**, changed
+3 September 2026. A service gets a second page when it carries add-ons or more
+deliverables than one page holds; the recurring page prints only where there
+are recurring rows or an add-on somewhere to summarise. The ordinary quote is a
+build with nothing running after it, and neither page has anything to say about
+one: a heading over an empty table, and a summary restating the single figure on
+the page before. So the plain build quote is four pages, and `quotationBlocks`
+returns a list with a hole filtered out of it rather than a fixed seven.
 
 **A service is a page.** That is why `QuotationService` is a record with its own
 `lines` and `addOns` rather than a `section` string on a flat line array, which
@@ -973,23 +982,35 @@ belong to the service it extends. It is also the one type that does not use
 `total_paise` therefore comes from `computeQuotationTotals` in `db/mappers.ts`,
 not from `computeTotals`.
 
-**There is a hard ceiling and it is not a rendering detail.** Nothing paginates
-onto a second page, so a service with too many deliverables spills off the
-paper. Measured at **8 deliverables** on a service page that also carries a
-blurb; 9 fails. `e2e/quotation.spec.ts` asserts **no page is marked
-`overflows`** — the escape hatch that is right for the contract (an unbreakable
-clause spilling visibly beats one silently cut) is a bug here, and skipping
-those pages the way the other specs do would skip exactly the case the spec
-exists to find. Confirmed to go red before it was trusted. If a service ever
-needs more, split it or flow the table through the `Paginator`; do not quietly
-raise the limit.
+**The ceiling is still real, it just paginates now** (3 September 2026). A
+service page holds `DELIVERABLES_PER_PAGE` deliverables, measured at **8** on a
+page that also carries a blurb; 9 still fails. What changed is what happens to
+the ninth: `splitDeliverables` carries it onto the service's next page, above
+its add-ons where it has them and onto a continuation page where it does not.
+It is deliberately **not** turned into an add-on: it is priced in the service's
+own One-time Total, and the heading says "continued".
+
+**The service's total moves with its last row.** Two tables each summing their
+own half would print two partial One-time Totals for one price, so
+`DeliverablesTable` takes the figure as a prop and the *first* page prints
+none. Absent is how that table says the sum belongs further on.
+
+`e2e/quotation.spec.ts` asserts **no page is marked `overflows`** — the escape
+hatch that is right for the contract (an unbreakable clause spilling visibly
+beats one silently cut) is a bug here, and skipping those pages the way the
+other specs do would skip exactly the case the spec exists to find. Confirmed
+to go red before it was trusted, twice: once at `DELIVERABLES_PER_PAGE = 20`
+and once at 9, which is how the 8 was re-measured after the sheet changed.
 
 That number is a **measurement, not an arithmetic result**, and it moves with
 the type sizes and with `QUOTATION_PADDING`. The quotation is the one sheet
 that does not print the shared 12px page margin: it is a display document set
 in 72px and 52px type, and 24px is what a headline that size needs under it.
 The margin costs the packer 24px of page height, which is a deliberate trade
-and the reason this figure is re-measured whenever either changes.
+and the reason this figure is re-measured whenever either changes. Two fixtures
+exist for it: `quotation-overflow` (twelve deliverables plus add-ons, the
+tallest page this type produces) and `quotation-plain` (the four-page build
+quote, measured for what is missing).
 
 **It charges no tax, and states one.** The listed prices are **inclusive**, so
 'Inclusive of Tax (GST 18%)' is a sentence the sheet prints, not a figure it
@@ -998,21 +1019,36 @@ of supply, no CGST/SGST split, no legal position at all. It also prints money
 without the paise (`formatQuote`) because every figure is a round estimate,
 except where the paise are real, as a ₹0.15 per-message rate is.
 
-**Five things are derived, and none has an input** (`PRINCIPLES.md` rule 3):
+**Five things are derived, and four have no input at all**
+(`PRINCIPLES.md` rule 3):
 
 | Derived | From |
 |---|---|
 | The subject line | The service names, the company and the city |
-| The payment schedule | The **one-time** total (recurring is billed at cost, never phased) |
 | The summary table | The services and the recurring rows, wholly |
 | Whether a service has an add-on page | `addOns.length > 0` — there is no toggle |
-| The four terms, the cover blurb, the offer line | Fixed studio copy in `quotation.ts` |
+| Whether the document has a recurring page | `recurring.length > 0` — likewise |
+| The payment schedule | The **one-time** total, unless the document states its own |
 
 The phase bands: under ₹1 lakh, 50/50; to ₹3 lakh, 35/35/30; above it,
 30/25/25/20. The four-phase band exists because at that size the build runs for
 months, and one 30% tail means carrying a third of the project through its
 longest stretch. Splitting it holds unpaid exposure at or under 25% throughout
 while the client still pays no more than 30% before seeing work.
+
+**The schedule is the one that gained an override**, on 3 September 2026, and
+it is rule 3's stated exception rather than a departure: derived by default and
+shown read-only, and "Edit the phases" seeds the list from the band it would
+have printed rather than opening an empty one. `phasesOf` is the single reader
+and treats an absent list and an empty one alike, so removing the last phase
+returns the document to the derivation. A **stated** schedule is refused at
+finalize unless it adds up to 100%, naming the figure — refused rather than
+scaled, because 30/30/30 is arithmetic slipping and normalising it would issue
+a schedule nobody wrote. A derived one needs no check: every band sums to 100.
+Logged in `PRINCIPLES.md` under *Logged deviations*.
+
+The four terms, the cover blurb and the offer line are none of the above: they
+are fixed studio copy in `quotation.ts`, not derived and not editable.
 
 **What a recurring row can hold is three shapes, not one.** A flat monthly cost,
 a usage-dependent range, and a value that is not money ('2% + GST'). A row joins
@@ -1032,6 +1068,13 @@ finalized: there was nothing immutable to preserve, so there is no back-compat
 shim and there should not be one. `LineItem` lost `section` and `recurring` with
 them, and `detail` stopped being deprecated — this sheet is the one that prints
 it.
+
+**`paymentPhases` is not `milestones` coming back**, and the difference is the
+whole of rule 3. `milestones` was a free field the operator filled from memory
+on every quote, with nothing deriving it and nothing checking it.
+`paymentPhases` is absent on an untouched document, seeded from the band when
+it is not, and refused at finalize unless it bills 100%. A field that starts
+empty and one that starts correct are different fields.
 
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:

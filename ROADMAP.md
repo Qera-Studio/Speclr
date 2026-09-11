@@ -248,6 +248,44 @@ raised as possibly more useful than a client table, and the user agreed it is
 the more useful of the two *for clients*. Which of the two block 4 becomes is
 decided when this is built, not now.
 
+### 10. The contract is not flexible enough — two gaps found building a real one
+
+Reported by the founder on 3 September 2026, while onboarding an actual client,
+and deliberately not designed yet — noted here so the shape is not lost before
+it gets picked up.
+
+**A Service is too coarse a unit for what a contract needs to state.** "Custom
+Website" is one catalogue line today, but a real engagement scopes it down into
+a subset of independent capabilities: analytics, CRO, a CMS, interactivity,
+static vs dynamic rendering, e-commerce, motion, graphics, security,
+accessibility, initial setup, SEO/AEO/GEO, cookie consent, 3D/WebGL, booking
+systems, payment gateway integration, and others. None of that is expressible
+today — the contract freezes a Part per Service (`CONTEXT.md` §5c), not a
+checklist of what that Service actually includes for *this* client. The shape
+this wants is closer to §5h's Service editing (five fields, server reads the
+row) than to a free-text scope clause: a per-engagement, per-Service list of
+inclusions that the contract can freeze at draft creation exactly as it freezes
+the clause library today. Needs its own design pass; do not bolt it onto
+`fee`/`lines`.
+
+**Payment phasing is three hard-coded bands, and a real client already broke
+it.** `CONTEXT.md` §5l: 50/50 under ₹1 lakh, 35/35/30 to ₹3 lakh,
+30/25/25/20 above it, derived from the one-time total with no input anywhere.
+The case in hand is 20% every 10 days, five installments — a schedule the
+current model has no way to express, because it is not derived from the total
+at all; it is a negotiated cadence. This wants an arbitrary
+`{ percent, dueInDays }[]` schedule, editable per contract, with the three
+existing bands surviving as *defaults* offered at the size breakpoints rather
+than the only three shapes a schedule can take. Whatever replaces the derived
+bands must still sum to 100%, or the invoice math downstream disagrees with the
+contract's own payment clause.
+
+**A third item, not a gap but a plan:** once the invoice edge-case audit
+(`COMPLIANCE.md`) is settled, run the same pass on contracts — 100 to 200 named
+cases, the same severity marking. Both gaps above will very likely turn out to
+be two rows in that list rather than one-off reports; this entry should be
+folded into that audit's findings when it starts rather than tracked twice.
+
 ---
 
 ## Deliberately deferred (YAGNI — noted, not built)
@@ -391,6 +429,45 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 
 ## Smaller / unapproved
 
+- **No persistent notification history.** Raised 3 September 2026 alongside the
+  client-delete-refusal toast fix (below, and see `sonner.tsx`): the app has
+  toast notifications (transient, four seconds, three visible at once) but
+  nothing that keeps a record of them once they clear. "Have the badge in the
+  notifications" was the ask; there is currently no notifications surface to
+  put it in — only the live toast stack. Deliberately not built yet: the
+  founder confirmed this is additional, not the main ask, so it should get a
+  design pass of its own (what counts as a notification, how long it is kept,
+  whether it is per-record-type or global) rather than being bolted onto the
+  toast fix.
+- **A natural-person client's primary contact can be someone other than the
+  legal person, and onboarding has no field for them.** Reported 3 September
+  2026, real case: a sole proprietorship (dad's business, e.g. "Yash Metal and
+  Alloys" as the trading name) where the daughter is the actual point of
+  contact and the contract signatory, not the proprietor named on the identity
+  step. `proprietorship`, `sole_trader` and `individual` all carry
+  `naturalPerson: true` (`entityType.ts`), which skips the Contacts step
+  entirely (`CONTEXT.md` §5d-i) on the assumption that the identity fields
+  (`client.name`/`.email`/`.phone`) already name the one person who matters.
+  `clientContact` (`client.ts:333`) derives primary/signing contact from those
+  same identity fields with no override, so there is nowhere to record that a
+  *different* person is who Qera actually talks to and who signs. The billing
+  contact override already exists (`contacts.billing` can point elsewhere);
+  primary and signing have no equivalent for a natural-person client. Fix is
+  likely a small, optional "primary contact differs from the account holder"
+  toggle inside step 1 for natural-person kinds specifically — not a return of
+  the full Contacts step, which was correctly removed for the common case
+  where the two are the same person.
+- **Postcode autofill won't overwrite a city field that already holds text,
+  even when that text is the pincode itself, mistyped into the wrong box.**
+  Reported 3 September 2026 during client onboarding: pincode typed into the
+  city field first, then the same pincode pasted into the postcode field
+  afterward without clearing the city — state field updates correctly,
+  city does not. `AddressFields.tsx` (`ours`/`filled` logic around line 226-290)
+  treats any non-empty city as manually typed and therefore off-limits to
+  overwrite, which is the right call for a real city name but not for the case
+  where what's sitting in the city field is itself the postcode. Not fixed;
+  noted so the "don't clobber what the operator typed" rule gets revisited
+  against this case specifically.
 - List/Cards drag pill (`DocumentsBrowser`'s view toggle, top of the dashboard
   table) reported as still overflowing/misbehaving after the 26 August 2026
   drag fix (`docs/design.md` §2.7, commit `3255aa2`) that fixed the identical
