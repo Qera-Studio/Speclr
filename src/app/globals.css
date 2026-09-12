@@ -531,6 +531,27 @@
   }
 
   /*
+    No rubber-band on the page itself.
+
+    The shell already pins to `h-svh` and clips, so the document has nothing to
+    scroll — but macOS and iOS still bounce the *viewport* elastically when a
+    scroll gesture runs past the end of an inner box, and that bounce moves
+    everything painted against the viewport with it. What it looked like: the
+    print view's sealed banner, which is `sticky` inside the content area, being
+    dragged down and springing back whenever the reader scrolled back to the
+    first page.
+
+    `overscroll-contain` on the content area alone does not answer it, because
+    the box that is bouncing is not that one. It has to be said here, where the
+    gesture ends up, and it is said on both elements because which of the two
+    owns the viewport's scroll differs between engines.
+  */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  /*
     Selection, said once.
 
     The browser default is the OS accent, which is a colour this app has no

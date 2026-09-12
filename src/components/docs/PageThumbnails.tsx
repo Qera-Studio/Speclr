@@ -60,9 +60,30 @@ export default function PageThumbnails({
         runs off the bottom of the screen. Measured, not assumed — see
         `e2e/page-rail.spec.ts`, which failed on exactly that.
 
-        `100svh` minus the header band and the page's own padding.
+        **The bound is the box that scrolls, not the viewport.** It was
+        `100svh-5rem`, and inside the app that is simply the wrong ruler: the
+        rail sits in `#main-content` within the inset card, which is shorter
+        than the window by the header band and the card's own margins. So the
+        cap came out *taller than the container*, the rail overflowed the inset
+        rather than scrolling inside itself, and its last thumbnails could not
+        be reached at all. `--doc-scroll-height` is that box measured (see
+        `PrintToolbar`), less whatever the locked band holds above it; the
+        `100svh` fallback is the standalone print route, where the window really
+        is the scroll box.
       */
-      className="scrollbar-none flex max-h-[calc(100svh-5rem)] shrink-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain py-2"
+      /*
+        No vertical padding, and that is an alignment fix rather than a
+        tightening. It was `py-2`, which started the first thumbnail 8px below
+        the first full-size page beside it: the rail and the page column both
+        begin at the same y, so any padding here is a step the column does not
+        take, and the two tops read as misaligned by exactly that much.
+
+        Measured, not reasoned about — `e2e/page-rail.spec.ts` pins the two
+        tops together now, and it was confirmed to go red with the padding back
+        in. The gap the padding was buying is `pb-2` alone, at the foot, where
+        there is no page edge to line up against.
+      */
+      className="scrollbar-none flex max-h-[calc(var(--doc-scroll-height,100svh)-var(--doc-locked-band,5rem))] shrink-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain pb-2"
     >
       {pages.map((page, i) => {
         const current = i === currentPage;
@@ -88,9 +109,29 @@ export default function PageThumbnails({
                 offered the full text of every page twice over would be read the
                 document once for the rail and once for the document.
               */}
+              {/*
+                `text-left` and `font-normal` are not decoration, and this is
+                the same bug `SheetThumbnail` fixed on the ⌘D cards — caught
+                there, then written again here because the rail was built
+                afterwards and the frame had nothing saying it could not
+                inherit.
+
+                A sheet never sets `text-align` on its own root, so it takes
+                the caller's. The caller here is a `<button>`, which the UA
+                stylesheet centres, so every heading, table cell, address line
+                and footer on every thumbnail rendered centred while the page
+                it stood for was left-aligned. The rail was not a small copy of
+                the document, it was a different document.
+
+                The frame states the page's own typography so no caller can
+                lend it theirs. Measured, not assumed: `e2e/page-rail.spec.ts`
+                compares the computed `text-align` of the thumbnail's page
+                frame against the real page's, which reads `center` against
+                `start` with this removed.
+              */}
               <span
                 aria-hidden
-                className="pointer-events-none block origin-top-left select-none"
+                className="pointer-events-none block origin-top-left text-left font-normal select-none"
                 style={{
                   width: SHEET_WIDTH,
                   height: SHEET_HEIGHT,

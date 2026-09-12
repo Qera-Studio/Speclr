@@ -101,4 +101,19 @@ describe('AdminShell', () => {
     expect(railEl()).toHaveAttribute('data-state', 'expanded');
   });
 
+  /**
+   * The content area contains its own overscroll.
+   *
+   * A class assertion, which is normally the wrong shape for a test — but the
+   * behaviour it stands for is rubber-band scrolling, and neither jsdom nor a
+   * headless browser bounces. So the rule itself is the only thing there is to
+   * check, and it is worth checking: without it this box overscrolls past its
+   * own top and drags everything `sticky` inside it along, which showed up as
+   * the print view's sealed banner springing down when the reader scrolled back
+   * to the first page.
+   */
+  it('contains its own overscroll, so a sticky child is not dragged by the bounce', () => {
+    renderShell();
+    expect(document.getElementById('main-content')).toHaveClass('overscroll-contain');
+  });
 });

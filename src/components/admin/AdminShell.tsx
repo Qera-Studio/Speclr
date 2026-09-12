@@ -227,10 +227,22 @@ export default function AdminShell({
                       focusable, and a skip link that moves the scroll without
                       moving the focus leaves the next Tab back at the rail it
                       just skipped. */}
+                  {/*
+                    `overscroll-contain` is a bug fix, not a tightening.
+
+                    Without it this box rubber-bands past its own top, and
+                    anything `sticky` inside it is carried along for the ride:
+                    scrolling the print view back to the first page dragged the
+                    sealed banner down with the bounce and let it spring back,
+                    which reads as the header coming loose. It also stops a
+                    scroll that reaches the end of this box from chaining out to
+                    the page behind it. The document preview and the page rail
+                    already contain their own for the same reason.
+                  */}
                   <div
                     id="main-content"
                     tabIndex={-1}
-                    className="min-h-0 flex-1 overflow-y-auto outline-none"
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none"
                   >
                     {children}
                   </div>

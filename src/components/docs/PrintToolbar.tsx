@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
@@ -72,6 +72,49 @@ export default function PrintToolbar({
 
   const { download, downloading } = useDownloadPdf(docId ?? '', fileName);
 
+  /**
+   * How tall the locked band is, published to the page it sits on.
+   *
+   * The page rail sticks below this card rather than under it, and the two are
+   * siblings a flex row apart, so CSS alone cannot carry the number across —
+   * `sticky` offsets take a length, not "whatever that other box measured".
+   *
+   * `.doc-print-page` is the host rather than `:root`: the value describes this
+   * one page and dies with it, and a variable on the document would outlive a
+   * navigation to a page that has no band at all.
+   *
+   * Measured, because the sentence wraps to two lines on a narrow inset and a
+   * written-down height would be right at one width and wrong at the next.
+   * `useLayoutEffect` so the rail is never painted at the wrong offset first.
+   *
+   * The band pins at `top-0` and paints over the page's own padding, so its
+   * height *is* everything it occupies and the rail's offset is that number
+   * with nothing added to it.
+   */
+  const band = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = band.current;
+    const host = el?.closest<HTMLElement>('.doc-print-page');
+    if (!el || !host) return;
+
+    const publish = () => {
+      host.style.setProperty('--doc-locked-band', `${el.offsetHeight}px`);
+    };
+    publish();
+    // The flag the stylesheet keys on, so the body's own top padding stands
+    // down: the card carries that air itself now, and taken twice the second
+    // one is the distance the rail travels before it catches.
+    host.dataset.lockedBand = '';
+
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      host.style.removeProperty('--doc-locked-band');
+      delete host.dataset.lockedBand;
+    };
+  }, [finalized, docId]);
+
   if (!finalized || !docId) {
     // A draft has no stored PDF and nothing to duplicate from. Print is the one
     // thing this page can still do for it, and it goes on the header row with
@@ -109,8 +152,53 @@ export default function PrintToolbar({
         </div>
       </PageHeaderSlot>
 
-      {/* One card, full width, directly under the header and above the pages. */}
-      <div data-print-hidden className="mx-auto max-w-[794px] px-4 pb-3">
+      {/*
+        The card runs the full width of the content area, starting at its left
+        edge under the Back button rather than centred over the page column.
+
+        It was `mx-auto max-w-[794px]`, which centred it on the paper and left
+        its sentence wrapping onto a second line with one word on it. It is a
+        statement about the document, not a part of the document, so it belongs
+        to the page's own column rather than to the sheet's, and given the whole
+        width it reads as one line.
+
+        **It is locked to the top and does not scroll away.** It says the
+        document cannot be edited, which is the one thing a reader needs on
+        screen at the moment they go looking for an edit button — and they go
+        looking after scrolling, not before. Scrolled off, it was a sentence
+        that had already been read by everybody except the person it was
+        written for.
+
+        `sticky` rather than `fixed`: the scroll box here is `#main-content`
+        inside the inset card, not the window, so a fixed box would resolve
+        against the viewport and sit over the nav. It needs its own ground
+        (`bg-background`) because the pages pass underneath it.
+
+        `--doc-locked-band` is the height it occupies, published on the scroll
+        box so the page rail beside it can stick *below* it rather than through
+        it. Measured rather than written down: the sentence wraps to two lines
+        on a narrow inset, so a constant would be right at one width and wrong
+        at the next. Without it the rail scrolled 86px before catching, which is
+        exactly the "the rail must not move" this locking exists to give.
+
+        **The band spans the scroll box, not the card's own box**, and that is
+        the fix for the document leaking past it. `.doc-print-page` pads itself
+        by 8px on every side, so a card pinned at `top-2` left an 8px strip of
+        the scroll box above it that it did not paint — and a black quotation
+        page slid up through that strip. The negative margins pull the band's
+        own ground back out over that padding on three sides, so what pins is a
+        full-width opaque bar with the card inset inside it, and there is no
+        uncovered pixel left for a page to show through.
+      */}
+      <div
+        ref={band}
+        data-print-hidden
+        data-slot="doc-locked-band"
+        // `-mx-2 -mt-2` cancels the page's padding; `px-2 pt-2` puts it back as
+        // the card's own inset, so the card does not move and the ground under
+        // it reaches the edges of the box that scrolls.
+        className="sticky top-0 z-20 -mx-2 -mt-2 bg-background px-2 pt-2 pb-6"
+      >
         <FinalizedActions docId={docId} sealedCard />
       </div>
     </>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, Lock, Printer } from 'lucide-react';
+import { Lock, Printer } from 'lucide-react';
+import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -146,8 +147,18 @@ export default function FinalizedActions({
                 the row reads as one primary among three solid actions instead
                 of three competing ones. */}
             {onDownload ? (
-              <Button type="button" onClick={onDownload} pending={downloading}>
-                <Download aria-hidden="true" />
+              // `group/tray` is what arms the arrow: `TrayArrowIcon` animates on
+              // its container's hover, and it is the house download icon
+              // everywhere else in the app (its own docstring says to use it
+              // instead of the raw Lucide one). This row was the last raw
+              // `Download` left.
+              <Button
+                type="button"
+                onClick={onDownload}
+                pending={downloading}
+                className="group/tray"
+              >
+                <TrayArrowIcon />
                 Download PDF
               </Button>
             ) : null}
@@ -174,12 +185,14 @@ export default function FinalizedActions({
         {/*
           Duplicate is the primary action only where nothing outranks it. In the
           editor rail it is the one thing you can do to a sealed document, so it
-          is blue. On the print view Download is that action, so this steps down
-          to ink beside it: two blues in one row is two primaries.
+          is blue. On the print view Download is that action, so this steps all
+          the way down to an outline: it is the rarest of the three (a
+          correction, not an ordinary read of an issued document), and three
+          solid buttons in a row is three things asking to be pressed.
         */}
         <Button
           type="button"
-          variant={isSlip ? 'outline' : onPrint ? 'neutral' : 'default'}
+          variant={isSlip || onPrint ? 'outline' : 'default'}
           onClick={onDuplicate}
           pending={duplicating}
         >
