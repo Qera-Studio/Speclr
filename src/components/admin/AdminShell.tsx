@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AdminSidebar from "./AdminSidebar";
@@ -83,6 +83,14 @@ export default function AdminShell({
   const pathname = usePathname();
   const onProfile = profileFromPath(pathname);
   const profile: Profile = onProfile ?? DEFAULT_PROFILE;
+
+  /**
+   * The inset card, for the one thing that opens *inside* it: the notification
+   * drawer. It is a ref rather than state because nothing here re-renders on it
+   * — `SheetPortal` reads the ref when the sheet opens, which is always well
+   * after mount.
+   */
+  const inset = useRef<HTMLDivElement>(null);
 
   return (
     <EditorPanelProvider>
@@ -185,7 +193,7 @@ export default function AdminShell({
               {/* Above the header rather than over the content: it is a fact
                   about the whole app, and it must not cover a control. */}
               <OfflineBar />
-              <TopPanel />
+              <TopPanel inset={inset} />
               {/*
                 The inset: one card holding the content and the editor rail,
                 floated off the shell on all four sides.
@@ -205,7 +213,19 @@ export default function AdminShell({
                 in it. Named rather than `rounded-[4px]`, per `docs/design.md`
                 §1.3, which is also where the shell-frame row was corrected.
               */}
-              <div className="group/inset m-2 mt-0 flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md ring-1 ring-sidebar-border">
+              {/*
+                `relative` is what makes the notification drawer land in here.
+                A sheet positions itself `fixed`, which resolves to the viewport
+                from wherever it is portalled, so `Notifications` switches its
+                panel and scrim to `absolute` and this is the box they resolve
+                against. `overflow-clip` above then clips the panel to the
+                card's own corners, which is the other half of it reading as
+                part of the card rather than a pane laid over the window.
+              */}
+              <div
+                ref={inset}
+                className="group/inset relative m-2 mt-0 flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md ring-1 ring-sidebar-border"
+              >
                 <SidebarInset
                   // `overflow-clip` for the same reason as the shell above: this
                   // only ever needed to clip the inset's rounded corners, and

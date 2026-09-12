@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, PanelLeft, Plus } from "lucide-react";
@@ -159,21 +159,17 @@ function ProfileNavBody({
   nav,
   pathname,
   live,
-  ref,
 }: {
   nav: ProfileNav;
   pathname: string;
   /** False for the off-screen copy. */
   live: boolean;
-  /** Set on the live copy only, so the pill can measure it. */
-  ref?: React.Ref<HTMLElement>;
 }) {
   return (
     // A landmark, because this is the app's primary navigation and previously
     // had none. Only the live one is exposed — the other is `aria-hidden`, so a
     // screen reader is never offered two.
     <nav
-      ref={ref}
       aria-label={`${nav.label} navigation`}
       // `inert` removes it from the tab order, the a11y tree and hit-testing in
       // one attribute — cheaper and more complete than juggling tabIndex.
@@ -394,84 +390,23 @@ export default function AdminSidebar({
    */
   const shown = PROFILES[index + committed] ?? profile;
 
-  /**
-   * The live nav's measured height, published so the pill can state its own
-   * height as a **length**.
-   *
-   * The pill was `h-fit`, which cost two separate pieces of motion, and the one
-   * cause is worth stating once rather than rediscovering from either symptom.
-   * **`height: fit-content` does not animate.** Its computed value never
-   * changes when its content changes, only its used value, and transitions fire
-   * on computed values. So:
-   *
-   * - Changing profile resized the pill in a single frame while the track was
-   *   still sliding sideways, because the two navs have different row counts.
-   * - Expanding it back to a docked rail left every child pinned at the
-   *   collapsed height for the whole 200ms and then dropped them ~310px in the
-   *   closing frame. That one presented as the account card arriving late, and
-   *   the card had nothing to do with it: the traces before and after are
-   *   identical for every row above it.
-   *
-   * `interpolate-size` does not help (it governs keyword-to-length, which this
-   * is not), nor does `transition-behavior: allow-discrete`, nor a grid track.
-   * Animating the two nav copies instead is worse: they are flex siblings, so
-   * the box is `max(a, b)`, and mid-flight both are partial, which dips the
-   * pill under *both* endpoints (360 → 209 → 264) whatever the easing.
-   *
-   * So the height is measured and handed to CSS as `--rail-height`, which the
-   * float's `height` reads (falling back to `fit-content`, so the pill is still
-   * correct on the first frame and with JS yet to run). It is only read while
-   * floating; docked, the rail is a full-height column and this is unused.
-   *
-   * What is measured is the **live nav plus the chrome around it** — the
-   * header, the content's own padding and the account card. Restating that
-   * arithmetic here would go stale the next time any of those paddings moved,
-   * so the chrome is read off the boxes themselves.
-   *
-   * The nav's own contribution is `scrollHeight`, and the content row's is its
-   * padding rather than its height: this variable *sets* the pill's height, so
-   * measuring anything that the height in turn constrains would have the value
-   * feed itself. `scrollHeight` and a computed padding are both independent of
-   * it.
-   */
-  const [railHeight, setRailHeight] = useState<number>();
-  const liveNavRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const nav = liveNavRef.current;
-    const column = nav?.closest('[data-slot="sidebar-inner"]');
-    if (!nav || !column) return;
-    const measure = () =>
-      setRailHeight(
-        [...column.children].reduce((total, child) => {
-          if (!child.contains(nav))
-            return total + (child as HTMLElement).offsetHeight;
-          const style = getComputedStyle(child);
-          return (
-            total +
-            nav.scrollHeight +
-            parseFloat(style.paddingTop) +
-            parseFloat(style.paddingBottom)
-          );
-        }, 0),
-      );
-    measure();
-    // Rows can change height after mount (a font landing, a label wrapping at
-    // the peeked width), so this is not a one-shot read.
-    const observer = new ResizeObserver(measure);
-    observer.observe(nav);
-    for (const child of column.children) observer.observe(child);
-    return () => observer.disconnect();
-    // `shown` is the dependency that matters: the ref points at a different
-    // element after a profile change, so the observer has to be re-pointed.
-  }, [shown]);
+  /*
+    There was a measurement pass here, publishing the live nav's height as
+    `--rail-height` for the float to state its own height with. It is gone with
+    the pill it served: the float is a full-height column now, so its height is
+    the window's less its two gutters and is the same length docked or not.
+
+    Worth keeping the finding, because it is the reason the variable existed and
+    it will be true again for anything else shrunk to its content:
+    **`height: fit-content` does not animate.** Its computed value never changes
+    when its content does, only its used value, and transitions fire on computed
+    values. `interpolate-size` does not help (it governs keyword-to-length,
+    which this is not), nor does `transition-behavior: allow-discrete`, nor a
+    grid track.
+  */
 
   return (
     <Sidebar
-      style={
-        railHeight === undefined
-          ? undefined
-          : ({ "--rail-height": `${railHeight}px` } as React.CSSProperties)
-      }
       collapsible="float"
       variant="sidebar"
       // No seam on the right, the same call the editor rail already makes for
@@ -628,7 +563,6 @@ export default function AdminSidebar({
               nav={NAV_BY_PROFILE[value]}
               pathname={pathname}
               live={value === shown}
-              ref={value === shown ? liveNavRef : undefined}
             />
           ))}
         </div>
@@ -642,14 +576,14 @@ export default function AdminSidebar({
           it gone the pill had no route to settings, the theme or sign-out
           without docking first.
 
-          `group-data-float:pt-4` on top of `SidebarContent`'s own `pb-2` puts
-          24px between the last nav icon and the avatar, which is exactly what
-          the header leaves above the first one (8px of the header's own box,
-          then the nav's `pt-4`). So the account row is held off the rows by
-          the same air that holds them off the toggle, and the footer's `p-2`
-          keeps the pill's bottom margin equal to the 8px either side of the
-          icon column. */}
-      <SidebarFooter className="gap-3 group-data-float:pt-4">
+          It needed a `group-data-float:pt-4` while the float was a pill shrunk
+          to its rows: with nothing stretching between them, the account row sat
+          directly under the last destination and the 16px bought it the same
+          24px of air the header leaves above the first one. The float is a
+          full-height column now, so `SidebarContent` stretches and the card is
+          held at the bottom of the window with the whole remainder above it.
+          Air it already has is air it does not need adding. */}
+      <SidebarFooter className="gap-3">
         {/*
           The profile switcher, above the account card.
 

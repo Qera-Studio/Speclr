@@ -16,11 +16,15 @@ jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => [])
 const navEl = () => document.querySelector('[data-side="left"][data-slot="sidebar"]');
 const railEl = () => document.querySelector('[data-side="right"][data-slot="sidebar"]');
 
-function renderPanel(panelContent?: React.ReactNode) {
+function renderPanel(
+  panelContent?: React.ReactNode,
+  /** The inset card, when the test is about the notification drawer landing in it. */
+  inset?: React.RefObject<HTMLElement | null>,
+) {
   return render(
     <EditorPanelProvider>
       <SidebarProvider>
-        <TopPanel />
+        <TopPanel inset={inset} />
         {/* A bare rail, standing in for `AdminSidebar`, so the toggle button
             has a real `data-state` to flip. */}
         <Sidebar collapsible="icon" />
@@ -83,6 +87,52 @@ describe('TopPanel', () => {
     await user.click(screen.getByRole('button', { name: /notifications/i }));
     const drawer = await screen.findByRole('dialog');
     expect(within(drawer).getByText('Nothing to report')).toBeInTheDocument();
+  });
+
+  /**
+   * The drawer opens *inside* the inset card, and both halves of that are
+   * asserted because either one alone does nothing.
+   *
+   * Portalling it into the card moves only the DOM: a sheet positions itself
+   * `fixed`, which resolves to the viewport from wherever it is rendered, so the
+   * panel and its scrim would still have covered the whole window while sitting
+   * in the right parent. The scrim is the point — a drawer reporting something
+   * about the app has no business dimming the nav beside it — so `contained`
+   * swaps both to `absolute`, and the card is the positioned box they resolve
+   * against.
+   */
+  it('opens the drawer inside the inset, and positions it against it', async () => {
+    const user = userEvent.setup();
+    const inset = { current: document.createElement('div') };
+    document.body.append(inset.current);
+    renderPanel(undefined, inset);
+
+    await user.click(screen.getByRole('button', { name: /notifications/i }));
+    const drawer = await screen.findByRole('dialog');
+
+    expect(inset.current.contains(drawer)).toBe(true);
+    expect(drawer).toHaveClass('absolute');
+    expect(drawer).not.toHaveClass('fixed');
+
+    // The scrim, which is what actually darkens the card. It is a sibling of
+    // the panel rather than an ancestor, so it has to be found on its own.
+    const scrim = inset.current.querySelector('[data-slot="sheet-overlay"]');
+    expect(scrim).toHaveClass('absolute');
+    expect(scrim).not.toHaveClass('fixed');
+  });
+
+  /**
+   * And with no card it still opens, over the window. `AdminShell` always
+   * passes one; this is the degradation for a component rendered on its own,
+   * the same one `PageHeaderSlot` makes, because a missing shell must not cost
+   * the app its notifications.
+   */
+  it('falls back to the window with no inset', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole('button', { name: /notifications/i }));
+    expect(await screen.findByRole('dialog')).toHaveClass('fixed');
   });
 
   /**

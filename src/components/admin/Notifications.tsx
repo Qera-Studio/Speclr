@@ -37,8 +37,24 @@ import {
  * beside it, so covering the preview would hide the thing being edited. A
  * notification is about the app rather than about the document on screen, so it
  * is chrome over the page, not a second pane inside a column.
+ *
+ * It opens **inside the inset card**, which is what `container` and `contained`
+ * are for. A sheet over the window darkened the nav, the header band and the
+ * margin the card floats in, so the one permanent column went dim to report
+ * something that has nothing to do with it. The scrim belongs to the surface
+ * being covered: the card is what the drawer slides over, so the card is what
+ * dims, and the nav stays lit and usable underneath. The inset already carries
+ * `overflow-clip`, so the panel is clipped to the card's own corners.
+ *
+ * `inset` is the card's element. With none the sheet falls back to the window,
+ * which is the `PageHeaderSlot` degradation: every production route renders
+ * inside `AdminShell`, and a component on its own in a test must still open.
  */
-export default function Notifications() {
+export default function Notifications({
+  inset,
+}: {
+  inset?: React.RefObject<HTMLElement | null>;
+}) {
   return (
     <Sheet>
       <SheetTrigger
@@ -54,7 +70,12 @@ export default function Notifications() {
           </Button>
         }
       />
-      <SheetContent side="right" className="gap-0 p-0">
+      <SheetContent
+        side="right"
+        container={inset}
+        contained={inset !== undefined}
+        className="gap-0 p-0"
+      >
         {/* `pr-14` clears the close button `SheetContent` floats at `top-4
             right-4`, so a title never runs under it. */}
         <SheetHeader className="gap-1 border-b p-4 pr-14">

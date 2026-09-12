@@ -1,17 +1,50 @@
 import { test, expect } from '@playwright/test';
+import sharp from 'sharp';
 
 /**
  * The collapsed nav rail detaches into a floating pill, and hovering it grows
  * it back to full width without re-docking.
  *
  * All of this is geometry, which is why it is here: jsdom measures every box
- * as zero, so it cannot see that the pill left the window edge, that it shrank
- * to its rows, or that it stopped short of the content card. The behaviour
- * either side of the geometry (which attributes are set when) is pinned in
- * `AdminSidebar.test.tsx`.
+ * as zero, so it cannot see that the rail left the window edge, that it runs
+ * the window's height, or that it stopped short of the content card. The
+ * behaviour either side of the geometry (which attributes are set when) is
+ * pinned in `AdminSidebar.test.tsx`.
+ *
+ * **It was a pill and is now a column**, and several tests here read as
+ * corrections because of it. Collapsing used to shrink the box to its rows as
+ * well as narrowing it; it now changes the width and nothing else, so the
+ * height is the window's less its two 8px gutters in both states. What that
+ * retired is written up on each test that used to assert the old shape.
  */
 const RAIL = '[data-slot="sidebar"][data-side="left"] [data-slot="sidebar-container"]';
 const CARD = '[data-slot="sidebar-inset"]';
+
+/**
+ * How many pixels of two same-sized screenshots differ, allowing a small
+ * per-channel tolerance for antialiasing.
+ *
+ * `sharp` is already a dependency (Next.js pulls it for image optimisation),
+ * so this needs no new vendor row.
+ */
+const differingPixels = async (a: Buffer, b: Buffer) => {
+  const raw = (buf: Buffer) =>
+    sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  const [{ data: pa }, { data: pb }] = await Promise.all([raw(a), raw(b)]);
+  if (pa.length !== pb.length) return Number.POSITIVE_INFINITY;
+
+  let n = 0;
+  for (let i = 0; i < pa.length; i += 3) {
+    const delta =
+      Math.abs(pa[i] - pb[i]) +
+      Math.abs(pa[i + 1] - pb[i + 1]) +
+      Math.abs(pa[i + 2] - pb[i + 2]);
+    // Antialiasing moves a channel by a few units; a glyph appearing or going
+    // moves them by tens.
+    if (delta > 24) n++;
+  }
+  return n;
+};
 
 test.describe('the floating nav rail', () => {
   test('detaches from every edge when collapsed', async ({ page }) => {
@@ -24,60 +57,78 @@ test.describe('the floating nav rail', () => {
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await page.waitForTimeout(400);
 
-    const pill = (await rail.boundingBox())!;
-    // Off the left edge, clear of the top, and short of the viewport floor.
-    expect(pill.x).toBeGreaterThan(0);
-    expect(pill.y).toBeGreaterThan(docked.y);
-    expect(pill.height).toBeLessThan(docked.height);
+    const float = (await rail.boundingBox())!;
+    // Off the left edge and clear of the top.
+    expect(float.x).toBeGreaterThan(0);
+    expect(float.y).toBeGreaterThan(docked.y);
     // The icon strip's width, not the full rail's.
-    expect(pill.width).toBeLessThan(60);
+    expect(float.width).toBeLessThan(60);
 
     // Anchored just under the docked rail's own top edge, not centred on the
-    // viewport. Centring was tried and reverted: a pill taller than the space
-    // ran off both edges at once, and the first nav row ended up above the
-    // window. The two are only distinguishable by measuring, since both are
-    // off every edge.
-    expect(pill.y - docked.y).toBeLessThan(16);
+    // viewport. Centring was tried and reverted: the first nav row ended up
+    // above the window. The two are only distinguishable by measuring, since
+    // both are off every edge.
+    expect(float.y - docked.y).toBeLessThan(16);
   });
 
   /**
-   * The pill is as tall as its rows and no taller, and it never grows past the
-   * viewport: a profile with more destinations than fit scrolls inside the box
-   * rather than hanging off the bottom of the screen.
+   * Full height, and floating is the whole of what collapsing changes besides
+   * the width: the box runs the window less an 8px gutter at each end.
    *
-   * The short viewport is the whole test. At a normal height every nav here
-   * fits, so the cap is never reached and a missing `max-height` looks
-   * identical to a present one.
+   * It shrank to its rows once, which is what made it a pill. Three tests here
+   * measured that and are gone or rewritten with it, and the machinery under it
+   * went too: a measured `--rail-height`, published because `fit-content` does
+   * not animate. A column's height is a length in both states, so there is no
+   * height transition left to get wrong.
+   *
+   * Asserted against the viewport rather than a number, so this still means
+   * something at another window size, and the top and bottom gutters are
+   * checked separately: one number for the total would pass on a box that had
+   * slid down as far as it had shrunk.
    */
-  test('fits its rows, and stays inside the viewport when they do not fit', async ({
-    page,
-  }) => {
+  test('runs the full height of the window, inset at both ends', async ({ page }) => {
     await page.goto('/preview/shell');
     const rail = page.locator(RAIL).first();
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await page.waitForTimeout(400);
 
-    // Shrink-to-content: shorter than the rail it collapsed from, and taller
-    // than a single row, so "fits its content" is not just "collapsed to zero".
+    const { height } = page.viewportSize()!;
+    const box = (await rail.boundingBox())!;
+    expect(box.y).toBeCloseTo(8, 0);
+    expect(height - (box.y + box.height)).toBeCloseTo(8, 0);
+  });
+
+  /**
+   * And it follows the window rather than being a number written down once.
+   *
+   * The short viewport is the whole test: at a normal height a height that
+   * tracked the viewport and one that happened to fit look identical.
+   */
+  test('follows the viewport when it shrinks', async ({ page }) => {
+    await page.goto('/preview/shell');
+    const rail = page.locator(RAIL).first();
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await page.waitForTimeout(400);
     const roomy = (await rail.boundingBox())!;
-    expect(roomy.height).toBeLessThan(page.viewportSize()!.height);
-    expect(roomy.height).toBeGreaterThan(100);
 
     await page.setViewportSize({ width: 1280, height: 260 });
     await page.waitForTimeout(400);
     const cramped = (await rail.boundingBox())!;
-    expect(cramped.y).toBeGreaterThanOrEqual(0);
-    expect(cramped.y + cramped.height).toBeLessThanOrEqual(260);
+    expect(cramped.y).toBeCloseTo(8, 0);
+    expect(260 - (cramped.y + cramped.height)).toBeCloseTo(8, 0);
     expect(cramped.height).toBeLessThan(roomy.height);
   });
 
   /**
-   * "Its rows" means the *shown* profile's rows. Both profiles' navs are
-   * rendered side by side in the swipe track, and as flex siblings they stretch
-   * to the taller of the two — so the admin rail (4 rows) was padded out to the
-   * client rail's 6 and the pill carried a band of dead space under its last
-   * row. The off-screen copy is zero-height, which is what makes the pill's
-   * height the live nav's.
+   * The off-screen profile's nav takes no height.
+   *
+   * Both are rendered side by side in the swipe track, and as flex siblings
+   * they stretch to the taller of the two — so the admin rail (4 rows) was
+   * padded out to the client rail's 6. That used to show as a band of dead
+   * space under the pill's last row, and the pill is a full-height column now,
+   * so the symptom is gone. The cause is not: a stretched off-screen copy still
+   * makes the track taller than the live nav, which is what `SidebarContent`
+   * would scroll against on a short window.
    *
    * Measured rather than asserted on a class, because the fix is three CSS
    * properties interacting (`h-0`, `p-0` and the track's `items-start`) and any
@@ -85,12 +136,11 @@ test.describe('the floating nav rail', () => {
    * `h-0` alone left 16px of padding behind, and without `items-start` the
    * default `stretch` grows the box back.
    */
-  test('is as tall as the profile on screen, not the taller one', async ({ page }) => {
+  test('gives the off-screen profile no height', async ({ page }) => {
     await page.goto('/preview/shell');
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await page.waitForTimeout(400);
 
-    const pill = (await page.locator(RAIL).first().boundingBox())!;
     const live = page.locator('nav[aria-label$="navigation"]:not([inert])');
     const dead = page.locator('nav[aria-label$="navigation"][inert]');
 
@@ -100,17 +150,6 @@ test.describe('the floating nav rail', () => {
     );
 
     expect((await dead.boundingBox())!.height).toBe(0);
-    const nav = (await live.boundingBox())!;
-    const footer = (await page
-      .locator('[data-slot="sidebar-footer"]')
-      .first()
-      .boundingBox())!;
-    // Header above; below the nav, the content's own 8px and then the account
-    // card, whose box carries the pill's closing 8px in its padding.
-    expect(pill.height).toBeCloseTo(
-      nav.height + (nav.y - pill.y) + 8 + footer.height,
-      0,
-    );
   });
 
   /**
@@ -143,6 +182,94 @@ test.describe('the floating nav rail', () => {
     expect(grown.x).toBe(pill.x);
     expect(peekedCard.x).toBe(collapsedCard.x);
     expect(peekedCard.width).toBe(collapsedCard.width);
+  });
+
+  /**
+   * The peek covers the card **whole**, and that is a paint assertion rather
+   * than a geometric one.
+   *
+   * The test above pins that the card does not move. It cannot see the failure
+   * this one exists for: the card's fill is drawn by `SidebarInset` at
+   * `z-auto` and goes under the peek's `z-20`, while `AdminHeader` carried a
+   * `z-30` that lifted the back chip and the breadcrumb trail back out on
+   * their own. The header row is transparent, so what showed between those
+   * glyphs was the nav's own panel, and one band of the screen had two
+   * columns' text interleaved on it.
+   *
+   * Sampled at the header row's own height, which is the only band where the
+   * two ever competed, and by colour rather than by `elementFromPoint`: hit
+   * testing walks straight past the peek's transparent outer container and
+   * reports the header underneath it either way, which is how a first pass at
+   * this test passed against the bug.
+   */
+  test('covers the card whole while peeking, header row included', async ({
+    page,
+  }) => {
+    await page.goto('/preview/shell');
+    const rail = page.locator(RAIL).first();
+
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    await page.waitForTimeout(400);
+    await rail.hover();
+    await page.waitForTimeout(500);
+
+    const grown = (await rail.boundingBox())!;
+    const header = (await page.locator('header[data-print-hidden]').boundingBox())!;
+
+    // The peek genuinely reaches across the header row, or the rest of this
+    // passes on a rail that never overlapped it.
+    expect(grown.x + grown.width).toBeGreaterThan(header.x + 40);
+
+    // The back chip: card content sitting fully inside the peek's box, and the
+    // thing that used to climb back out of it.
+    const chip = (await page
+      .getByRole('button', { name: /back/i })
+      .first()
+      .boundingBox())!;
+    expect(chip.x + chip.width).toBeLessThan(grown.x + grown.width);
+
+    // What that rectangle must look like: exactly what it looks like with the
+    // chip taken out of the page. Behind an opaque panel the chip contributes
+    // nothing to those pixels, so removing it can change none of them. The bug
+    // painted its glyphs over the nav's own "Dashboard" label in this same
+    // 28px, and removing it is what took them away again.
+    //
+    // Asserted as an identity against a re-render rather than as a flat fill:
+    // the peek's own label crosses this band, so "the panel is blank here" was
+    // never true, and a shade count cannot tell one column's text from two.
+    // Hiding the *chip* rather than the card, because the card is the chip's
+    // own ancestor and hiding it removes the glyphs from both renders, which
+    // is how two earlier versions of this test passed against the bug.
+    const clip = {
+      x: chip.x,
+      y: chip.y,
+      width: Math.round(chip.width),
+      height: Math.round(chip.height),
+    };
+
+    const before = await page.screenshot({ clip });
+
+    // Held as an element handle, not a locator: `visibility: hidden` takes the
+    // button out of the accessibility tree, so a role query cannot find it
+    // again to put it back and simply waits until the test times out.
+    const button = await page
+      .getByRole('button', { name: /back/i })
+      .first()
+      .elementHandle();
+    await button!.evaluate((el) => el.style.setProperty('visibility', 'hidden'));
+    // A frame for the change to reach the compositor. Without it the second
+    // shot can be the first one again, which makes the two agree whatever the
+    // z-order is.
+    await page.waitForTimeout(100);
+    const without = await page.screenshot({ clip });
+    await button!.evaluate((el) => el.style.removeProperty('visibility'));
+
+    // Counted with a tolerance rather than compared byte-for-byte: two shots
+    // of an unchanged region still differ in a handful of antialiased
+    // subpixels, so `Buffer.equals` reports a difference either way and proves
+    // nothing. Removing a hidden chip moves a few dozen pixels at most;
+    // removing a *visible* one clears ~65x28 of text.
+    expect(await differingPixels(before, without)).toBeLessThan(100);
   });
 
   /**
@@ -182,27 +309,26 @@ test.describe('the floating nav rail', () => {
   });
 
   /**
-   * The air asked for around it, measured. 24px between the last destination
-   * and the footer's first row, which is what the header leaves above the first
-   * destination, and 8px under the account card, which is the margin either
-   * side of the icon column.
+   * The account card sits at the bottom of the box, 8px off it, which is the
+   * margin either side of the icon column.
    *
-   * Worth a test of its own because it is three paddings in two files adding
-   * up (`SidebarContent`'s `pb-2`, the footer's `pt-4`, its `p-2`), and any one
-   * of them changing leaves the markup looking right.
+   * It used to be asserted the other way round: 24px between the last
+   * destination and the footer, matching the air the header leaves above the
+   * first one, bought with a `pb-2` and a `pt-4` that existed only in the
+   * float. Both are gone with the pill. `SidebarContent` stretches in a
+   * full-height column, so the card is held at the bottom of the window and
+   * the gap above it is the remainder rather than a number anyone chose.
    *
-   * Measured to the footer's **first** row rather than to the avatar. It was
-   * the avatar while the card was the only thing down there; the footer holds
-   * the profile switcher above it now, so measuring to the avatar measures the
-   * switcher's own height and gap as well and asserts nothing about the air
-   * this test is named for.
+   * What is still worth measuring is the closing 8px, because it comes from the
+   * footer's own `p-2` rather than from the box, and a card flush to the bottom
+   * edge looks like a clipped one.
    */
-  test('holds the account card off the rows by the header\'s own gap', async ({ page }) => {
+  test('rests the account card on the foot of the box', async ({ page }) => {
     await page.goto('/preview/shell');
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
     await page.waitForTimeout(400);
 
-    const pill = (await page.locator(RAIL).first().boundingBox())!;
+    const box = (await page.locator(RAIL).first().boundingBox())!;
     const rows = page.locator('nav[aria-label$="navigation"]:not([inert]) [data-slot="sidebar-menu-button"]');
     const lastRow = (await rows.last().boundingBox())!;
     // The footer's own button, not `[data-slot="sidebar-menu-button"]`: the
@@ -210,101 +336,64 @@ test.describe('the floating nav rail', () => {
     // slot is what ends up on the element.
     const avatar = (await page
       .locator('[data-slot="sidebar-footer"] button')
-      .first()
-      .boundingBox())!;
-    const toggle = (await page.getByRole('button', { name: 'Toggle sidebar' }).boundingBox())!;
-    const firstRow = (await rows.first().boundingBox())!;
-    // Whatever leads the footer: the profile switcher's collapsed row here, the
-    // account card wherever that row is hidden. Read from the box rather than
-    // named, so the gap this asserts stays the gap above the footer and not the
-    // gap above one particular control.
-    const footerTop = (await page
-      .locator('[data-slot="sidebar-footer"] a, [data-slot="sidebar-footer"] button')
-      .first()
+      .last()
       .boundingBox())!;
 
-    expect(footerTop.y - (lastRow.y + lastRow.height)).toBeCloseTo(
-      firstRow.y - (toggle.y + toggle.height),
-      0,
-    );
-    expect(pill.y + pill.height - (avatar.y + avatar.height)).toBeCloseTo(8, 0);
+    expect(box.y + box.height - (avatar.y + avatar.height)).toBeCloseTo(8, 0);
+    // At the foot rather than trailing the rows, which is the half a stretched
+    // `SidebarContent` is responsible for: without it the card rides up under
+    // the last destination and the box has a column of empty rail beneath it.
+    expect(avatar.y - (lastRow.y + lastRow.height)).toBeGreaterThan(200);
   });
 
   /**
-   * The account card travels with the box on expand instead of arriving late.
+   * The account card does not move on collapse, at any point during it.
    *
-   * It presented as a fault of the card and was not: the pill's floating height
-   * was `fit-content`, which does not animate, so *everything* inside stayed at
-   * the collapsed height for the whole 200ms and then jumped ~310px in the
-   * closing frame. The card is simply the row far enough down the box for
-   * 310px to be obvious. See `--rail-height` in `AdminSidebar`.
+   * This replaces two tests and is a stronger claim than either. The card used
+   * to travel ~310px between the two states, and both of those tests existed
+   * because it travelled *badly*: the float's height was `fit-content`, which
+   * does not animate, so everything inside stayed at the collapsed height for
+   * the whole 200ms and then jumped in the closing frame. The fix at the time
+   * was a measured `--rail-height`, and both tests sampled mid-transition to
+   * prove the interpolation was real.
    *
-   * Sampling mid-transition is the only way to see it: the endpoints are
-   * identical either way, which is how it survived a suite that measures both.
+   * A full-height column has nowhere to travel to: the card's foot is 8px off
+   * the bottom of the window collapsed, docked and at every frame between. So
+   * the assertion is that it is *still*, which is what retires the height
+   * animation, the variable and the measurement pass behind it.
+   *
+   * **Its foot, not its top**, and the difference is a real 19px rather than a
+   * choice of edge. The footer holds the profile switcher above the card, and
+   * that row loses its labels at the icon width, so the footer's own height
+   * changes on collapse and its top moves with it. What is pinned is the bottom
+   * of the box, which is what "rests on the foot" means and what the card
+   * arriving late was measured against.
+   *
+   * Sampled mid-transition rather than at the endpoints, because that is where
+   * the old bug lived and where a height transition creeping back in would
+   * show first.
    */
-  test('carries the account card down with the box, not after it', async ({ page }) => {
+  test('holds the account card still through the collapse', async ({ page }) => {
     await page.goto('/preview/shell');
-    const footer = page.locator('[data-slot="sidebar-footer"]').first();
+    const foot = async () => {
+      const b = (await page.locator('[data-slot="sidebar-footer"]').first().boundingBox())!;
+      return b.y + b.height;
+    };
+
+    const docked = await foot();
 
     await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-    await page.waitForTimeout(400);
-    const collapsed = (await footer.boundingBox())!.y;
-
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-    // Early in the 200ms, because `ease-standard` front-loads: by 90ms the card
-    // is already within 40px of home, and a window that late cannot tell a
-    // travelling card from one that has arrived.
+    // Early in the 200ms: `ease-standard` front-loads, so a late sample cannot
+    // tell a box that never moved from one that has finished moving.
     await page.waitForTimeout(30);
-    const mid = (await footer.boundingBox())!.y;
+    const mid = await foot();
     await page.waitForTimeout(500);
-    const docked = (await footer.boundingBox())!.y;
+    const collapsed = await foot();
 
-    // Genuinely between the two, not still parked at the collapsed position
-    // waiting to jump. The margins keep this away from both endpoints: pinned,
-    // `mid` equals `collapsed`; snapping early, it equals `docked`.
-    expect(docked).toBeGreaterThan(collapsed + 200);
-    expect(mid).toBeGreaterThan(collapsed + 40);
-    expect(mid).toBeLessThan(docked - 40);
-  });
-
-  /**
-   * Switching profile in the pill changes its height, because the two navs have
-   * different row counts, and that change has to travel too.
-   *
-   * It is driven here by moving `--rail-height`, which is exactly what a
-   * profile change does: the pill's floating height is that variable, measured
-   * from the live nav in `AdminSidebar`. The fixture sits outside both profiles
-   * so its swipe has nowhere to commit to, and the variable is the seam.
-   *
-   * Why a variable at all, rather than the `fit-content` this replaced:
-   * `height: fit-content` never changes as a *computed* value when its content
-   * changes, only as a used one, and transitions fire on computed values. So
-   * the old pill snapped to the new profile's height in a single frame while
-   * the track was still sliding sideways.
-   */
-  test('interpolates the height when the profile changes', async ({ page }) => {
-    await page.goto('/preview/shell');
-    const rail = page.locator(RAIL).first();
-    const wrapper = page.locator('[data-slot="sidebar"][data-side="left"]').first();
-
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-    await page.waitForTimeout(400);
-    const start = (await rail.boundingBox())!.height;
-
-    const target = start - 96;
-    await wrapper.evaluate(
-      (node, height) =>
-        (node as HTMLElement).style.setProperty('--rail-height', `${height}px`),
-      target,
-    );
-    await page.waitForTimeout(60);
-    const mid = (await rail.boundingBox())!.height;
-    await page.waitForTimeout(400);
-
-    expect((await rail.boundingBox())!.height).toBeCloseTo(target, 0);
-    // Under way, and not there yet. A snap satisfies neither bound.
-    expect(mid).toBeLessThan(start - 10);
-    expect(mid).toBeGreaterThan(target + 5);
+    // 8px either way: the box gains its bottom gutter on collapse and that is
+    // the whole of the movement, against the ~310px it used to make.
+    expect(Math.abs(mid - docked)).toBeLessThanOrEqual(9);
+    expect(Math.abs(collapsed - docked)).toBeLessThanOrEqual(9);
   });
 
   /**

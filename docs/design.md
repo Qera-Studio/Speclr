@@ -323,19 +323,25 @@ spin. They are exempted **by filename**, so a third cannot join them quietly.
 
 - **Animate `transform` and `opacity`.** Not `width`, `height`, `top`, `left`.
   The nav rail is the one exception and it is deliberate: collapsing detaches
-  it into a floating pill, which is a change of *box* rather than of position,
-  so there is no transform that expresses it. It animates width, height, top,
+  it into a floating column, which is a change of *box* rather than of
+  position, so there is no transform that expresses it. It animates width, top,
   left and radius together in a single declaration in `ui/sidebar.tsx`. Nothing
   else may reach for that, and a second call site is a signal that the thing
   wants a transform instead.
 
-  **Both endpoints of an animated `height` must be lengths.** Releasing a
-  fixed box's bottom edge to let it shrink to its content does not tween: the
-  box stops being stretched, drops to its intrinsic height in one frame, and
-  only the remainder animates. Measured at 672px → 360px instantly.
+  **Both endpoints of an animated `height` must be lengths**, and the cheapest
+  way to obey that is for them to be the *same* length. The float used to shrink
+  to its rows, which cost a measured `--rail-height` and a `ResizeObserver` to
+  animate at all: releasing a fixed box's bottom edge to let it size to its
+  content does not tween, because the box stops being stretched, drops to its
+  intrinsic height in one frame, and only the remainder animates (measured at
+  672px → 360px instantly), and `height: fit-content` does not animate either,
+  because its computed value never changes when its content does.
   `interpolate-size: allow-keywords` (set on `:root`) tweens a length to
-  `fit-content`, but it cannot tween the loss of an anchor. State the docked
-  height as a `calc()` and let the floating one be `h-fit`.
+  `fit-content` but cannot tween the loss of an anchor, and neither
+  `transition-behavior: allow-discrete` nor a grid track reaches it. The float
+  is full height now and states the same `calc()` the docked rail does, so the
+  height transition is gone rather than fixed. Prefer that shape.
 - **Press gives physical feedback.** `active:translate-y-px` is on every button
   by default (`button.tsx`) and is excluded on menu triggers, which move their
   popover instead.
@@ -1297,3 +1303,16 @@ Append a line when a rule here changes. Keep it to one line and name the
   `e2e/sidebar-float.spec.ts` by sampling mid-transition, which is the only
   way to see either: the endpoints were always right. Both confirmed red on
   the one-line revert.
+- **12 September 2026. H1.** The collapsed nav rail is a full-height floating
+  column, not a pill shrunk to its rows: it runs the window less an 8px gutter
+  at each end, so collapsing changes the width and nothing else. That retires
+  the entry above it rather than contradicting it. The measured `--rail-height`,
+  the `ResizeObserver` behind it and the `max-height` that kept a content-sized
+  box inside the viewport are all gone, along with the `flex-initial`, `pb-2`
+  and `pt-4` that held the account card off the rows in a box with nothing
+  stretching between them. `SidebarContent` stretches in both states now, so
+  the card rests on the foot of the box either way. The finding under the old
+  entry still stands and is kept in §1.6 for the next thing sized to its
+  content: **`height: fit-content` does not animate.** Four tests in
+  `e2e/sidebar-float.spec.ts` were rewritten around the new shape and confirmed
+  red on the one-line revert to `h-fit`.

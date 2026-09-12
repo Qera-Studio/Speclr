@@ -38,7 +38,17 @@ import SearchCommand from "./SearchCommand";
  * the card's, and the band matching it would have made the card's top edge
  * disappear into the header it is inset from.
  */
-export default function TopPanel() {
+/**
+ * `inset` is the shell's content card, passed straight through to
+ * `Notifications`: its drawer opens inside the card rather than over the window,
+ * so the scrim darkens the page being covered and leaves the nav lit. Optional,
+ * because this band renders on its own in a test and the sheet must still open.
+ */
+export default function TopPanel({
+  inset,
+}: {
+  inset?: React.RefObject<HTMLElement | null>;
+}) {
   return (
     <div
       data-slot="top-panel"
@@ -97,7 +107,7 @@ export default function TopPanel() {
           // separate these for a reader who cannot see it.
           aria-hidden
         />
-        <Notifications />
+        <Notifications inset={inset} />
       </div>
     </div>
   );

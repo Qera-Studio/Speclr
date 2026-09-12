@@ -115,6 +115,16 @@ export default function EditorSidebar() {
         the `!` is what beats the base `top-[var(--top-panel-height,0px)]` and
         `bottom-0` written into `ui/sidebar.tsx`.
 
+        **`h-auto!` is the third of those and the one that was missing.** The
+        primitive states a `height` as well as both anchors
+        (`h-[calc(100svh-var(--top-panel-height,0px))]`, which is right for the
+        nav: that rail really is the window's height). A stated height beats the
+        second anchor, so `bottom-2!` was computing nothing and the rail ran
+        900px from the top of a card 844px tall, hanging 56px past its bottom
+        edge with the form scrolling behind the shell rather than inside the
+        card. Handing the height back to `top` and `bottom` is what makes the
+        two restated edges the ones that decide.
+
         The spacer sibling keeps its full height and is not touched: it is what
         reserves the column's width in the flex row, and it has no edges to see.
 
@@ -127,7 +137,7 @@ export default function EditorSidebar() {
         between. The card is one surface holding two columns, so both take the
         card's fill and the `border-r` is the only thing dividing them.
       */
-      className="top-12! right-2! bottom-2! overflow-hidden rounded-r-md group-data-[side=right]:border-l-0 [&>div]:bg-background"
+      className="top-12! right-2! bottom-2! h-auto! overflow-hidden rounded-r-md group-data-[side=right]:border-l-0 [&>div]:bg-background"
       state={expanded ? "expanded" : "collapsed"}
       style={
         { "--sidebar-width": `${EDITOR_RAIL_WIDTH}px` } as React.CSSProperties

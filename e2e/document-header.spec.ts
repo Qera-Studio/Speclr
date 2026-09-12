@@ -185,4 +185,62 @@ test.describe('the shell’s top band', () => {
     await expect(rail).toBeVisible();
     await expect(inset.getByText('Edit service quotation draft')).toHaveCount(0);
   });
+
+  /**
+   * The rail ends where the card ends, and a form longer than it scrolls
+   * *inside* it.
+   *
+   * The block above pins the rail's top edge against the card, and only its
+   * top: the bottom was 56px past it, with a long editor form running down over
+   * the shell below the card and off the window. `EditorSidebar` restates
+   * `top`, `right` and `bottom` against the card, but `ui/sidebar.tsx` also
+   * states a `height` (`100svh` less the top band, which is right for the nav,
+   * a rail that really is the window's height), and a stated height beats the
+   * second anchor. So `bottom-2!` was computing nothing until `h-auto!` handed
+   * the height back to the two edges.
+   *
+   * Both halves are asserted because the first alone is not the bug: a rail
+   * clipped to the card that does not scroll hides the end of the form instead
+   * of spilling it, which is worse. The form is stubbed rather than driven,
+   * since the fixture's panel is one field and what is under test is the box,
+   * not any particular editor.
+   */
+  test('ends at the card’s foot, and scrolls a long form inside it', async ({
+    page,
+  }) => {
+    const card = (await page.locator('[data-slot="sidebar-inset"]').boundingBox())!;
+    const railBox = (await page.locator('[data-editor-rail]').boundingBox())!;
+    expect(railBox.y + railBox.height).toBeCloseTo(card.y + card.height, 0);
+
+    // A form taller than the rail, stubbed into the panel's own portal host.
+    await page.evaluate(() => {
+      const host = document.querySelector('[data-slot="editor-panel-host"]')!;
+      for (let i = 0; i < 40; i++) {
+        const row = document.createElement('div');
+        row.textContent = `Field ${i}`;
+        row.style.height = '48px';
+        host.append(row);
+      }
+    });
+
+    // Scoped to the rail: the nav has a `sidebar-content` of its own, and an
+    // unscoped selector finds that one and reports a box that never overflows.
+    const scroller = page.locator('[data-editor-rail] [data-slot="sidebar-content"]');
+    const overflow = await scroller.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      return { scroll: el.scrollHeight, client: el.clientHeight, top: el.scrollTop };
+    });
+
+    // It really does overflow, or the rest of this passes on a short form.
+    expect(overflow.scroll).toBeGreaterThan(overflow.client + 200);
+    expect(overflow.top).toBeGreaterThan(0);
+
+    // And scrolled to the end, the last field is still inside the card rather
+    // than painted past its bottom edge.
+    const last = (await page
+      .locator('[data-slot="editor-panel-host"] > div')
+      .last()
+      .boundingBox())!;
+    expect(last.y + last.height).toBeLessThanOrEqual(card.y + card.height);
+  });
 });

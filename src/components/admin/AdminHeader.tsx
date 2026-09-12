@@ -64,7 +64,18 @@ export default function AdminHeader() {
       // band across the shell. `px-2` for the same reason: the nav's header and
       // its rows both sit in 8px, so the back button's box starts where the nav
       // rows' boxes start rather than a pixel column of its own.
-      className="z-30 flex h-12 shrink-0 items-center gap-2 px-2"
+      //
+      // **No `z-index`, and that is the fix rather than the omission.** It
+      // carried `z-30` against the nav's `z-20`, which did exactly what it says
+      // and was the bug: the collapsed nav peeks open over the card
+      // deliberately (`ui/sidebar.tsx`), the card's fill is drawn by
+      // `SidebarInset` at `z-auto` and goes under it, and this row's `z-30`
+      // lifted the back chip and the trail back out on their own. Glyphs from
+      // two columns interleaved, with the nav's panel showing between them,
+      // because this row is transparent and had nothing to hide it with. The
+      // card goes under the peek whole or not at all, and under is what the
+      // peek is for.
+      className="flex h-12 shrink-0 items-center gap-2 px-2"
     >
       {/*
         Back leaves the page, and a draft's unsaved edits live in the form

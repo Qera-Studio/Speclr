@@ -343,32 +343,30 @@ function Sidebar({
           // ring: a border is a stroke inside a box, which on a rounded box
           // that also carries a shadow reads as a doubled edge.
           // Anchored under the top panel, the same edge the docked rail keeps,
-          // so collapsing moves the box left and shrinks it without also
-          // sliding it down the screen. Centring it on the viewport was tried
-          // and reverted: a pill taller than the space had its top *and*
-          // bottom run off, and a nav whose first row is above the window is
-          // worse than one that simply starts where the docked rail did.
+          // so collapsing moves the box left without also sliding it down the
+          // screen, and inset from the bottom by the same 8px. It is the full
+          // height of the window between those two gutters: a floating *column*
+          // rather than a pill, so collapsing is a change of width and nothing
+          // else.
           //
-          // `max-height` is what keeps it inside the viewport now. The height
-          // is its content's, so a profile with more rows than fit would
-          // otherwise overflow the bottom edge; capped, `SidebarContent`
-          // scrolls inside it instead and every row stays reachable.
-          //
-          // **That height is `--rail-height`, a measured length, and
-          // `fit-content` is only the fallback.** The keyword was here first
-          // and was wrong twice over, both times because a `fit-content` box
-          // does not animate: its *computed* value never changes when its
-          // content does, only its used value, and transitions fire on computed
-          // values. So changing profile in the pill resized it in a single
+          // **The height is a length on both sides of the transition, and that
+          // is the load-bearing part.** It was `fit-content` first, then a
+          // measured `--rail-height`, both because the box was shrunk to its
+          // content. `height: fit-content` does not animate — its *computed*
+          // value never changes when its content does, only its used value, and
+          // transitions fire on computed values — which cost two separate
+          // pieces of motion: changing profile resized the pill in a single
           // frame mid-swipe, and expanding it left every child pinned at the
-          // collapsed height for the whole 200ms before jumping ~310px in the
-          // closing frame — the account card's late arrival was this, not
-          // anything of the card's own. A length interpolates, and one
-          // consumer measures it: `AdminSidebar`, which is also where the
-          // reasoning for measuring rather than computing is written down.
-          // The fallback keeps the pill correct on the first frame and
-          // wherever nothing publishes the variable (the editor rail).
-          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-[var(--rail-height,fit-content)] group-data-float:max-h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
+          // collapsed height for 200ms before jumping ~310px in the closing
+          // frame. Stating the same length here as the docked rule below states
+          // is what retires all of that: the two endpoints are now the same
+          // number, so there is no height transition left to go wrong.
+          //
+          // It also retires the `max-height` that used to keep a content-sized
+          // pill inside the viewport. This height *is* the viewport less its
+          // two gutters, so a profile with more rows than fit scrolls inside
+          // `SidebarContent` exactly as the docked rail's does.
+          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
           // Docked, the height is stated as a length rather than left to the
           // two anchors. `interpolate-size` can tween a length to `fit-content`
           // (that is what it is for) but it cannot tween "stretched between
@@ -401,11 +399,12 @@ function Sidebar({
           // why `overflow-hidden` comes with it; the header and footer are
           // fixed and the body scrolls inside `SidebarContent`, so nothing here
           // overflowed anyway, and menus and tooltips portal out.
-          // `h-full` rather than `size-full` while floating: the pill's height
-          // is its content's, so a child claiming 100% of a parent that is
-          // sized *by* that child is circular. The container's own height above
-          // is the one that decides.
-          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:h-auto group-data-float:rounded-lg"
+          // `size-full` floating too. It was `h-auto` while the float was a
+          // pill sized to its content, because a child claiming 100% of a
+          // parent that is sized *by* that child is circular. The float states
+          // its own height as a length now, so the circularity is gone and the
+          // column fills it like the docked one does.
+          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:rounded-lg"
         >
           {children}
         </div>
@@ -557,23 +556,13 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
+        // `flex-1` stretches this to fill the rail, which the float wants too:
+        // it is a full-height column now rather than a pill shrunk to its rows,
+        // so the account card below it belongs at the bottom of the window in
+        // both states. It carried `group-data-float:flex-initial` while the
+        // float was content-sized, and that rule is what would now float the
+        // card up under the last destination.
         "no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        // `flex-1` is what stretches this to fill a full-height rail, and is
-        // exactly what a shrink-to-content pill must not do. `flex-none` hands
-        // the height back to the rows.
-        //
-        // `pb-2` is the top half of the gap under the last row: with the
-        // footer's own `group-data-float:pt-4` it separates the destinations
-        // from the account card by the same 24px the header leaves above the
-        // first one. `min-h-0` lets the container's `max-height`
-        // actually shorten this rather than being floored at its content, so
-        // an over-tall nav scrolls in place.
-        // `flex-initial`, not `flex-none`: both stop the grow that stretches a
-        // full-height rail, but `flex-none` also forbids the *shrink*, which
-        // is what the container's `max-height` needs in order to bite. With
-        // shrinking allowed this sizes to its rows when they fit and scrolls
-        // in place when they do not.
-        "group-data-float:flex-initial group-data-float:pb-2",
         className,
       )}
       {...props}
