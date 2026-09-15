@@ -104,6 +104,30 @@ describe('PrintToolbar', () => {
       renderFinalized();
       expect(screen.queryByRole('link', { name: /open print view/i })).not.toBeInTheDocument();
     });
+
+    /**
+     * The sealed band stays below the collapsed nav's flyout.
+     *
+     * A class assertion, the same shape and for the same reason as
+     * `AdminShell`'s overscroll test: the failure is a paint order between two
+     * boxes in different components, and reproducing it needs the nav peeked
+     * open in a real browser, which jsdom cannot do at all.
+     *
+     * The number is a ceiling rather than a preference. This band only has to
+     * cover the document pages sliding under it, and those are unlayered, so
+     * `z-10` does the whole job. At `z-20` it *tied* with the peek
+     * (`ui/sidebar.tsx`), both being in the root stacking context, and a tie
+     * goes to document order, which this band wins, so it painted over a
+     * flyout whose entire purpose is to cover content. Anything at or above 20
+     * here is that bug again.
+     */
+    it('keeps the sealed band under the nav flyout', () => {
+      const { container } = renderFinalized();
+      const band = container.querySelector('[data-slot="doc-locked-band"]')!;
+      expect(band).toHaveClass('z-10');
+      // The nav's peek is z-20; a tie or a win is the bug.
+      expect(band.className).not.toMatch(/\bz-(2[0-9]|[3-9][0-9])\b/);
+    });
   });
 
   /**

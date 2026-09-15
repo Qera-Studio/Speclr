@@ -197,7 +197,14 @@ export default function PrintToolbar({
         // `-mx-2 -mt-2` cancels the page's padding; `px-2 pt-2` puts it back as
         // the card's own inset, so the card does not move and the ground under
         // it reaches the edges of the box that scrolls.
-        className="sticky top-0 z-20 -mx-2 -mt-2 bg-background px-2 pt-2 pb-6"
+        //
+        // `z-10`, and the ceiling is the nav rather than a free choice. This
+        // only has to beat the pages sliding under it, which are unlayered, so
+        // 10 does the whole job. At `z-20` it tied with the collapsed nav's
+        // peek (`ui/sidebar.tsx`), which is in the same root stacking context,
+        // and a tie is broken by document order, which this band wins, so it
+        // painted over a flyout whose entire purpose is to cover content.
+        className="sticky top-0 z-10 -mx-2 -mt-2 bg-background px-2 pt-2 pb-6"
       >
         <FinalizedActions docId={docId} sealedCard />
       </div>
