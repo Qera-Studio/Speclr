@@ -6,7 +6,7 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup"
+import { CALENDAR_FIELD_WIDTH, CALENDAR_WIDTH, RINGED_POPUP_GAP } from "@/components/ui/popup"
 import {
   formatDisplayDate,
   isoToLocalDate,
@@ -31,7 +31,7 @@ interface DatePickerProps {
   disabled?: boolean
   /** Shown when no date is set. */
   placeholder?: string
-  size?: "default" | "form"
+  size?: "default" | "md" | "form"
   className?: string
   "aria-invalid"?: boolean
   "aria-describedby"?: string
@@ -59,7 +59,13 @@ function DatePicker({
         data-size={size}
         data-empty={!selected}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
+          "flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed data-[size=md]:h-9 data-[size=md]:px-3 data-[size=md]:text-sm group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
+          // The calendar's width, not the column's. See `CALENDAR_FIELD_WIDTH`:
+          // the grid cannot stretch to the field, so the field matches the grid
+          // and the two edges line up. A cap rather than a width, because
+          // `Field` sets `*:w-full` on its children and would win.
+          "w-full",
+          CALENDAR_FIELD_WIDTH,
           className
         )}
         {...aria}
@@ -69,13 +75,26 @@ function DatePicker({
         </span>
         <CalendarIcon className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
-      {/* The trigger is a ringed control, so the calendar clears the ring and
-          is never narrower than the field. A month grid is wider than a short
-          date field anyway; the floor is what keeps that true in a wide one. */}
+      {/*
+        The trigger is a ringed control, so the calendar clears the ring.
+
+        **The two match, and the field is what gives way.** `popup.ts`'s second
+        rule sizes a popup from its anchor, and for a grid that runs the wrong
+        way: a calendar is seven columns of two-digit numbers, so stretching it
+        to a full-width date field spreads the same 28 numbers over more page
+        and reads as broken rather than as matching. But two edges that do not
+        line up read as a fault too, which is what a 264px field over a 240px
+        calendar was.
+
+        So the rule is inverted rather than dropped: the calendar keeps its
+        content width and the **field takes the calendar's**, via the shared
+        `CALENDAR_WIDTH` above. Both sides name one token, so neither can drift
+        from the other.
+      */}
       <PopoverContent
         align="start"
         sideOffset={RINGED_POPUP_GAP}
-        className={cn("w-auto p-2", RINGED_POPUP_WIDTH)}
+        className={cn(CALENDAR_WIDTH, "p-2")}
       >
         <Calendar
           mode="single"

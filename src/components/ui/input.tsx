@@ -12,8 +12,17 @@ import { cn } from "@/lib/utils"
  *            It was 28, which is dense to the point of looking unfinished, and
  *            no input, select, combobox or date trigger goes under 32 in any
  *            variant. Pinned in `__tests__/control-size.test.tsx`.
+ *   md:      36px, between the two. Added for the clause drawer, where the
+ *            compact height read as cramped under a full-width body editor and
+ *            the roomy one was the largest thing on the panel.
  *   form:    the roomier 38px control for data entry (editor panes, admin
  *            forms), where comfort beats density.
+ *
+ * **A height is declared by every typed-into control or by none of them.** The
+ * same rule that makes 32 a floor governs the rungs above it: an input, the
+ * select beside it and the date trigger under it must not come out three
+ * heights, so `md` exists on all five primitives rather than on the one that
+ * needed it. Pinned in the same file.
  *
  * `bg-background`, not a tint: an input on this page is defined by its border,
  * and the grey wash read as "disabled" next to a genuinely read-only field. It
@@ -41,6 +50,7 @@ const inputVariants = cva(
     variants: {
       size: {
         default: `h-8 px-2 py-0.5 text-sm file:h-6 file:text-xs/relaxed md:text-xs/relaxed ${FORM_GROUP_INHERIT} group-data-[size=form]/field-group:md:text-sm group-data-[size=form]/field-group:file:h-7`,
+        md: "h-9 px-3 py-1 text-sm file:h-7 file:text-sm",
         form: "h-9.5 px-3 py-1 text-sm file:h-7 file:text-sm",
       },
     },

@@ -11,6 +11,10 @@ const textareaVariants = cva(
       size: {
         default:
           "min-h-16 px-2 py-2 text-sm md:text-xs/relaxed group-data-[size=form]/field-group:min-h-20 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm group-data-[size=form]/field-group:md:text-sm",
+        // A textarea has no single height to match a row with, so `md` takes
+        // the padding and type of the rung and a floor between the two: 72px,
+        // midway between `default`'s 64 and `form`'s 80.
+        md: "min-h-18 px-3 py-2 text-sm",
         form: "min-h-20 px-3 py-2 text-sm",
       },
     },

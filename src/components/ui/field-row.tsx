@@ -35,17 +35,47 @@ const COLUMNS = {
   4: "@2xs/field-group:grid-cols-2 @lg/field-group:grid-cols-4",
 } as const;
 
+/**
+ * The same column counts, sized to their content instead of equally.
+ *
+ * `max-content` rather than `1fr`, so a track is exactly as wide as the widest
+ * thing in it and the row ends where its last control ends. `justify-start`
+ * because a `max-content` grid no longer fills its parent, and without it the
+ * browser is free to distribute the leftover space between the tracks, which
+ * puts the gap back in a different place.
+ *
+ * For a row of controls with their **own** widths: the contract's two date
+ * fields are capped at the calendar they open (`CALENDAR_FIELD_WIDTH`), so an
+ * equal-track row left 24px of dead space inside each cell, pushed the third
+ * field right, and stretched the whole form to fit a width nothing was using.
+ *
+ * Equal tracks stay the default, and this is deliberately not it. A date field
+ * beside a dropdown, both of which stretch, comes out ragged under
+ * `max-content` — which is the bug `COLUMNS` was written to fix.
+ */
+const FIT_COLUMNS = {
+  2: "@2xs/field-group:grid-cols-[max-content_max-content]",
+  3: "@2xs/field-group:grid-cols-[max-content_max-content_max-content]",
+  4: "@2xs/field-group:grid-cols-[max-content_max-content] @lg/field-group:grid-cols-[max-content_max-content_max-content_max-content]",
+} as const;
+
 function FieldRow({
   className,
   columns = 2,
+  fit = false,
   ...props
-}: React.ComponentProps<"div"> & { columns?: 2 | 3 | 4 }) {
+}: React.ComponentProps<"div"> & {
+  columns?: 2 | 3 | 4;
+  /** Size the columns to their content rather than equally. See `FIT_COLUMNS`. */
+  fit?: boolean;
+}) {
   return (
     <div
       data-slot="field-row"
       className={cn(
-        "grid w-full grid-cols-1 items-start gap-3 [&>*]:min-w-0",
-        COLUMNS[columns],
+        "grid w-full grid-cols-1 items-start gap-8 [&>*]:min-w-0",
+        fit ? "justify-start" : undefined,
+        (fit ? FIT_COLUMNS : COLUMNS)[columns],
         className,
       )}
       {...props}

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 
 import { cn } from "@/lib/utils"
+import { MagicMove, useMagicMove } from "@/components/ui/magic-move"
 import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
@@ -36,14 +37,14 @@ function SelectTrigger({
   ...props
 }: SelectPrimitive.Trigger.Props & {
   /** `form` is the roomy 36px control for data entry — see input.tsx. */
-  size?: "default" | "form"
+  size?: "default" | "md" | "form"
 }) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 text-xs/relaxed whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "flex w-fit items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 text-xs/relaxed whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=md]:h-9 data-[size=md]:px-3 data-[size=md]:text-sm group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className
       )}
       {...props}
@@ -84,8 +85,10 @@ function SelectContent({
      * Must match the trigger's size, so a 36px `form` trigger doesn't open a
      * list of 28px items. Items read it off the popup via `group-data-`.
      */
-    size?: "default" | "form"
+    size?: "default" | "md" | "form"
   }) {
+  // One highlight for the list, moved between rows rather than painted on each.
+  const { track, highlight } = useMagicMove()
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -104,7 +107,13 @@ function SelectContent({
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          {/* The list, not the popup, is the track: the scroll buttons sit
+              outside it and the highlight must not be able to travel over
+              them. See `magic-move.tsx`. */}
+          <SelectPrimitive.List ref={track.ref} className={track.className}>
+            <MagicMove {...highlight} />
+            {children}
+          </SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
@@ -134,7 +143,10 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none group-data-[size=form]/select-content:min-h-8 group-data-[size=form]/select-content:px-3 group-data-[size=form]/select-content:text-sm focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        // No fill of its own: it is the one `MagicMove` slides behind the
+        // rows (`magic-move.tsx`). The text colour still switches in the frame the
+        // row is reached, and `z-10` keeps the label above that fill.
+        "relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none group-data-[size=form]/select-content:min-h-8 group-data-[size=form]/select-content:px-3 group-data-[size=form]/select-content:text-sm focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

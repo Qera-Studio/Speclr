@@ -25,8 +25,21 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
       // `overflow-x: auto` computes `overflow-y: auto` too, which makes it the
       // scrollport and pins the header to a box that never scrolls. The page's
       // own scroll area in `AdminShell` is the scrollport now.
+      //
+      // `bg-sidebar`, not the `bg-background` the rows are on. A header is a
+      // different kind of row and a hairline was carrying that whole
+      // distinction on its own. The value is the shell's own ground, so a
+      // table's header band matches the page's header band and the margin the
+      // card floats in: the card then reads as data held inside the chrome
+      // rather than as a box with a slightly different first row. Subtle in
+      // light (slate-50 against white) and strong in dark (slate-950 against
+      // the card), which is the right way round, since dark mode is where a
+      // hairline does least.
+      //
+      // Opaque either way, which `sticky` requires: rows scroll under this.
+      // The card *footer* is deliberately not tinted (docs/design.md §2.3).
       className={cn(
-        "sticky top-0 z-10 bg-background [&_tr]:border-b",
+        "sticky top-0 z-10 bg-sidebar [&_tr]:border-b",
         className,
       )}
       {...props}

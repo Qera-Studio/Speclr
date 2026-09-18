@@ -124,6 +124,55 @@ describe('control sizing defaults', () => {
     }
   });
 
+  /**
+   * The middle rung, added 17 September 2026 on request for the clause drawer.
+   *
+   * The ladder was two values on purpose, so the same rule that made 32 a floor
+   * applies to this one: **every typed-into control declares the same 36**, or a
+   * field row can come out three heights and the rule §2.2 states stops being
+   * true. Adding it to `Input` alone would have been the cheaper diff and the
+   * broken one.
+   */
+  it('holds every medium control to the same 36px', () => {
+    const { container } = render(
+      <>
+        <Input aria-label="i" size="md" />
+        <Combobox options={[]} value="" onValueChange={() => {}} aria-label="c" size="md" />
+        <DatePicker value="" onValueChange={() => {}} size="md" />
+        <Select>
+          <SelectTrigger aria-label="s" size="md" />
+        </Select>
+      </>,
+    );
+
+    for (const slot of ['input', 'combobox', 'date-picker-trigger', 'select-trigger']) {
+      const el = container.querySelector(`[data-slot="${slot}"]`);
+      expect(el).not.toBeNull();
+      const declared = el!.className.split(/\s+/).filter((c) => !c.includes('file:'));
+
+      /*
+        The height this rung resolves to, which is `h-9` however it is spelled.
+
+        Two of these primitives are cva variants, where only the chosen size's
+        classes are present; the other three declare every size at once as
+        `data-[size=…]` selectors and let the attribute choose. So this asserts
+        the `md` rung *exists and is 36px* rather than that no other number
+        appears anywhere in the string, which was a first cut of this test that
+        failed on the three selector-based controls while they were correct.
+      */
+      const md = declared.filter((c) => c.endsWith('h-9') && !c.includes('h-9.5'));
+      expect(md.length).toBeGreaterThan(0);
+      for (const c of md) {
+        // Either the cva form (`h-9` alone) or the selector form
+        // (`data-[size=md]:h-9`). Never scoped to another size.
+        expect(c === 'h-9' || c === 'data-[size=md]:h-9').toBe(true);
+      }
+      // And the control reports the size it was given, which is what the
+      // selector-based ones need in order to pick that rung at all.
+      expect(el).toHaveAttribute('data-size', 'md');
+    }
+  });
+
   it('marks the group as form-sized so descendants can scale their text', () => {
     const { container } = render(
       <FieldGroup size="form">
