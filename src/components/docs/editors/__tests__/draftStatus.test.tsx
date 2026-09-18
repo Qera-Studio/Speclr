@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AutosaveStatus, SaveError } from '../draftStatus';
+import { AutosaveStatus, SaveError, UnsavedChangesDialog } from '../draftStatus';
 import type { DraftAutosave } from '../useDraftAutosave';
 
 function autosaveStub(overrides: Partial<DraftAutosave> = {}): DraftAutosave {
@@ -76,5 +76,67 @@ describe('SaveError', () => {
       <SaveError autosave={autosaveStub({ serverError: 'Network error.', saveState: 'saving' })} />,
     );
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled();
+  });
+});
+
+/**
+ * The dialog raised when a click would leave unsaved work behind.
+ *
+ * What is pinned here is which button carries which weight, because that was
+ * wrong: Discard took the footer's default primary and "Save and leave" was an
+ * outline, so the blue sat on the one action that throws work away. A dialog
+ * raised *because* there is unsaved work should recommend keeping it.
+ */
+describe('UnsavedChangesDialog', () => {
+  /** The guard fires on an in-app anchor click while the draft is dirty. */
+  const openIt = async (user: ReturnType<typeof userEvent.setup>, autosave: DraftAutosave) => {
+    render(
+      <>
+        <a href="/client/docs">Documents</a>
+        <UnsavedChangesDialog autosave={autosave} label="contract" />
+      </>,
+    );
+    await user.click(screen.getByRole('link', { name: 'Documents' }));
+    return screen.getByRole('alertdialog');
+  };
+
+  it('recommends keeping the work, not discarding it', async () => {
+    const user = userEvent.setup();
+    const dialog = await openIt(user, autosaveStub({ dirty: true }));
+
+    const save = screen.getByRole('button', { name: 'Save and leave' });
+    const discard = screen.getByRole('button', { name: 'Discard' });
+
+    // jsdom computes no colours, so the signal is the variant's own classes,
+    // and specifically the *fill*: every button carries
+    // `aria-invalid:border-destructive` in its base, so matching /destructive/
+    // alone says nothing about which one is red.
+    expect(save.className).toMatch(/bg-primary/);
+    expect(save.className).not.toMatch(/bg-destructive/);
+    expect(discard.className).toMatch(/bg-destructive/);
+    expect(discard.className).not.toMatch(/bg-primary/);
+    expect(dialog).toBeInTheDocument();
+  });
+
+  it('saves before leaving when asked to', async () => {
+    const user = userEvent.setup();
+    const flush = jest.fn().mockResolvedValue(true);
+    await openIt(user, autosaveStub({ dirty: true, flush }));
+
+    await user.click(screen.getByRole('button', { name: 'Save and leave' }));
+
+    expect(flush).toHaveBeenCalled();
+  });
+
+  /** A failed write must not let go of the work it failed to save. */
+  it('stays put when the save fails', async () => {
+    const user = userEvent.setup();
+    const flush = jest.fn().mockResolvedValue(false);
+    await openIt(user, autosaveStub({ dirty: true, flush }));
+
+    await user.click(screen.getByRole('button', { name: 'Save and leave' }));
+
+    expect(flush).toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
   });
 });

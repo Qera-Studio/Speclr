@@ -129,6 +129,35 @@ describe('useDraftAutosave', () => {
   });
 
   /**
+   * The first save must not throw away where the operator is standing.
+   *
+   * The contract builder keeps its phase in the URL as `?phase=`, and the first
+   * write happens the moment a client is picked — on phase 1, with five phases
+   * still to go. Rewriting the path without its query string sends a refresh
+   * back to the beginning of a document that has already been created, which
+   * looks exactly like the draft being lost.
+   *
+   * Nothing else in the app passes a query string to an editor today, which is
+   * why this went unnoticed: the other four editors have nothing to preserve
+   * and their URL assertions are unchanged by it.
+   */
+  it('keeps the query string when the draft takes its own URL', async () => {
+    const replaceState = jest.spyOn(window.history, 'replaceState');
+    window.history.replaceState(null, '', '/client/docs/new/contract?phase=client');
+
+    render(<Harness initialRecipient="client-1" />);
+
+    await user.type(screen.getByLabelText('Text'), 'a');
+    await settle();
+
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
+      '',
+      '/client/docs/new-doc?phase=client',
+    );
+  });
+
+  /**
    * Two writes landing out of order would persist the older payload over the
    * newer, which is silent data loss. The queue is what stops it.
    */

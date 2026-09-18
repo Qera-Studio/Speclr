@@ -1,8 +1,8 @@
 'use client';
 
-import { Fragment } from 'react';
-import { FieldGroup, FieldSeparator } from '@/components/ui/field';
-import { BlankSection } from '@/components/contract/BlankFields';
+import { FieldGroup } from '@/components/ui/field';
+import { FieldRow } from '@/components/ui/field-row';
+import { BlankField } from '@/components/contract/BlankFields';
 import type { BlankValues } from '@/lib/domain/contract/blanks';
 import type { BlankScope } from '@/lib/domain/contract/completeness';
 
@@ -19,6 +19,20 @@ import type { BlankScope } from '@/lib/domain/contract/completeness';
  * Grouped the way the document is: the Master Agreement first, then each
  * Schedule the contract actually includes, in printing order. A Schedule with no
  * Part does not appear, because `contractScopes` does not yield it.
+ *
+ * **One grid per group, not one section per clause.** Measured: the Master
+ * Agreement's thirteen figures sit in seven scopes, so the page spent seven
+ * headings and six separators laying out what fits in five rows of three. Two
+ * of those scopes hold a *single* blank each and were spending a heading, a
+ * separator and a whole row on one input, which reads as far more to fill in
+ * than there is.
+ *
+ * The clause headings were checked before they went rather than assumed
+ * redundant: every one of the thirteen titles from `blankMeta` already names
+ * its own clause ("Confidentiality term", "Non-solicit period", "Breach cure
+ * period"), and none of them collide. The ⓘ beside each carries the
+ * consequence. A figure whose label needed its heading to be understood would
+ * be a `blankMeta` copy fix, not a reason to keep six separators.
  */
 export default function TermsForm({
   scopes,
@@ -58,14 +72,33 @@ export default function TermsForm({
             </div>
           )}
 
-          {/* `FieldRow` measures the enclosing `FieldGroup`, not itself. */}
+          {/* `FieldRow` measures the enclosing `FieldGroup`, not itself.
+
+              Three to a row, not four. Four across this 896px panel gives each
+              track about 200px to carry a label, an input and its ⓘ, and the
+              group reads as a wall of boxes rather than as fields. Three is
+              also the simpler grid: `FieldRow`'s 4 is two breakpoints (pairs,
+              then four at `@lg`), so between 288px and 512px it was showing
+              two anyway. Measured in `e2e/contract-flow.spec.ts`, which counts
+              the inputs sharing a top edge rather than reading the class. */}
           <FieldGroup size="form">
-            {inGroup.map((scope, i) => (
-              <Fragment key={scope.scope}>
-                {i > 0 ? <FieldSeparator /> : null}
-                <BlankSection scope={scope} values={values} onChange={onChange} />
-              </Fragment>
-            ))}
+            <FieldRow columns={3}>
+              {inGroup.flatMap((scope) =>
+                scope.parsed.flatMap((parsed, i) =>
+                  parsed.blanks.map((blank, j) => (
+                    <BlankField
+                      key={blank.key}
+                      blank={blank}
+                      rowLabel={scope.rowLabels?.[i]}
+                      text={scope.texts[i]}
+                      ordinal={parsed.blanks.length > 1 ? j + 1 : 0}
+                      values={values}
+                      onChange={onChange}
+                    />
+                  )),
+                ),
+              )}
+            </FieldRow>
           </FieldGroup>
         </section>
       ))}

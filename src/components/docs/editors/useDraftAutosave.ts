@@ -162,7 +162,21 @@ export function useDraftAutosave({
       // the editor and take the half-typed document with it.
       docIdRef.current = result.id;
       setDocId(result.id);
-      window.history.replaceState(null, '', `/${profile}/docs/${result.id}`);
+      /*
+        The query string comes along. It carries where the operator is standing
+        — the contract builder's `?phase=` — and this write happens the moment a
+        client is picked, which is phase 1 of five. Dropping it would send a
+        refresh back to the start of a document that already exists, which reads
+        as the draft having been lost.
+
+        The other three editors pass no query string, so this is `''` for them
+        and the URL is exactly what it was.
+      */
+      window.history.replaceState(
+        null,
+        '',
+        `/${profile}/docs/${result.id}${window.location.search}`,
+      );
     }
     lastSaved.current = sending;
     setSavedAt(Date.now());

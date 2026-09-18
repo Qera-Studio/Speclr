@@ -148,18 +148,32 @@ export function UnsavedChangesDialog({
             This {label} has edits that are not in the draft yet. Leaving now loses them.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {/*
+          The blue is on **Save and leave**, and the red on Discard.
+
+          It was the other way round: Discard took the footer's default primary
+          and Save and leave was an outline, so the one button that throws work
+          away was the one the eye lands on and the safe option looked
+          secondary. A dialog raised *because* there is unsaved work should
+          recommend keeping it.
+
+          `AlertDialogAction` draws `destructive` solid rather than tinted in a
+          dialog (see `ui/alert-dialog.tsx`), which is what makes Discard read
+          as the dangerous one rather than merely the other one.
+        */}
         <AlertDialogFooter>
           <AlertDialogCancel>Stay</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={guard.leave}>
+            Discard
+          </AlertDialogAction>
           <Button
             type="button"
-            variant="outline"
             onClick={async () => {
               if (await autosave.flush()) guard.leave();
             }}
           >
             Save and leave
           </Button>
-          <AlertDialogAction onClick={guard.leave}>Discard</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
