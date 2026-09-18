@@ -208,6 +208,21 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // The version banner is free reconnaissance. Nothing reads it.
   poweredByHeader: false,
+  /*
+    Next's dev-tools indicator, off.
+
+    It renders a `<nextjs-portal>` pinned to a corner of the viewport, and the
+    header's rightmost control is in that corner: at 1280px the notifications
+    bell sits at x=1240 and `elementFromPoint` on its centre answers
+    `NEXTJS-PORTAL`. Playwright then waits out its timeout on a button it can
+    see, that is enabled and stable, and that nothing will let it click.
+
+    Dev-only either way, so this changes nothing a user meets. It is here
+    rather than in the Playwright config because the collision is with the
+    *page*, and a test that works around it would be a test measuring a layout
+    no one else has.
+  */
+  devIndicators: false,
   // The PDF renderer's two packages are left to Node's own resolver rather than
   // traced into the bundle. `@sparticuz/chromium` ships a Brotli-compressed
   // browser it unpacks into /tmp at runtime, and `puppeteer-core` resolves
