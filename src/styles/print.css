@@ -55,9 +55,77 @@
   break-after: auto;
 }
 
+/*
+ * The last page must not spill onto a sheet of its own.
+ *
+ * A packed page whose single block is taller than the page keeps
+ * `overflow: visible`, so the excess paints past the sheet edge rather than
+ * being silently cut — the right call, and `pagination.ts` says why. In print
+ * that spill is *content after the last page break*, so the browser gives it a
+ * sheet: a 40-page contract downloaded as 41, the last one blank apart from a
+ * few pixels of overhang nobody can see.
+ *
+ * Only the last page, and only in print. A middle page's spill costs nothing
+ * (it lands on the next sheet, which exists anyway) and clipping every page
+ * here would throw away the visible-overflow behaviour the contract relies on.
+ * Measured both ways: with six pages, the last overflowing produced 7 sheets
+ * and a middle one produced 6.
+ *
+ * This clips rather than shrinks, which is the honest trade at the very end of
+ * a document: the alternative is a blank page on every issued contract whose
+ * final block measures a pixel over. `e2e/quotation.spec.ts` already refuses
+ * any page marked `overflows` for that document type, so nothing there is
+ * relying on the spill.
+ */
+@media print {
+  .paginatorPage:last-child {
+    overflow: hidden;
+  }
+}
+
 @media screen {
   .doc-sheet-wrap .paginatorPage + .paginatorPage {
     margin-top: 24px;
+  }
+
+  /*
+   * The page edge, on screen only.
+   *
+   * A finalized document is white paper on a near-white pane, so the sheet had
+   * no boundary at all: where one page stopped and the next began was readable
+   * only from the 24px of ground between them, and against the card's own white
+   * the outer edge simply dissolved. The editor preview has carried a drop
+   * shadow for this since it was built (`DocumentPreview`'s `PAGE_SHADOW`); the
+   * print view had nothing, which is why the two read as different surfaces.
+   *
+   * **`@media screen` is what keeps it out of the PDF**, and that is a
+   * guarantee rather than a hope: `page.pdf()` renders under *print* media
+   * (`server/pdf/render.ts`), so a rule in here cannot reach the file however
+   * `printBackground` is set. Printing from the browser is the same. The
+   * alternative, a Tailwind class on the frame, would have needed a
+   * `print:`-prefixed counterpart on every one of them and would have been one
+   * page frame away from leaking a hairline onto an issued contract.
+   *
+   * A hairline and a shadow so faint it reads as contact with the surface
+   * rather than as elevation: this is a sheet of paper lying on a desk, not a
+   * card floating above one. The rail's own thumbnails already draw their
+   * border and are deliberately excluded — at 17% the same treatment is a grey
+   * smudge, and they carry `border-primary` when current, which this would
+   * fight.
+   *
+   * **`outline`, never `border`.** These frames are `box-border`, so a border
+   * would take its 2px out of the 794×1123 *content* box — on a document packed
+   * to the pixel against `PAGE_SAFETY_MARGIN`, that is two pixels of content
+   * height that the packer measured and the page no longer has, which is the
+   * clipping bug this stylesheet's own comments keep warning about. An outline
+   * is painted outside the box and occupies no layout at all.
+   */
+  .doc-print-column > .paginatorPage,
+  .doc-sheet-wrap > .paginatorPage {
+    outline: 1px solid var(--border);
+    box-shadow:
+      0 1px 3px rgb(0 0 0 / 0.04),
+      0 1px 2px rgb(0 0 0 / 0.06);
   }
 }
 

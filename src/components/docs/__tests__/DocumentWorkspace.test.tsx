@@ -106,6 +106,59 @@ describe('DocumentWorkspace', () => {
     expect(screen.getByText('Body')).toBeInTheDocument();
   });
 
+  /**
+   * A document can be shown with no rail at all.
+   *
+   * `rail={false}` renders no panel, which is not the same as rendering an
+   * empty one: the panel's *registration* is what tells `AdminShell` this page
+   * has something editable, so an empty one would leave the column there with
+   * nothing in it. Never registering collapses it and gives the document the
+   * width. The contract builder's preview phase is the caller.
+   */
+  it('registers no panel when the rail is off', () => {
+    let count = -1;
+    function Probe() {
+      count = useEditorPanel()?.count ?? -1;
+      return null;
+    }
+
+    render(
+      <EditorPanelProvider>
+        <DocumentWorkspace title="New contract" preview={<div>Body</div>} rail={false}>
+          <label>
+            Client
+            <input />
+          </label>
+        </DocumentWorkspace>
+        <Probe />
+      </EditorPanelProvider>,
+    );
+
+    expect(count).toBe(0);
+    expect(screen.getByText('Body')).toBeInTheDocument();
+  });
+
+  /**
+   * And with no shell either, the fallback must not smuggle the form back in.
+   *
+   * `EditorPanelContent` renders its children in place when there is no rail,
+   * which is the right degradation for every other caller and exactly wrong
+   * here: the form would appear under the document instead of beside it.
+   */
+  it('renders no form in place either when the rail is off', () => {
+    render(
+      <DocumentWorkspace title="New contract" preview={<div>Body</div>} rail={false}>
+        <label>
+          Client
+          <input />
+        </label>
+      </DocumentWorkspace>,
+    );
+
+    expect(screen.queryByLabelText('Client')).not.toBeInTheDocument();
+    expect(screen.getByText('Body')).toBeInTheDocument();
+  });
+
   it('pages the document with the arrow keys', async () => {
     const user = userEvent.setup();
     render(

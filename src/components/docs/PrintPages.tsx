@@ -288,8 +288,6 @@ export default function PrintPages({
             <DocumentPager
               currentPage={Math.min(currentPage, pageCount - 1)}
               pageCount={pageCount}
-              onPrev={() => goToPage(currentPage - 1)}
-              onNext={() => goToPage(currentPage + 1)}
               onGoToPage={goToPage}
             />
           </div>

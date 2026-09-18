@@ -2,8 +2,18 @@ import { act, render, screen } from '@testing-library/react';
 import DocumentPreview from '../DocumentPreview';
 import { A4_PADDING } from '@/components/docs/sheets/frame';
 
-/** The packed page frames on screen — the thing an edit must not take away. */
-const pageFrames = () => document.querySelectorAll('.paginatorPage.h-\\[1123px\\]');
+/**
+ * The packed page frames on screen — the thing an edit must not take away.
+ *
+ * The child combinators are load-bearing. The page rail renders the *same*
+ * packed pages as thumbnails, which is the point of it, and it is a child of
+ * the page column so that it positions against the page's edge rather than the
+ * pane's. So a descendant selector counts every page twice.
+ */
+const pageFrames = () =>
+  document.querySelectorAll(
+    '[data-slot="document-pages"] > div > .paginatorPage.h-\\[1123px\\]',
+  );
 
 /**
  * jsdom reports every offsetHeight as 0, so the measurement branch never

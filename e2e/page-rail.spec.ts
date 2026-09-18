@@ -207,9 +207,16 @@ test.describe('the page rail', () => {
    * whichever page covers most of the viewport — which for most of that trip is
    * still the one being left.
    *
-   * So the label is sampled every frame *during* the transit and the whole
+   * So the page is sampled every frame *during* the transit and the whole
    * sequence is asserted, not its endpoint. Confirmed to go red before it was
    * trusted: with the observer ungated it records the four-step bounce above.
+   *
+   * **What is sampled changed with the pager** (`docs/design.md` §2.10). It was
+   * a `Page 1 / 4` label, which the tab group replaced; the equivalent signal is
+   * which page button carries `aria-current`, and that is also what a screen
+   * reader follows. The old sampler did not merely stop working: it did
+   * `label.textContent!` on a `find` that now returns `undefined`, so it threw
+   * inside the page on every run.
    */
   test('moves the pager one step per click, without bouncing back', async ({
     page,
@@ -218,12 +225,15 @@ test.describe('the page rail', () => {
       () =>
         new Promise<string[]>((resolve) => {
           const seen: string[] = [];
-          const label = [...document.querySelectorAll('span')].find((s) =>
-            /^Page \d+ \/ \d+$/.test(s.textContent ?? ''),
-          )!;
           const tick = setInterval(() => {
-            const value = label.textContent!;
-            if (seen[seen.length - 1] !== value) seen.push(value);
+            // Scoped to the pager. The thumbnail rail marks its own current
+            // page too, so an unscoped `[aria-current]` matches two elements
+            // and would sample whichever comes first in the document.
+            const current = document.querySelector(
+              '[data-slot="pagination"] [aria-current="page"]',
+            );
+            const value = current?.textContent ?? '';
+            if (value && seen[seen.length - 1] !== value) seen.push(value);
           }, 16);
           setTimeout(() => {
             clearInterval(tick);
@@ -238,8 +248,8 @@ test.describe('the page rail', () => {
     await page.getByRole('button', { name: 'Next page' }).click();
 
     const seen = await sequence;
-    expect(seen[0]).toMatch(/^Page 1 \//);
-    expect(seen[seen.length - 1]).toMatch(/^Page 2 \//);
+    expect(seen[0]).toBe('1');
+    expect(seen[seen.length - 1]).toBe('2');
     // Two readings: where it was, and where it went. A third is the bounce.
     expect(seen).toHaveLength(2);
   });

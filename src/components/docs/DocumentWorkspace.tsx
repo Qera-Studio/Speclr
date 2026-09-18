@@ -45,6 +45,7 @@ export default function DocumentWorkspace({
   columnGap,
   forceDark,
   railFooter,
+  rail = true,
   status,
   children,
 }: {
@@ -92,6 +93,19 @@ export default function DocumentWorkspace({
    * stage's one forward action, and on the last stage Finalize and Delete.
    */
   railFooter?: React.ReactNode;
+  /**
+   * Whether to fill the app's editor rail at all.
+   *
+   * Off renders no panel, which is deliberately not the same as rendering an
+   * empty one: registration is what tells `AdminShell` the page has something
+   * editable, so an empty panel leaves the column standing with nothing in it.
+   * Never registering collapses it and the document takes the width.
+   *
+   * `children` stays required rather than becoming optional, so a caller
+   * turning the rail off still has to say what it is giving up, and turning it
+   * back on is one prop rather than rebuilding a form.
+   */
+  rail?: boolean;
   children: React.ReactNode;
 }) {
   const [pageCount, setPageCount] = useState(1);
@@ -143,8 +157,6 @@ export default function DocumentWorkspace({
             <DocumentPager
               currentPage={safePage}
               pageCount={pageCount}
-              onPrev={() => goToPage(safePage - 1)}
-              onNext={() => goToPage(safePage + 1)}
               onGoToPage={goToPage}
             />
           )}
@@ -176,10 +188,14 @@ export default function DocumentWorkspace({
         </DocumentPreview>
       )}
 
-      {/* The form is the point of a document page, so open the rail on arrival. */}
-      <EditorPanelContent title={title} autoOpen footer={railFooter}>
-        {children}
-      </EditorPanelContent>
+      {/* The form is the point of a document page, so open the rail on arrival.
+          Unless the page says otherwise: `rail={false}` renders no panel, so
+          nothing registers and the shell's column collapses. */}
+      {rail ? (
+        <EditorPanelContent title={title} autoOpen footer={railFooter}>
+          {children}
+        </EditorPanelContent>
+      ) : null}
     </div>
   );
 }

@@ -38,6 +38,67 @@ test.describe('print output', () => {
     expect(pdfPageCount(pdf)).toBe(onScreen);
   });
 
+  /**
+   * A last page that overflows must not become a blank sheet.
+   *
+   * The bug, seen on a real contract: 40 pages on screen, 41 in the downloaded
+   * PDF, the last blank. A packed page whose single block measures taller than
+   * the page keeps `overflow: visible` so the excess is seen rather than
+   * silently cut (`pagination.ts`), and on the *last* page that spill is
+   * content after the final page break, so the browser gives it a sheet of its
+   * own. A contract's Execution page is exactly the shape that trips it: sparse,
+   * and a pixel or two over.
+   *
+   * Built here rather than found in a fixture because no fixture has one — the
+   * test above passes on the real contract and always did, which is precisely
+   * why this shipped. The frames are the ones `PrintPages` emits, and the
+   * middle-page case is included because it is what says the fix is *targeted*:
+   * clipping every page in print would throw away the visible-overflow
+   * behaviour the contract depends on, and this would still pass.
+   *
+   * Confirmed to fail before the fix: 6 pages with the last overflowing gave 7.
+   */
+  test('does not add a sheet when the last page overflows', async ({ page }) => {
+    await page.goto('/preview/contract');
+    await settled(page);
+
+    const build = (overflowIndex: number | null, count = 6) =>
+      page.evaluate(
+        ({ count, overflowIndex }) => {
+          const column = document.querySelector('.doc-print-column')!;
+          const frames: HTMLDivElement[] = [];
+          for (let i = 0; i < count; i++) {
+            const frame = document.createElement('div');
+            frame.className = `paginatorPage w-[794px] box-border flex flex-col [&>*]:shrink-0 p-[12px] h-[1123px] ${
+              i === overflowIndex ? 'overflow-visible' : 'overflow-hidden'
+            } bg-white text-black`;
+            const block = document.createElement('div');
+            // Taller than the page, so it spills wherever the frame allows it.
+            block.style.height = i === overflowIndex ? '1400px' : '200px';
+            block.textContent = `Page ${i + 1}`;
+            frame.appendChild(block);
+            frames.push(frame);
+          }
+          column.replaceChildren(...frames);
+        },
+        { count, overflowIndex },
+      );
+
+    const sheets = async () =>
+      pdfPageCount(await page.pdf({ format: 'A4', printBackground: true }));
+
+    await build(null);
+    expect(await sheets()).toBe(6);
+
+    // The case that produced the blank page.
+    await build(5);
+    expect(await sheets()).toBe(6);
+
+    // And a middle page still spills onto the sheet that already follows it.
+    await build(2);
+    expect(await sheets()).toBe(6);
+  });
+
   /** A slip is one fixed frame and must never spill onto a second sheet. */
   test('a pay slip prints on one sheet', async ({ page }) => {
     await page.goto('/preview/pay-slip');

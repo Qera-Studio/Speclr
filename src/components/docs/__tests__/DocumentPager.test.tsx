@@ -5,15 +5,24 @@ import DocumentPager from '../DocumentPager';
 /**
  * The pager, which is what survived `DocumentWorkspaceBar` when the workspace
  * bar was merged into the app header. The title and the autosave line moved to
- * `DocumentWorkspace`'s portal; the arrows, the counter and the go-to box are
+ * `DocumentWorkspace`'s portal; the pages, the arrows and the go-to box are
  * their own component and keep the bar's tests.
+ *
+ * **Nine pages, not five.** The pager shows every page as a button and brings
+ * the arrows and the box in only once there are more than six, so a five-page
+ * document has nothing to test them with. Nine is the first count comfortably
+ * past that, and it is what a long contract actually runs to.
+ *
+ * `onPrev`/`onNext` are gone with this change: they existed because the
+ * preview's arrows animate a scroll, but the box already went through
+ * `onGoToPage` and every caller pointed all three at one function.
  */
+const LONG = 9;
+
 function setup(overrides: Partial<React.ComponentProps<typeof DocumentPager>> = {}) {
   const props = {
     currentPage: 0,
-    pageCount: 5,
-    onPrev: jest.fn(),
-    onNext: jest.fn(),
+    pageCount: LONG,
     onGoToPage: jest.fn(),
     ...overrides,
   };
@@ -22,9 +31,31 @@ function setup(overrides: Partial<React.ComponentProps<typeof DocumentPager>> = 
 }
 
 describe('DocumentPager', () => {
-  it('shows the page counter', () => {
+  /** The pages are buttons now, where a "Page 1 / 5" label was a readout. */
+  it('offers the pages as buttons', () => {
     setup();
-    expect(screen.getByText('Page 1 / 5')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Page 1' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('button', { name: 'Page 2' })).toBeInTheDocument();
+  });
+
+  /** The ends stay one click away however long the document. */
+  it('keeps the first and last page reachable', () => {
+    setup({ currentPage: 4 });
+    expect(screen.getByRole('button', { name: 'Page 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Page ${LONG}` })).toBeInTheDocument();
+  });
+
+  /** A short document lists every page and needs no arrows at all. */
+  it('drops the arrows and the box on a document short enough to list', () => {
+    setup({ pageCount: 4 });
+    expect(screen.queryByRole('button', { name: /previous page/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    for (const n of [1, 2, 3, 4]) {
+      expect(screen.getByRole('button', { name: `Page ${n}` })).toBeInTheDocument();
+    }
   });
 
   /**
@@ -45,23 +76,38 @@ describe('DocumentPager', () => {
   });
 
   it('disables next on the last page', () => {
-    setup({ currentPage: 4, pageCount: 5 });
+    setup({ currentPage: LONG - 1 });
     expect(screen.getByRole('button', { name: /next page/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /previous page/i })).toBeEnabled();
   });
 
+  /**
+   * One way in. The arrows and a number both go through `onGoToPage`, which is
+   * what makes a number click scroll the strip exactly as an arrow does.
+   */
   it('navigates with the arrows', async () => {
     const user = userEvent.setup();
-    const { onNext, onPrev } = setup({ currentPage: 2 });
+    const { onGoToPage } = setup({ currentPage: 2 });
+
     await user.click(screen.getByRole('button', { name: /next page/i }));
-    expect(onNext).toHaveBeenCalled();
+    expect(onGoToPage).toHaveBeenCalledWith(3);
+
     await user.click(screen.getByRole('button', { name: /previous page/i }));
-    expect(onPrev).toHaveBeenCalled();
+    expect(onGoToPage).toHaveBeenCalledWith(1);
+  });
+
+  it('navigates by clicking a page, through the same callback', async () => {
+    const user = userEvent.setup();
+    const { onGoToPage } = setup({ currentPage: 0 });
+
+    await user.click(screen.getByRole('button', { name: 'Page 3' }));
+
+    expect(onGoToPage).toHaveBeenCalledWith(2);
   });
 
   it('announces page changes politely', () => {
     setup({ currentPage: 2 });
-    expect(screen.getByText('Page 3 / 5')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByText(`Page 3 of ${LONG}`)).toHaveAttribute('aria-live', 'polite');
   });
 });
 
@@ -106,10 +152,10 @@ describe('the go-to-page box', () => {
    */
   it('refuses a page past the end and returns to the current one', async () => {
     const user = userEvent.setup();
-    const { onGoToPage } = setup({ currentPage: 1, pageCount: 5 });
+    const { onGoToPage } = setup({ currentPage: 1 });
 
     await user.clear(box());
-    await user.type(box(), '9{Enter}');
+    await user.type(box(), '99{Enter}');
 
     expect(onGoToPage).not.toHaveBeenCalled();
     expect(box()).toHaveValue('2');
@@ -128,10 +174,10 @@ describe('the go-to-page box', () => {
 
   /** Scrolling the preview moves the page, and the box has to follow it. */
   it('follows the page when it changes underneath', () => {
-    const { rerender } = render(<DocumentPager currentPage={0} pageCount={5} />);
+    const { rerender } = render(<DocumentPager currentPage={0} pageCount={LONG} />);
     expect(box()).toHaveValue('1');
 
-    rerender(<DocumentPager currentPage={3} pageCount={5} />);
+    rerender(<DocumentPager currentPage={3} pageCount={LONG} />);
     expect(box()).toHaveValue('4');
   });
 
@@ -144,7 +190,7 @@ describe('the go-to-page box', () => {
     const onKeyDown = jest.fn();
     render(
       <div onKeyDown={onKeyDown}>
-        <DocumentPager currentPage={0} pageCount={5} />
+        <DocumentPager currentPage={0} pageCount={LONG} />
       </div>,
     );
 

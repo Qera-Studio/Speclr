@@ -21,6 +21,7 @@ import {
 import { usePagination } from './usePagination';
 import type { PackedPage } from './pagination';
 import PageColumns from './PageColumns';
+import PageThumbnails from './PageThumbnails';
 
 // Vertical gap between stacked pages in the scrolling column.
 const PAGE_GAP = 24;
@@ -155,6 +156,8 @@ export default function DocumentPreview({
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const [scale, setScale] = useState(0.5);
+  /** Which page the rail highlights. Reported up as well — see `reportCurrent`. */
+  const [current, setCurrent] = useState(0);
 
   // A4 content box height minus this document's page padding, whatever its
   // running header and footer take, and PAGE_SAFETY_MARGIN. Blocks are packed
@@ -167,14 +170,37 @@ export default function DocumentPreview({
     measuring: remeasuring,
   } = usePagination(flowBlocks, pageContentHeight, columns, forceDark);
 
+  // Total pages includes the cover (if any) plus the measured flow pages.
+  const coverCount = coverBlock ? 1 : 0;
+  const pageCount = coverCount + (flowPages ? flowPages.length : 1);
+
   // Fit the A4 page *width* into the viewport — with a continuously scrolling
   // column the pane is no longer A4-shaped, so height must not bind (it would
   // shrink pages needlessly). Never upscale past 100%: the page is capped at its
   // true 794px so text stays crisp and matches print.
+  //
+  // The rail's width comes off **both** sides, because the page is centred in
+  // the pane and the rail hangs off its left edge out of flow. Taking it off
+  // once would let the page grow until it ran under the rail: the page would
+  // still be centred, but centred across a width the rail is standing in.
+  // Symmetric is what keeps the page both centred and clear of it.
+  //
+  // Measured from the rail itself rather than written down as a constant: the
+  // thumbnail size lives in `PageThumbnails`, and a second copy of it here is a
+  // number that would go stale the first time that one moved.
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const update = () => setScale(Math.min(1, viewport.clientWidth / SHEET_WIDTH));
+    const update = () => {
+      const rail = viewport.querySelector<HTMLElement>('[data-slot="page-thumbnails"]');
+      // The rail plus its gutter, on each side. The 24 matches the `mr-6`.
+      const reserved = rail ? (rail.offsetWidth + 24) * 2 : 0;
+      setScale(Math.min(1, (viewport.clientWidth - reserved) / SHEET_WIDTH));
+      // The pane's own visible height, for the rail to bound itself against.
+      // Neither the window nor the scrolled content answers this — see the
+      // rail's comment below.
+      viewport.style.setProperty('--doc-pane-height', `${viewport.clientHeight}px`);
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(viewport);
@@ -183,11 +209,11 @@ export default function DocumentPreview({
       observer.disconnect();
       window.removeEventListener('resize', update);
     };
-  }, []);
-
-  // Total pages includes the cover (if any) plus the measured flow pages.
-  const coverCount = coverBlock ? 1 : 0;
-  const pageCount = coverCount + (flowPages ? flowPages.length : 1);
+    // Re-run when the rail appears or goes: it is rendered only once there is
+    // more than one page, and its width is what this reserves. Without the
+    // dependency the first measurement is taken with no rail in the DOM and the
+    // page stays scaled as if it had the whole pane.
+  }, [pageCount]);
 
   // Report the page count up so the bar can render "Page n / total".
   useEffect(() => {
@@ -201,34 +227,47 @@ export default function DocumentPreview({
   // the scroll position with it.
   const unmeasured = flowPages === null;
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      scrollToPage: (index: number) => {
-        const page = pageRefs.current[index];
-        const viewport = viewportRef.current;
-        if (!page || !viewport) return;
-        // offsetTop is in unscaled space; the column is transform-scaled, so
-        // convert to on-screen pixels before scrolling.
-        const top = page.offsetTop * scale;
-        // jsdom (and very old browsers) have no Element.scrollTo — fall back to
-        // assigning scrollTop so paging never throws.
-        if (typeof viewport.scrollTo === 'function') {
-          viewport.scrollTo({ top, behavior: 'smooth' });
-        } else {
-          viewport.scrollTop = top;
-        }
-      },
-    }),
+  /**
+   * Scroll a page to the top of the viewport.
+   *
+   * Lifted out of the imperative handle because the rail needs it too, and two
+   * copies of this arithmetic is how the rail and the pager come to disagree
+   * about where a page starts.
+   */
+  const scrollToPage = useCallback(
+    (index: number) => {
+      const page = pageRefs.current[index];
+      const viewport = viewportRef.current;
+      if (!page || !viewport) return;
+      // offsetTop is in unscaled space; the column is transform-scaled, so
+      // convert to on-screen pixels before scrolling.
+      const top = page.offsetTop * scale;
+      // jsdom (and very old browsers) have no Element.scrollTo — fall back to
+      // assigning scrollTop so paging never throws.
+      if (typeof viewport.scrollTo === 'function') {
+        viewport.scrollTo({ top, behavior: 'smooth' });
+      } else {
+        viewport.scrollTop = top;
+      }
+    },
     [scale],
   );
+
+  useImperativeHandle(ref, () => ({ scrollToPage }), [scrollToPage]);
 
   // Track which page occupies the viewport as the user scrolls, so the counter
   // stays truthful without the parent driving it. Uses IntersectionObserver
   // against the scroll viewport; jsdom's stub never fires, which is the correct
   // inert fallback there.
+  //
+  // Kept here as well as reported up: the rail's highlight is this component's
+  // own business, and asking the parent to hand it back would make the rail
+  // depend on a prop every caller would have to remember to wire.
   const reportCurrent = useCallback(
-    (index: number) => onCurrentPageChange?.(index),
+    (index: number) => {
+      setCurrent(index);
+      onCurrentPageChange?.(index);
+    },
     [onCurrentPageChange],
   );
 
@@ -263,7 +302,12 @@ export default function DocumentPreview({
 
   // Literal 794/1123 rather than the constants: Tailwind scans source text, so
   // an interpolated arbitrary value never gets a class generated.
-  const pageFrame = `w-[794px] h-[1123px] box-border ${PAGE_SHADOW}`;
+  //
+  // The shadow is separated out because the rail's thumbnails reuse the frame
+  // without it: a drop shadow scaled to 17% is a smudge, and the thumbnail
+  // draws its own border anyway.
+  const pageFrameBase = 'w-[794px] h-[1123px] box-border';
+  const pageFrame = `${pageFrameBase} ${PAGE_SHADOW}`;
   // A flex column so a trailing block can pin itself to the foot of the page
   // with `mt-auto` — how the letters' signature and footer sit at the bottom,
   // and how the contract's footer sits under its last clause. `shrink-0` keeps
@@ -276,6 +320,10 @@ export default function DocumentPreview({
   const flowFrame = selfPaddedSheet
     ? `${pageFrame} ${flowColumn}`
     : `${pageFrame} ${flowColumn} ${pagePadding}`;
+  // The same frame with no drop shadow, for the rail. See `pageFrameBase`.
+  const thumbFrame = selfPaddedSheet
+    ? `${pageFrameBase} ${flowColumn}`
+    : `${pageFrameBase} ${flowColumn} ${pagePadding}`;
 
   // Unscaled height of the whole stacked column, used to reserve the correct
   // on-screen footprint for the transform-scaled holder. While measuring, the
@@ -300,19 +348,17 @@ export default function DocumentPreview({
     forceDark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black'
   } h-auto min-h-[1123px]`;
 
-  /** One packed page, with its furniture and its own colour. */
-  const renderPage = (page: PackedPage, index: number) => (
-    <div
-      key={index}
-      ref={capturePage(coverCount + index)}
-      className={[
-        'paginatorPage',
-        flowFrame,
-        // A block too tall for its page spills rather than being cut in half.
-        page.overflows ? 'overflow-visible' : 'overflow-hidden',
-        page.dark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black',
-      ].join(' ')}
-    >
+  /**
+   * One packed page's content, and the class its frame wears.
+   *
+   * Split in two for the same reason `PrintPages` splits them: the body is
+   * built once and used twice, in the document and in the rail's thumbnail, so
+   * the two cannot come to show different things. The *frame* is not shared —
+   * the document's carries a page ref and the drop shadow, and the thumbnail's
+   * is a fixed scaled box.
+   */
+  const pageBody = (page: PackedPage, index: number) => (
+    <>
       {pageHeader?.(coverCount + index, page.dark)}
       <PageColumns
         page={page}
@@ -321,8 +367,61 @@ export default function DocumentPreview({
         columnGap={columnGap}
       />
       {pageFooter?.(coverCount + index, page.dark)}
+    </>
+  );
+
+  const pageClass = (page: PackedPage, frame: string) =>
+    [
+      'paginatorPage',
+      frame,
+      // A block too tall for its page spills rather than being cut in half.
+      page.overflows ? 'overflow-visible' : 'overflow-hidden',
+      page.dark ? (darkPageClassName ?? 'bg-black text-white') : 'bg-white text-black',
+    ].join(' ');
+
+  const renderPage = (page: PackedPage, index: number) => (
+    <div
+      key={index}
+      ref={capturePage(coverCount + index)}
+      className={pageClass(page, flowFrame)}
+    >
+      {pageBody(page, index)}
     </div>
   );
+
+  /**
+   * The rail's pages: the cover, where there is one, then every packed page.
+   *
+   * The cover is included by hand because it is not a `PackedPage` at all — it
+   * is block 0 rendered into its own full-bleed frame — and a rail that skipped
+   * it would number every thumbnail one short of the page it jumps to.
+   *
+   * `PAGE_SHADOW` is deliberately absent: the thumbnail draws its own border,
+   * and a shadow scaled to 17% is a grey smudge under a 140px box.
+   */
+  const thumbnailPages: ReactNode[] = unmeasured
+    ? []
+    : [
+        ...(coverBlock
+          ? [
+              <div
+                key="cover"
+                className={
+                  firstPageClassName
+                    ? `paginatorPage ${pageFrameBase} overflow-hidden ${firstPageClassName}`
+                    : `paginatorPage ${pageFrameBase} overflow-hidden`
+                }
+              >
+                {coverBlock}
+              </div>,
+            ]
+          : []),
+        ...flowPages.map((page, index) => (
+          <div key={index} className={pageClass(page, thumbFrame)}>
+            {pageBody(page, index)}
+          </div>
+        )),
+      ];
 
   return (
     <div
@@ -330,13 +429,102 @@ export default function DocumentPreview({
       className="min-h-0 flex-1 overflow-auto overscroll-contain bg-muted p-6"
       data-slot="document-preview"
     >
-      <div
-        className="relative mx-auto"
-        style={{
-          width: SHEET_WIDTH * scale,
-          height: columnHeight === undefined ? undefined : columnHeight * scale,
-        }}
-      >
+      {/*
+        **The page is centred in the pane; the rail hangs off it.**
+
+        This has now been built both of the obvious ways and both were wrong on
+        screen, in opposite directions, which is why the arrangement is worth
+        stating rather than reading off the classes.
+
+        The rail *outside* the scroll box strands it: the page column caps at
+        794px and re-centres in whatever space is left, so narrowing that space
+        from the left pushes the page right and leaves the rail ~195px from the
+        document it indexes. Rail and page as one centred flex group fixes the
+        gap and breaks the centring instead: the *group's* midpoint lands in the
+        middle of the pane, so the page sits right of centre by half the rail's
+        width, and on a document this wide that reads as the preview being
+        misaligned, which it is.
+
+        So only the page is in the centring flow, and the rail is positioned
+        against the page's own left edge, out of flow. Taking it out of flow is
+        the whole point: an absolutely positioned box contributes no width, so
+        it cannot move what it sits beside. The 24px is the same gutter the
+        print route uses.
+
+        `min-h-full` keeps the row as tall as the pane so the rail has something
+        to stick within on a one-page document.
+      */}
+      <div className="relative flex min-h-full justify-center">
+        {/*
+          Sticky, so the rail stays put while the pages scroll past it. It is
+          inside the scroll box, so without this it would scroll away with the
+          document, which is the one thing a table of contents must not do.
+
+          `self-start` is what makes `sticky` work at all: a stretched flex item
+          is as tall as the row, so there is no room inside it to stick within
+          and it simply scrolls.
+
+          The height is bounded by **this scroll box**, never by the viewport
+          and never by a container query. That is the whole of the rail's own
+          scrolling and it is the mistake the print route already made and
+          fixed: this pane sits inside the inset card, which is shorter than the
+          window by the header band and the card's margins, so a `100svh` cap
+          comes out taller than the box holding it, the rail overflows instead
+          of scrolling, and its last thumbnails cannot be reached.
+
+          `100cqh` was tried and is wrong for the same reason in reverse: a
+          scroll container's query height is its *content*, so the rail came out
+          852px inside a 796px pane and hung 80px below it. `--doc-pane-height`
+          is the pane measured, published by the effect above, which is the one
+          number that is neither the window nor the scrolled content.
+        */}
+        {/*
+          `data-slot` marks the real pages apart from the rail's.
+
+          Both are `.paginatorPage` and deliberately so — a thumbnail *is* the
+          page it stands for — but that makes the class ambiguous the moment the
+          rail moved inside this pane, and a count of `.paginatorPage` silently
+          doubled. `e2e/paper.ts` had already met the same ambiguity on the print
+          route and scopes to `.doc-print-column >`; this is that fix here, and
+          `DocumentPreview.test.tsx` is what caught it.
+        */}
+        <div
+          data-slot="document-pages"
+          className="relative shrink-0"
+          style={{
+            width: SHEET_WIDTH * scale,
+            height: columnHeight === undefined ? undefined : columnHeight * scale,
+          }}
+        >
+          {/*
+            The rail is a child of the page column, which is what makes
+            `right-full` mean "against the page's left edge" rather than against
+            the pane. It is the page that is centred, and the rail follows it.
+
+            Two boxes, and each does one job. The outer is `absolute` and as
+            tall as the whole column, which is what gives the inner one room to
+            be `sticky` in: a sticky box can only travel within its own parent,
+            so a parent the height of the rail would pin it for a single
+            thumbnail's worth of scroll and then carry it away. The inner is the
+            one that sticks, and it is bounded against the pane rather than the
+            column it lives in.
+          */}
+          {thumbnailPages.length > 1 ? (
+            <div className="absolute inset-y-0 right-full mr-6 hidden lg:block">
+              <div className="sticky top-0 flex max-h-[calc(var(--doc-pane-height,100svh)-3rem)]">
+                <PageThumbnails
+                  className="max-h-full"
+                  pages={thumbnailPages}
+                  currentPage={Math.min(current, thumbnailPages.length - 1)}
+                  onGoToPage={(index) => {
+                    reportCurrent(index);
+                    scrollToPage(index);
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+
         <div
           className={
             // Once measured the holder reserves the scaled footprint, so the
@@ -400,6 +588,7 @@ export default function DocumentPreview({
             </div>
           ) : null}
         </div>
+      </div>
       </div>
     </div>
   );

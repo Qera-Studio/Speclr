@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import { SHEET_HEIGHT, SHEET_WIDTH } from './sheets/frame';
 
 /**
@@ -29,11 +30,24 @@ export default function PageThumbnails({
   pages,
   currentPage,
   onGoToPage,
+  className,
 }: {
   /** One node per page, already packed and framed by the caller. */
   pages: React.ReactNode[];
   currentPage: number;
   onGoToPage: (index: number) => void;
+  /**
+   * Overrides the height cap, for a caller whose own box already bounds the
+   * rail.
+   *
+   * The default cap is measured against `--doc-scroll-height`, which only the
+   * print route publishes (`PrintPages`). The editor preview has no such
+   * variable and no window-height scroll box — the rail sits in a flex row
+   * inside the inset card — so it passes `max-h-full` and bounds the wrapper
+   * instead. Falling back to `100svh` there would size the rail taller than the
+   * row holding it, which is the same overflow the print route hit and fixed.
+   */
+  className?: string;
 }) {
   // One page is not a table of contents. Same rule as the pager, which hides
   // itself rather than printing "Page 1 / 1" with both arrows greyed out.
@@ -83,7 +97,10 @@ export default function PageThumbnails({
         in. The gap the padding was buying is `pb-2` alone, at the foot, where
         there is no page edge to line up against.
       */
-      className="scrollbar-none flex max-h-[calc(var(--doc-scroll-height,100svh)-var(--doc-locked-band,5rem))] shrink-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain pb-2"
+      className={cn(
+        'scrollbar-none flex max-h-[calc(var(--doc-scroll-height,100svh)-var(--doc-locked-band,5rem))] shrink-0 flex-col items-center gap-3 overflow-y-auto overscroll-contain pb-2',
+        className,
+      )}
     >
       {pages.map((page, i) => {
         const current = i === currentPage;
