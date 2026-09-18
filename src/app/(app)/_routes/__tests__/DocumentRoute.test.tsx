@@ -41,10 +41,18 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/client',
   redirect: (u: string) => redirect(u),
   notFound: () => notFound(),
-  useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
+  // The contract builder keeps its phase here (`docs/design.md` §2.12).
+  useSearchParams: () => new URLSearchParams(),
 }));
 // The client editors import server actions (which pull next/cache) — stub the
 // module so importing the page under test doesn't drag server-only APIs in.
+// The contract builder's services phase can also write the picked service onto
+// the client record, so its module graph now reaches this action — and through
+// it `next/cache`, which jsdom cannot load.
+jest.mock('@/server/actions/clients', () => ({
+  addClientService: jest.fn(),
+}));
 jest.mock('@/server/actions/documents', () => ({
   createDraft: jest.fn(),
   updateDraft: jest.fn(),
@@ -214,6 +222,16 @@ describe('DocumentRoute and the clause library', () => {
       await DocumentPage({ params: Promise.resolve({ id: 'con-1' }), profile: 'client' }),
     );
 
-    expect(screen.getByLabelText(/^client$/i)).toBeInTheDocument();
+    /*
+      The phase row, not a field on any one phase.
+
+      This asserted the Client phase's combobox, which was only ever a way of
+      saying "the flow rendered" — and it stopped being true when contracts
+      began resuming to the first phase they have nothing for. This document has
+      a client and no services, so it now opens on Services, which is the
+      feature working rather than a regression. The row is on every phase that
+      is a form, so it says the same thing without pinning the flow to one.
+    */
+    expect(screen.getByRole('navigation', { name: 'Steps' })).toBeInTheDocument();
   });
 });

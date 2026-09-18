@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
+import { codeSchema } from '@/lib/domain/text';
 import { clientInputSchema } from '@/lib/domain/registry';
 import {
   CLIENT_SECTION_SCHEMAS,
@@ -179,6 +181,68 @@ export async function saveClientSection(
     await saveClient({ ...existing, [section]: parsed.data, updatedAt: Date.now() });
   } catch (err) {
     logger.error({ action: 'saveClientSection', event: 'save_failed', section, error: err });
+    return { success: false, error: 'Failed to save client.' };
+  }
+
+  revalidatePath('/client/clients');
+  revalidatePath(`/client/clients/${id}`);
+  return { success: true, id };
+}
+
+/**
+ * Add a service to a client's engaged list, from the contract builder.
+ *
+ * **The contract takes a copy; this is the separate, explicit act of also
+ * telling the record.** Picking a service on a contract does not change who the
+ * client is, so it must not write to them silently — but a service genuinely
+ * agreed belongs on the record, where the next contract and every invoice seed
+ * from it (`CONTEXT.md` §5i, §5d).
+ *
+ * **It adds and updates, and never removes.** Unticking a service on one
+ * contract is a statement about that contract, not about the engagement: the
+ * client may still be engaged for it under an agreement signed last year, and
+ * the invoice seeds from this list. Taking something off the record is a
+ * different decision with different consequences, and it belongs on the client's
+ * own Services step where the whole list is in view.
+ *
+ * Read-then-write over the stored row, the `saveClientSection` shape, so it
+ * cannot blank a field this call never saw.
+ */
+export async function addClientService(
+  id: unknown,
+  service: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0) {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const parsed = z
+    .object({
+      code: codeSchema(20, { required: 'A service code is required.' }),
+      ratePaise: z.number().int().min(0).max(1e13).optional(),
+    })
+    .safeParse(service);
+  if (!parsed.success) return { success: false, error: invalidInput(parsed.error) };
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  const services = existing.commercial?.services ?? [];
+  const already = services.some((s) => s.code === parsed.data.code);
+  const next = already
+    ? services.map((s) => (s.code === parsed.data.code ? { ...s, ...parsed.data } : s))
+    : [...services, parsed.data];
+
+  try {
+    await saveClient({
+      ...existing,
+      commercial: { ...existing.commercial, services: next },
+      updatedAt: Date.now(),
+    });
+  } catch (err) {
+    logger.error({ action: 'addClientService', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to save client.' };
   }
 

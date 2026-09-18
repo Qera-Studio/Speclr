@@ -13,7 +13,7 @@ import {
 import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
 import { DOC_TYPE_BY_SLUG } from '@/lib/domain/registry';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
-import ContractEditor from '@/components/docs/editors/ContractEditor';
+import ContractFlow from '@/components/contract/flow/ContractFlow';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
 import QuotationEditor from '@/components/docs/editors/QuotationEditor';
@@ -97,7 +97,7 @@ export default async function NewDocumentRoute({
       listClauses(),
     ]);
     return (
-      <ContractEditor
+      <ContractFlow
         clients={clients}
         services={services}
         exclusions={exclusions}

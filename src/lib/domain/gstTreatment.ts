@@ -118,5 +118,30 @@ export function gstTreatmentMismatch(
   const expected = derived.applies ? derived.ratePercent : 0;
   if (doc.gstRatePercent === expected) return null;
 
-  return `This client's supply is taxed at ${expected}% (${derived.reason}) and the document says ${doc.gstRatePercent}%.`;
+  /*
+    One sentence per job: what is wrong, why the derived figure is what it is,
+    and what to do about it.
+
+    **The middle one used to be `derived.reason`, and that was the wrong
+    string.** `reason` comes from `placeOfSupplyOf` and explains *where* the
+    supply is: "the client is unregistered, so this comes from the state on
+    their address". Interpolated into a sentence about the *rate* it reads as a
+    non-sequitur, explaining a question the reader did not ask while leaving
+    the one they did unanswered. The two facts are derived together
+    (`gstTreatmentOf` composes them) which is how they came to be conflated,
+    but they answer different questions and only one of them is on trial here.
+
+    The rate's own explanation is short because there is only ever one: every
+    Service in the catalogue sits in the 9983 group. If that stops being true,
+    this sentence is where the classification belongs.
+  */
+  const why = derived.applies
+    ? "Design services are classified under SAC 9983, which is taxed at that rate."
+    : (derived.label ?? "This supply is zero-rated.");
+
+  return (
+    `This document charges ${doc.gstRatePercent}% GST, but a supply to this client is taxed at ${expected}%. ` +
+    `${why} ` +
+    `Change the rate in the editing rail, or record a reason for the departure before finalizing.`
+  );
 }

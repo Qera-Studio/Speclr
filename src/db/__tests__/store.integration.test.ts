@@ -11,15 +11,25 @@
  * so it removes those via a direct DB call in afterAll.
  */
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, gte } from 'drizzle-orm';
 import { db } from '../index';
-import { clients, counters, documents } from '../schema';
+import { clauses, clients, counters, documents, services } from '../schema';
 import {
+  archiveClause,
+  archiveService,
+  deleteClause,
   deleteDraft,
   getClient,
   getDocument,
+  getService,
+  insertService,
+  listClauses,
   listDocuments,
   getLatestFinalizedInvoice,
+  listServices,
+  nextClauseNumber,
+  saveClause,
+  saveService,
   searchEverything,
   listDocumentsByType,
   listFinalizedInvoicesForClient,
@@ -282,5 +292,118 @@ describe('Postgres store (integration)', () => {
     expect(await searchEverything('P', 'client')).toEqual({
       documents: [], clients: [], employees: [], services: [],
     });
+  });
+});
+
+/**
+ * A Service's menu lives inside the `content` JSONB column and rides through
+ * the store's spread both ways. The unit tests prove the schema and the
+ * actions with a mocked store; this proves the column and the mapper on the
+ * real thing, which is where a JSONB field that quietly dropped a key would
+ * show up.
+ *
+ * Code '98' is claimed for the test and removed afterwards, so the catalogue's
+ * next assigned code is not shifted by a leftover.
+ */
+describe('services (integration)', () => {
+  const CODE = '98';
+
+  afterAll(async () => {
+    await db.delete(services).where(eq(services.code, CODE));
+  });
+
+  it('round-trips a menu through the content column, and archives without deleting', async () => {
+    // A leftover from an interrupted run would make the insert collide.
+    await db.delete(services).where(eq(services.code, CODE));
+
+    await insertService({
+      code: CODE,
+      name: 'Integration service',
+      scheduleKey: 'build',
+      sortOrder: 99,
+      archived: false,
+      dependencies: [],
+      pairings: [],
+      overview: ['A service that exists only while this test runs.'],
+      included: [],
+      accountTerms: [],
+      limits: [],
+      limitsNotes: [],
+      completion: [],
+      receives: [],
+      receivesNotes: [],
+      thirdPartyCosts: '',
+      exclusionIds: [],
+      clientInputIds: [],
+      fee: [],
+      menu: [{ id: 'M1', text: 'One', ratePaise: 100, unit: 'fixed' }],
+      menuSeq: 1,
+    });
+
+    const read = await getService(CODE);
+    expect(read?.menu).toEqual([{ id: 'M1', text: 'One', ratePaise: 100, unit: 'fixed' }]);
+    expect(read?.menuSeq).toBe(1);
+
+    // A second line through the upsert path, with every other field standing.
+    await saveService({
+      ...read!,
+      menu: [...read!.menu!, { id: 'M2', text: 'Two', unit: 'monthly', unitLabel: undefined }],
+      menuSeq: 2,
+    });
+    const again = await getService(CODE);
+    expect(again?.menu?.map((m) => m.id)).toEqual(['M1', 'M2']);
+    expect(again?.menu?.[1]).toEqual({ id: 'M2', text: 'Two', unit: 'monthly' });
+    expect(again?.menuSeq).toBe(2);
+    expect(again?.overview).toEqual(['A service that exists only while this test runs.']);
+
+    // Archived: gone from the default list, still readable, menu intact.
+    await archiveService(CODE);
+    expect((await listServices()).some((s) => s.code === CODE)).toBe(false);
+    expect((await listServices(true)).some((s) => s.code === CODE)).toBe(true);
+    expect((await getService(CODE))?.menu).toHaveLength(2);
+  });
+});
+
+/**
+ * The one rule the clause library is built on: **a number, once used, is never
+ * handed out again.** Clause bodies cite each other by number ('the meaning
+ * given at clause 11.2'), so a reissued number silently changes what a signed
+ * agreement says.
+ *
+ * Archiving has always held that line by leaving the row in place. Deleting is
+ * the case this pins: the row really goes, and `nextClauseNumber` must still
+ * count past it. It does so through a high-water mark in `counters`, which is
+ * why this is an integration test rather than a unit one - the guarantee is two
+ * tables agreeing, and a mock of either proves nothing.
+ */
+describe('clauses (integration)', () => {
+  // Far above the 28 seeded clauses, so a real library is never touched.
+  const FIRST = 9001;
+
+  afterAll(async () => {
+    await db.delete(clauses).where(gte(clauses.number, FIRST));
+    await db.delete(counters).where(eq(counters.docType, 'CLAUSE'));
+  });
+
+  it('never reissues a number, whether a clause was archived or deleted', async () => {
+    await db.delete(clauses).where(gte(clauses.number, FIRST));
+    await db.delete(counters).where(eq(counters.docType, 'CLAUSE'));
+
+    await saveClause({ number: FIRST, heading: 'Kept', body: ['Stays.'], archived: false });
+    await saveClause({ number: FIRST + 1, heading: 'Archived', body: ['Hidden.'], archived: false });
+    await saveClause({ number: FIRST + 2, heading: 'Deleted', body: ['Gone.'], archived: false });
+
+    await archiveClause(FIRST + 1);
+    await deleteClause(FIRST + 2);
+
+    // The deleted row is really gone, archived or not.
+    expect((await listClauses(true)).some((c) => c.number === FIRST + 2)).toBe(false);
+    // The archived one is hidden, not removed.
+    expect((await listClauses()).some((c) => c.number === FIRST + 1)).toBe(false);
+    expect((await listClauses(true)).some((c) => c.number === FIRST + 1)).toBe(true);
+
+    // And the deleted number is still spent: the next clause comes after it,
+    // not into the hole it left.
+    expect(await nextClauseNumber()).toBe(FIRST + 3);
   });
 });

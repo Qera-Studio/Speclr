@@ -33,6 +33,12 @@ jest.mock('next/navigation', () => ({
   notFound: () => notFound(),
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
 }));
+// The contract builder's services phase can also write the picked service onto
+// the client record, so its module graph now reaches this action — and through
+// it `next/cache`, which jsdom cannot load.
+jest.mock('@/server/actions/clients', () => ({
+  addClientService: jest.fn(),
+}));
 jest.mock('@/server/actions/documents', () => ({
   createDraft: jest.fn(),
   updateDraft: jest.fn(),

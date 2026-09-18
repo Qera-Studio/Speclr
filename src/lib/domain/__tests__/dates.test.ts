@@ -1,5 +1,6 @@
 import {
   addDays,
+  addMonths,
   financialYearCode,
   financialYearCodeOfISODate,
   financialYearStart,
@@ -218,5 +219,51 @@ describe('addDays', () => {
     expect(addDays('', 30)).toBe('');
     expect(addDays('2026-02-31', 30)).toBe('');
     expect(addDays('2026-06-10', Number.NaN)).toBe('');
+  });
+});
+
+/**
+ * `addMonths` is how a contract's end date is derived from its start and its
+ * term, instead of being typed. The clamp is the whole reason it is not a
+ * one-line `setMonth`, so it is what most of this describes.
+ */
+describe('addMonths', () => {
+  it('adds months within a year', () => {
+    expect(addMonths('2026-06-10', 3)).toBe('2026-09-10');
+  });
+
+  it('rolls over a year boundary', () => {
+    expect(addMonths('2026-09-17', 12)).toBe('2027-09-17');
+    expect(addMonths('2026-11-30', 4)).toBe('2027-03-30');
+  });
+
+  /**
+   * The bug this exists to prevent. Naive `setMonth` rolls 31 February forward
+   * to 3 March, which would put a contract's end date in the wrong month.
+   */
+  it('clamps to the end of a shorter month rather than rolling forward', () => {
+    expect(addMonths('2026-01-31', 1)).toBe('2026-02-28');
+    expect(addMonths('2026-08-31', 1)).toBe('2026-09-30');
+    expect(addMonths('2026-05-31', 3)).toBe('2026-08-31');
+  });
+
+  it('clamps to 29 February in a leap year', () => {
+    expect(addMonths('2028-01-31', 1)).toBe('2028-02-29');
+  });
+
+  it('treats zero months as the same day', () => {
+    expect(addMonths('2026-06-10', 0)).toBe('2026-06-10');
+  });
+
+  it('goes backwards for a negative term', () => {
+    expect(addMonths('2026-06-10', -3)).toBe('2026-03-10');
+    expect(addMonths('2026-03-31', -1)).toBe('2026-02-28');
+  });
+
+  /** Same contract as `addDays`: blank beats invented. */
+  it('returns empty rather than guessing from unparseable input', () => {
+    expect(addMonths('', 12)).toBe('');
+    expect(addMonths('2026-02-31', 12)).toBe('');
+    expect(addMonths('2026-06-10', Number.NaN)).toBe('');
   });
 });

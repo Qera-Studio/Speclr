@@ -42,6 +42,8 @@ jest.mock('@/server/pdf/url', () => ({
 }));
 
 import { finalizeDocument } from '../documents';
+import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { contractComplete } from '@/lib/domain/contract/completeness';
 
 const ACTOR = { userId: 'user_issuer', email: 'ops@qera.studio' };
 
@@ -104,7 +106,12 @@ describe('the place-of-supply override guard', () => {
     const result = await finalizeDocument('doc-1');
 
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/Record why before finalizing/i);
+    // Both codes named, and a way out. A refusal that says only "record why"
+    // leaves the reader knowing they are blocked and not which figure is wrong
+    // or where it is changed.
+    expect(result.error).toMatch(/29/);
+    expect(result.error).toMatch(/09/);
+    expect(result.error).toMatch(/record a reason/i);
     expect(saveDocument).not.toHaveBeenCalled();
   });
 
@@ -207,8 +214,33 @@ describe('the tax-treatment guard', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/taxed at 18%/i);
-    expect(result.error).toMatch(/Record why before finalizing/i);
     expect(saveDocument).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The refusal has to be actionable, and this pins the three parts of that.
+   *
+   * What was there before said: "This client's supply is taxed at 18% (the
+   * client is unregistered, so this comes from the state on their address) and
+   * the document says 0%. Record why before finalizing." The parenthetical is
+   * `placeOfSupplyOf`'s explanation of *where* the supply is, interpolated into
+   * a sentence about the *rate*, so it answered a question nobody asked and
+   * left the reader with no idea which control to touch.
+   */
+  it('names both figures, why, and where to fix it', async () => {
+    getDocument.mockResolvedValue(invoice({ gstRatePercent: 0 }));
+
+    const { error } = await finalizeDocument('doc-1');
+
+    // What is wrong: both rates, so the reader knows which is which.
+    expect(error).toMatch(/charges 0% GST/i);
+    expect(error).toMatch(/taxed at 18%/i);
+    // Why the derived figure is what it is. About the *rate*, not the place of
+    // supply: the old message explained the wrong one of the two.
+    expect(error).toMatch(/9983/);
+    expect(error).not.toMatch(/state on their address/i);
+    // And the way out.
+    expect(error).toMatch(/rate in the editing rail/i);
   });
 
   it('refuses a rate that is neither the derived one nor explained', async () => {
@@ -217,7 +249,8 @@ describe('the tax-treatment guard', () => {
     const result = await finalizeDocument('doc-1');
 
     expect(result.success).toBe(false);
-    expect(result.error).toMatch(/says 5%/i);
+    // The document's own figure, named so the reader can see which is which.
+    expect(result.error).toMatch(/charges 5% GST/i);
   });
 
   it('allows the departure once it says why', async () => {
@@ -248,5 +281,52 @@ describe('the tax-treatment guard', () => {
 
     const result = await finalizeDocument('doc-1');
     expect(result.success).toBe(true);
+  });
+
+  /**
+   * **It only runs on a document that charges tax at all.**
+   *
+   * This guard used to run on every type carrying a client, and a contract
+   * carries `gstRatePercent: 0` by definition (`registry.ts`, `CON`): an
+   * agreement is not a tax invoice and computes no tax anywhere. So every
+   * contract for an Indian client was refused at finalize, against a figure the
+   * document is defined to hold, with a message naming a rate control that does
+   * not exist on that screen. Nothing the reader could do would clear it.
+   *
+   * Reported from the browser on 18 September 2026, finalizing a Master Service
+   * Agreement. The place-of-supply guard above was already gated on
+   * `gstRatePercent > 0` and so never had the bug; this one had no equivalent.
+   *
+   * **It carries a real Part**, and that is what makes the test mean anything.
+   *
+   * `contractFinalizeSchema` runs first and wants at least one Part with every
+   * blank filled, so a contract with `parts: []` is refused before this guard
+   * is ever reached. A first draft of this test asserted on the message with an
+   * empty contract and passed with the gate removed: the schema's refusal was
+   * what it was reading, and the guard under test never ran. A seeded Service
+   * is used rather than a hand-built one because it satisfies the schema by
+   * construction and cannot drift from it.
+   */
+  it('does not fire on a contract, which charges no tax by definition', async () => {
+    const part = SERVICES.find((s) => !s.archived)!;
+    // Its one blank is the fee. Filled from `contractComplete` rather than
+    // written out, so a clause edit that adds a blank fails loudly here instead
+    // of silently returning this test to asserting nothing.
+    const blanks = Object.fromEntries(
+      contractComplete({ parts: [part], blanks: {} }).map(({ blank }) => [blank.key, '₹1,50,000']),
+    );
+    getDocument.mockResolvedValue(
+      invoice({
+        type: 'CON',
+        gstRatePercent: 0,
+        lineItems: [],
+        contract: { parts: [part], blanks, library: {} },
+      } as Partial<AdminDocument>),
+    );
+
+    const result = await finalizeDocument('doc-1');
+
+    expect(result.success).toBe(true);
+    expect(saveDocument).toHaveBeenCalled();
   });
 });

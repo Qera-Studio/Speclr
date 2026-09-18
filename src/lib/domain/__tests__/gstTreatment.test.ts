@@ -52,11 +52,33 @@ describe('gstTreatmentOf', () => {
 
 describe('gstTreatmentMismatch', () => {
   it('names the disagreement when a domestic invoice drops the tax', () => {
-    expect(gstTreatmentMismatch({ gstRatePercent: 0 }, registered)).toMatch(/18%.*says 0%/);
+    expect(gstTreatmentMismatch({ gstRatePercent: 0 }, registered)).toMatch(
+      /charges 0% GST.*taxed at 18%/,
+    );
   });
 
   it('names it when the rate has been changed', () => {
-    expect(gstTreatmentMismatch({ gstRatePercent: 5 }, registered)).toMatch(/18%.*says 5%/);
+    expect(gstTreatmentMismatch({ gstRatePercent: 5 }, registered)).toMatch(
+      /charges 5% GST.*taxed at 18%/,
+    );
+  });
+
+  /**
+   * **It explains the rate, not the place of supply.**
+   *
+   * The message used to interpolate `derived.reason`, which comes from
+   * `placeOfSupplyOf` and says where the supply is: "the client is
+   * unregistered, so this comes from the state on their address". Dropped into
+   * a sentence about the *rate* it answered a question nobody asked, and left
+   * the reader no way to tell which control to touch. The two facts are derived
+   * together, which is how they came to be conflated.
+   */
+  it('explains the rate rather than the place of supply, and says where to fix it', () => {
+    const message = gstTreatmentMismatch({ gstRatePercent: 0 }, registered)!;
+
+    expect(message).toMatch(/9983/);
+    expect(message).not.toMatch(/state on their address/i);
+    expect(message).toMatch(/rate in the editing rail/i);
   });
 
   it('passes a domestic invoice that agrees', () => {

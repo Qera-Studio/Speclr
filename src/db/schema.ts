@@ -277,6 +277,17 @@ export const exclusions = pgTable("exclusions", {
 export const clauses = pgTable("clauses", {
   number: integer("number").primaryKey(),
   heading: text("heading").notNull(),
+  /**
+   * A few words saying what the clause does, for the library's own list.
+   *
+   * **Nullable, and it never prints.** This is an editorial aid for whoever is
+   * scanning 28 headings, not part of the agreement: a contract renders
+   * `heading` and `body` and has no access to this. Nullable rather than
+   * `default('')` so "nobody has written one yet" is distinguishable from
+   * "somebody decided it needs none", which is the difference between a gap to
+   * fill and a deliberate blank.
+   */
+  summary: text("summary"),
   /** One entry per paragraph, each carrying its own sub-number ('8.4 Where…'). */
   body: jsonb("body").notNull().$type<string[]>(),
   /** Archived clauses leave new contracts but stay readable for audit. */

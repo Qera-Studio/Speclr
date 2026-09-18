@@ -216,7 +216,174 @@ const SIGNATURE_MOTION = [
  * class: it is a `<Table>` with nothing around it.
  */
 const TABLE_TAG = /<Table>/;
+
+/**
+ * A `<TableBody>` is what makes a thing a list of records rather than a
+ * layout: `ui/table.tsx` exports the primitives, and the one place allowed to
+ * assemble them into a list is `RecordTable`.
+ */
+const TABLE_BODY_TAG = /<TableBody[\s/>]/;
+const RECORD_TABLE_PRIMITIVES = [
+  ...UI_PRIMITIVES,
+  'src/components/admin/RecordTable.tsx',
+  // The loading skeleton is a real TableCard holding real rows, on purpose:
+  // its geometry has to match the table it stands in front of, or the page
+  // jumps twice. See its note in Page.tsx.
+  'src/components/admin/Page.tsx',
+];
 const TABLE_CARD = /<TableCard[\s>]/;
+
+/**
+ * A pager written by hand.
+ *
+ * `ui/pagination.tsx` is the pager: prev, the counter, next, and the box you
+ * type a page into. The document preview had a second copy of that control and
+ * it was the only one with the box, so a nine-page document went to page 9 in
+ * one keystroke while a nine-page table took eight clicks. Neither surface
+ * chose that; the second one simply had nothing to copy from.
+ *
+ * The tell used to be the counter (`Page {n} / {total}`), which was the one part
+ * a hand-rolled pager always wrote out. **The primitive stopped rendering one**
+ * when the pages became a tab group, so that pattern now matches nothing
+ * anywhere and the rule would have passed forever against any future copy —
+ * exactly the "a rule that matches nothing is a test that passes forever"
+ * failure this file's header warns about.
+ *
+ * So the tell is the *navigation* instead: a prev/next pair, which is what
+ * every hand-rolled pager has and what nothing else in the app writes. Either
+ * spelling of the label counts, since the counter is no longer there to give it
+ * away.
+ *
+ * `DocumentPager` is exempt because it *is* the wrapper: it renders
+ * `Pagination` with the document's vocabulary and holds no control of its own.
+ */
+const PAGE_COUNTER =
+  /Page \{[^}]+\}\s*\/\s*\{|(?:aria-label|name)=\{?["'`][^"'`]*\b[Pp]revious page\b/;
+const PAGINATION_PRIMITIVE = [
+  ...UI_PRIMITIVES,
+  'src/components/docs/DocumentPager.tsx',
+];
+
+/**
+ * A sheet told where to open.
+ *
+ * `AdminShell` publishes the inset card through `InsetProvider`, and
+ * `SheetContent` reads it, so every drawer in the app opens inside the card
+ * without being asked to. Passing `container` by hand is how the rule gets
+ * opted out of quietly, and the drawer that spilled over the inset did so
+ * because it was four levels into a page and *could* not be handed the prop.
+ */
+const SHEET_CONTAINER = /<SheetContent[^>]*\scontainer=/;
+
+/**
+ * A sheet that sizes itself.
+ *
+ * There were three drawers in the app and three unrelated answers to how wide
+ * a drawer is: `Notifications` took the base `sm:max-w-sm`, `ClauseLibrary`
+ * overrode it to `sm:max-w-xl`, and the mobile nav set a CSS variable. Nobody
+ * chose a system, so the clause drawer's width was a number somebody typed
+ * once and every new drawer would have been another one.
+ *
+ * `size` is that system (`docs/design.md` §2.11): 30% of the inset card for a
+ * feed, 60% for something being worked through, 90% for a record being read.
+ * Percentages rather than fixed maxima because a sheet is positioned against
+ * the card, which moves with the sidebar.
+ *
+ * The className is where the old answers lived, so that is what is banned.
+ * `min-w-*` is deliberately *not* matched: the floors are part of the sizes
+ * and live in `ui/sheet.tsx`, which this rule does not police.
+ */
+const SHEET_OWN_WIDTH = /<SheetContent[^>]*className="[^"]*(?<![\w-])(?:sm:)?(?:max-)?w-/;
+
+/**
+ * A textarea told how tall to be.
+ *
+ * `ui/textarea.tsx` carries `field-sizing-content`, so a field is the height of
+ * what is in it. Two things override that and both are bugs (`docs/design.md`
+ * §2.2): `rows` is a height, so it floors an empty field at N lines whatever
+ * field-sizing says, and `resize-y` puts a drag corner on every field, which is
+ * a second answer to how tall it is and the one that wins permanently once
+ * used.
+ *
+ * The clause body editor carried both, which is why this rule exists: it read
+ * as deliberate at a glance and was 28 rows of half-empty box.
+ *
+ * `resize-none` is deliberately allowed. It is the primitive's own answer and a
+ * caller re-stating it is saying the same thing, not a different one.
+ *
+ * No `g` flag, deliberately: `.test()` on a global regex resumes from
+ * `lastIndex`, so a shared one used in a `filter` reports every other file.
+ *
+ * **Matched per attribute, not across the whole tag**, and that is a bug fixed
+ * rather than a style. The first version was `<Textarea[^>]*rows=`, which
+ * cannot cross a `>` and therefore stopped dead at the first arrow function in
+ * the props: on the clause row, `onChange={(e) => …}` sits above `rows`, so the
+ * rule read as passing on the exact file it was written for. It only ever
+ * caught the tags whose attributes happened to come in a lucky order.
+ *
+ * So the tag is found first and its attributes are searched separately, with
+ * `[^]` rather than `.` because the props span lines.
+ */
+const TEXTAREA_TAG = /<Textarea\b[^]*?\/>/g;
+const FIXED_HEIGHT = /\brows=|\bresize-(?:y|x|both)\b/;
+
+/**
+ * Files that fixed a textarea's height before the rule above existed.
+ *
+ * Nine of them, found the moment the rule was written, and **not swept**: the
+ * change that added the rule was the clause body editor, and rewriting nine
+ * unrelated forms behind it is how one fix becomes a diff nobody can review.
+ * Some are also a genuine judgement rather than the same bug (a studio address
+ * that should always show three lines is not a clause row that should show
+ * one), and that judgement wants making per form, with the form on screen.
+ *
+ * The list only shrinks. A new file here fails the build; an old one leaves
+ * this array in the commit that fixes it.
+ */
+const GROWN_LATER = [
+  'src/components/spec/IconSpecCard.tsx',
+  'src/components/admin/clients/onboarding/AccessStep.tsx',
+  'src/components/admin/services/ServiceEditDialog.tsx',
+  'src/components/admin/services/WordingForm.tsx',
+  'src/components/admin/settings/StudioForm.tsx',
+  'src/components/docs/editors/ContentFields.tsx',
+  'src/components/docs/editors/LetterEditor.tsx',
+  'src/components/docs/editors/LineItemsEditor.tsx',
+  'src/components/docs/editors/QuotationEditor.tsx',
+  'src/components/docs/editors/SlipEditor.tsx',
+];
+
+/**
+ * A multi-step flow built by hand.
+ *
+ * `aria-current="step"` is the tell: it is the attribute that marks which step
+ * of a sequence you are standing on, so a file carrying one is a file that has
+ * built its own step row. `components/flow/` owns that row, along with the
+ * three-band layout, the submit portal, the locking of steps that need a saved
+ * record, and the rule that completeness is derived rather than stored.
+ *
+ * Onboarding had the only one, and the contract builder was about to get a
+ * second. Two hand-built wizards is how the two come to disagree about what a
+ * disabled step looks like, whether the current one is announced, and where the
+ * button sits — none of which is visible as a bug in either flow alone.
+ */
+const HAND_ROLLED_STEP_NAV = /aria-current=\{?["']step["']/;
+const FLOW_PRIMITIVE = ['src/components/flow/'];
+
+/**
+ * A table that sorts, and the toggle that has to come with it.
+ *
+ * Sorting's controls only appear on a heading under the pointer, so its one
+ * discoverable piece of UI is `SortToggle`. A list that sorts without one shows
+ * arrows on hover that nothing on the page can turn off, which is what the
+ * clause library and the employees list both did.
+ *
+ * Checked per feature folder rather than per file, because a table and the bar
+ * holding its toggle are usually two files (`ClientsTable` / `ClientManager`).
+ */
+const TURNS_SORTING_ON =
+  /^\s*sortable$|^\s*sortable\s*=|\bexternalSort\b|\bonSortChange=|\bsort=\{/m;
+const RENDERS_SORT_TOGGLE = /<SortToggle[\s/>]/;
 
 /**
  * A stored phone number printed straight into the page.
@@ -408,6 +575,118 @@ describe('design system', () => {
       return TABLE_TAG.test(source) && !TABLE_CARD.test(source);
     });
     expect(bare).toEqual([]);
+  });
+
+  /**
+   * The table rule, and the reason §2.3 was rewritten around a component.
+   *
+   * Every rule that section states was already written down when the clause
+   * library shipped with no paging over 28 rows, no caption and no sortable
+   * headings. Prose describing a default does not produce one. `RecordTable`
+   * holds them instead, and this is what keeps a new list from starting again
+   * from `<Table>` and rediscovering which of them matter.
+   *
+   * The exemption list is the whole policy: `ui/table.tsx` defines the
+   * primitives, `RecordTable` assembles them, and `Page.tsx` draws the
+   * skeleton that has to match the real thing row for row.
+   */
+  it('builds every list of records from RecordTable, never from a bare Table', () => {
+    const root = join(__dirname, '..', '..');
+    const bare = policedFiles(RECORD_TABLE_PRIMITIVES).filter((file) =>
+      TABLE_BODY_TAG.test(readFileSync(join(root, file), 'utf8')),
+    );
+    expect(bare).toEqual([]);
+  });
+
+  /**
+   * The pagination rule (`docs/design.md` §2.10). One pager, so the box you
+   * type a page into cannot be a thing one surface happens to have.
+   */
+  it('builds every pager from Pagination, never writing its own counter', () => {
+    const root = join(__dirname, '..', '..');
+    const own = policedFiles(PAGINATION_PRIMITIVE).filter((file) =>
+      PAGE_COUNTER.test(readFileSync(join(root, file), 'utf8')),
+    );
+    expect(own).toEqual([]);
+  });
+
+  /**
+   * The sorting rule (`docs/design.md` §2.3): sorting and its toggle travel
+   * together, or the arrows on hover cannot be turned off.
+   */
+  it('gives every sorting table a SortToggle in the same feature folder', () => {
+    const root = join(__dirname, '..', '..');
+    const read = (file: string) => readFileSync(join(root, file), 'utf8');
+    const files = policedFiles(RECORD_TABLE_PRIMITIVES);
+
+    const folderOf = (file: string) => file.slice(0, file.lastIndexOf('/'));
+    const foldersWithToggle = new Set(
+      files.filter((f) => RENDERS_SORT_TOGGLE.test(read(f))).map(folderOf),
+    );
+
+    // The folder itself, and deliberately *not* its parent. A table sits beside
+    // the bar holding its toggle (`clients/ClientsTable` with `clients/`), and
+    // walking up one level would let every list under `components/admin/`
+    // borrow the documents browser's toggle, which is the hole this rule was
+    // written to close: with the parent fallback in, removing the clients
+    // toggle left the rule green.
+    const orphans = files.filter(
+      (file) =>
+        TURNS_SORTING_ON.test(read(file)) && !foldersWithToggle.has(folderOf(file)),
+    );
+
+    expect(orphans).toEqual([]);
+  });
+
+  /**
+   * The sheet rule (`docs/design.md` §2.11). A drawer opens inside the inset
+   * card because the shell publishes it, never because a caller remembered.
+   */
+  it('lets every sheet take its container from the shell, never naming its own', () => {
+    const root = join(__dirname, '..', '..');
+    const own = policedFiles(UI_PRIMITIVES).filter((file) =>
+      SHEET_CONTAINER.test(readFileSync(join(root, file), 'utf8')),
+    );
+    expect(own).toEqual([]);
+  });
+
+  /**
+   * The other half of the same rule: a drawer's *width* is one of three named
+   * sizes, never a max typed onto the call site.
+   */
+  it('takes every sheet width from its size, never naming its own', () => {
+    const root = join(__dirname, '..', '..');
+    const own = policedFiles(UI_PRIMITIVES).filter((file) =>
+      SHEET_OWN_WIDTH.test(readFileSync(join(root, file), 'utf8')),
+    );
+    expect(own).toEqual([]);
+  });
+
+  /**
+   * A textarea grows with its content and is never given a height
+   * (`docs/design.md` §2.2).
+   */
+  it('lets every textarea size itself, never fixing or resizing one', () => {
+    const root = join(__dirname, '..', '..');
+    const sized = policedFiles(UI_PRIMITIVES).filter((file) => {
+      if (GROWN_LATER.includes(file)) return false;
+      const source = readFileSync(join(root, file), 'utf8');
+      return [...source.matchAll(TEXTAREA_TAG)].some((tag) => FIXED_HEIGHT.test(tag[0]));
+    });
+    expect(sized).toEqual([]);
+  });
+
+  /**
+   * Every multi-step flow is built on `FlowShell` (`docs/design.md` §2.12).
+   * A second hand-built step row is a second set of answers about locking,
+   * announcing and where the submit sits.
+   */
+  it('builds every multi-step flow on FlowShell, never its own step row', () => {
+    const root = join(__dirname, '..', '..');
+    const own = policedFiles(FLOW_PRIMITIVE).filter((file) =>
+      HAND_ROLLED_STEP_NAV.test(readFileSync(join(root, file), 'utf8')),
+    );
+    expect(own).toEqual([]);
   });
 
   it('takes every date in a table from DateCell, never formatting its own', () => {

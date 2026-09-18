@@ -123,6 +123,11 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['muted-foreground', 'card'],
   ['muted-foreground', 'popover'],
   ['muted-foreground', 'muted'],
+  // The table card's footer: the row count and the pager's "Page 1 / 2" sit on
+  // `--sidebar` (§2.3), which is also the nav's ground. `muted-foreground` is
+  // the token this file's own header records as having failed twice on a
+  // background nobody had checked, so this row exists for that reason.
+  ['muted-foreground', 'sidebar'],
   ['primary-foreground', 'primary'],
   ['secondary-foreground', 'secondary'],
   ['destructive', 'background'],
@@ -131,13 +136,31 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['warning', 'background'],
   ['warning', 'card'],
   ['sidebar-foreground', 'sidebar'],
+  // A table's header row sits on `--sidebar` (§2.3), and `TableHead` draws its
+  // label at full strength, so this is the pair every column name is read on.
+  ['foreground', 'sidebar'],
   ['sidebar-accent-foreground', 'sidebar-accent'],
   ['sidebar-accent-foreground', 'sidebar-active'],
+  // The pager's go-to-page box, which prints its value muted at rest and at
+  // full strength on focus. One shade off `--sidebar` is a small step, so this
+  // is the pair most likely to be quietly lost if either token moves.
+  ['foreground', 'sidebar-field'],
+  ['muted-foreground', 'sidebar-field'],
+  // Those two pairs now carry a second surface as well: `--sidebar-field` is
+  // the pager's tab-group trough, and its inactive page numbers are
+  // `foreground/60` and `muted-foreground` on it. The active one is `--raised`
+  // on that same trough, already measured a few rows below.
   // The active tab and the active profile. `--raised` is the only token whose
   // light and dark values are a whole step apart in *role*, so it is the one
   // most likely to be nudged in one theme without the other being checked.
   ['foreground', 'raised'],
   ['muted-foreground', 'raised'],
+  // The pager's active page. Its own surface rather than `--raised`, and dark
+  // is deliberately two ramp steps up from its container rather than one, for
+  // contrast. Only the full-strength pair is asserted: nothing muted lands
+  // here, which is exactly why slate-700 is allowed for this and refused for
+  // `--hover` (see the note beside it in `globals.css`).
+  ['foreground', 'page-active'],
   // A card under the pointer, which is a whole card's worth of text and not a
   // label: the type, the party and the date on it are all muted. This is the
   // pair that ruled out the symmetrical dark value (`--slate-700`, 3.94:1).

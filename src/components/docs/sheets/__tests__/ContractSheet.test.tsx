@@ -336,3 +336,49 @@ describe("contractPageProps", () => {
     expect(contractPageProps(contractDoc()).chromeHeight).toBe(88);
   });
 });
+
+describe("a Part with no wording", () => {
+  /**
+   * "Every wording field optional, the Schedule's text standing in."
+   *
+   * A Service added from the form starts with every list empty: a name, an
+   * overview, and (once the menu exists) its lines. That Part has to print
+   * as a name over its Schedule, not as a run of empty headings, or the
+   * two-minute form ships a contract with eight sections saying nothing.
+   * Pinned because the service page makes this the ordinary state of a new
+   * Service rather than an edge case.
+   */
+  it("prints its Schedule and its name, and no empty section", () => {
+    const doc = contractDoc({ codes: ["06"] });
+    const bare = {
+      ...doc.contract.parts[0],
+      included: [],
+      accountTerms: [],
+      limits: [],
+      limitsNotes: [],
+      completion: [],
+      receives: [],
+      receivesNotes: [],
+      thirdPartyCosts: "",
+      exclusionIds: [],
+      clientInputIds: [],
+      fee: [],
+    };
+    renderContract({ ...doc, contract: { parts: [bare], blanks: {}, library: {} } });
+
+    expect(screen.getByLabelText("Schedule A")).toBeInTheDocument();
+    expect(screen.getByLabelText("Custom web build")).toBeInTheDocument();
+    for (const heading of [
+      "What is included",
+      "Limits",
+      "Completion criteria",
+      "What the Client receives",
+      "What is not included",
+      "What the Client provides",
+      "Costs the Client pays directly",
+      "Fee and timeline",
+    ]) {
+      expect(screen.queryByText(heading)).not.toBeInTheDocument();
+    }
+  });
+});

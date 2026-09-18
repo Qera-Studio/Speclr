@@ -489,7 +489,16 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       ) {
         return {
           success: false,
-          error: `This document's place of supply (${stored}) is not the one derived from ${client.name} (${derived.code}). Record why before finalizing.`,
+          /*
+            Names the two codes, why the derived one is what it is, and what to
+            do. The old wording ended at "Record why before finalizing", which
+            tells a reader the departure needs recording without saying where
+            that is done or which of the two figures is the one to change.
+          */
+          error:
+            `This document's place of supply is ${stored}, but ${client.name}'s records give ${derived.code}. ` +
+            `${derived.reason} ` +
+            `Correct the client's details, or record a reason for the departure before finalizing.`,
         };
       }
     }
@@ -509,13 +518,23 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
      * read-only input is a convenience for the person typing; the document is
      * reached by other paths and the client record is not in the payload's
      * sight, which is why the check cannot live in the Zod schema.
+     *
+     * **Only a document that charges tax at all**, which is what `financial`
+     * means: an invoice, a receipt or a credit note. This ran on every type
+     * with a client, and a contract carries `gstRatePercent: 0` by definition
+     * (`registry.ts`, `CON.defaultFields`) because an agreement is not a tax
+     * invoice. So finalizing any contract for an Indian client was refused
+     * against a figure the document is *defined* to hold, naming a rate field
+     * that does not exist on that screen: unfixable by the person reading it,
+     * and unrelated to anything the contract says. The place-of-supply check
+     * above was already gated this way, on `gstRatePercent > 0`; this one had
+     * no equivalent and should have had one from the start.
      */
-    const gstMismatch = gstTreatmentMismatch(existing, client);
-    if (gstMismatch && !existing.gstOverrideReason) {
-      return {
-        success: false,
-        error: `${gstMismatch} Record why before finalizing.`,
-      };
+    if (DOC_TYPES[existing.type].kind === "financial") {
+      const gstMismatch = gstTreatmentMismatch(existing, client);
+      if (gstMismatch && !existing.gstOverrideReason) {
+        return { success: false, error: gstMismatch };
+      }
     }
 
     /**

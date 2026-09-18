@@ -322,12 +322,33 @@ export const receiptDraftSchema = baseDraftSchema.extend({
  */
 const blankValuesSchema = z.record(z.string().max(80), textSchema(500));
 
+/**
+ * The parts of a contract that are the same on a draft and at finalize.
+ *
+ * Written once rather than twice: the only thing finalize changes is that
+ * `parts` needs at least one, and a second copy of the other three rules is a
+ * second place for them to drift. `effectiveDate` and `termMonths` were added
+ * here for exactly that reason — they would otherwise have needed adding in two
+ * places, and a field validated on a draft but not at finalize is a field that
+ * reaches an issued document unchecked.
+ */
+const contractShape = {
+  blanks: blankValuesSchema,
+  library: z.record(z.string().max(10), textSchema(500)),
+  // May precede the agreement date: work often starts on a handshake. Empty is
+  // absent, matching the date picker's own "nothing chosen" value.
+  effectiveDate: isoDate.optional(),
+  termMonths: z.number().int().min(1).max(600).optional(),
+  // Service codes the operator has confirmed. Capped at the Part limit: it is a
+  // list of codes already on the contract, so it can never be longer.
+  reviewed: z.array(z.string().max(10)).max(22).optional(),
+};
+
 const contractBaseShape = {
   issueDate: isoDate,
   contract: z.object({
+    ...contractShape,
     parts: z.array(serviceInputSchema).max(22),
-    blanks: blankValuesSchema,
-    library: z.record(z.string().max(10), textSchema(500)),
   }),
   content: docContentSchema.optional(),
 };
@@ -346,9 +367,8 @@ export const contractFinalizeSchema = z
   .object({
     ...contractBaseShape,
     contract: z.object({
+      ...contractShape,
       parts: z.array(serviceInputSchema).min(1).max(22),
-      blanks: blankValuesSchema,
-      library: z.record(z.string().max(10), textSchema(500)),
     }),
   })
   .refine((doc) => contractComplete(doc.contract).length === 0, {

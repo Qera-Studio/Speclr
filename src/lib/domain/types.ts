@@ -438,6 +438,38 @@ export interface ContractData {
    * same compliance bug as reading live studio details (CONTEXT.md §5).
    */
   library: Record<string, string>;
+  /**
+   * When the engagement starts, where that is not the day the agreement is
+   * dated.
+   *
+   * Optional and **may precede the agreement date**: work often begins on a
+   * handshake and the paperwork catches up, and a contract that refused to say
+   * so would be a contract nobody could write honestly. Absent means the
+   * agreement date is the effective date, which is the ordinary case.
+   */
+  effectiveDate?: string;
+  /**
+   * How long the engagement runs, in months.
+   *
+   * Seeded from the client's `commercial.termMonths` and editable here, because
+   * a term agreed at onboarding is a default for the next contract rather than
+   * a fact about every contract. Checked before adding: the MSA carries no term
+   * blank, so this duplicates nothing (`PRINCIPLES.md` rule 3).
+   */
+  termMonths?: number;
+  /**
+   * Which Parts the operator has opened and confirmed, by service code.
+   *
+   * The one piece of stored state in the builder's completeness ledger, and it
+   * is here because derivation genuinely cannot answer it: a Part whose blanks
+   * arrive already filled from the client record, or which has no blanks at
+   * all, reads as done without anybody having looked at it.
+   *
+   * **It gates advancing a phase and nothing else.** `contractComplete` is
+   * still the only thing finalize reads, so an acknowledgement can never make
+   * an incomplete contract issuable. See `contract/ledger.ts`.
+   */
+  reviewed?: string[];
 }
 
 export interface ContractDocument extends ClientDocument {

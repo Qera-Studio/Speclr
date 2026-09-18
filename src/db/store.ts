@@ -1,11 +1,12 @@
 import 'server-only';
 
-import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from './index';
 import {
   clauses,
   clientInputs,
   clients,
+  counters,
   documents,
   employees,
   exclusions,
@@ -19,7 +20,7 @@ import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import { STUDIO_INFO, type StudioInfo } from '@/lib/domain/studio';
 import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/types';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
-import type { MsaClause } from '@/lib/domain/contract/msa';
+import type { ClauseInput, MsaClause } from '@/lib/domain/contract/msa';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 /**
@@ -289,14 +290,28 @@ export async function archiveService(code: string): Promise<void> {
  * Ordering is the store's job, not a caller's: the numbers are the clause's
  * identity and the text cross-references them, so any list that showed 11 after
  * 12 would be misreading the document.
+ *
+ * `archived` comes back on every row, which costs nothing and the library page
+ * needs: it is the one caller that asks for archived clauses, because otherwise
+ * archiving would be a deletion nothing could undo. Every other caller reads
+ * the three fields a `MsaClause` has and is unaffected.
  */
-export async function listClauses(includeArchived = false): Promise<MsaClause[]> {
+export async function listClauses(includeArchived = false): Promise<ClauseInput[]> {
   const rows = await db
     .select()
     .from(clauses)
     .where(includeArchived ? undefined : eq(clauses.archived, false))
     .orderBy(clauses.number);
-  return rows.map((r) => ({ number: r.number, heading: r.heading, body: r.body }));
+  return rows.map((r) => ({
+    number: r.number,
+    heading: r.heading,
+    // `?? undefined` because the column is nullable and `ClauseInput` says
+    // optional: a row that has never had one and a row whose summary was
+    // cleared both read as absent, which is what the field means.
+    summary: r.summary ?? undefined,
+    body: r.body,
+    archived: r.archived,
+  }));
 }
 
 /**
@@ -306,10 +321,15 @@ export async function listClauses(includeArchived = false): Promise<MsaClause[]>
  * it is given. Editing here changes the *next* contract only; drafts carry
  * their own copy from creation and finalized contracts froze theirs.
  */
-export async function saveClause(clause: MsaClause & { archived: boolean }): Promise<void> {
+export async function saveClause(
+  clause: MsaClause & { archived: boolean; summary?: string },
+): Promise<void> {
   const row = {
     number: clause.number,
     heading: clause.heading,
+    // Empty reads as absent, so clearing the field in the drawer puts the row
+    // back to having none rather than storing a blank that looks written.
+    summary: clause.summary?.trim() ? clause.summary.trim() : null,
     body: clause.body,
     archived: clause.archived,
     updatedAt: new Date(),
@@ -318,31 +338,75 @@ export async function saveClause(clause: MsaClause & { archived: boolean }): Pro
 }
 
 /**
- * The number a new clause would take: one past the highest that exists,
- * archived rows included.
+ * Where the highest clause number ever issued is remembered, so that deleting
+ * the top clause does not hand its number back.
  *
- * Counting only live rows would reissue an archived clause's number, and the
- * agreements that cite it by number are already signed.
+ * It rides in `counters` rather than a column of its own: that table already
+ * exists to answer "what is the next number in this series", which is exactly
+ * the question. `fyCode` is meaningless here (a clause number is not per
+ * financial year, unlike every document series), so it is a literal '-'.
+ */
+const CLAUSE_COUNTER = { docType: 'CLAUSE', fyCode: '-' } as const;
+
+/**
+ * The number a new clause would take: one past the highest ever issued.
+ *
+ * **Not one past the highest row.** Counting rows alone would reissue the
+ * number of a clause that has been deleted, and the agreements citing it by
+ * number ('the meaning given at clause 11.2') are already signed. Archived rows
+ * are counted for the same reason and are safe on their own, because the row
+ * stays; a deletion is what needs the separate mark.
+ *
+ * The two are read together and the higher wins, so a library seeded before the
+ * mark existed still answers correctly and no backfill was needed.
  */
 export async function nextClauseNumber(): Promise<number> {
-  const rows = await db
-    .select({ number: clauses.number })
-    .from(clauses)
-    .orderBy(desc(clauses.number))
-    .limit(1);
-  return (rows[0]?.number ?? 0) + 1;
+  const [rows, marks] = await Promise.all([
+    db.select({ number: clauses.number }).from(clauses).orderBy(desc(clauses.number)).limit(1),
+    db
+      .select({ lastSerial: counters.lastSerial })
+      .from(counters)
+      .where(
+        and(eq(counters.docType, CLAUSE_COUNTER.docType), eq(counters.fyCode, CLAUSE_COUNTER.fyCode)),
+      )
+      .limit(1),
+  ]);
+  return Math.max(rows[0]?.number ?? 0, marks[0]?.lastSerial ?? 0) + 1;
 }
 
 /**
- * Archives rather than deletes, for the same reason services do — and one
- * more: the number must stay taken, or a later clause would inherit a number
- * that signed agreements use to mean something else.
+ * Archives a clause: the row stays, so its number stays taken, and it simply
+ * leaves the default list. The same removal services and clients use, and the
+ * one to reach for by default.
  */
 export async function archiveClause(number: number): Promise<void> {
   await db
     .update(clauses)
     .set({ archived: true, updatedAt: new Date() })
     .where(eq(clauses.number, number));
+}
+
+/**
+ * Deletes a clause outright, **retiring its number on the way out.**
+ *
+ * The row really goes, which archiving does not do, and that is the whole
+ * reason this exists: a clause typed by mistake should be removable rather than
+ * sitting in the library's history forever. What must not go with it is the
+ * number. So the high-water mark is raised first, and only then is the row
+ * removed, because the other order leaves a window in which a concurrent
+ * `nextClauseNumber` sees neither the row nor the mark and reissues.
+ */
+export async function deleteClause(number: number): Promise<void> {
+  await db
+    .insert(counters)
+    .values({ ...CLAUSE_COUNTER, lastSerial: number })
+    .onConflictDoUpdate({
+      target: [counters.docType, counters.fyCode],
+      // `greatest`, not the new value: deleting clause 3 out of 28 must not
+      // lower a mark already standing at 28.
+      set: { lastSerial: sql`greatest(${counters.lastSerial}, ${number})`, updatedAt: new Date() },
+    });
+  await db.delete(clauses).where(eq(clauses.number, number));
 }
 
 function libraryFromRow(r: { id: string; text: string; category: string; archived: boolean }) {

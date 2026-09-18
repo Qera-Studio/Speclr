@@ -97,6 +97,35 @@ export function addDays(isoDate: string, days: number): string {
   return localDateToISO(date);
 }
 
+/**
+ * 'YYYY-MM-DD' plus a number of months → 'YYYY-MM-DD'.
+ *
+ * How a contract's end date is derived from its start and its term in months,
+ * instead of being typed. Same contract as `addDays`: local-calendar
+ * arithmetic, and '' for anything this module cannot parse, so a malformed
+ * start leaves the end blank rather than inventing one.
+ *
+ * **It clamps to the end of the month, which `setMonth` alone does not.** 31
+ * January plus one month is 31 February, which JS rolls forward to 3 March —
+ * so a twelve-month term from the 31st would land a contract's end date in the
+ * wrong month, and on a document that is a date somebody relies on. The clamp
+ * answers 28 (or 29) February instead, which is how a term of months is read
+ * everywhere it is written down.
+ */
+export function addMonths(isoDate: string, months: number): string {
+  const date = isoToLocalDate(isoDate);
+  if (!date || !Number.isFinite(months)) return '';
+  const day = date.getDate();
+  // To the 1st first, or the rollover happens during `setMonth` itself and
+  // there is nothing left to clamp.
+  date.setDate(1);
+  date.setMonth(date.getMonth() + Math.trunc(months));
+  // `day 0` of the next month is the last day of this one.
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+  return localDateToISO(date);
+}
+
 /** '2026-07-21' → '21 Jul 2026'. Throws on malformed input (caller bug). */
 export function formatDisplayDate(isoDate: string): string {
   const match = ISO_DATE_RE.exec(isoDate);

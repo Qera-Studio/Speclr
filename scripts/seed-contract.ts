@@ -4,15 +4,22 @@
  *     npx tsx scripts/seed-contract.ts            # dry run, writes nothing
  *     npx tsx scripts/seed-contract.ts --apply    # writes
  *
- * Idempotent: every write is an upsert keyed by the row's own id, so running it
- * twice changes nothing and running it after a spec edit brings the tables back
- * in step.
+ * **Inserts, never updates.** A row that already exists is left exactly as it
+ * is, whatever this file says about it. The app is the one place a service, a
+ * library line or a clause is edited (decided 15 September 2026): every one of
+ * those tables has an editor in the app now, and a script that overwrote
+ * `content` on every run was silently deleting the rate, the name and the menu
+ * lines typed there. It was also reverting in-app clause edits, which CONTEXT.md
+ * §5c says must not happen. So this is a first-load script. Running it twice
+ * changes nothing; running it after a spec edit changes nothing either, and
+ * that is the point. A correction to the transcribed text goes in through the
+ * app, where it lands once and stays.
  *
  * **It cannot affect a contract already issued.** A contract copies every Part
  * and every library line it uses onto itself when the service is ticked, so the
  * tables this script writes are the *source* for new contracts and nothing
  * more. That is the same guarantee as the client and studio snapshots
- * (CONTEXT.md §5) and it is what makes reseeding safe.
+ * (CONTEXT.md §5).
  *
  * Archived rows are left archived. Unarchiving is a decision, and a seed script
  * silently putting a retired exclusion back on every future contract is exactly
@@ -28,7 +35,11 @@ import { neon } from '@neondatabase/serverless';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../src/lib/domain/contract/seed/libraries';
 import { SERVICES } from '../src/lib/domain/contract/seed/services';
 import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/service';
-import { MSA_CLAUSES, msaClauseSchema } from '../src/lib/domain/contract/msa';
+import {
+  MSA_CLAUSES,
+  MSA_CLAUSE_SUMMARIES,
+  msaClauseSchema,
+} from '../src/lib/domain/contract/msa';
 
 const APPLY = process.argv.includes('--apply');
 
@@ -79,12 +90,7 @@ async function main() {
     await sql`
       insert into services (code, name, schedule_key, sort_order, content, archived, updated_at)
       values (${code}, ${name}, ${scheduleKey}, ${sortOrder}, ${JSON.stringify(content)}, ${archived}, now())
-      on conflict (code) do update set
-        name = excluded.name,
-        schedule_key = excluded.schedule_key,
-        sort_order = excluded.sort_order,
-        content = excluded.content,
-        updated_at = now()
+      on conflict (code) do nothing
     `;
   }
 
@@ -101,29 +107,49 @@ async function main() {
         await sql`
           insert into exclusions (id, text, category, updated_at)
           values (${line.id}, ${line.text}, ${line.category}, now())
-          on conflict (id) do update set
-            text = excluded.text, category = excluded.category, updated_at = now()
+          on conflict (id) do nothing
         `;
       } else {
         await sql`
           insert into client_inputs (id, text, category, updated_at)
           values (${line.id}, ${line.text}, ${line.category}, now())
-          on conflict (id) do update set
-            text = excluded.text, category = excluded.category, updated_at = now()
+          on conflict (id) do nothing
         `;
       }
     }
   }
 
-  // Clauses. `number` is the key, and it is never reissued — see msa.ts. An
-  // upsert therefore only ever corrects the text of a clause that already means
-  // what it means, which is what makes reseeding after a drafting fix safe.
+  // Clauses. `number` is the key and is never reissued (msa.ts). A clause
+  // already in the table is the library's copy, edited at /client/clauses, and
+  // this file's copy of it is only the text it started from.
   for (const clause of MSA_CLAUSES) {
     await sql`
-      insert into clauses (number, heading, body, updated_at)
-      values (${clause.number}, ${clause.heading}, ${JSON.stringify(clause.body)}, now())
-      on conflict (number) do update set
-        heading = excluded.heading, body = excluded.body, updated_at = now()
+      insert into clauses (number, heading, summary, body, updated_at)
+      values (
+        ${clause.number},
+        ${clause.heading},
+        ${MSA_CLAUSE_SUMMARIES[clause.number] ?? null},
+        ${JSON.stringify(clause.body)},
+        now()
+      )
+      on conflict (number) do nothing
+    `;
+  }
+
+  /*
+    Summaries onto rows that pre-date the column, and **only** where none has
+    been written. The insert above cannot reach them: those rows already exist,
+    so `do nothing` fires and they would sit with an empty column for ever.
+
+    `where summary is null` is what keeps this safe to re-run. The whole file
+    is written to touch nothing a person has edited (the comment above says so
+    for clauses, and the same rule was applied to services and the libraries
+    in September), and a summary typed in the library is exactly that.
+  */
+  for (const [number, summary] of Object.entries(MSA_CLAUSE_SUMMARIES)) {
+    await sql`
+      update clauses set summary = ${summary}
+      where number = ${Number(number)} and summary is null
     `;
   }
 

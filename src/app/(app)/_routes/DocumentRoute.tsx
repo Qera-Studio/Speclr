@@ -13,7 +13,7 @@ import {
 import { DOC_TYPES, DOC_TYPE_BY_SLUG, isSlip } from '@/lib/domain/registry';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentEditor from '@/components/docs/editors/DocumentEditor';
-import ContractEditor from '@/components/docs/editors/ContractEditor';
+import ContractFlow from '@/components/contract/flow/ContractFlow';
 import LetterEditor from '@/components/docs/editors/LetterEditor';
 import SlipEditor from '@/components/docs/editors/SlipEditor';
 import QuotationEditor from '@/components/docs/editors/QuotationEditor';
@@ -143,7 +143,7 @@ export default async function DocumentRoute({
       listClientInputs(),
     ]);
     return (
-      <ContractEditor
+      <ContractFlow
         clients={clients}
         services={services}
         exclusions={exclusions}
