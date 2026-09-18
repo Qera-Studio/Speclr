@@ -18,22 +18,13 @@ beforeEach(() => {
 });
 
 describe('AdminHeader', () => {
-  it('renders a breadcrumb trail on a page the nav cannot reach', () => {
-    render(<AdminHeader />);
-    expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toBeInTheDocument();
-    // Dashboard / Documents / the id, rooted at the admin profile's home.
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/admin');
-    expect(screen.getByText('some-document-id')).toHaveAttribute('aria-current', 'page');
-  });
-
   /**
-   * A page the sidebar links to needs no trail: the rail is already showing
-   * where you are, with this page highlighted in it, so "Dashboard / Icon spec"
-   * is one hop restated as two directly above the hop itself.
+   * A page the sidebar links to needs no header row at all: the rail is
+   * already showing where you are, and there is nowhere above it to go back to.
    *
    * It must render *nothing*, not an empty `<header>`. An empty band keeps the
-   * 36px row the trail sat in, which pushes every primary page down by a row it
-   * has stopped using.
+   * row it sat in, which pushes every primary page down by a row it has stopped
+   * using.
    */
   it('renders nothing at all on a page the sidebar links to', () => {
     pathname = '/admin/spec';
@@ -41,23 +32,24 @@ describe('AdminHeader', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('holds no toggle, wordmark or search — those are TopPanel’s', () => {
+  /**
+   * **The trail is not here any more**, and neither is search.
+   *
+   * The trail moved to `TopPanel`, the band above the card, on 18 September
+   * 2026; search moved into the nav rail in the same pass. Asserting their
+   * absence is what stops a future edit quietly reinstating a second copy of
+   * either: two trails on one screen would be the same fact stated twice, and
+   * the failure would look like a layout quirk rather than a duplication.
+   *
+   * `Breadcrumbs.test.tsx` owns what the trail says; this owns that it is not
+   * said here.
+   */
+  it('holds no trail, toggle, wordmark or search', () => {
     render(<AdminHeader />);
+    expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /toggle sidebar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'speclr' })).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: /search/i })).not.toBeInTheDocument();
-  });
-
-  /**
-   * A slash, not a chevron. The row carries three arrow glyphs of its own now
-   * (back, and the pager's two), and a fourth pointing the same way as the
-   * trail read as a control rather than as punctuation.
-   */
-  it('separates the crumbs with a slash', () => {
-    render(<AdminHeader />);
-    const trail = screen.getByRole('navigation', { name: /breadcrumb/i });
-    expect(within(trail).getAllByText('/').length).toBeGreaterThan(0);
-    expect(trail.querySelector('svg')).toBeNull();
   });
 });
 
@@ -73,13 +65,55 @@ describe('the back button', () => {
   };
 
   /**
-   * It reads "Back", not a bare arrow. The row also holds the pager, whose own
-   * arrows move between pages, and two unlabelled arrows a few centimetres
-   * apart meaning different kinds of "back" is the confusion the word removes.
+   * It is an icon alone, and it names **where it goes**.
+   *
+   * **This test asserted the opposite until 18 September 2026.** The button
+   * carried the word "Back" because the row also holds the pager, whose own
+   * arrows move between pages, and two unlabelled arrows meaning different
+   * kinds of "back" is a real confusion. The word was dropped on instruction,
+   * and the destination answers that argument better than the word did: a
+   * document page has two back controls, this one leaving for the list and the
+   * editor's own stepping through the flow, and what separates them is not
+   * that one is a button but that they go to different places.
+   *
+   * What is asserted is the part that got *more* fragile by losing the text.
+   * An icon-only control with no accessible name is invisible in review and
+   * total for a screen reader, and it is the one button rule
+   * `design-system.test.ts` fails the build over.
    */
-  it('carries its label as text', () => {
+  it('names where it goes, having no visible label', () => {
     render(<AdminHeader />);
-    expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('Back');
+
+    const back = screen.getByRole('button', { name: /^Back to / });
+    // The name comes from `aria-label`, not from text: nothing is rendered.
+    expect(back).toHaveTextContent('');
+    /*
+      "Dashboard", not "Documents", and that is the derivation working.
+
+      The admin trail is Dashboard / Documents / <id>, but its "Documents" is a
+      *grouping* crumb with no page of its own, so back skips it and lands on
+      the profile home. The client side, where Documents is a real list, names
+      it: `breadcrumb.test.ts` pins both. A label written by hand here would
+      have said "Documents" on a page that does not go there.
+    */
+    expect(back).toHaveAccessibleName('Back to Dashboard');
+  });
+
+  /**
+   * **The separator is gone, and its absence is the assertion.**
+   *
+   * It was added a few hours before the trail moved, to draw the edge between
+   * the ghost arrow and the breadcrumb text beside it. With the trail in the
+   * band above, the arrow has nothing next to it, and a rule with nothing on
+   * its far side is a stray mark rather than a boundary.
+   *
+   * Worth stating rather than silently deleting the old test, because the
+   * argument that put it there is still sound and will recur the moment
+   * anything else lands in this row.
+   */
+  it('draws no separator, having nothing beside the arrow to separate', () => {
+    const { container } = render(<AdminHeader />);
+    expect(container.querySelector('[data-slot="separator"]')).toBeNull();
   });
 
   it('asks before leaving, and does not navigate on the click alone', async () => {
@@ -124,10 +158,14 @@ describe('the back button', () => {
 /**
  * The row is one row. What used to be a second bar inside the page — the
  * document's title and its pager — arrives here by portal, so the order a
- * reader sees is back, trail, title, pager.
+ * reader sees is back, then title, then pager.
+ *
+ * The trail was between the first two until 18 September 2026 and is now in the
+ * band above the card, which is why these two assert around it rather than on
+ * it.
  */
 describe('the page header slot', () => {
-  it('puts a page’s own content on the same row as the breadcrumbs', () => {
+  it('puts a page’s own content on the header row', () => {
     render(
       <PageHeaderSlotProvider>
         <AdminHeader />
@@ -139,11 +177,10 @@ describe('the page header slot', () => {
 
     const header = screen.getByRole('banner');
     expect(within(header).getByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
-    expect(within(header).getByRole('navigation', { name: /breadcrumb/i })).toBeInTheDocument();
   });
 
-  /** Back first, then where you are, then what this is. */
-  it('orders back, breadcrumbs, then the page’s content', () => {
+  /** Back first, then what this is. */
+  it('orders back, then the page’s content', () => {
     render(
       <PageHeaderSlotProvider>
         <AdminHeader />
@@ -154,11 +191,9 @@ describe('the page header slot', () => {
     );
 
     const back = screen.getByRole('button', { name: /back/i });
-    const trail = screen.getByRole('navigation', { name: /breadcrumb/i });
     const title = screen.getByRole('heading', { name: 'New invoice' });
 
-    expect(back.compareDocumentPosition(trail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(trail.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   /**

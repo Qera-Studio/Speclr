@@ -157,6 +157,88 @@ describe('NewDocumentCommand', () => {
   });
 
   /**
+   * The cards share one highlight that travels, exactly as a menu's rows do
+   * (`ui/magic-move.tsx`, `docs/design.md` §2.6). Two things follow, and both
+   * are asserted here because jsdom can see the wiring even though it cannot
+   * see the slide:
+   *
+   * `data-highlighted` is what the hook watches, so the selected card has to
+   * carry it, and only the selected card, or the fill has two places to be.
+   */
+  it('marks exactly one card for the travelling highlight', async () => {
+    const u = userEvent.setup();
+    renderPalette('client');
+    await u.keyboard('{Meta>}d{/Meta}');
+
+    const marked = () =>
+      screen.getAllByRole('option').filter((card) => card.hasAttribute('data-highlighted'));
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0]).toHaveAccessibleName(/^Contract/);
+
+    await u.keyboard('{ArrowRight}');
+    expect(marked()).toHaveLength(1);
+    expect(marked()[0]).toHaveAccessibleName(/^Invoice/);
+  });
+
+  /**
+   * And the pointer moves that one mark rather than painting a second fill of
+   * its own. The keyboard cursor and the pointer are one highlight here, unlike
+   * the nav rail where hover and active are deliberately two: a rail's active
+   * fill says which page you are on and must not travel, while this one is only
+   * a cursor. So pointing at a card selects it, and Enter opens what the fill
+   * is sitting on.
+   */
+  it('moves that mark to the card under the pointer, and opens it on Enter', async () => {
+    const u = userEvent.setup();
+    renderPalette('client');
+    await u.keyboard('{Meta>}d{/Meta}');
+
+    await u.hover(screen.getByRole('option', { name: /^Receipt/ }));
+    const marked = screen
+      .getAllByRole('option')
+      .filter((card) => card.hasAttribute('data-highlighted'));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveAccessibleName(/^Receipt/);
+
+    await u.keyboard('{Enter}');
+    expect(mockPush).toHaveBeenCalledWith('/client/docs/new/receipt');
+  });
+
+  /**
+   * A card selected by the pointer must not draw the focus ring, and this is a
+   * bug the magic move introduced rather than a rule that predates it.
+   *
+   * Selection moves focus, which is what makes Enter open the card the fill is
+   * sitting on. But `.focus()` called from code inherits the dialog's
+   * keyboard-entry modality, so the browser reports `:focus-visible` and paints
+   * the 2px ring even though a mouse caused the move. Measured in Chromium, on
+   * both themes: the ring chased the pointer across the grid, which is a
+   * keyboard affordance shown to a mouse user and a second thing saying what
+   * the travelling fill already says.
+   *
+   * So the card records what moved the selection, and the ring is drawn only
+   * for the keyboard. jsdom cannot resolve `:focus-visible` against a real
+   * modality, so what is pinned here is the mark the styling hangs off.
+   */
+  it('draws the focus ring for the keyboard and not for the pointer', async () => {
+    const u = userEvent.setup();
+    renderPalette('client');
+    await u.keyboard('{Meta>}d{/Meta}');
+
+    const selected = () =>
+      screen.getAllByRole('option').find((card) => card.hasAttribute('data-highlighted'))!;
+    expect(selected()).toHaveAttribute('data-moved-by', 'keyboard');
+
+    await u.hover(screen.getByRole('option', { name: /^Receipt/ }));
+    expect(selected()).toHaveAttribute('data-moved-by', 'pointer');
+
+    // And back again: an arrow key after a hover is the keyboard asking for its
+    // ring back, not a pointer move that happens to have moved the selection.
+    await u.keyboard('{ArrowLeft}');
+    expect(selected()).toHaveAttribute('data-moved-by', 'keyboard');
+  });
+
+  /**
    * The Service Quotation shipped with no sample, so its card fell back to the
    * bare icon while every other card showed the page it would make — a hole
    * nothing could see, because `DOC_SAMPLES` is keyed by slug and a missing key

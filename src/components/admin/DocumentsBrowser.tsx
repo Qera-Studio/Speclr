@@ -548,20 +548,13 @@ export default function DocumentsBrowser({
               // Omitted while the toggle is off — the headers then render as plain
               // text, which is `DocumentsTable`'s existing unsortable mode.
               onSortChange={showSort ? onSortChange : undefined}
-              count={rowCountLabel(
-                visible.length,
-                "document",
+              paging={{
+                page,
+                pageCount,
+                onPageChange: setPage,
                 start,
-                pageRows.length,
-              )}
-              pagination={
-                <Pagination
-                  page={page}
-                  pageCount={pageCount}
-                  onPageChange={setPage}
-                  label="documents"
-                />
-              }
+                total: visible.length,
+              }}
             />
           )}
 

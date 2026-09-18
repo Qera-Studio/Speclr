@@ -174,25 +174,52 @@ export function useBulkSelect<T>({
  * absolutely positioned: a bar that floats over the last rows hides the very
  * things being deleted.
  */
+/**
+ * Something a table can do with a selection, besides delete.
+ *
+ * Delete keeps its own slot in the bar because it is the destructive one and
+ * is drawn as such. Everything else is an ordinary button: bulk archive on the
+ * clause library is the first, and it deliberately does *not* look like
+ * delete, because archiving is reversible.
+ */
+export interface BulkAction {
+  label: string;
+  onAction: () => Promise<void> | void;
+  /**
+   * What a confirm dialog should warn about, or absent for an action that
+   * needs no confirming. Reversible actions should generally omit it:
+   * confirming one teaches people to click through the dialog that guards the
+   * irreversible one.
+   */
+  confirm?: string;
+}
+
 export function BulkBar({
   count,
   noun,
   onDelete,
   onClear,
   consequence,
+  actions = [],
 }: {
   count: number;
   /** Singular; pluralised here. */
   noun: string;
-  onDelete: () => Promise<void> | void;
+  /** Absent for a table whose selection does something other than delete. */
+  onDelete?: () => Promise<void> | void;
   onClear: () => void;
   /** What the confirm dialog warns about, per record type. */
-  consequence: string;
+  consequence?: string;
+  /** Anything else this table can do with a selection. */
+  actions?: BulkAction[];
 }) {
   const [busy, setBusy] = useState(false);
   if (count === 0) return null;
+  // Nothing can act on the selection, so there is nothing to put in a bar.
+  if (!onDelete && actions.length === 0) return null;
 
   const label = `${count} ${noun}${count === 1 ? '' : 's'} selected`;
+  const counted = `${count} ${noun}${count === 1 ? '' : 's'}`;
 
   return (
     <div
@@ -205,6 +232,16 @@ export function BulkBar({
       <Button type="button" variant="ghost" size="default" onClick={onClear}>
         Clear
       </Button>
+      {actions.map((action) => (
+        <BulkActionButton
+          key={action.label}
+          action={action}
+          counted={counted}
+          busy={busy}
+          setBusy={setBusy}
+        />
+      ))}
+      {onDelete ? (
       <AlertDialog>
         <AlertDialogTrigger
           render={
@@ -237,6 +274,62 @@ export function BulkBar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      ) : null}
     </div>
+  );
+}
+
+/** One non-destructive bulk action, confirmed only where it asks to be. */
+function BulkActionButton({
+  action,
+  counted,
+  busy,
+  setBusy,
+}: {
+  action: BulkAction;
+  counted: string;
+  busy: boolean;
+  setBusy: (busy: boolean) => void;
+}) {
+  const run = async () => {
+    setBusy(true);
+    await action.onAction();
+    setBusy(false);
+  };
+
+  if (!action.confirm) {
+    return (
+      <Button type="button" variant="outline" size="default" disabled={busy} onClick={run}>
+        {action.label}
+      </Button>
+    );
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger
+        render={
+          <Button type="button" variant="outline" size="default" disabled={busy}>
+            {action.label}
+          </Button>
+        }
+      />
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {action.label} {counted}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>{action.confirm}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          {/* Named, not "Confirm": the button that does the thing says what
+              the thing is, which is also what makes it findable in a test. */}
+          <AlertDialogAction onClick={run}>
+            {action.label} {counted}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

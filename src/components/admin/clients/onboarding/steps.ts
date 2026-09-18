@@ -21,28 +21,23 @@
 
 import { clientKindOf, type ClientKind } from '@/lib/domain/entityType';
 import type { ClientRecord } from '@/lib/domain/types';
+import {
+  completedSteps as flowCompletedSteps,
+  resumeStep as flowResumeStep,
+  stepIndex as flowStepIndex,
+  type FlowStep,
+} from '@/components/flow/steps';
 
 export type { ClientKind };
 
-export interface OnboardingStep {
-  /** The `?step=` slug. Part of a URL people paste, so it does not change. */
-  key: string;
-  /**
-   * The one-word label in the step row, and the name of the button that walks
-   * to it — "Save and continue" told you nothing about where continuing goes.
-   * Separate from `title` because the row has to stay on one line while the
-   * page heading can say more.
-   */
-  short: string;
-  title: string;
+/**
+ * An onboarding step: the generic flow step, plus the one thing that is
+ * particular to this flow.
+ *
+ * `description` is narrowed to required because every step here has one.
+ */
+export interface OnboardingStep extends FlowStep<ClientRecord> {
   description: string;
-  /**
-   * Whether this step needs a saved record first. Only identity does not — it
-   * is what creates the row every other step then updates.
-   */
-  needsRecord: boolean;
-  /** Whether the client carries anything for this step yet. */
-  isComplete: (client: ClientRecord) => boolean;
   /**
    * Which flow this step belongs to. Absent means both.
    *
@@ -137,8 +132,7 @@ export function onboardingStepsFor(client: ClientRecord): readonly OnboardingSte
  * sent `?step=contacts` lands on Identity rather than on nothing.
  */
 export function stepIndex(steps: readonly OnboardingStep[], key: string | null | undefined): number {
-  const found = steps.findIndex((s) => s.key === key);
-  return found === -1 ? 0 : found;
+  return flowStepIndex(steps, key);
 }
 
 /**
@@ -150,7 +144,7 @@ export function stepIndex(steps: readonly OnboardingStep[], key: string | null |
  * individual is never 6 of 7 with a seventh they were never shown.
  */
 export function completedSteps(client: ClientRecord): number {
-  return onboardingStepsFor(client).filter((s) => s.isComplete(client)).length;
+  return flowCompletedSteps(onboardingStepsFor(client), client);
 }
 
 /**
@@ -162,7 +156,5 @@ export function completedSteps(client: ClientRecord): number {
  * client with no gaps opens on its last step rather than on nothing.
  */
 export function resumeStep(client: ClientRecord): string {
-  const steps = onboardingStepsFor(client);
-  const next = steps.find((s) => !s.isComplete(client));
-  return (next ?? steps[steps.length - 1]).key;
+  return flowResumeStep(onboardingStepsFor(client), client);
 }

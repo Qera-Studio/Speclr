@@ -1,14 +1,20 @@
 import { expect, test, type Locator } from '@playwright/test';
 
 /**
- * The document header: back, the breadcrumb trail and the pager, on **one**
- * row — and that row levelled with the top row of each column beside it.
+ * The document header: back, the title and the pager, on **one** row — and that
+ * row levelled with the top row of each column beside it.
  *
  * It was three bands down the top of the screen, each owned by a different
  * column of the shell — the trail in the inset, the title and pager in a bar
  * inside the page, the back arrow in the editor rail a column to the right.
  * They are one line now, which means separately-owned pieces sharing a baseline
  * and a row height.
+ *
+ * **The trail left this row on 18 September 2026** for the band above it, so
+ * what is merged here is the back arrow with the title and pager that arrive by
+ * portal. The merge's point is unchanged: no second bar inside the page. Where
+ * the trail sits now is `header.spec.ts`'s to assert, and one test below pins
+ * that it is not in both places at once.
  *
  * The last describe is the harder half and the reason the file grew: the shell
  * has three columns, each drawing its own top row from its own file, and
@@ -40,37 +46,58 @@ test.describe('the document header row', () => {
   const header = (page: import('@playwright/test').Page) =>
     page.locator('header[data-print-hidden]');
 
-  test('puts back, the trail and the pager on one line', async ({ page }) => {
+  /**
+   * **The trail left this row on 18 September 2026**, so these assert about
+   * back and the pager only.
+   *
+   * It moved up into the band (`TopPanel`), which is why the file's opening
+   * paragraph now describes two rows rather than one. What the merge was for
+   * is untouched: the title and the pager still arrive here by portal instead
+   * of forming a second bar inside the page, and that is what "one row" means
+   * below. `header.spec.ts` owns where the trail sits now.
+   */
+  test('puts back and the pager on one line', async ({ page }) => {
     const row = header(page);
     await expect(row).toBeVisible();
 
     const back = row.getByRole('button', { name: /back/i });
-    const trail = row.getByRole('navigation', { name: /breadcrumb/i });
-    const pager = row.getByRole('textbox', { name: /go to page/i });
+    // The pager itself, not its box: a document short enough to list every
+    // page has no box to find (`docs/design.md` §2.10).
+    const pager = row.locator('[data-slot="pagination"]');
 
-    const [backMid, trailMid, pagerMid] = await Promise.all([
-      midOf(back),
-      midOf(trail),
-      midOf(pager),
-    ]);
+    const [backMid, pagerMid] = await Promise.all([midOf(back), midOf(pager)]);
 
     // Half a pixel of slack, the same tolerance `header.spec.ts` holds the
     // band's own right-hand end to.
-    expect(Math.abs(trailMid - backMid)).toBeLessThanOrEqual(0.5);
     expect(Math.abs(pagerMid - backMid)).toBeLessThanOrEqual(0.5);
   });
 
-  /** Left to right: where you came from, where you are, which page of it. */
-  test('orders them back, trail, pager', async ({ page }) => {
+  /** Left to right: where you came from, then which page of it. */
+  test('orders them back, then pager', async ({ page }) => {
     const row = header(page);
-    const [back, trail, pager] = await Promise.all([
+    const [back, pager] = await Promise.all([
       boxOf(row.getByRole('button', { name: /back/i })),
-      boxOf(row.getByRole('navigation', { name: /breadcrumb/i })),
-      boxOf(row.getByRole('textbox', { name: /go to page/i })),
+      boxOf(row.locator('[data-slot="pagination"]')),
     ]);
 
-    expect(trail.x).toBeGreaterThan(back.x);
-    expect(pager.x).toBeGreaterThan(trail.x);
+    expect(pager.x).toBeGreaterThan(back.x);
+  });
+
+  /**
+   * The trail is in the band above, not on this row.
+   *
+   * Asserted in both directions across the two files, for the reason the
+   * wordmark and the switcher already are: the failure worth preventing is two
+   * copies, one in each place, which reads as a layout quirk rather than as a
+   * duplication.
+   */
+  test('leaves the trail to the band above it', async ({ page }) => {
+    await expect(
+      header(page).getByRole('navigation', { name: /breadcrumb/i }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-slot="top-panel"]').getByRole('navigation', { name: /breadcrumb/i }),
+    ).toBeVisible();
   });
 
   /**
@@ -87,23 +114,26 @@ test.describe('the document header row', () => {
 
   /**
    * The pager sits at the right-hand end of the row, against the seam with the
-   * editor rail rather than trailing the trail. That is what `ml-auto` buys,
-   * and it is invisible to a DOM-order assertion.
+   * editor rail rather than trailing whatever precedes it. That is what
+   * `ml-auto` buys, and it is invisible to a DOM-order assertion.
+   *
+   * Measured against the back arrow since the trail left this row: the arrow is
+   * the row's one remaining left-hand item, so the same claim holds with it as
+   * the reference. The gap after the pager must be smaller than the gap before
+   * it, or the pager is drifting left with its neighbour instead of being
+   * pushed to the end.
    */
   test('pushes the pager to the row’s right-hand end', async ({ page }) => {
     const row = await boxOf(header(page));
     const pager = await boxOf(
-      header(page).getByRole('textbox', { name: /go to page/i }),
+      header(page).locator('[data-slot="pagination"]'),
     );
-    const trail = await boxOf(
-      header(page).getByRole('navigation', { name: /breadcrumb/i }),
-    );
+    const back = await boxOf(header(page).getByRole('button', { name: /back/i }));
 
     const gapAfterPager = row.x + row.width - (pager.x + pager.width);
-    const gapAfterTrail = pager.x - (trail.x + trail.width);
+    const gapBeforePager = pager.x - (back.x + back.width);
 
-    // The pager is nearer the right edge than it is to the trail it follows.
-    expect(gapAfterPager).toBeLessThan(gapAfterTrail);
+    expect(gapAfterPager).toBeLessThan(gapBeforePager);
   });
 });
 

@@ -64,9 +64,22 @@ describe('AdminShell', () => {
     expect(wrapper.style.getPropertyValue('--sidebar-width-icon')).toBe('3rem');
   });
 
-  it('offers no drag-resize control while resizing is parked', () => {
-    renderShell();
-    expect(screen.queryByRole('separator', { name: /resize sidebar/i })).not.toBeInTheDocument();
+  /**
+   * The drag handle is back (15 September 2026), and what it writes is the
+   * same variable the rail reads. jsdom cannot drag, but the arrow keys drive
+   * the same setter, so a nudge is enough to prove the wiring end to end.
+   */
+  it('offers a resize handle that drives the nav width', async () => {
+    const user = userEvent.setup();
+    const { container } = renderShell();
+    const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement;
+    const handle = screen.getByRole('separator', { name: /resize sidebar/i });
+    expect(handle).toHaveAttribute('aria-valuenow', String(NAV_WIDTH));
+
+    handle.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(handle).toHaveAttribute('aria-valuenow', String(NAV_WIDTH + 16));
+    expect(wrapper.style.getPropertyValue('--sidebar-width')).toBe(`${NAV_WIDTH + 16}px`);
   });
 
   it('hosts page content portalled into the rail', () => {

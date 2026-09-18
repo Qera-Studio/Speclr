@@ -65,6 +65,10 @@ describe('nav model', () => {
       '/client/services',
       '/client/clauses',
       '/client/checklist',
+      // The component library, placed in this group on request. It is source
+      // material for the app rather than for a client engagement, which is the
+      // one row here that does not fit the group's own description above.
+      '/client/library',
     ]);
 
     expect(NAV_BY_PROFILE.admin.groups).toHaveLength(1);

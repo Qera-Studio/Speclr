@@ -1,27 +1,14 @@
+'use client';
+
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { NIL, cn } from '@/lib/utils';
+import { NIL } from '@/lib/utils';
 import { hasTotal, type SortColumn, type SortState } from '@/lib/domain/documentQuery';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { DateCell, SortableHead, TableCard, TruncCell } from './Page';
+import RecordTable, { type RecordTableProps } from './RecordTable';
 import type { BulkSelection } from './BulkSelect';
 import { CopyCell } from './CopyCell';
+import { DateCell } from './Page';
 import DocumentRowActions from './DocumentRowActions';
 import { computeTotals, formatINR } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
@@ -30,45 +17,29 @@ import { partyName } from '@/lib/domain/party';
 import type { AdminDocument } from '@/lib/domain/types';
 
 /**
- * Dashboard table of all documents, newest first. Pure props: the rows are
- * server-renderable, and the only client JS in them is the copy button, which
- * is its own island.
+ * The documents list, and the reference for every other one.
+ *
+ * A `RecordTable`, like every list of records (`docs/design.md` §2.3). What is
+ * left here is what is particular to a document: its six columns, the money
+ * rule below, and the actions.
+ *
+ * Sorting and paging are the browser's, not this component's: it sorts through
+ * `documentQuery` over a filtered set, and the `SortToggle` eye hides the
+ * controls while keeping the order (`externalSort`). The selection is the
+ * browser's too, because the same ticks serve the table view, the cards view
+ * and the bar under both.
  */
 export interface DocumentsTableProps {
   documents: AdminDocument[];
   /** Empty-state copy. Defaults suit the all-documents dashboard. */
   emptyTitle?: string;
   emptyDescription?: string;
-  /**
-   * Sorting is opt-in: pass both and the headers become buttons, omit them and
-   * they stay plain text. That keeps the table renderable without client state.
-   */
   sort?: SortState | null;
   onSortChange?: (column: SortColumn) => void;
-  /** Card footer: the row count on the left, the pager on the right. */
-  count?: React.ReactNode;
-  pagination?: React.ReactNode;
-  /**
-   * Row selection, opt-in exactly as sorting is: pass it and the checkbox
-   * column appears, omit it and the table is unchanged. The browser owns the
-   * state because it also owns the paging and filtering the selection has to
-   * survive.
-   */
+  /** Paging, owned by the browser, which is what filters the list. */
+  paging?: RecordTableProps<AdminDocument>['paging'];
   selection?: BulkSelection<AdminDocument>;
 }
-
-// Total is right-aligned, which reverses an earlier call here. Money is read by
-// comparing digit positions down the column, and that only works if the units
-// column is the same column on every row — which is also why every figure in
-// this table is `tabular-nums`. One money column is still a money column.
-const COLUMNS: { column: SortColumn; label: string; right?: boolean }[] = [
-  { column: 'number', label: 'Number' },
-  { column: 'type', label: 'Type' },
-  { column: 'party', label: 'Client' },
-  { column: 'date', label: 'Date' },
-  { column: 'total', label: 'Total', right: true },
-  { column: 'status', label: 'Status' },
-];
 
 export default function DocumentsTable({
   documents,
@@ -76,100 +47,95 @@ export default function DocumentsTable({
   emptyDescription = 'Create your first invoice, receipt, contract, or letter to get started.',
   sort,
   onSortChange,
-  count,
-  pagination,
+  paging,
   selection,
 }: DocumentsTableProps) {
-  if (documents.length === 0) {
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <FileText />
-          </EmptyMedia>
-          <EmptyTitle>{emptyTitle}</EmptyTitle>
-          <EmptyDescription>{emptyDescription}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
-    <TableCard count={count} pagination={pagination}>
-      <Table>
-        <TableCaption className="sr-only">All documents, newest first</TableCaption>
-        <TableHeader>
-          <TableRow>
-            {selection?.head}
-            {COLUMNS.map((col) => (
-              <SortableHead
-                key={col.column}
-                {...col}
-                sort={sort}
-                onSortChange={onSortChange}
-              />
-            ))}
-            <TableHead className="w-0 text-right">
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {documents.map((doc) => {
-            // Letters carry no line items, and a ₹0 total would mislead.
-            const hasMoney = hasTotal(doc);
-            const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
-            /*
-              The whole row opens the document, via one stretched link rather
-              than a row `onClick`: it stays a real anchor (middle-click,
-              ⌘-click, keyboard, "copy link"), and the table stays
-              server-rendered with no client JS.
-
-              `relative` on the row is what the overlay resolves against, and it
-              is load-bearing: an absolutely positioned box takes its nearest
-              *positioned* ancestor, so a `relative` on any cell between the two
-              shrinks the hit area to that column. `CopyCell` used to carry one,
-              which is precisely how clicking anywhere but the number came to do
-              nothing. Its note says why it no longer does.
-
-              What still paints above the overlay does so by being positioned
-              *and* later in DOM order: the actions cell below, and the copy
-              button's own `relative z-10`.
-            */
-            return (
-              <TableRow key={doc.id} className="group/row relative cursor-pointer">
-                {selection?.cell(doc)}
-                <CopyCell
-                  value={doc.number}
-                  label="Copy document number"
-                  iconOnly
-                  className="tabular-nums"
-                  display={
-                    <Link
-                      href={openDocHref(doc)}
-                      className="after:absolute after:inset-0 after:content-['']"
-                    >
-                      {doc.number ?? 'Draft'}
-                    </Link>
-                  }
-                />
-                <TableCell>{DOC_TYPES[doc.type].label}</TableCell>
-                <TruncCell value={partyName(doc)} />
-                <DateCell value={doc.issueDate} />
-                <TableCell className="text-right tabular-nums">
-                  {hasMoney ? formatINR(totals.totalPaise) : NIL}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={doc.status} />
-                </TableCell>
-                <TableCell className="relative py-0 text-right">
-                  <DocumentRowActions doc={doc} />
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableCard>
+    <RecordTable
+      rows={documents}
+      id={(doc) => doc.id}
+      noun="document"
+      caption="All documents, newest first"
+      open={(doc) => ({ href: openDocHref(doc) })}
+      rowLabel={(doc) => doc.number ?? 'Draft'}
+      sort={sort}
+      onSortChange={onSortChange as ((column: string) => void) | undefined}
+      // The browser sorts whether or not the controls are on screen.
+      externalSort
+      paging={paging}
+      selection={selection}
+      columns={[
+        {
+          key: 'number',
+          label: 'Number',
+          ownCell: true,
+          // The anchor is inside the `CopyCell` below, not beside it.
+          ownOpener: true,
+          sortValue: (doc) => doc.number ?? '',
+          cell: (doc) => (
+            <CopyCell
+              value={doc.number}
+              label="Copy document number"
+              iconOnly
+              className="tabular-nums"
+              display={
+                /*
+                  The whole row opens the document, via one stretched link
+                  rather than a row `onClick`: it stays a real anchor
+                  (middle-click, cmd-click, keyboard, "copy link"). The
+                  `relative` that overlay resolves against is on the row, put
+                  there by `RecordTable`, and it is load-bearing: a `relative`
+                  on any cell in between shrinks the hit area to that column,
+                  which `CopyCell` used to cause, and none at all lets it cover
+                  every row at once.
+                */
+                <Link
+                  href={openDocHref(doc)}
+                  className="after:absolute after:inset-0 after:content-['']"
+                >
+                  {doc.number ?? 'Draft'}
+                </Link>
+              }
+            />
+          ),
+        },
+        { key: 'type', label: 'Type', cell: (doc) => DOC_TYPES[doc.type].label },
+        { key: 'party', label: 'Client', trunc: true, cell: (doc) => partyName(doc) },
+        {
+          key: 'date',
+          label: 'Date',
+          ownCell: true,
+          sortValue: (doc) => doc.issueDate,
+          cell: (doc) => <DateCell value={doc.issueDate} />,
+        },
+        {
+          /*
+            Right-aligned, which reverses an earlier call here. Money is read by
+            comparing digit positions down the column, and that only works if
+            the units column is the same column on every row, which is also why
+            every figure here is `tabular-nums`. One money column is still a
+            money column.
+          */
+          key: 'total',
+          label: 'Total',
+          right: true,
+          sortValue: (doc) =>
+            hasTotal(doc) ? computeTotals(doc.lineItems, doc.gstRatePercent, doc).totalPaise : 0,
+          cell: (doc) =>
+            // Letters carry no line items, and a zero total would mislead.
+            hasTotal(doc)
+              ? formatINR(computeTotals(doc.lineItems, doc.gstRatePercent, doc).totalPaise)
+              : NIL,
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          sortValue: (doc) => doc.status,
+          cell: (doc) => <StatusBadge status={doc.status} />,
+        },
+      ]}
+      actions={(doc) => <DocumentRowActions doc={doc} />}
+      empty={{ icon: <FileText />, title: emptyTitle, description: emptyDescription }}
+    />
   );
 }

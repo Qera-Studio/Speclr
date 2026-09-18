@@ -46,7 +46,13 @@ const differingPixels = async (a: Buffer, b: Buffer) => {
   return n;
 };
 
-test.describe('the floating nav rail', () => {
+/**
+ * Skipped, not deleted: the nav collapses to a plain docked icon strip for now
+ * and the float is parked in `AdminSidebar` (15 September 2026). Every test
+ * here measures the float's geometry, so none of it applies until
+ * `collapsible="float"` is restored, at which point drop the `.skip`.
+ */
+test.describe.skip('the floating nav rail', () => {
   test('detaches from every edge when collapsed', async ({ page }) => {
     await page.goto('/preview/shell');
     const rail = page.locator(RAIL).first();

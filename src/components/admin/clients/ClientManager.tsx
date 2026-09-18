@@ -12,7 +12,10 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Pagination, rowCountLabel, usePagedRows } from '@/components/ui/pagination';
+// Only the hook: this list hands its paging down to `RecordTable` through
+// `ClientsTable`, and that is what renders the pager. `Pagination` and
+// `rowCountLabel` were imported here and never used.
+import { usePagedRows } from '@/components/ui/pagination';
 import { AddLink } from '@/components/ui/add-button';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -123,8 +126,6 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
     honest one — the alternative is a checkbox missing for reasons the row
     cannot explain.
   */
-  const clientId = useCallback((client: ClientRecord) => client.id, []);
-  const selection = useBulkSelect({ rows: visible, id: clientId });
 
   /*
     One call per client rather than a batch action, for the reason above: the
@@ -132,13 +133,11 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
     also erases the attachments blob-first (DPDP Act 2023 erasure), which a
     batch path would have to reimplement.
   */
-  const onBulkDelete = async () => {
-    const chosen = selection.chosen;
+  const onBulkDelete = async (chosen: ClientRecord[]) => {
     const results = await Promise.all(
       chosen.map((client) => deleteClientAction(client.id)),
     );
     const refused = results.filter((r) => !r.success).length;
-    selection.clear();
     if (refused > 0) {
       toast.error(
         `${refused} of ${chosen.length} could not be deleted. A client that has been on a document can't be removed.`,
@@ -153,7 +152,6 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
   const onFiltersChange = (next: ClientFilterRow[]) => {
     setFilters(next);
     setPage(0);
-    selection.clear();
   };
 
   // asc → desc → unsorted, so a column can always be put back.
@@ -303,7 +301,7 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
       ) : (
         <ClientsTable
           clients={visible}
-          selection={selection}
+          onBulkDelete={onBulkDelete}
           onDelete={onDelete}
           onArchive={onArchive}
           archived={showArchived}
@@ -311,27 +309,10 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
           // Omitted while the toggle is off — the headings then render as plain
           // text, which is `ClientsTable`'s existing unsortable mode.
           onSortChange={showSort ? onSortChange : undefined}
-          count={rowCountLabel(shown.length, 'client', start, visible.length)}
-          pagination={
-            <Pagination
-              page={page}
-              pageCount={pageCount}
-              onPageChange={setPage}
-              label="clients"
-            />
-          }
+          paging={{ page, pageCount, onPageChange: setPage, start, total: shown.length }}
         />
       )}
 
-      {/* Under the table and right-aligned, in normal flow: a bar floating over
-          the last rows would hide the very things about to be deleted. */}
-      <BulkBar
-        count={selection.count}
-        noun="client"
-        onClear={selection.clear}
-        onDelete={onBulkDelete}
-        consequence="This permanently removes these clients and any files uploaded for them. A client that has been on a document can't be deleted. This cannot be undone."
-      />
     </div>
   );
 }

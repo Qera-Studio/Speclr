@@ -206,6 +206,12 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
           // has to hand over before a record can be filled in, so it sits with
           // the other source material a client engagement starts from.
           { href: '/client/checklist', label: 'Checklist', icon: ListChecks, jump: 'K' },
+          // The odd one out in this group, placed here on request. It is source
+          // material for the *app* rather than for a client engagement: every
+          // component, every variant, live, and the place a component is decided
+          // before it ships to its callers. It supersedes `/admin/kit`, which is
+          // why it carries that page's icon.
+          { href: '/client/library', label: 'Components', icon: SwatchBook, jump: 'U' },
         ],
       },
     ],

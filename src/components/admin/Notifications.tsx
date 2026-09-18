@@ -9,14 +9,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetTrigger } from "@/components/ui/sheet";
+import { DrawerFrame } from "@/components/ui/drawer-sheet";
 
 /**
  * The header's bell, and the drawer it opens.
@@ -38,23 +32,18 @@ import {
  * notification is about the app rather than about the document on screen, so it
  * is chrome over the page, not a second pane inside a column.
  *
- * It opens **inside the inset card**, which is what `container` and `contained`
- * are for. A sheet over the window darkened the nav, the header band and the
- * margin the card floats in, so the one permanent column went dim to report
- * something that has nothing to do with it. The scrim belongs to the surface
- * being covered: the card is what the drawer slides over, so the card is what
- * dims, and the nav stays lit and usable underneath. The inset already carries
- * `overflow-clip`, so the panel is clipped to the card's own corners.
+ * It opens **inside the inset card**, and says nothing about that at all: the
+ * shell publishes the card through `InsetProvider` and `SheetContent` reads it
+ * (`ui/sheet.tsx`). This component used to be handed the ref as a prop, which
+ * worked only because it is a direct child of the shell, and left every drawer
+ * deeper in a page with no way to ask.
  *
- * `inset` is the card's element. With none the sheet falls back to the window,
- * which is the `PageHeaderSlot` degradation: every production route renders
- * inside `AdminShell`, and a component on its own in a test must still open.
+ * Why it matters here: a sheet over the window darkened the nav, the header
+ * band and the margin the card floats in, so the one permanent column went dim
+ * to report something that has nothing to do with it. The scrim belongs to the
+ * surface being covered.
  */
-export default function Notifications({
-  inset,
-}: {
-  inset?: React.RefObject<HTMLElement | null>;
-}) {
+export default function Notifications() {
   return (
     <Sheet>
       <SheetTrigger
@@ -70,35 +59,37 @@ export default function Notifications({
           </Button>
         }
       />
-      <SheetContent
-        side="right"
-        container={inset}
-        contained={inset !== undefined}
-        className="gap-0 p-0"
-      >
-        {/* `pr-14` clears the close button `SheetContent` floats at `top-4
-            right-4`, so a title never runs under it. */}
-        <SheetHeader className="gap-1 border-b p-4 pr-14">
-          <SheetTitle>Notifications</SheetTitle>
-          <SheetDescription>
-            Anything the app needs to tell you will appear here.
-          </SheetDescription>
-        </SheetHeader>
+      {/*
+        `DrawerFrame` rather than the parts: same three-part layout every
+        drawer in the app draws, and the padding, the close-button clearance
+        and the scrolling body come with it. `headerBorder` is on here and off
+        in the editing drawers, which is the one real difference between them:
+        this header is a label over a feed of unrelated items, so a rule is
+        right; a header naming the field directly below it should not be
+        fenced off from it.
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <Empty className="h-full border-0 bg-transparent dark:bg-transparent">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <BellOff />
-              </EmptyMedia>
-              <EmptyTitle>Nothing to report</EmptyTitle>
-              <EmptyDescription>
-                You have no notifications. speclr does not send any yet.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </div>
-      </SheetContent>
+        Not `RecordDrawer`, because there is no record: a feed has no draft, no
+        dirty state and nothing to save.
+      */}
+      <DrawerFrame
+        // A feed read down one column, which is the narrow size.
+        size="sm"
+        title="Notifications"
+        description="Anything the app needs to tell you will appear here."
+        headerBorder
+      >
+        <Empty className="h-full border-0 bg-transparent dark:bg-transparent">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BellOff />
+            </EmptyMedia>
+            <EmptyTitle>Nothing to report</EmptyTitle>
+            <EmptyDescription>
+              You have no notifications. speclr does not send any yet.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </DrawerFrame>
     </Sheet>
   );
 }

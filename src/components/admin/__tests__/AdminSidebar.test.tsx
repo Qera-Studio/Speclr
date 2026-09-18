@@ -14,6 +14,11 @@ jest.mock('next/navigation', () => ({
 jest.mock('@clerk/nextjs', () => ({
   SignOutButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+// The rail holds `SearchCommand` since 18 September 2026, and it calls a Server
+// Action that imports the Neon client. Unstubbed, this suite fails to run at
+// all (`TextDecoder is not defined`) rather than failing an assertion. Same
+// stub, same reason, as `TopPanel.test.tsx` used while search lived there.
+jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => []) }));
 
 const user = { name: 'Shivanshu Pareek', email: 'ops@qera.studio', imageUrl: undefined };
 
@@ -63,7 +68,7 @@ describe('AdminSidebar', () => {
     expect(footer).not.toBeNull();
 
     const switcher = within(footer as HTMLElement).getByRole('navigation', { name: 'Profile' });
-    const account = within(footer as HTMLElement).getByRole('button', { name: /qera\.studio/i });
+    const account = within(footer as HTMLElement).getByRole('button', { name: /shivanshu pareek/i });
 
     expect(
       switcher.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -82,7 +87,7 @@ describe('AdminSidebar', () => {
 
     const switcher = within(footer).getByRole('navigation', { name: 'Profile' });
     const rule = footer.querySelector('[data-slot="separator"]');
-    const account = within(footer).getByRole('button', { name: /qera\.studio/i });
+    const account = within(footer).getByRole('button', { name: /shivanshu pareek/i });
     expect(rule).not.toBeNull();
 
     expect(switcher.compareDocumentPosition(rule!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -123,7 +128,7 @@ describe('AdminSidebar', () => {
      * so an earlier version of this test passed either way round, which is why
      * it queries both roles together.
      */
-    it('shows seven rows, in order, and nothing else', () => {
+    it('shows eight rows, in order, and nothing else', () => {
       renderSidebar({ profile: 'client' });
       const labels = Array.from(
         liveNav('client').querySelectorAll('[data-slot="sidebar-menu-item"]'),
@@ -137,6 +142,7 @@ describe('AdminSidebar', () => {
         'Service catalogue',
         'Clause library',
         'Checklist',
+        'Components',
       ]);
     });
 
@@ -330,6 +336,36 @@ describe('AdminSidebar', () => {
   });
 
   /**
+   * Collapsing docks the rail as a plain icon strip: `data-collapsible="icon"`
+   * drives every label-hiding rule in `ui/sidebar.tsx`, and no `data-float`,
+   * because the floating variant is parked (15 September 2026). Hovering the
+   * strip must not grow it: the peek belongs to the float, and a strip that
+   * opened on hover would be the float with the position change missing.
+   */
+  it('docks as a plain icon strip when collapsed, and stays put on hover', async () => {
+    const clicker = userEvent.setup();
+    const { container } = renderSidebar();
+    const rail = () => container.querySelector('[data-slot="sidebar"]')!;
+    const strip = () => container.querySelector('[data-slot="sidebar-container"]')!;
+
+    await clicker.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
+    expect(rail()).toHaveAttribute('data-collapsible', 'icon');
+    expect(rail()).not.toHaveAttribute('data-float');
+
+    await clicker.unhover(strip());
+    await clicker.hover(strip());
+    expect(rail()).not.toHaveAttribute('data-peek');
+    expect(rail()).toHaveAttribute('data-collapsible', 'icon');
+  });
+});
+
+/**
+ * Parked with the floating collapse in `AdminSidebar`, 15 September 2026.
+ * Skipped rather than deleted: these pin the float's attribute contract and
+ * come back with it. Unskip when `collapsible="float"` is restored.
+ */
+describe.skip('AdminSidebar, floating collapse (parked)', () => {
+  /**
    * Collapsing detaches the rail: it leaves its panel and becomes a floating
    * pill rather than a thin column welded to the window's edge.
    *
@@ -339,8 +375,8 @@ describe('AdminSidebar', () => {
    * float is a *position* change layered on the collapse, not a replacement
    * for it, and asserting only one would let the other quietly regress.
    *
-   * The geometry itself — that it travels rather than snaps, and that the pill
-   * never overlaps the content card — is browser work. jsdom measures every
+   * The geometry itself, that it travels rather than snaps, and that the pill
+   * never overlaps the content card, is browser work. jsdom measures every
    * box as zero.
    */
   it('detaches into a floating pill when collapsed', async () => {
@@ -361,7 +397,7 @@ describe('AdminSidebar', () => {
    * `ui/sidebar.tsx` reads it, so the labels come back without a second copy
    * of a dozen selectors.
    *
-   * `data-state` deliberately stays `collapsed` throughout — the peek is a
+   * `data-state` deliberately stays `collapsed` throughout: the peek is a
    * third *visual* state, not a fourth open state, and only the toggle docks.
    */
   it('grows on hover without re-docking, and shrinks again on leave', async () => {
@@ -426,7 +462,9 @@ describe('AdminSidebar', () => {
     expect(rail()).not.toHaveAttribute('data-peek');
     expect(rail()).toHaveAttribute('data-state', 'expanded');
   });
+});
 
+describe('AdminSidebar, the rest', () => {
   it('no longer lists Settings in the nav — it moved into the account menu', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
@@ -481,11 +519,11 @@ describe('AdminSidebar', () => {
     expect(await screen.findByRole('dialog', { name: /new document/i })).toBeInTheDocument();
   });
 
-  it('renders the account card with name, email, and a menu trigger', () => {
+  it('renders the account card as one row: name and a menu trigger, no email', () => {
     renderSidebar();
-    // The card shows the user's name and email...
+    // The card shows the user's name; the email lives in the menu's header.
     expect(screen.getByText('Shivanshu Pareek')).toBeInTheDocument();
-    expect(screen.getByText('ops@qera.studio')).toBeInTheDocument();
+    expect(screen.queryByText('ops@qera.studio')).not.toBeInTheDocument();
     // ...and is a menu trigger (the dropdown open + Sign out is verified in-browser —
     // Base UI's menu-on-pointer-click doesn't open in jsdom when the trigger holds an Avatar).
     const trigger = screen.getByRole('button', { name: /shivanshu pareek/i });

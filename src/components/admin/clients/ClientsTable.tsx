@@ -3,28 +3,11 @@
 import Link from 'next/link';
 import { Archive, ArchiveRestore, Pencil, Users } from 'lucide-react';
 import { completedSteps, onboardingStepsFor, resumeStep } from './onboarding/steps';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
 import { RemoveButton } from '@/components/ui/remove-button';
-import { RowActions } from '../RowActions';
-import { DateCell, SortableHead, TableCard } from '../Page';
-import type { BulkSelection } from '../BulkSelect';
+import { DateCell } from '../Page';
+import RecordTable, { type RecordTableProps } from '../RecordTable';
 import { CopyCell } from '../CopyCell';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { countryName } from '@/lib/domain/countries';
 import { formatPhoneForDisplay } from '@/lib/domain/phone';
@@ -129,9 +112,8 @@ export default function ClientsTable({
   archived = false,
   sort,
   onSortChange,
-  count,
-  pagination,
-  selection,
+  paging,
+  onBulkDelete,
 }: {
   clients: ClientRecord[];
   onDelete: (client: ClientRecord) => void;
@@ -139,179 +121,170 @@ export default function ClientsTable({
   /** Showing the offboarded list, which changes the empty copy and the action. */
   archived?: boolean;
   /**
-   * Sorting is opt-in, as on the documents table: pass both and the headings
-   * become buttons, omit them and they stay plain text.
+   * Sorting and paging are the manager's, because the manager is what filters
+   * the list, and `sortClients` knows things the rendered text does not (a
+   * blank country reads as India). The ten-row rule is unchanged; what moves
+   * is who slices.
    */
   sort?: ClientSortState | null;
   onSortChange?: (column: ClientSortColumn) => void;
-  /** Card footer: the row count on the left, the pager on the right. Both are
-      the caller's, because the caller is what filters and pages the list. */
-  count?: React.ReactNode;
-  pagination?: React.ReactNode;
-  /** Row selection, opt-in exactly as sorting is. Owned by the manager. */
-  selection?: BulkSelection<ClientRecord>;
+  paging?: RecordTableProps<ClientRecord>['paging'];
+  /** Bulk delete, opt-in. Offering it is what shows the checkbox column. */
+  onBulkDelete?: (clients: ClientRecord[]) => Promise<void>;
 }) {
-  if (clients.length === 0) {
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">{archived ? <Archive /> : <Users />}</EmptyMedia>
-          <EmptyTitle>{archived ? 'Nothing archived' : 'No clients yet'}</EmptyTitle>
-          <EmptyDescription>
-            {archived
-              ? 'Archive a client when the engagement is over and they leave this list.'
-              : 'Add your first client to start issuing documents.'}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
-    <TableCard count={count} pagination={pagination}>
-      <Table>
-        {/* Not "newest first" any more: the list can be sorted and filtered by
-            the page around it, and a caption that names an order the table no
-            longer has is worse than one that names none. */}
-        <TableCaption className="sr-only">Saved clients</TableCaption>
-        <TableHeader>
-          <TableRow>
-            {selection?.head}
-            {COLUMNS.map((col) => (
-              <SortableHead
-                key={col.column}
-                {...col}
-                sort={sort}
-                onSortChange={onSortChange}
-              />
-            ))}
-            {/*
-              The ring names itself per row; a heading over it would be a word
-              explaining a glyph that already carries a tooltip.
-            */}
-            <TableHead className="w-0">
-              <span className="sr-only">Onboarding</span>
-            </TableHead>
-            <TableHead className="w-0 text-right">
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {clients.map((client) => {
-            // Out of *this* client's steps: an individual has six, not seven.
-            const done = completedSteps(client);
-            const total = onboardingStepsFor(client).length;
-            return (
-              <TableRow key={client.id} className="group/row relative cursor-pointer">
-                {selection?.cell(client)}
-                <TableCell>
-                  {/*
-                    The whole row opens the client, via one stretched anchor
-                    rather than a row `onClick`, so middle-click, ⌘-click and
-                    "copy link" all work. Same pattern as the documents list;
-                    a list where one row is clickable and the next is not is a
-                    list nobody trusts to be clickable.
-                  */}
-                  <Link
-                    href={`/client/clients/${client.id}?step=${resumeStep(client)}`}
-                    className="after:absolute after:inset-0 after:content-['']"
-                  >
-                    {client.name}
-                  </Link>
-                </TableCell>
-                <CopyCell value={client.email} label="Copy email" width="16rem" />
-                {/*
-                  Stored E.164, shown grouped. `formatPhoneForDisplay` has
-                  existed and been tested since phones were added and nothing
-                  called it, so every list printed +919876543210.
-                */}
-                <CopyCell
-                  value={client.phone}
-                  label="Copy phone number"
-                  className="tabular-nums"
-                  display={formatPhoneForDisplay(client.phone)}
-                />
-                {/*
-                  Country, not GSTIN. A GSTIN is fifteen characters nobody
-                  reads off a list, and most rows have none. Where a client is
-                  decides which registrations, legal forms and documents the
-                  record even asks for (`CONTEXT.md` §5d-ii), so it is the
-                  fact worth scanning. Blank reads as India, as everywhere else.
-                */}
-                <TableCell>{countryName(client.addressParts?.country || 'IN')}</TableCell>
-                {/*
-                  When the record was created, which is also what the list is
-                  sorted by: a table ordered by a fact it does not show reads
-                  as unordered. `DateCell` so it is the same date the documents
-                  list prints, in the same weight.
-                */}
-                <DateCell value={client.createdAt} />
-                <TableCell>
-                  <OnboardingRing done={done} total={total} />
-                </TableCell>
-                <TableCell className="relative py-0 text-right">
-                  {/*
-                  Edit is a `Link` rather than the shared `EditButton`, because
-                  onboarding is a real URL worth opening in a new tab.
-
-                  Delete is offered on every row and refused server-side for any
-                  client that has a document — the check cannot live here, since
-                  the list has no idea what has been issued. Confirming and then
-                  being told no is the honest shape: the alternative is a button
-                  that is missing for reasons the row cannot explain.
-                */}
-                  <RowActions>
-                    {/*
-                      Archiving asks nothing first: it takes nothing away, and
-                      the button beside it puts it straight back. Confirming a
-                      reversible action teaches people to click through the
-                      dialog that guards the irreversible one.
-                    */}
-                    {onArchive ? (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`${archived ? 'Restore' : 'Archive'} ${client.name}`}
-                              onClick={() => onArchive(client, !archived)}
-                              className="text-muted-foreground transition-colors hover:text-foreground"
-                            />
-                          }
-                        >
-                          {archived ? (
-                            <ArchiveRestore className="size-4" />
-                          ) : (
-                            <Archive className="size-4" />
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>{archived ? 'Restore' : 'Archive'}</TooltipContent>
-                      </Tooltip>
-                    ) : null}
-                    <Link
-                      href={`/client/clients/${client.id}?step=${resumeStep(client)}`}
-                      aria-label={`Edit ${client.name}`}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100"
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden />
-                    </Link>
-                    <RemoveButton
-                      label={`Delete ${client.name}`}
-                      tooltip="Delete"
-                      confirmTitle="Delete client"
-                      confirmDescription={`This permanently removes ${client.name} and any files uploaded for them. A client that has been on a document can't be deleted.`}
-                      onConfirm={() => onDelete(client)}
-                    />
-                  </RowActions>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableCard>
+    <RecordTable
+      rows={clients}
+      id={(client) => client.id}
+      noun="client"
+      /* Not "newest first" any more: the list can be sorted and filtered by the
+         page around it, and a caption naming an order the table no longer has
+         is worse than one naming none. */
+      caption="Saved clients"
+      /* The whole row opens the client, via one stretched anchor rather than a
+         row `onClick`, so middle-click, cmd-click and "copy link" all work. A
+         list where one row is clickable and the next is not is a list nobody
+         trusts to be clickable. */
+      open={(client) => ({
+        href: `/client/clients/${client.id}?step=${resumeStep(client)}`,
+      })}
+      sort={sort}
+      onSortChange={onSortChange as ((column: string) => void) | undefined}
+      // The manager sorts, whether or not the controls are on screen: the
+      // `SortToggle` eye hides the arrows and keeps the order.
+      externalSort
+      paging={paging}
+      columns={[
+        { key: 'name', label: 'Name', cell: (client) => client.name },
+        {
+          key: 'email',
+          label: 'Email',
+          ownCell: true,
+          sortValue: (client) => client.email,
+          cell: (client) => <CopyCell value={client.email} label="Copy email" width="16rem" />,
+        },
+        {
+          /*
+            Stored E.164, shown grouped. `formatPhoneForDisplay` had existed
+            and been tested since phones were added and nothing called it, so
+            every list printed +919876543210.
+          */
+          key: 'phone',
+          label: 'Phone',
+          ownCell: true,
+          sortValue: (client) => client.phone,
+          cell: (client) => (
+            <CopyCell
+              value={client.phone}
+              label="Copy phone number"
+              className="tabular-nums"
+              display={formatPhoneForDisplay(client.phone)}
+            />
+          ),
+        },
+        {
+          /*
+            Country, not GSTIN. A GSTIN is fifteen characters nobody reads off
+            a list, and most rows have none. Where a client is decides which
+            registrations, legal forms and documents the record even asks for
+            (`CONTEXT.md` §5d-ii), so it is the fact worth scanning. Blank
+            reads as India, as everywhere else.
+          */
+          key: 'country',
+          label: 'Country',
+          cell: (client) => countryName(client.addressParts?.country || 'IN'),
+        },
+        {
+          /*
+            When the record was created, which is also what the list is sorted
+            by: a table ordered by a fact it does not show reads as unordered.
+            `DateCell` so it is the same date the documents list prints, in the
+            same weight.
+          */
+          key: 'added',
+          label: 'Added',
+          ownCell: true,
+          sortValue: (client) => client.createdAt,
+          cell: (client) => <DateCell value={client.createdAt} />,
+        },
+        {
+          /* A glyph that carries its own figures in a tooltip, so its heading
+             is for screen readers only (§2.3). */
+          key: 'onboarding',
+          label: 'Onboarding',
+          headingHidden: true,
+          cell: (client) => (
+            <OnboardingRing
+              done={completedSteps(client)}
+              // Out of *this* client's steps: an individual has six, not seven.
+              total={onboardingStepsFor(client).length}
+            />
+          ),
+        },
+      ]}
+      onBulkDelete={onBulkDelete}
+      bulkConsequence="This permanently removes these clients and any files uploaded for them. A client that has been on a document can't be deleted. This cannot be undone."
+      actions={(client) => (
+        <>
+          {/*
+            Archiving asks nothing first: it takes nothing away, and the button
+            beside it puts it straight back. Confirming a reversible action
+            teaches people to click through the dialog that guards the
+            irreversible one.
+          */}
+          {onArchive ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`${archived ? 'Restore' : 'Archive'} ${client.name}`}
+                    onClick={() => onArchive(client, !archived)}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  />
+                }
+              >
+                {archived ? (
+                  <ArchiveRestore className="size-4" />
+                ) : (
+                  <Archive className="size-4" />
+                )}
+              </TooltipTrigger>
+              <TooltipContent>{archived ? 'Restore' : 'Archive'}</TooltipContent>
+            </Tooltip>
+          ) : null}
+          {/* Edit is a `Link` rather than the shared `EditButton`, because
+              onboarding is a real URL worth opening in a new tab. */}
+          <Link
+            href={`/client/clients/${client.id}?step=${resumeStep(client)}`}
+            aria-label={`Edit ${client.name}`}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Pencil className="h-4 w-4" aria-hidden />
+          </Link>
+          {/* Delete is offered on every row and refused server-side for any
+              client that has a document: the check cannot live here, since the
+              list has no idea what has been issued. Confirming and then being
+              told no is the honest shape, since the alternative is a button
+              that is missing for reasons the row cannot explain. */}
+          <RemoveButton
+            label={`Delete ${client.name}`}
+            tooltip="Delete"
+            confirmTitle="Delete client"
+            confirmDescription={`This permanently removes ${client.name} and any files uploaded for them. A client that has been on a document can't be deleted.`}
+            onConfirm={() => onDelete(client)}
+          />
+        </>
+      )}
+      empty={{
+        icon: archived ? <Archive /> : <Users />,
+        title: archived ? 'Nothing archived' : 'No clients yet',
+        description: archived
+          ? 'Archive a client when the engagement is over and they leave this list.'
+          : 'Add your first client to start issuing documents.',
+      }}
+    />
   );
 }

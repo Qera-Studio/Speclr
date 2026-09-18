@@ -111,6 +111,53 @@ describe('SearchCommand', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  /**
+   * `/` focuses the field, which is what the keycap now advertises.
+   */
+  it('focuses the field on a bare slash', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">Somewhere else</button>
+        <SearchCommand />
+      </>,
+    );
+
+    const elsewhere = screen.getByRole('button', { name: 'Somewhere else' });
+    elsewhere.focus();
+    expect(elsewhere).toHaveFocus();
+
+    await user.keyboard('/');
+    expect(screen.getByRole('combobox', { name: /search/i })).toHaveFocus();
+  });
+
+  /**
+   * **And it does not fire while somebody is typing.**
+   *
+   * This is the half that makes binding an unmodified printable character safe
+   * at all. Without the `isTypingInto` guard, a slash typed into any field on
+   * the page is swallowed and the caret is thrown into search, which breaks
+   * every date, path and fraction anyone enters. The cost of getting it wrong
+   * is far larger than the shortcut's value, so it is pinned rather than
+   * trusted to a code comment.
+   */
+  it('leaves a slash alone when it is being typed into a field', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <input aria-label="Some other field" />
+        <SearchCommand />
+      </>,
+    );
+
+    const other = screen.getByRole('textbox', { name: 'Some other field' });
+    await user.type(other, '12/06');
+
+    // The character landed where it was typed, and focus never moved.
+    expect(other).toHaveValue('12/06');
+    expect(other).toHaveFocus();
+  });
+
   it('stays quiet when the lookup fails', async () => {
     searchAll.mockRejectedValue(new Error('offline'));
     const user = userEvent.setup();

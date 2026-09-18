@@ -1,15 +1,13 @@
 "use client";
 
-import { Suspense, useRef } from "react";
+import { Suspense, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { InsetProvider } from "@/components/ui/sheet";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 import TopPanel from "./TopPanel";
-// Parked: the left nav is fixed-width for now. Kept wired up (and tested) so
-// drag-resize can be revived by restoring the width state and the handle below.
-// import SidebarResizeHandle from './SidebarResizeHandle';
-import {
+import SidebarResizeHandle, {
   SIDEBAR_MIN_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_DEFAULT_WIDTH,
@@ -17,6 +15,7 @@ import {
 import { EditorPanelProvider } from "./EditorPanel";
 import EditorSidebar from "./EditorSidebar";
 import { PageHeaderSlotProvider } from "./PageHeaderSlot";
+import { DocumentCrumbProvider } from "./DocumentCrumb";
 import { NewDocumentProvider } from "./NewDocumentCommand";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import type { UserCardUser } from "./UserCard";
@@ -32,20 +31,22 @@ import { OfflineBar } from "./OfflineBar";
  * state, which the nav uses; the editor rail drives its own via `Sidebar`'s
  * `state` override so the two collapse independently (see `EditorSidebar`).
  *
- * The nav is fixed at the narrow width for now — `SidebarResizeHandle` is
- * parked, not deleted.
+ * The nav is drag-resizable again (15 September 2026): `SidebarResizeHandle`
+ * sits on its right edge and writes the width below. Session-only, as it was
+ * the first time; a reload returns to `NAV_WIDTH`.
  */
 /**
- * The nav has two widths and toggles between them: this one, and
- * `--sidebar-width-icon` when collapsed.
+ * The nav's *starting* width. It toggles between whatever the operator has
+ * dragged it to and `--sidebar-width-icon` when collapsed.
  *
- * It is a constant on purpose. Sizing the rail from its own content needs a
- * measure-and-write pass, and the panel is `position: fixed` while the space it
- * occupies comes from an empty spacer div — so the two are only ever in step
- * one frame late. Every version of that fought the 200ms collapse transition,
- * which flips `data-collapsible` at once but animates width. A number wide
- * enough for the longest row ("Experience letter", plus the `variant="inset"`
- * gutter) has none of those failure modes. Widen it if a longer label lands.
+ * It is a constant rather than measured from the rows on purpose. Sizing the
+ * rail from its own content needs a measure-and-write pass, and the panel is
+ * `position: fixed` while the space it occupies comes from an empty spacer div,
+ * so the two are only ever in step one frame late. Every version of that fought
+ * the 200ms collapse transition, which flips `data-collapsible` at once but
+ * animates width. A number wide enough for the longest row ("Experience
+ * letter", plus the `variant="inset"` gutter) has none of those failure modes.
+ * Widen it if a longer label lands.
  *
  * It is deliberately narrower than `EDITOR_RAIL_WIDTH`. Matching the two was
  * tried and reverted: the editor rail holds two-column form fields and needs
@@ -85,18 +86,33 @@ export default function AdminShell({
   const profile: Profile = onProfile ?? DEFAULT_PROFILE;
 
   /**
-   * The inset card, for the one thing that opens *inside* it: the notification
-   * drawer. It is a ref rather than state because nothing here re-renders on it
-   * — `SheetPortal` reads the ref when the sheet opens, which is always well
-   * after mount.
+   * The inset card, which is what every sheet in the app opens inside.
+   *
+   * It is handed to `InsetProvider` below rather than passed down, and that is
+   * the point of it: a drawer four levels into a page cannot be given a prop,
+   * and the clause library's spilled over the card because of it. See
+   * `ui/sheet.tsx`.
+   *
+   * A ref rather than state because nothing here re-renders on it: `SheetPortal`
+   * reads it when a sheet opens, which is always well after mount.
    */
   const inset = useRef<HTMLDivElement>(null);
+
+  /**
+   * The nav's live width, in px, written by the drag handle and read by
+   * `--sidebar-width` below. Clamped by the handle to
+   * [`SIDEBAR_MIN_WIDTH`, `SIDEBAR_MAX_WIDTH`].
+   */
+  const [width, setWidth] = useState(NAV_WIDTH);
 
   return (
     <EditorPanelProvider>
       {/* Wraps the header and the page together: the header registers the host,
           the page portals its title and pager into it. */}
       <PageHeaderSlotProvider>
+      {/* Lets the page below name its document type for the breadcrumb, which
+          the path alone cannot say. See `DocumentCrumb.tsx`. */}
+      <DocumentCrumbProvider>
       {/* Records the profile *and* the page, so each side reopens where it was
           left. Suspense because it reads the search params: see the component. */}
       <Suspense fallback={null}>
@@ -104,6 +120,11 @@ export default function AdminShell({
       </Suspense>
       {/* Outside the sidebar so ⌘D and the ⌥ shortcuts work on every admin
           page, including from inside the editor rail. */}
+      {/* Published to every sheet in the app, which is why nothing below is
+          handed it. See `InsetProvider` in `ui/sheet.tsx`. It wraps the whole
+          shell rather than the card, because `TopPanel` sits outside the card
+          and its notification drawer still opens inside it. */}
+      <InsetProvider inset={inset}>
       <NewDocumentProvider profile={profile}>
         <SidebarProvider
           defaultOpen={defaultOpen}
@@ -122,7 +143,13 @@ export default function AdminShell({
           // card floats in are all one field, with the card the one step above
           // it. Set here rather than on `body`, which carries `bg-background`
           // for every page in the app including the ones with no shell at all.
-          className="h-svh min-h-svh flex-col overflow-clip bg-sidebar"
+          // `group/shell` is what the search field's offline-bar offset keys
+          // off. `relative` stays for the skip link's `focus-visible:absolute`.
+          //
+          // The search field is *not* positioned against this box any more: it
+          // is centred on the content column below, so it lines up with the
+          // inset card rather than with the window. See `TopPanel`.
+          className="group/shell relative h-svh min-h-svh flex-col overflow-clip bg-sidebar"
           style={
             {
               // Zero, and that is the whole of the full-height nav.
@@ -138,7 +165,7 @@ export default function AdminShell({
               // naming it here keeps the shell's own statement of the layout in
               // one place instead of half here and half in a fallback.
               "--top-panel-height": "0px",
-              "--sidebar-width": `${NAV_WIDTH}px`,
+              "--sidebar-width": `${width}px`,
               // 3rem, not 2.5. `SidebarGroup` carries `px-2` and a collapsed
               // menu button is `size-8`, so a row needs 8 + 32 + 8 = 48px to
               // sit with equal air on both sides. At 40 the right-hand 8px had
@@ -180,7 +207,6 @@ export default function AdminShell({
           */}
           <div className="group/shell-row flex min-h-0 flex-1">
             <AdminSidebar user={user} profile={profile} />
-            {/* <SidebarResizeHandle width={width} onWidthChange={setWidth} /> */}
             {/*
               The right-hand column: the header band, then the inset card.
 
@@ -189,11 +215,11 @@ export default function AdminShell({
               floors this column at its widest content and pushes the whole
               layout off the right of the window instead of scrolling inside.
             */}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               {/* Above the header rather than over the content: it is a fact
                   about the whole app, and it must not cover a control. */}
               <OfflineBar />
-              <TopPanel inset={inset} />
+              <TopPanel />
               {/*
                 The inset: one card holding the content and the editor rail,
                 floated off the shell on all four sides.
@@ -222,10 +248,40 @@ export default function AdminShell({
                 card's own corners, which is the other half of it reading as
                 part of the card rather than a pane laid over the window.
               */}
-              <div
-                ref={inset}
-                className="group/inset relative m-2 mt-0 flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md ring-1 ring-sidebar-border"
-              >
+              {/*
+                `shadow-2xs`, the smallest step Tailwind names: one pixel of
+                5% black under the bottom edge. The ring is still the edge; the
+                shadow only says the card sits a hair above the shell rather
+                than flush with it. Asked for as the faintest possible lift,
+                and it is the one shadow on a non-floating surface in the app,
+                logged in `docs/design.md` §1.7. Anything stronger reads as the
+                widget-on-a-page look the `rounded-md` call above avoids.
+              */}
+              {/*
+                The card and its resize handle, in one `relative` box that
+                carries the card's 8px inset. The handle straddles the card's
+                left edge, which is why it cannot live *inside* the card
+                (`overflow-clip` would take its outer half) and why it is not on
+                the nav (the nav's edge is 8px to the left, and the whole point
+                is that the hand is on the card).
+
+                The card's ring does not react to it. The handle draws its own
+                glow on that ring, lit only at the pointer's height and fading
+                either side, so the edge never lights as a whole. What it
+                resizes is the nav, and the card follows because it is the
+                flex remainder.
+              */}
+              <div className="relative m-2 mt-0 flex min-h-0 min-w-0 flex-1">
+                <SidebarResizeHandle width={width} onWidthChange={setWidth} />
+                <div
+                  ref={inset}
+                  // Named like every other part of the shell. It is also what
+                  // the account card's placement is measured against: the
+                  // card's left edge, not the rail's, is the edge a popover
+                  // opening rightwards has to clear.
+                  data-slot="shell-inset"
+                  className="group/inset relative flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md shadow-2xs ring-1 ring-sidebar-border"
+                >
                 <SidebarInset
                   // `overflow-clip` for the same reason as the shell above: this
                   // only ever needed to clip the inset's rounded corners, and
@@ -268,11 +324,14 @@ export default function AdminShell({
                   </div>
                 </SidebarInset>
                 <EditorSidebar />
+                </div>
               </div>
             </div>
           </div>
         </SidebarProvider>
       </NewDocumentProvider>
+      </InsetProvider>
+      </DocumentCrumbProvider>
       </PageHeaderSlotProvider>
     </EditorPanelProvider>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +14,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { breadcrumbForPath, isPrimaryPath, parentHref } from "./breadcrumb";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isPrimaryPath, parentCrumb } from "./breadcrumb";
 import { usePageHeaderSlot } from "./PageHeaderSlot";
+import { useDocumentCrumb } from "./DocumentCrumb";
 
 /**
  * One row across the top of the content panel: back, where you are, and
@@ -47,6 +48,9 @@ export default function AdminHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const slot = usePageHeaderSlot();
+  // The document type, when the page below is showing one. The path cannot say
+  // so on its own; see `DocumentCrumb.tsx`.
+  const typeLabel = useDocumentCrumb();
   const primary = isPrimaryPath(pathname);
 
   // A page the nav links to directly has nothing to say here: the rail is
@@ -55,7 +59,9 @@ export default function AdminHeader() {
   // secondary route — every one of them is reached through its type's list.
   if (primary) return null;
 
-  const crumbs = breadcrumbForPath(pathname);
+  // Where back lands, and what to call it. One walk for both, so the tooltip
+  // cannot name somewhere the click does not go.
+  const parent = parentCrumb(pathname);
 
   return (
     <header
@@ -75,7 +81,7 @@ export default function AdminHeader() {
       // because this row is transparent and had nothing to hide it with. The
       // card goes under the peek whole or not at all, and under is what the
       // peek is for.
-      className="flex h-12 shrink-0 items-center gap-2 px-2"
+      className="relative flex h-12 shrink-0 items-center gap-2 px-2"
     >
       {/*
         Back leaves the page, and a draft's unsaved edits live in the form
@@ -83,26 +89,66 @@ export default function AdminHeader() {
         arrow, moved: same confirmation, same destination, now at the head of
         the row it belongs to rather than in a column to the right of it.
 
-        It carries its label as text. An arrow alone is the most easily
-        mistaken control in the app: it sat one row above a pager whose own
-        arrows move between pages, and the two meant different kinds of "back".
+        **It was a filled chip reading "Back", and both halves were dropped on
+        18 September 2026.** The arguments for them are worth keeping, because
+        each is answered by something else in the row rather than being wrong:
+
+        - The resting `bg-accent` was there because a ghost control among
+          breadcrumb text reads as another crumb until the pointer finds it.
+          The separator beside it now draws that boundary, which is the job the
+          fill was doing.
+        - The word "Back" was there because a bare arrow sat one row above a
+          pager whose own arrows also mean "back". The pager is at the far end
+          of the row now, so the two are no longer read as a pair.
+
+        **Both strings name the destination, because there are two back
+        controls on a document page.** This one leaves for the list the document
+        came from; the editor's own arrow steps through the flow. Two unlabelled
+        arrows that mean different kinds of "back" is the confusion the word
+        used to remove, and naming where this one lands removes it better: the
+        difference between them is not that one is a button but that they go to
+        different places.
+
+        The destination is read off the breadcrumb (`parentCrumb`), which is the
+        same walk the trail below renders and the same one the click navigates
+        to, so the tooltip cannot promise somewhere the button does not go.
+
+        The two strings differ, per §1.5. The tooltip is read by somebody who
+        can see the arrow and the trail beside it, so the destination alone is
+        the whole of what it adds; the `aria-label` is reached out of that
+        context, so it keeps its verb. An icon-only control with no accessible
+        name is the one button rule `design-system.test.ts` fails the build
+        over.
       */}
       <AlertDialog>
-        <AlertDialogTrigger
-          render={
-            <Button
-              type="button"
-              variant="ghost"
-              // A resting `bg-accent`, not only a hover one. It is the row's
-              // one control among breadcrumb text, and a ghost button with no
-              // fill reads as another crumb until the pointer finds it.
-              className="shrink-0 bg-accent text-muted-foreground"
-            >
-              <ArrowLeft className="size-3.5" />
-              Back
-            </Button>
-          }
-        />
+        {/*
+          The button is built once and passed *through* both triggers, which is
+          the pairing `ConfirmActionButton` uses for a dialog with a tooltip.
+
+          Worth knowing when checking this in a browser: Base UI's tooltip is
+          not `[role=tooltip]`. The trigger carries `aria-haspopup="dialog"`,
+          so a hover check should look for `[data-slot=tooltip-content]`.
+        */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Back to ${parent.label}`}
+                    className="shrink-0 text-muted-foreground"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                  </Button>
+                }
+              />
+            }
+          />
+          <TooltipContent>{parent.label}</TooltipContent>
+        </Tooltip>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave this page?</AlertDialogTitle>
@@ -112,53 +158,48 @@ export default function AdminHeader() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push(parentHref(pathname))}>
+            <AlertDialogAction onClick={() => router.push(parent.href)}>
               Leave
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <nav aria-label="Breadcrumb" className="min-w-0 shrink">
-        <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {crumbs.map((crumb, i) => {
-            const isLast = i === crumbs.length - 1;
-            return (
-              <li
-                key={`${crumb.label}-${i}`}
-                className="flex items-center gap-1.5"
-              >
-                {/* A slash, not a chevron. The row now holds three separate
-                    arrow glyphs (back, and the pager's two), and a fourth
-                    pointing the same way as the trail read as another control
-                    rather than as punctuation between two words. */}
-                {i > 0 && (
-                  <span className="shrink-0 opacity-40" aria-hidden="true">
-                    /
-                  </span>
-                )}
-                {isLast ? (
-                  <span
-                    className="truncate font-medium text-foreground"
-                    aria-current="page"
-                  >
-                    {crumb.label}
-                  </span>
-                ) : crumb.href ? (
-                  <Link
-                    href={crumb.href}
-                    className="truncate transition-colors hover:text-foreground"
-                  >
-                    {crumb.label}
-                  </Link>
-                ) : (
-                  <span className="truncate">{crumb.label}</span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+      {/*
+        The trail is not here any more: it moved to `TopPanel`, the band above
+        the card, on 18 September 2026. The separator that stood between the
+        arrow and it went with it, having nothing left to separate.
+
+        The arrow deliberately did **not** go up with the trail, so the two
+        rows each begin with one navigational thing rather than stacking both
+        in the same column. What that costs is the reason the arrow had a
+        resting fill in the first place: it is a ghost control with no text and
+        now nothing beside it, so what tells a reader it is a control is its
+        hover and focus states rather than anything at rest. Its tooltip names
+        the destination, which is the compensation.
+      */}
+
+      {/*
+        What kind of document this is, centred on the inset.
+
+        Absolutely positioned rather than a flex child, and that is the whole
+        reason it can be centred at all: the trail to its left and the pager to
+        its right are different widths on every page, so a centred flex item
+        would sit at the middle of whatever they left over and drift with the
+        length of a uuid. Out of flow it takes the card's own centre.
+
+        `pointer-events-none` because it spans the row it floats over, and a
+        transparent strip across the header would otherwise swallow clicks
+        meant for the trail and the pager underneath it.
+
+        It is the same value the trail's type crumb reads, so the two cannot
+        disagree about what is open.
+      */}
+      {typeLabel ? (
+        <p className="pointer-events-none absolute inset-x-0 text-center text-sm font-medium text-foreground">
+          {typeLabel}
+        </p>
+      ) : null}
 
       {/* The page's own content: the document title, then its pager hard
           against the right edge. Empty on every page that portals nothing,

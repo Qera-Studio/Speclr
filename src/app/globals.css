@@ -11,6 +11,8 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --font-heading:
     "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-field: var(--sidebar-field);
+  --color-page-active: var(--page-active);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -286,6 +288,41 @@
      `contrast.test.ts` reads them through, and a token pointing at another
      token is a value that test cannot measure. */
   --sidebar: var(--slate-50);
+  /* One shade darker than `--sidebar`, for a control sitting *on* that band:
+     today the pager's go-to-page box. It is its own token because "one step
+     darker than the band" is not a value any existing role holds in both
+     themes (`--muted` is slate-100 here and slate-800 in dark, which is three),
+     and because the ramp runs opposite ways: slate-950 is the floor, so the
+     dark answer steps up. Written as the ramp step rather than pointing at
+     another token, like `--sidebar` above and for the same reason. */
+  --sidebar-field: var(--slate-100);
+  /* The page you are on in the pager, which now sits on the *card*.
+
+     Its own token rather than `--raised`, because the two themes need opposite
+     directions and no single existing role does both.
+
+     **Light steps down, dark steps up**, and that asymmetry is the ramp rather
+     than an oversight. The pager's container lost its fill (18 September 2026),
+     so in light the pill sits on slate-50 with the whole ramp below it and
+     nothing useful above: slate-100 is the marker, one step down from the page.
+     In dark it sits on slate-900 near the floor, where the only way to be found
+     is up, so it stays slate-700.
+
+     **One step, not two or three.** This was tried at slate-300 and slate-200
+     on the way here and both read as a block rather than a marker: the pill
+     also carries a border and a shadow, so the fill is the third thing saying
+     "you are here" and does not have to shout. A resting state that is mostly
+     just *present* wants the smallest step the ramp has.
+
+     That puts it on the same value as `--hover`, which is deliberate and is
+     why the pager's hover goes *past* it to slate-200: hovering is transient
+     and reads as a press, while the pill is the only one of the two with a
+     stroke. See `pagination.tsx`.
+
+     Written as the ramp step rather than pointing at another token, like
+     `--sidebar` above and for the same reason: `contrast.test.ts` reads these
+     through and cannot measure a token that points at a token. */
+  --page-active: var(--slate-100);
   /* The rail is scenery, not content: muted so the *current* page (which keeps
      --sidebar-accent-foreground) is the one thing that reads loud. 7.74:1 on
      --sidebar, so it still clears AA as body text. */
@@ -305,6 +342,53 @@
   --sidebar-hover: var(--slate-100);
   --sidebar-active: var(--slate-200);
   --sidebar-border: var(--slate-200);
+  /* The hand: a solid slate-800 silhouette, hotspot at the fingertip. It is
+     Lucide's `pointer` geometry drawn as one closed shape rather than the
+     stroked outline, so it matches the arrow below. Links take it from
+     `@layer base` and the `cursor-pointer` utility is redefined at the foot of
+     this file. Keep the fill equal to `--slate-800`. */
+  --cursor-pointer:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+      8 3,
+    pointer;
+  /* The arrow. The platform's is black with a white outline whatever the
+     theme; this is Lucide's `mouse-pointer-2` filled in slate-800, hotspot at
+     the tip. Applied on `body` and inherited from there, with the two
+     corrections `@layer base` makes below: the browser gives buttons an arrow
+     of their own that would sit beside this one, and text fields keep the
+     I-beam. The `cursor-default` utility is redefined at the foot of this file
+     so every existing use of it resolves here too. Keep the fill equal to
+     `--slate-800`; the platform arrow is the fallback. */
+  --cursor-default:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
+      3 4,
+    default;
+  /* The two drag cursors, the same slate-800 silhouette as the hand: an open
+     hand over anything that can be dragged (the tab strips, the profile
+     switcher) and a fist while it is. Hotspot at the centre of the palm, which
+     is where the platform's own grab cursors put it. The `cursor-grab` and
+     `cursor-grabbing` utilities are redefined at the foot of this file. Keep
+     the fill equal to `--slate-800`. */
+  --cursor-grab:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+      10 11,
+    grab;
+  --cursor-grabbing:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
+      10 11,
+    grabbing;
+  /* The nav resize handle's cursor: the platform's col-resize glyph is black
+     with a white outline whatever the theme, and it sat on the shell like a
+     stranger. This is the same glyph (a bar with a head each way, Lucide's
+     `move-horizontal` with a spine) drawn in slate-700, hotspot at its centre.
+     Slate-900 was tried first and read as too heavy against the shell. An SVG
+     data URI cannot read a custom property, so the stroke is the token's own
+     oklch value written out: keep it equal to `--slate-700`. The platform
+     cursor stays as the fallback for a browser that refuses the image. */
+  --cursor-col-resize:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.33 0.03 257.287)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
+      12 12,
+    col-resize;
   --sidebar-ring: var(--slate-500);
 }
 
@@ -461,6 +545,25 @@
      So this line and the 10% below it are a pair. Do not lower one without
      looking at the other. */
   --sidebar: var(--slate-950);
+  /* The pair of `--sidebar-field` above. Up the ramp, not down: slate-950 is
+     the floor and has nothing below it, so one shade *off* the band is
+     slate-900, which is also what the card sits on. */
+  --sidebar-field: var(--slate-900);
+  /* The pair of `--page-active` above, and **two** steps up rather than one.
+
+     Unchanged when light went the other way and dropped to slate-300: here the
+     pill sits near the ramp's floor, where up is the only direction there is.
+
+     `--raised` (slate-800) is the symmetrical answer and it separates from the
+     slate-900 surface by only 0.91, which is what this was before. Slate-700
+     gives 3.04, a little over three times as much, and the active page is the
+     one thing in this control that has to be found at a glance.
+
+     The reason slate-700 is refused for `--hover` a few lines up does not apply
+     here: that rejection is about `--muted-foreground` landing on it at 3.94:1,
+     and half of what a hovered *card* prints is muted. The pager's pill prints
+     `--foreground` at full strength, which is 11.67:1 on this value. */
+  --page-active: var(--slate-700);
   /* 7.68:1 on --sidebar. */
   --sidebar-foreground: var(--slate-400);
   --sidebar-primary: oklch(0.623 0.214 259.815);
@@ -484,6 +587,33 @@
      thing dividing the rail from the page now. */
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: var(--slate-400);
+  /* The hand, mirrored in slate-200. Keep the fill equal to `--slate-200`. */
+  --cursor-pointer:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+      8 3,
+    pointer;
+  /* Slate-200, the mirror of the light theme's slate-800. Keep the fill equal
+     to `--slate-200`. */
+  --cursor-default:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
+      3 4,
+    default;
+  /* The two drag cursors in slate-200. Keep the fill equal to `--slate-200`. */
+  --cursor-grab:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+      10 11,
+    grab;
+  --cursor-grabbing:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
+      10 11,
+    grabbing;
+  /* Slate-300, the mirror of the light theme's slate-700: a dark glyph on a
+     near-black page is a cursor that has gone missing. Same drawing, same
+     hotspot; keep the stroke equal to `--slate-300`. */
+  --cursor-col-resize:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.855 0.017 252.894)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
+      12 12,
+    col-resize;
 }
 
 /*
@@ -525,6 +655,34 @@
   }
   body {
     @apply bg-background text-foreground;
+    cursor: var(--cursor-default);
+  }
+  /* The browser's own stylesheet gives these `cursor: default`, the platform
+     arrow, which would show beside the themed one on every button. Inherit
+     instead, so they take the page's arrow, or a parent's `cursor-pointer`. */
+  button,
+  select,
+  summary {
+    cursor: inherit;
+  }
+  /* The I-beam is the one native cursor kept: a field is where text is typed,
+     and a themed arrow inherited from `body` would have taken it away. The
+     excluded types are controls rather than text. */
+  input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='button'], [type='submit'])),
+  textarea,
+  [contenteditable]:not([contenteditable='false']) {
+    cursor: text;
+  }
+  /* The browser gives a link the platform hand; take the themed one. Anything
+     else that wants a hand says `cursor-pointer`, which resolves to the same. */
+  a:where([href]) {
+    cursor: var(--cursor-pointer);
+  }
+  /* `SidebarResizeHandle` marks the body for the length of a drag. The pointer
+     leaves the 6px handle the moment the rail moves, so the cursor has to be
+     the page's for that duration, and it is the same glyph the handle shows. */
+  body[data-resizing] {
+    cursor: var(--cursor-col-resize);
   }
   html {
     @apply font-sans;
@@ -859,4 +1017,27 @@
       box-shadow: 0 0 0 4px transparent;
     }
   }
+}
+
+/* `cursor-default` resolves to the themed arrow rather than the platform's,
+   so the places that already say "this is not clickable" show the same glyph
+   the page does. A core utility redefined here takes precedence over the
+   built-in. `cursor-pointer` is untouched: the hand is still the platform's. */
+@utility cursor-default {
+  cursor: var(--cursor-default);
+}
+
+/* Same for `cursor-pointer`: the themed hand, not the platform's. */
+@utility cursor-pointer {
+  cursor: var(--cursor-pointer);
+}
+
+/* And the two drag cursors, so the tab strips and the profile switcher show
+   the same silhouette the links do. */
+@utility cursor-grab {
+  cursor: var(--cursor-grab);
+}
+
+@utility cursor-grabbing {
+  cursor: var(--cursor-grabbing);
 }

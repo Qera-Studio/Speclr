@@ -1,4 +1,4 @@
-import { breadcrumbForPath, isPrimaryPath, parentHref } from '../breadcrumb';
+import { breadcrumbForPath, isPrimaryPath, parentCrumb, parentHref } from '../breadcrumb';
 
 /**
  * The breadcrumb is suppressed on any page the sidebar links to, so this is
@@ -62,6 +62,64 @@ describe('parentHref', () => {
   it('sends a record page up to its own profile home', () => {
     expect(parentHref('/admin/employees')).toBe('/admin');
     expect(parentHref('/client/clients')).toBe('/client');
+  });
+});
+
+/**
+ * Back names its destination, and the name comes from the same walk as the href.
+ *
+ * The header's back arrow lost its visible label, so the tooltip and the
+ * `aria-label` are what say where it goes — which matters because a document
+ * page carries *two* back controls: this one leaves for the list, and the
+ * editor's own steps through the flow.
+ *
+ * They are tested together because the failure this prevents is a label that
+ * disagrees with the click. Deriving them from one walk is what makes that
+ * impossible, and asserting the pair is what keeps them derived: a future
+ * hand-written label would pass an href-only test.
+ */
+describe('parentCrumb', () => {
+  it('names the destination it points at', () => {
+    expect(parentCrumb('/client/clients/abc')).toEqual({
+      label: 'Clients',
+      href: '/client/clients',
+    });
+    expect(parentCrumb('/client/docs/new/invoice')).toEqual({
+      label: 'Invoice',
+      href: '/client/docs/invoice',
+    });
+  });
+
+  /**
+   * **A grouping crumb is skipped, and the label follows it past.**
+   *
+   * The admin trail for a document is Dashboard / Documents / <id>, but that
+   * "Documents" has no page of its own, so back goes to the profile home and
+   * must *say* Dashboard. The client side's Documents is a real list and is
+   * named. This is the case a hand-written "Back to Documents" would get wrong
+   * on one side of the app while looking right on the other.
+   */
+  it('skips a crumb with no page, and says where it actually lands', () => {
+    expect(parentCrumb('/admin/docs/some-id')).toEqual({
+      label: 'Dashboard',
+      href: '/admin',
+    });
+    expect(parentCrumb('/client/docs/7505ad80')).toEqual({
+      label: 'Documents',
+      href: '/client',
+    });
+  });
+
+  it('agrees with parentHref, which is derived from it', () => {
+    for (const path of [
+      '/admin/docs/some-id',
+      '/client/docs/7505ad80',
+      '/client/clients/abc',
+      '/client/docs/new/invoice',
+      '/admin',
+    ]) {
+      expect(parentCrumb(path).href).toBe(parentHref(path));
+    }
   });
 });
 
@@ -144,6 +202,34 @@ describe('breadcrumbForPath', () => {
       { label: 'Dashboard', href: '/admin' },
       { label: 'Documents', href: undefined },
       { label: 'abc123', href: '/admin/docs/abc123' },
+    ]);
+  });
+
+  /**
+   * The bug this guards read **"Documents / Documents / 7505ad80-…"** on every
+   * open contract. The client profile's home is already "Documents", so the
+   * grouping crumb repeated it: the same word twice, one a link and one not,
+   * which reads as a rendering fault rather than as a hierarchy. It survives
+   * on the admin side (above), whose home is "Dashboard".
+   */
+  it('drops the grouping crumb when the home already carries its word', () => {
+    expect(breadcrumbForPath('/client/docs/abc123')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'abc123', href: '/client/docs/abc123' },
+    ]);
+  });
+
+  /**
+   * The document's *kind*, which the path cannot supply: the route is a uuid
+   * and only the database knows it is a contract, so the page publishes it
+   * upward (`DocumentCrumb.tsx`). Optional, and the trail above is correct
+   * without it.
+   */
+  it('names the document type when the page supplies one', () => {
+    expect(breadcrumbForPath('/client/docs/abc123', 'Contract')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Contract', href: undefined },
+      { label: 'abc123', href: '/client/docs/abc123' },
     ]);
   });
 

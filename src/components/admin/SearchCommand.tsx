@@ -8,6 +8,7 @@ import { Shortcut } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PROFILE, profileFromPath } from "@/lib/profile";
 import { searchAll, type SearchHit } from "@/server/actions/search";
+import { isTypingInto } from "./NewDocumentCommand";
 
 /**
  * The header search, scoped to the current profile: the client side finds
@@ -17,7 +18,12 @@ import { searchAll, type SearchHit } from "@/server/actions/search";
  * A plain input with a listbox anchored under it, rather than a Popover — a
  * popover moves focus, and this must never take the caret out of the field
  * mid-word. Arrow keys move the active option, Enter opens it, Escape closes.
- * ⌘K / Ctrl-K focuses the field from anywhere.
+ * `/` or ⌘K / Ctrl-K focuses the field from anywhere; `/` is the one printed
+ * on the cap, and it only fires when the reader is not already typing.
+ *
+ * It lives in the nav rail, under the wordmark and above the links (moved 18
+ * September 2026, from a band across the top of the content). A rail is where
+ * a reader looks to get somewhere, which is what this does.
  *
  * The lookup is debounced and aborted when superseded, and it fails silently:
  * an empty result and a failed request look the same to the user, which is
@@ -72,9 +78,15 @@ export default function SearchCommand() {
     };
   }, [query, profile]);
 
-  // ⌘K / Ctrl-K from anywhere puts the caret in the field.
+  // `/` from anywhere, and ⌘K / Ctrl-K still, put the caret in the field.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const focus = () => {
+        event.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      };
+
       // Compared explicitly rather than lowercased: this listener is on
       // `document`, so it sees every keydown on the page — including synthetic
       // ones from component libraries and autofill that carry no `key` at all.
@@ -83,9 +95,31 @@ export default function SearchCommand() {
         (event.key === "k" || event.key === "K") &&
         (event.metaKey || event.ctrlKey)
       ) {
-        event.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
+        focus();
+        return;
+      }
+
+      /*
+        A bare `/`, the convention this field now advertises on its own keycap.
+
+        Two guards, and both are what make an unmodified printable character
+        safe to bind. **`isTypingInto` is the load-bearing one**: without it a
+        slash typed into any field on the page would be swallowed and the caret
+        thrown into the search box, which would break every date, every path
+        and every fraction anyone types. It is the same guard `g` and `?` use
+        in `KeyboardShortcuts`, so a reader finds one rule rather than three.
+
+        Modifiers are excluded so this never competes with a browser or OS
+        binding that happens to involve the key.
+      */
+      if (
+        event.key === "/" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isTypingInto(event.target)
+      ) {
+        focus();
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -157,14 +191,23 @@ export default function SearchCommand() {
         onKeyDown={onKeyDown}
       />
 
-      {/* The ⌘K binding existed but was documented only in this file's header —
+      {/*
+          The binding existed but was documented only in this file's header —
           nobody could discover it. Hidden once there is text, where it would
-          sit over what the user is typing. */}
+          sit over what the user is typing.
+
+          **One cap, not two, and it advertises `/` rather than ⌘K.** Both
+          still focus the field. `/` is printed because it is the shorter of
+          the two and needs no modifier glyph, which matters more here than it
+          did in the header band: the field is narrow in the rail, and two caps
+          would take most of the room the placeholder needs. ⌘K stays bound for
+          anyone with it in their fingers, and it is in the `?` cheatsheet.
+      */}
       {query ? null : (
         <Shortcut
           aria-hidden="true"
           className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2"
-          keys={["mod", "K"]}
+          keys={["/"]}
         />
       )}
 

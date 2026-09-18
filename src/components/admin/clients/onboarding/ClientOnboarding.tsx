@@ -2,14 +2,16 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import FlowShell, {
+  FinishPanel,
+  useActionsSlot,
+} from "@/components/flow/FlowShell";
 import type { ContractService } from "@/lib/domain/service";
 import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
 import type { ClientRecord } from "@/lib/domain/types";
 import { COUNTRY_SEED } from "@/lib/domain/countries";
-import { onboardingSteps, stepIndex, type OnboardingStep } from "./steps";
+import { onboardingSteps, stepIndex } from "./steps";
 import { StepActionsSlot, STEP_FORM_ID } from "./stepKit";
 import KindChooser from "./KindChooser";
 import CountryChooser from "./CountryChooser";
@@ -23,10 +25,10 @@ import AccessStep from "./AccessStep";
 
 /**
  * How long the finish moment holds before the list replaces the page. Long
- * enough for seven staggered ticks (`STAGGER_MS` apiece) plus a read of the
- * line under them, short enough that nobody waits on it.
+ * enough for seven staggered ticks (`STAGGER_MS` in `FlowShell`, which owns the
+ * row that does the ticking) plus a read of the line under them, short enough
+ * that nobody waits on it.
  */
-const STAGGER_MS = 80;
 const FINISH_MS = 1400;
 
 /**
@@ -116,7 +118,7 @@ export default function ClientOnboarding({
    * than a ref, because a ref set during commit does not re-render, and the
    * step below needs to hear about the node in order to render into it.
    */
-  const [actions, setActions] = useState<HTMLElement | null>(null);
+  const [actions, setActions] = useActionsSlot();
   /**
    * "Save and close" was the button pressed, so `onSaved` leaves instead of
    * advancing.
@@ -281,160 +283,26 @@ export default function ClientOnboarding({
   }
 
   return (
-    /*
-      Three bands over the card's full height, and which band a thing is in is
-      the whole layout rule: **what belongs to the wizard is pinned, what
-      belongs to the step moves.** The row and the button are the same on all
-      seven steps and the button is pressed seven times in a row, so neither
-      may travel with the fields that slide in and out between them.
-
-      Only the middle band scrolls. `h-full` resolves against the inset's
-      scroll area in `AdminShell`, which is therefore never the thing that
-      scrolls here.
-    */
-    <div className="flex h-full min-h-0 flex-col gap-5">
-      {/*
-        The step row is the whole progress indicator now. The bar, the
-        "Step 3 of 7" label and the "2/7 complete" counter all said the same
-        thing the row was already showing, three more times — and the page
-        heading repeated the step heading directly below it. The h1 stays for
-        assistive tech, which does need a page name.
-
-        Full card width, outside the form's column: it is a track across the
-        page, and squeezing it into the width of the fields made a progress
-        indicator that showed less the further the page was widened.
-      */}
-      <header className="shrink-0">
-        <h1 className="sr-only">
-          {initialClient ? initialClient.name : "Add a client"}
-        </h1>
-        <StepNav
-          steps={steps}
-          active={active}
-          client={client}
-          finishing={finishing}
-          onSelect={(index) => goTo(index)}
-        />
-      </header>
-
-      {/*
-        No step heading: the row above already names the step, and repeating it
-        as an h2 with a description under it said the same thing twice and cost
-        the fold. `aria-label` keeps the section named for assistive tech, which
-        does still need to know what it is standing in.
-
-        `m-auto` on the inner column is what gives both behaviours from one
-        rule: a short step sits in the middle of the card instead of hugging the
-        top, and a tall one scrolls from the top once it outgrows the band.
-
-        That needs the band to be a flex *container*, not merely a flex item.
-        `flex-1` makes it the latter, and auto margins in block layout resolve
-        to zero vertically — which is why the column centred sideways and still
-        hugged the top. `flex flex-col` is the whole fix. Auto margins rather
-        than `justify-center` deliberately: a centred flex line pushes overflow
-        past the scroll container's top edge, out of reach; auto margins
-        collapse instead, so a tall step still scrolls from its first field.
-      */}
-      <section
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
-        aria-label={step.title}
-      >
-        {/* `shrink-0`, or a step taller than the band gets squashed to fit
-            rather than scrolling.
-
-            Every step centres. Attachments used to be the exception, taking the
-            band's height so its list of extras could take the leftover and
-            scroll, which pinned the step to the top of an otherwise empty
-            screen in the common case, where there are no extras at all. The
-            list caps itself at four rows now, so there is no exception left. */}
-        <div
-          className={cn(
-            "w-full max-w-3xl",
-            // `mx-auto` either way. Only the *vertical* auto margin is the
-            // short-step centring; dropping both put the column against the
-            // left edge of the card.
-            "mx-auto my-auto shrink-0",
-          )}
+    <FlowShell
+      steps={steps}
+      active={active}
+      record={client}
+      title={initialClient ? initialClient.name : "Add a client"}
+      finishing={finishing}
+      finishPanel={
+        <FinishPanel
+          heading={client?.name ? `${client.name} is set up` : "Client is set up"}
         >
-          {finishing ? (
-            <FinishPanel name={client?.name} />
-          ) : (
-            /*
-          `key` remounts the step on every move. react-hook-form reads
-          `defaultValues` on mount only, so without this, stepping from one
-          step to another and back would show the previous step's values.
-
-          The remount is also what replays the slide, for free. It comes in
-          from the side it is travelling from, so going back looks like going
-          back rather than like another new page.
-        */
-            <div
-              key={step.key}
-              className={cn(
-                "animate-in fade-in duration-200",
-                forward ? "slide-in-from-right-6" : "slide-in-from-left-6",
-              )}
-            >
-              <StepActionsSlot.Provider value={actions}>
-                {step.key === "identity" ? (
-                  <IdentityStep {...stepProps} />
-                ) : null}
-                {step.key === "tax" ? <TaxStep {...stepProps} /> : null}
-                {step.key === "contacts" ? (
-                  <ContactsStep {...stepProps} />
-                ) : null}
-                {step.key === "commercial" ? (
-                  <CommercialStep {...stepProps} />
-                ) : null}
-                {step.key === "services" ? (
-                  <ServicesStep {...stepProps} services={services} />
-                ) : null}
-                {step.key === "attachments" ? (
-                  <AttachmentsStep {...stepProps} />
-                ) : null}
-                {step.key === "access" ? <AccessStep {...stepProps} /> : null}
-              </StepActionsSlot.Provider>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/*
-        The pinned footer. The submit button is portalled in here by `StepForm`
-        (see `StepActionsSlot`), so it keeps the step's own `submitting` and
-        label while sitting outside the subtree that slides.
-
-        Back is absolute so the button stays centred on the column rather than
-        on whatever space is left beside it. The two ending up in the same band
-        is fine where the original objection was not: they are at opposite ends
-        of the card, not adjacent.
-      */}
-      <div className="relative flex shrink-0 items-center justify-center pt-2">
-        {back && !finishing ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="absolute left-0"
-            aria-label={back.label}
-            onClick={back.go}
-          >
-            <ArrowLeft aria-hidden />
-          </Button>
-        ) : null}
-        {/* Any *other* submit clears the flag, so a failed save-and-close does
-            not quietly turn the next ordinary save into an exit. The wrapper
-            is `display:contents` and still sees the click: events bubble
-            through the tree whatever the box model does with it. */}
-        <div
-          ref={setActions}
-          className="contents"
-          onClickCapture={() => {
-            closing.current = false;
-          }}
-        />
-
-        {/*
+          Invoices, contracts and their place of supply now come from this
+          record.
+        </FinishPanel>
+      }
+      back={back}
+      onSelect={(index) => goTo(index)}
+      onActionsSlot={setActions}
+      slideFrom={forward ? "right" : "left"}
+      rightAction={
+        /*
           The flow saves a section at a time and always did. Nothing said so,
           so the only visible way out was the browser's back button, which
           looks like abandoning the form — and a wizard people are afraid to
@@ -442,8 +310,18 @@ export default function ClientOnboarding({
 
           A real submit, not a link: it writes this step first, so the claim in
           the label is true even for what was typed in the last thirty seconds.
-        */}
-        {!finishing ? (
+
+          Any *other* submit clears the flag, so a failed save-and-close does
+          not quietly turn the next ordinary save into an exit. The wrapper is
+          `display:contents` and still sees the click: events bubble through
+          the tree whatever the box model does with it.
+        */
+        <span
+          className="contents"
+          onClickCapture={() => {
+            closing.current = false;
+          }}
+        >
           <Button
             type="button"
             variant="ghost"
@@ -456,156 +334,21 @@ export default function ClientOnboarding({
           >
             Save and close
           </Button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-/**
- * The last screen of onboarding, shown for `FINISH_MS` while the row ticks
- * through and then replaced by the clients list.
- *
- * It exists because the flow had no ending. Seven forms, and the seventh save
- * swapped the page for a table with no acknowledgement that anything had been
- * completed — the only genuinely rewarding moment in the task, and it was the
- * one moment given nothing.
- *
- * It says what was achieved rather than congratulating anybody: this record is
- * now what every document for this client derives from, which is the actual
- * payoff and the reason the seven steps were worth filling in. `role="status"`
- * because a screen reader gets no ticking row.
- */
-function FinishPanel({ name }: { name?: string }) {
-  return (
-    <div
-      role="status"
-      className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-3 py-16 text-center duration-200"
+        </span>
+      }
     >
-      <span className="animate-in zoom-in-50 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground duration-200">
-        <Check className="size-6" aria-hidden />
-      </span>
-      <p className="text-base font-medium">
-        {name ? `${name} is set up` : "Client is set up"}
-      </p>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        Invoices, contracts and their place of supply now come from this record.
-      </p>
-    </div>
+      <StepActionsSlot.Provider value={actions}>
+        {step.key === "identity" ? <IdentityStep {...stepProps} /> : null}
+        {step.key === "tax" ? <TaxStep {...stepProps} /> : null}
+        {step.key === "contacts" ? <ContactsStep {...stepProps} /> : null}
+        {step.key === "commercial" ? <CommercialStep {...stepProps} /> : null}
+        {step.key === "services" ? (
+          <ServicesStep {...stepProps} services={services} />
+        ) : null}
+        {step.key === "attachments" ? <AttachmentsStep {...stepProps} /> : null}
+        {step.key === "access" ? <AccessStep {...stepProps} /> : null}
+      </StepActionsSlot.Provider>
+    </FlowShell>
   );
 }
 
-/**
- * The step row.
- *
- * One horizontal line above the form rather than a column beside it: seven
- * steps stacked down the left took a quarter of the page to say something the
- * progress bar was already saying, and pushed the form into a narrow gutter.
- * Across the top it costs one line and the form gets the width.
- *
- * Real buttons in a real list, so it is keyboard-reachable and announced as
- * what it is. A step that needs a saved record is `disabled` before there is
- * one — the honest state, rather than a link that fails on arrival. The row
- * scrolls rather than wrapping on a narrow window, so a step is never on a
- * second line pretending to be the first.
- *
- * Three states, carried by the square alone rather than by a filled pill: ahead
- * is muted, current is `primary` tinted to a tenth, done is `primary` solid
- * with a tick in place of the number. Colour is never the only signal —
- * `aria-current="step"` marks the current one and a visually-hidden
- * "(complete)" marks the finished ones.
- *
- * This row is also the only place the step is named. There is no heading below
- * it repeating the label and a description under that.
- */
-function StepNav({
-  steps,
-  active,
-  client,
-  finishing,
-  onSelect,
-}: {
-  /** Six or seven, depending on the kind. See `onboardingSteps`. */
-  steps: readonly OnboardingStep[];
-  active: number;
-  client: ClientRecord | null;
-  /** Every step reads as done, ticking left to right. See `FinishPanel`. */
-  finishing: boolean;
-  onSelect: (index: number) => void;
-}) {
-  return (
-    // Edge to edge across the card. `justify-between` spreads the seven, so the
-    // first and last mark the ends of the track and the spacing itself carries
-    // how far along the flow is.
-    //
-    // Each step stays `shrink-0` and the list keeps `overflow-x-auto`, so a
-    // narrow window scrolls rather than crushing the labels — and the scroll
-    // container is the list itself, never a centred box that would put the
-    // first step out of reach past its left edge.
-    <nav aria-label="Onboarding steps" className="w-full min-w-0">
-      <ol className="scrollbar-none -mx-1 flex items-center justify-between gap-3 overflow-x-auto px-1">
-        {steps.map((step, index) => {
-          const complete =
-            finishing || (client ? step.isComplete(client) : false);
-          const locked = step.needsRecord && !client;
-          const current = !finishing && index === active;
-          const delay = `${index * STAGGER_MS}ms`;
-          return (
-            <li key={step.key} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => onSelect(index)}
-                disabled={locked || finishing}
-                aria-current={current ? "step" : undefined}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  current && "font-medium text-primary/80",
-                  !current && complete && "text-foreground",
-                  !current && !complete && "text-muted-foreground",
-                  !current && !locked && !finishing && "hover:text-foreground",
-                  locked && "cursor-not-allowed opacity-50",
-                )}
-              >
-                <span
-                  // Staggered only while finishing, so the row reads left to
-                  // right once instead of every square landing at once. During
-                  // ordinary stepping there is no delay and the single tick
-                  // that just turned pops on its own.
-                  style={finishing ? { transitionDelay: delay } : undefined}
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-sm text-[11px] tabular-nums transition-colors",
-                    complete && "bg-primary text-primary-foreground",
-                    // Current is the accent held back rather than the accent
-                    // dropped: same blue as done, at a tenth of the fill. The
-                    // two states stay distinguishable — one is solid with a
-                    // tick, the other a tinted block with its number.
-                    !complete &&
-                      current &&
-                      "bg-primary/10 font-medium text-primary/80",
-                    !complete && !current && "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {complete ? (
-                    // Mounted fresh the moment the step turns complete, which
-                    // is what makes the pop play exactly once, on the square
-                    // that earned it, with no state tracking which.
-                    <Check
-                      className="animate-in zoom-in-50 fill-mode-backwards size-3.5 duration-200"
-                      style={finishing ? { animationDelay: delay } : undefined}
-                      aria-hidden
-                    />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                {step.short}
-                {complete ? <span className="sr-only">(complete)</span> : null}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}

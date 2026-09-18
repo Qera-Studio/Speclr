@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Field, FieldLabel } from '@/components/ui/field';
 import {
   Select,
   SelectContent,
@@ -66,8 +67,23 @@ export default function PopupGallery() {
         </Select>
       </div>
 
+      {/*
+        Inside a `Field`, which is the shape that actually ships and the one
+        that breaks. `Field`'s vertical orientation sets `*:w-full` on its
+        children, and a child selector outranks a width utility on the child
+        itself — so a date field given `w-60` here renders the class, has no
+        effect, and silently stays as wide as its column.
+
+        A bare `<div className="w-96">` cannot see that: the trigger sizes
+        itself there either way, so the spec passed while the real form was
+        24px out. The probe keeps its `w-96` so the column is still wider than
+        a calendar, which is what makes the match worth measuring.
+      */}
       <div data-probe="date" className="w-96">
-        <DatePicker value={date} onValueChange={setDate} />
+        <Field>
+          <FieldLabel htmlFor="probe-date">Date</FieldLabel>
+          <DatePicker id="probe-date" value={date} onValueChange={setDate} />
+        </Field>
       </div>
 
       <div data-probe="menu" className="w-96">

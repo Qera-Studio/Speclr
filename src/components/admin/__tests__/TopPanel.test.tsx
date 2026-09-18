@@ -4,27 +4,57 @@ import { Sidebar, SidebarProvider } from '@/components/ui/sidebar';
 import { EditorPanelProvider, EditorPanelContent } from '../EditorPanel';
 import EditorSidebar from '../EditorSidebar';
 import TopPanel from '../TopPanel';
+import { InsetProvider } from '@/components/ui/sheet';
+
+/**
+ * A *secondary* path, and that matters since the trail moved into this band.
+ *
+ * `/client` is a profile home, where `Breadcrumbs` correctly renders nothing:
+ * a test for the trail's presence mocked there asserts against the one case
+ * that is meant to be empty.
+ */
+let pathname = '/client/docs/some-document-id';
 
 jest.mock('next/navigation', () => ({
-  usePathname: () => '/client',
+  usePathname: () => pathname,
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
 }));
 // `SearchCommand` calls a Server Action that imports the Neon client — stub it
-// so this file doesn't drag a DB connection in.
+// so this file doesn't drag a DB connection in. Kept although search has left
+// this band: the rail renders it, and a test here that mounts a fuller tree
+// would otherwise reach the real action.
 jest.mock('@/server/actions/search', () => ({ searchAll: jest.fn(async () => []) }));
+
+// Reset in a hook rather than at the end of the one test that changes it, or a
+// failure before that line leaks the path into every test after it.
+beforeEach(() => {
+  pathname = '/client/docs/some-document-id';
+});
 
 const navEl = () => document.querySelector('[data-side="left"][data-slot="sidebar"]');
 const railEl = () => document.querySelector('[data-side="right"][data-slot="sidebar"]');
 
 function renderPanel(
   panelContent?: React.ReactNode,
-  /** The inset card, when the test is about the notification drawer landing in it. */
+  /**
+   * The inset card, when the test is about the notification drawer landing in
+   * it. It goes in through the provider, exactly as `AdminShell` publishes it:
+   * nothing passes the card down as a prop any more.
+   */
   inset?: React.RefObject<HTMLElement | null>,
 ) {
+  const panel = inset ? (
+    <InsetProvider inset={inset}>
+      <TopPanel />
+    </InsetProvider>
+  ) : (
+    <TopPanel />
+  );
+
   return render(
     <EditorPanelProvider>
       <SidebarProvider>
-        <TopPanel inset={inset} />
+        {panel}
         {/* A bare rail, standing in for `AdminSidebar`, so the toggle button
             has a real `data-state` to flip. */}
         <Sidebar collapsible="icon" />
@@ -69,9 +99,37 @@ describe('TopPanel', () => {
     expect(screen.queryByRole('navigation', { name: 'Profile' })).not.toBeInTheDocument();
   });
 
-  it('renders the search field', () => {
+  /**
+   * **Search is not here any more**, and the trail is.
+   *
+   * They swapped on 18 September 2026: search went into the nav rail under the
+   * wordmark, and the trail came up out of the card's header row into this
+   * band. Both directions are asserted, for the reason the switcher and the
+   * wordmark already are: the failure worth preventing is two copies, one in
+   * each place, which reads as a layout quirk rather than as a duplication.
+   */
+  it('holds no search field, which now lives in the rail', () => {
     renderPanel();
-    expect(screen.getByRole('combobox', { name: /search/i })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: /search/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the breadcrumb trail', () => {
+    renderPanel();
+    expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toBeInTheDocument();
+  });
+
+  /**
+   * On a page the nav links to, the band's left side is simply empty.
+   *
+   * Asserted here rather than only in `Breadcrumbs.test.tsx`, because this is
+   * the surface where the consequence shows: the band renders on every page,
+   * so a trail that did not know to withdraw would restate the highlighted
+   * rail row on every primary screen in the app.
+   */
+  it('leaves the band empty on a page the nav links to', () => {
+    pathname = '/client/clients';
+    renderPanel();
+    expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).not.toBeInTheDocument();
   });
 
   /**
@@ -100,6 +158,9 @@ describe('TopPanel', () => {
    * about the app has no business dimming the nav beside it — so `contained`
    * swaps both to `absolute`, and the card is the positioned box they resolve
    * against.
+   *
+   * Nothing here passes a prop: the shell publishes the card once through
+   * `InsetProvider` and every sheet beneath it reads it (`ui/sheet.tsx`).
    */
   it('opens the drawer inside the inset, and positions it against it', async () => {
     const user = userEvent.setup();
@@ -168,6 +229,52 @@ describe('TopPanel', () => {
       </EditorPanelContent>,
     );
     expect(screen.queryByRole('button', { name: /edit panel/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Double-click the band to go fullscreen.
+   *
+   * jsdom implements none of the Fullscreen API, so these define
+   * `requestFullscreen` themselves and assert on the call. That is the right
+   * level for this file either way: whether the *browser* honours the request
+   * is the browser's business, and what is ours is which double-clicks are
+   * allowed to make it.
+   *
+   * The second test is the one worth having. A handler on the band alone would
+   * still fire for every double-click that bubbles up from a control inside
+   * it, so double-clicking the bell would resize the window as well as opening
+   * the drawer.
+   */
+  describe('fullscreen', () => {
+    let request: jest.Mock;
+
+    beforeEach(() => {
+      request = jest.fn();
+      Object.defineProperty(document.documentElement, 'requestFullscreen', {
+        configurable: true,
+        writable: true,
+        value: request,
+      });
+    });
+
+    it('goes fullscreen on a double-click of the band', async () => {
+      const user = userEvent.setup();
+      const { container } = renderPanel();
+
+      await user.dblClick(container.querySelector('[data-slot="top-panel"]') as HTMLElement);
+
+      expect(request).toHaveBeenCalled();
+    });
+
+    it('leaves a double-click on one of its controls alone', async () => {
+      const user = userEvent.setup();
+      const { container } = renderPanel();
+      const end = container.querySelector('[data-slot="top-panel-end"]') as HTMLElement;
+
+      await user.dblClick(within(end).getByRole('button', { name: /notifications/i }));
+
+      expect(request).not.toHaveBeenCalled();
+    });
   });
 
   it('names its parts for inspection', () => {

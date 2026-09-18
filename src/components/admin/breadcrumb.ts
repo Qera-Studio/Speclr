@@ -45,20 +45,34 @@ function humanize(segment: string): string {
 }
 
 /**
- * Where a "back" control on `pathname` should lead: its nearest navigable
- * ancestor, read off the breadcrumb trail.
+ * Where a "back" control on `pathname` should lead, **and what to call it**:
+ * its nearest navigable ancestor, read off the breadcrumb trail.
  *
  * Derived rather than passed down per page, so back and the breadcrumb can
  * never disagree about the hierarchy — both read the nav definition. Grouping
  * crumbs are skipped because they have no page of their own, and anything
  * without an ancestor falls back to the profile's home.
+ *
+ * The label comes back with the href because there are two back controls on a
+ * document page: this one leaves for the list, and the editor's own steps
+ * through the flow. A control that says where it goes is the difference
+ * between them, and a label derived separately from the destination is a
+ * second place for the two to disagree.
  */
-export function parentHref(pathname: string): string {
-  const home = NAV_BY_PROFILE[profileFromPath(pathname) ?? DEFAULT_PROFILE].home.href;
+export function parentCrumb(pathname: string): { label: string; href: string } {
+  const nav = NAV_BY_PROFILE[profileFromPath(pathname) ?? DEFAULT_PROFILE];
+  // Narrowed rather than asserted: the filter is what guarantees an href, so it
+  // is the filter that should say so. Grouping crumbs have none, and the
+  // fallback is a nav link, which always does.
   const ancestors = breadcrumbForPath(pathname)
     .slice(0, -1)
-    .filter((c) => c.href);
-  return ancestors[ancestors.length - 1]?.href ?? home;
+    .filter((c): c is Crumb & { href: string } => Boolean(c.href));
+  return ancestors[ancestors.length - 1] ?? { label: nav.home.label, href: nav.home.href };
+}
+
+/** Where a "back" control on `pathname` should lead. See `parentCrumb`. */
+export function parentHref(pathname: string): string {
+  return parentCrumb(pathname).href;
 }
 
 /**
@@ -70,8 +84,13 @@ export function parentHref(pathname: string): string {
  * would be offering to navigate somewhere the profile cannot reach. The profile
  * itself is not a crumb — the switcher above already says which side you are
  * on, and repeating it would be the same word twice on every page.
+ *
+ * `typeLabel` is the one fact the path cannot supply: a document's route is
+ * `/…/docs/<uuid>` and only the database knows the uuid is a contract. It is
+ * optional and the trail is correct without it, so nothing here depends on a
+ * page remembering to pass it. See `DocumentCrumb.tsx`.
  */
-export function breadcrumbForPath(pathname: string): Crumb[] {
+export function breadcrumbForPath(pathname: string, typeLabel?: string | null): Crumb[] {
   const clean = (pathname.split('?')[0] || '/').replace(/\/+$/, '') || '/';
   const profile = profileFromPath(clean) ?? DEFAULT_PROFILE;
   const nav = NAV_BY_PROFILE[profile];
@@ -98,11 +117,25 @@ export function breadcrumbForPath(pathname: string): Crumb[] {
     }
   }
 
-  // Unknown route. Group document routes under a "Documents" crumb; otherwise
-  // humanize the last segment as a best-effort leaf label.
+  /*
+    Unknown route under `/docs` — an unknown leaf is a document id.
+
+    The grouping crumb is **only added when it is not the root's own word**.
+    The client profile's home is already "Documents", so the trail read
+    "Documents / Documents / 7505ad80-…": the same word twice, one of them a
+    link and one of them not, which reads as a rendering fault rather than as a
+    hierarchy. The admin profile's home is not "Documents", so there the group
+    still earns its place.
+
+    `typeLabel` is the document's kind, which the path cannot carry (see
+    `DocumentCrumb.tsx`). With it the trail is "Documents / Contract / <id>";
+    without it, the id sits directly under the group as before.
+  */
   if (segments[0] === 'docs') {
-    // Under /docs, an unknown leaf is a document id — show it verbatim.
-    return [root, { label: 'Documents', href: undefined }, { label: leaf, href: clean }];
+    const group: Crumb[] =
+      root.label === 'Documents' ? [] : [{ label: 'Documents', href: undefined }];
+    const kind: Crumb[] = typeLabel ? [{ label: typeLabel, href: undefined }] : [];
+    return [root, ...group, ...kind, { label: leaf, href: clean }];
   }
 
   /**

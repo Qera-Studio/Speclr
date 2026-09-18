@@ -98,8 +98,16 @@ export function TableCard({
       className={cn("overflow-clip rounded-md border bg-background", className)}
     >
       {children}
+      {/*
+        `pl-9 pr-2`, and the asymmetry is the rule rather than an oversight.
+        The left holds the row count, which is prose and lines up with the
+        first column's text. The right holds the pager, whose ghost icon
+        buttons carry their own padding inside the hit target: the glyph sits
+        well inside the box, so 36px on top of it pushed the last arrow off
+        the card's corner. Padding to a control is not padding to a letterform.
+      */}
       {count || pagination ? (
-        <div className="flex min-h-11 items-center justify-between gap-2 border-t px-9 py-2 text-xs text-muted-foreground">
+        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-9 pr-2 text-xs text-muted-foreground">
           <span>{count}</span>
           {pagination}
         </div>
@@ -324,6 +332,7 @@ export function SortableHead<C extends string>({
   column,
   label,
   right,
+  width,
   sort,
   onSortChange,
 }: {
@@ -331,6 +340,8 @@ export function SortableHead<C extends string>({
   label: string;
   /** Right-aligned, as a money column is. Reverses the arrow's side too. */
   right?: boolean;
+  /** A width utility for the `<th>`, e.g. `w-16`. */
+  width?: string;
   sort?: { column: C; direction: "asc" | "desc" } | null;
   onSortChange?: (column: C) => void;
 }) {
@@ -343,7 +354,7 @@ export function SortableHead<C extends string>({
 
   return (
     <TableHead
-      className={cn(right && "text-right")}
+      className={cn(right && "text-right", width)}
       // Announced only for the column actually sorted; the rest are 'none',
       // which is what tells a screen reader they're sortable.
       aria-sort={

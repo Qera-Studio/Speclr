@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from '@/components/ui/popup';
+import { RINGED_POPUP_GAP } from '@/components/ui/popup';
 import { cn } from '@/lib/utils';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
@@ -507,12 +507,15 @@ function DayOfMonthPicker({
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>
-      {/* A ringed trigger, so it clears the ring and never comes out
-          narrower than the field. See `ui/popup.ts`. */}
+      {/* A ringed trigger, so it clears the ring. It does not match the
+          field's width, for the reason `ui/date-picker.tsx` gives at length:
+          this is a seven-column grid of day numbers, and a grid's width is
+          decided by what is in it. Stretched to a full-width field it is the
+          same 31 numbers with more air between them. */}
       <PopoverContent
         align="start"
         sideOffset={RINGED_POPUP_GAP}
-        className={cn('w-auto p-2', RINGED_POPUP_WIDTH)}
+        className="w-auto p-2"
       >
         <div className="grid grid-cols-7 gap-1">
           {DAYS.map((day) => (

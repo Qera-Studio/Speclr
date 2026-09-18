@@ -365,7 +365,7 @@ describe('DocumentsBrowser pagination', () => {
     expect(rowCount()).toBe(10);
     expect(screen.getByText('QS-INV-2627-001')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Next page of documents' }));
+    await user.click(screen.getByRole('button', { name: 'Page 2 of documents' }));
     expect(screen.getByText('QS-INV-2627-011')).toBeInTheDocument();
     expect(screen.queryByText('QS-INV-2627-001')).not.toBeInTheDocument();
   });
@@ -381,7 +381,7 @@ describe('DocumentsBrowser pagination', () => {
     const user = userEvent.setup();
     render(<DocumentsBrowser documents={many} />);
 
-    await user.click(screen.getByRole('button', { name: 'Next page of documents' }));
+    await user.click(screen.getByRole('button', { name: 'Page 2 of documents' }));
     expect(screen.getByText('QS-INV-2627-011')).toBeInTheDocument();
 
     await addFilter(user, /^status$/i);

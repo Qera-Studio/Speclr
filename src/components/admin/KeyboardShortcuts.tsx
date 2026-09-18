@@ -12,6 +12,7 @@ import {
 import { Shortcut } from '@/components/ui/kbd';
 import { isTypingInto } from './NewDocumentCommand';
 import { NAV_BY_PROFILE, jumpsForProfile } from './nav';
+import { useFullscreen } from './useFullscreen';
 import type { Profile } from '@/lib/profile';
 
 /**
@@ -47,6 +48,17 @@ export default function KeyboardShortcuts({ profile }: { profile: Profile }) {
    */
   const armed = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * The keyboard half of the header's double-click.
+   *
+   * A gesture is not a binding: without this, fullscreen would be reachable
+   * only by a mouse, on a surface whose own accessibility checklist is one of
+   * the eight this ships under. `F` rather than a letter with a `g` prefix,
+   * because it acts on the window rather than navigating to a page.
+   */
+  const fullscreen = useFullscreen();
+  const toggleFullscreen = fullscreen.toggle;
+
   useEffect(() => {
     const jumps = jumpsForProfile(profile);
 
@@ -72,6 +84,15 @@ export default function KeyboardShortcuts({ profile }: { profile: Profile }) {
         return;
       }
 
+      // Shift-F, and the shift is what keeps it out of the `g` sequence's way:
+      // a bare `f` is a plausible second key for a future jump, and this acts
+      // on the window rather than going anywhere.
+      if (event.code === 'KeyF' && event.shiftKey && !armed.current) {
+        event.preventDefault();
+        toggleFullscreen();
+        return;
+      }
+
       if (!armed.current) {
         if (event.code !== 'KeyG') return;
         event.preventDefault();
@@ -92,16 +113,32 @@ export default function KeyboardShortcuts({ profile }: { profile: Profile }) {
       document.removeEventListener('keydown', onKeyDown);
       disarm();
     };
-  }, [profile, router]);
+  }, [profile, router, toggleFullscreen]);
 
   return <ShortcutHelp open={open} onOpenChange={setOpen} profile={profile} />;
 }
 
-function Row({ keys, label }: { keys: string[]; label: string }) {
+/**
+ * One binding, or two that do the same thing.
+ *
+ * `alt` is a second set of caps for an action with more than one key, printed
+ * after an "or": search answers to both `/` and ⌘K, and listing it twice would
+ * read as a duplicated row rather than as a choice. The word is text rather
+ * than a third cap, because it is prose about the caps, not a key to press.
+ */
+function Row({ keys, alt, label }: { keys: string[]; alt?: string[]; label: string }) {
   return (
     <div className="flex items-center justify-between gap-6 py-1.5">
       <span className="truncate text-sm text-foreground">{label}</span>
-      <Shortcut className="shrink-0" keys={keys} />
+      <span className="flex shrink-0 items-center gap-1.5">
+        <Shortcut keys={keys} />
+        {alt ? (
+          <>
+            <span className="text-xs text-muted-foreground">or</span>
+            <Shortcut keys={alt} />
+          </>
+        ) : null}
+      </span>
     </div>
   );
 }
@@ -143,9 +180,16 @@ function ShortcutHelp({
 
         <div className="flex flex-col gap-4">
           <Section title="Anywhere">
-            <Row keys={['mod', 'K']} label="Search" />
+            {/* Both focus the field. `/` leads because it is the one printed
+                on the field's own keycap; ⌘K stays listed for anyone who
+                already has it in their fingers. */}
+            <Row keys={['/']} alt={['mod', 'K']} label="Search" />
             <Row keys={['mod', 'D']} label="New document" />
             <Row keys={['mod', 'B']} label="Show or hide the rail" />
+            {/* The gesture is the discoverable half of this one, so the label
+                names it: nobody guesses Shift-F, but a double-click on a
+                header bar is what every window on the machine already does. */}
+            <Row keys={['shift', 'F']} label="Fullscreen (or double-click the header)" />
             <Row keys={['?']} label="This list" />
           </Section>
 

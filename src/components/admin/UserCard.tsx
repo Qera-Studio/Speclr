@@ -11,7 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RAIL_POPUP_ALIGN_OFFSET, RAIL_POPUP_GAP } from '@/components/ui/popup';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 import { SETTINGS_LINK } from './nav';
 import { ThemeMenuItems } from './ThemeToggle';
 
@@ -29,15 +31,16 @@ function initials(name: string, email: string): string {
 }
 
 /**
- * Bottom-of-sidebar account card: avatar + name + email + chevron. Hovering or
- * clicking opens a dropdown with the theme, Settings and Sign out. Collapses
- * gracefully to just the avatar when the sidebar is in icon mode.
+ * Bottom-of-sidebar account card: one row of avatar + name + chevron, the
+ * email kept for the menu's header. Hovering or clicking opens a dropdown with
+ * the theme, Settings and Sign out. Collapses gracefully to just the avatar
+ * when the sidebar is in icon mode.
  */
 export default function UserCard({ user }: { user: UserCardUser }) {
   const { isMobile } = useSidebar();
 
-  const avatar = (
-    <Avatar className="h-8 w-8 rounded-md">
+  const avatar = (size: 'sm' | 'md') => (
+    <Avatar className={cn('rounded-md', size === 'sm' ? 'size-6 text-[10px]' : 'size-8')}>
       {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" className="rounded-md" /> : null}
       <AvatarFallback className="rounded-md bg-accent font-medium text-foreground">
         {initials(user.name, user.email)}
@@ -71,30 +74,42 @@ export default function UserCard({ user }: { user: UserCardUser }) {
             // corner of the rail: nothing is on the way past it, so the delay
             // buys nothing and only reads as the card being slow to answer.
             delay={0}
+            // One row, the height of every other rail button. The email used
+            // to sit under the name on a taller card; it is in the menu's
+            // header now, where it is read once rather than looked at all
+            // day. `py-1` so the 24px avatar fits the 32px row, and `p-1` in
+            // the icon rail for the same reason.
             render={
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-active data-[state=open]:text-sidebar-accent-foreground"
-              >
-                {avatar}
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name || user.email}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                </div>
+              <SidebarMenuButton className="py-1 group-data-[collapsible=icon]:p-1! data-[state=open]:bg-sidebar-active data-[state=open]:text-sidebar-accent-foreground">
+                {avatar('sm')}
+                <span className="truncate font-medium">{user.name || user.email}</span>
                 <ChevronsUpDown className="ml-auto size-4" />
               </SidebarMenuButton>
             }
           />
-          {/* `min-w`, and the offset comes from the primitive. The width here
-              was `w-(--radix-dropdown-menu-trigger-width)`, a Radix variable in
-              a Base UI app: it had never resolved to anything. */}
+          {/* `min-w`, and the width here was
+              `w-(--radix-dropdown-menu-trigger-width)`, a Radix variable in a
+              Base UI app: it had never resolved to anything.
+
+              `RAIL_POPUP_GAP` only on the side that has to clear the rail's
+              edge. Opening downwards on mobile, the anchor's own bottom edge is
+              the edge a reader sees, so the primitive's plain gap is right.
+
+              `RAIL_POPUP_ALIGN_OFFSET` is the same two insets read downwards,
+              so the popover's bottom corner nests with the inset card's rather
+              than ending 16px above it. Desktop only, for the same reason: on
+              mobile the menu opens below the card and `align="end"` is against
+              a different edge entirely. */}
           <DropdownMenuContent
             className="min-w-56 rounded-lg"
             side={isMobile ? 'bottom' : 'right'}
             align="end"
+            {...(isMobile
+              ? {}
+              : { sideOffset: RAIL_POPUP_GAP, alignOffset: RAIL_POPUP_ALIGN_OFFSET })}
           >
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              {avatar}
+              {avatar('md')}
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name || user.email}</span>
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
