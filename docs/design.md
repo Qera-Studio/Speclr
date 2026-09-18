@@ -262,6 +262,21 @@ by hand** unless you are deliberately overriding.
 controls (close, chevron, kebab). Everything else gets a visible label or, at
 minimum, an `aria-label` plus a tooltip.
 
+**The two are not the same string, and the difference is the context each is
+read in.** A tooltip is read by somebody who can already see which icon they are
+pointing at and which row it sits in, so one word is the whole of what it adds:
+"Expand", "Archive", "Download as MD". An `aria-label` is reached out of that
+context, in a list where "Expand" could be about anything on the page, so it
+keeps its object: "Expand this clause". Where one string genuinely serves both,
+pass one; a helper that takes `tooltip` should default it to `label`.
+
+**Every icon in a row of icons gets one, including the one that is not an
+`IconAction`.** The clause drawer's control row is five icons, and the only one
+with no tooltip was `ConfirmActionButton`, which names its button with an
+`sr-only` span instead. It was also the only irreversible control in the row.
+A row where four controls explain themselves and the fifth is the dangerous one
+is worse than a row where none do.
+
 **Icon colour follows text colour.** An icon does not get its own colour to
 "add interest"; it gets one only when it carries state (destructive, warning,
 pass).
@@ -375,6 +390,13 @@ background step, not from shadow.
   the page, `bg-card`.
 - **Shadows are for things that float over the page only**: popover, dropdown,
   dialog, toast, tooltip. Never on a card, a table or a button.
+- **One exception, and it is the frame, not a card**: the inset shell frame in
+  `AdminShell` carries `shadow-2xs` (one pixel of 5% black) under its ring, so
+  the frame reads as a hair above the shell rather than flush with it. That is
+  the only step permitted there. It is not a licence for the cards inside it,
+  which stay flat. The nav's resize handle sits on that frame's left ring and
+  lights it in `--ring` only at the pointer's height, fading to nothing 160px
+  above and below; the whole edge never lights, and there is no bar.
 - The one licensed exception is the `raised` button variant's two inset
   hairlines, which are on trial and either get rolled into `default` or deleted.
 - **One border, not two.** A bordered card containing a bordered table produces
@@ -443,6 +465,148 @@ measuring**: `zoom-in-95` and `slide-in-from-*` are transforms, so a box read
 inside the first 100ms is smaller than the one that settles, and the numbers
 moved between runs until the spec disabled them.
 
+**The highlight behind the active row is one surface that slides**, not a fill
+painted on whichever row is under the pointer. `useMagicMove` and `MagicMove`
+in `src/components/ui/magic-move.tsx`, used by the dropdown menu, the select and the
+combobox; it is `TabsIndicator`'s idea reaching the popups, and it exists as a
+hook only because Base UI measures the active *tab* onto custom properties and
+offers nothing equivalent for a row. Panel tier, `duration-200 ease-standard`,
+per §1.6's "a sliding pill indicator".
+
+Four rules, each of which was a bug first:
+
+- **The row keeps its text colour and loses its fill.** A row reached by
+  keyboard has to answer in the frame it is reached; one waiting on a 200ms
+  slide reads as lag. So `focus:bg-accent` came off the items and
+  `focus:text-accent-foreground` stayed.
+- **Two fills stay on their rows**, because they are not the one highlight: a
+  **destructive** menu row is a different colour, and a combobox's
+  **selected** tint marks a standing fact several rows can carry at once. The
+  magic move hides under the destructive row rather than sliding grey beneath red.
+- **The track takes a callback ref, never `useRef`.** A popup is portalled and
+  unmounted while closed, so it mounts after the hook's effects have run; an
+  effect keyed on a ref object attaches its observers to `null` and is never
+  re-run. Confirmed red: with a plain ref, all four magic-move tests fail.
+- **Measure the row, do not compute it.** The three primitives put their
+  padding in three different places, so the fill's box is read off the row
+  rather than assumed from the track's inset.
+
+**The nav rail uses it too, in `hover` mode.** A nav row carries no
+`data-highlighted` to watch: its hover is a CSS pseudo-class and nothing in the
+DOM changes, so the hook follows the pointer instead, through one delegated
+`pointerover`/`pointerout` pair on the list rather than handlers per row. The
+rail adds the one constraint the popups do not have, and it is the reason the
+active fill is left alone:
+
+- **Hover and active are two fills, and only hover moves.** They are one step
+  apart on the slate ramp deliberately (`globals.css`), because the active one
+  says which page you are on. A highlight that travelled in the active colour,
+  or that dragged the active row's own fill with it, would take "you are here"
+  away the moment the pointer rested anywhere else. Both halves are pinned, and
+  the colour half needs its own test: a version painting the moving fill in
+  `--sidebar-active` leaves the active row genuinely untouched and still reads
+  as three current pages on the way past.
+- **The rows' `hover:bg-*` is suppressed on the list, not in the primitive.**
+  The editor rail and the mobile sheet still use `ui/sidebar.tsx`'s own hover.
+  Without the suppression the hovered row paints instantly under a fill that is
+  still 200ms away, so two rows claim the pointer for the length of the move.
+- **Keyboard focus is deliberately not tracked in this mode.** The rows are
+  links with a focus ring of their own, and a fill chasing focus would compete
+  with the active fill rather than add to it.
+- **Hovering changes the fill and nothing else.** The primitive also darkens a
+  hovered row's text to `--sidebar-accent-foreground`, slate-600 to slate-900
+  in light mode: a measured drop from L 33.7 to L 5.0, near enough to black.
+  That reads as pressed rather than pointed at, and it restates what the fill
+  already says, so it is suppressed on this list. Worth knowing before
+  restoring it: the primitive's `data-active:text-*` and
+  `data-active:font-medium` never reach this rail either, because `MenuLink`
+  passes `text-sm` and `cn` drops the conflicting utilities on merge. An active
+  row here is its fill and only its fill, and the one place its text *did*
+  change was under the pointer, which said "hovered" rather than "current".
+- **The rows sit 8px apart, and that 8px is padding rather than a gap.** The
+  distinction is the rule, and the number is unchanged from what the rail
+  always had: this is the same spacing, expressed so it is not a hole.
+  `SidebarMenu`'s `gap-[8px]` put dead space between each row, and the fill
+  spent a third of every one-row move crossing it, which read as a block
+  jumping rather than a surface sliding. `gap-0` with `py-1` on each item puts
+  that distance inside the list instead, so every pixel of the column belongs
+  to some row. **The original `gap-[8px]` is the trap**: it is pixel-identical
+  and fails both halves of the test, which asserts 8px of visible ground
+  between rows *and* zero between the items the fill travels along. Note that
+  `py-1` is 4px per side and two neighbours' padding meets, so the class is
+  half the spacing it produces. The rows stay at the primitive's 32px, pinned,
+  since growing them into the spacing looks like the same fix.
+- **A row's hint waits 500ms before appearing.** The chevron and the ⌘D keycap
+  are a *delay*, not a slower fade: the State tier's 75ms is untouched and only
+  its start moves, so §1.6's table still holds. It exists because the fill
+  follows the pointer down the whole column, and running past six rows flashed
+  a chevron on each. The delay is on the arriving direction only (`delay-0`
+  with `group-hover:delay-500`), since a hint lingering over a row the pointer
+  has left is the same noise arriving late.
+
+**The ⌘D palette is the third caller, and the first that is a grid.** Its five
+document cards share one fill (`admin/NewDocumentCommand.tsx`). Two rules that
+only a grid could have produced:
+
+- **One fill for the pointer and the keyboard cursor**, which is the opposite
+  call from the rail and for a reason that does not carry: the rail's active
+  fill says which page you are on and must not travel, while a palette's
+  selection is only a cursor. So hovering a card selects it, and Enter opens
+  whatever the fill is sitting on. `marked` mode rather than `hover`, because
+  the grid already tracks a selection for the arrow keys and roving tabindex,
+  and watching `data-highlighted` answers the pointer, the arrows and Tab at
+  once where `hover` would leave the keyboard's own moves unlit.
+- **The focus ring is ours, not `focus-visible:`.** Selecting a card focuses
+  it, which is what makes Enter work. But `.focus()` called from code inherits
+  the modality the dialog was entered with, so Chromium reports
+  `:focus-visible` and paints the ring even when a mouse caused the move,
+  measured in both themes with the ring chasing the pointer across the grid.
+  The card records what moved the selection (`data-moved-by`) and the ring is
+  drawn only for the keyboard. **This is the rule to remember before adding a
+  fourth caller that moves focus**: a programmatic `.focus()` is never the
+  browser's evidence of a keyboard user.
+
+- **The grid lifts a clipped row itself, because the browser will not do it
+  smoothly.** Five cards do not fit (607px of content in 540px), so the bottom
+  row is clipped by 51px and reaching it has to bring it into view. Focusing an
+  element makes the browser scroll it in **instantly**, and that scroll ignores
+  `scroll-behavior: smooth`: the class lands, `getComputedStyle` reports
+  `smooth`, the grid is the only scroller in the ancestry, and it still snapped.
+  So the browser's scroll is suppressed with `focus({ preventScroll: true })`
+  and the same move made through `scrollIntoView`, which does animate.
+  `block: 'nearest'` is the intent: lift a clipped card just far enough to be
+  whole, and leave one already in view where it is (measured at 0px moved).
+  **Its reduced-motion handling cannot ride on `globals.css`**, and this is the
+  general trap rather than a fact about this grid: the blanket
+  `scroll-behavior: auto !important` cannot reach a scroll whose behavior comes
+  from an *argument*, so this one kept animating under
+  `prefers-reduced-motion` while every CSS transition correctly stopped. The
+  media query is read in the effect, as `useProfileDrag` already does.
+
+Its e2e pair is the one that catches an axis. Every other caller is a list of
+full-width rows, where `left` and `width` never change and a fill tracking only
+`top` passes every test above; pinning `left` to 0 in the hook leaves all four
+popup tests green and turns only the palette's landing test red. Confirmed in
+exactly that way before it was trusted.
+
+**A scroll test must move the pointer with `mouse.move`, never `hover()`.**
+Playwright's `hover()` scrolls its target into view before it moves the
+pointer, so a test using it performs the very scroll it is measuring,
+instantly, before the app sees a pointer event at all. That produced a test
+failing against a fix that worked, and it was only identified by trapping
+every `scrollTop` write: the scroll arrived with no JavaScript stack behind it.
+Parking the pointer on a visible card and moving down measures the app.
+
+**Only the frames in between prove it, which is why this is e2e.** Both ends
+of the move look identical whether the highlight glides or jumps, so
+`e2e/popup.spec.ts` samples `transform` every frame and counts distinct values:
+a jump gives two, a real transition gives twenty-five. Three separate causes
+were invisible from the endpoints, each with the class and the computed
+`duration` both reading 0.2s the whole time — a ref read during render leaving
+the transition class one move stale, a `translate` value the browser normalises
+to a non-interpolable shape (hence `transform: translate3d`), and the class
+dropping for the single frame a select has no row marked.
+
 ### 1.8 Focus and hit targets — **house**
 
 - Focus is `focus-visible:ring-2 ring-ring/30` plus `focus-visible:border-ring`.
@@ -453,6 +617,37 @@ moved between runs until the spec disabled them.
 - Anything clickable is a `<button>` or an `<a>`. A `div` with an `onClick` is a
   bug, not a shortcut. Where the visual must be a box (the upload drop zone), it
   is `role="button"` with a keyboard handler and an `sr-only` real input inside.
+
+### 1.9 Cursors — **house**
+
+The platform cursors are black with a white outline whatever the theme, and on
+a slate shell they sat like strangers. Five are drawn in-house, as inline SVG
+data URIs on custom properties in `globals.css`, each with the platform cursor
+as its fallback. The I-beam is the one native cursor kept: a field is where
+text is typed, and nothing about that glyph is a colour choice.
+
+| Cursor | Glyph | Light | Dark | Applied by |
+|---|---|---|---|---|
+| `--cursor-default` | Lucide `mouse-pointer-2`, filled | slate-800 | slate-200 | `body`, inherited; the `cursor-default` utility |
+| `--cursor-pointer` | A filled hand, index raised, hotspot at the fingertip | slate-800 | slate-200 | `a[href]`; the `cursor-pointer` utility |
+| `--cursor-grab` | The same hand, open, hotspot at the palm | slate-800 | slate-200 | the `cursor-grab` utility |
+| `--cursor-grabbing` | The same hand, closed | slate-800 | slate-200 | the `cursor-grabbing` utility |
+| `--cursor-col-resize` | A spine with a head each way | slate-700 | slate-300 | the nav resize handle, and `body[data-resizing]` |
+
+- **The four utilities are redefined at the foot of `globals.css`**, so an
+  existing `cursor-pointer` resolves to the themed hand without the call site
+  changing. A new cursor gets a variable per theme, a `@utility` override, and
+  a row here.
+- **An SVG data URI cannot read a custom property**, so each fill is the
+  token's oklch value written out. The comment beside each says which token
+  it must equal; a slate token that changes changes these too.
+- **The hand is one silhouette in three poses.** The pointer, the open hand
+  and the fist share a palm and a thumb, so a drag reads as the same hand
+  closing rather than as three icons from three sets. Outlined and heavier
+  versions were tried and rejected: at 20px an outline fills in, and a bulkier
+  fill reads as a glove.
+- **The col-resize glyph is one step lighter** than the hands (slate-700, not
+  800). Slate-900 was tried first and read as too heavy against the shell.
 
 ---
 
@@ -524,11 +719,35 @@ The pair rule (`CONTEXT.md` §5f) is the law here: the **rule** lives in
 `src/components/form/fields.tsx`, named to match. Every schema imports the
 first, every form the second.
 
-**Two heights, and 32px is the floor.** The compact `default` is **32px**
-(`h-8`) and the roomy `form` is 38px (`h-9.5`). Nothing typed into goes under 32
-in any variant: input, textarea, select trigger, combobox and date trigger all
-declare the same number, so a field row cannot come out three heights. Pinned in
-`ui/__tests__/control-size.test.tsx`.
+**Three heights, and 32px is the floor.** The compact `default` is **32px**
+(`h-8`), `md` is **36px** (`h-9`) and the roomy `form` is 38px (`h-9.5`).
+Nothing typed into goes under 32 in any variant: input, textarea, select
+trigger, combobox and date trigger all declare the same number, so a field row
+cannot come out three heights. Pinned in `ui/__tests__/control-size.test.tsx`.
+
+**A rung is declared by every typed-into control or by none of them**, which is
+the rule rather than the list. `md` was added 17 September 2026 for the clause
+drawer, where 32 read as cramped under a full-width body editor and 38 made the
+two fields the largest thing on the panel. Adding it to `Input` alone would have
+been the smaller diff and the broken one: the moment a select or a date trigger
+joined that form, the row would come out two heights and the sentence above
+would stop being true. Note two of the five are cva variants and three declare
+every size at once as `data-[size=…]` selectors, so the test asserts the rung
+*exists and is 36px* rather than that no other number appears in the class
+string.
+
+**A textarea's height is its content's, never a number and never a drag.**
+`ui/textarea.tsx` carries `field-sizing-content` and `resize-none`, so a field
+starts at its rung and grows as lines are added. Two things override that and
+both are bugs rather than options: **`rows`** is a height, so `rows={2}` floors
+an empty field at two lines whatever field-sizing says, and **`resize-y`** puts
+a drag corner in the corner of every field, which is visual noise at this
+density and a second answer to how tall a field is, one the content decides and
+one somebody dragged to. The clause body editor had both and looked deliberate:
+28 rows of half-empty box, each with a grab handle nobody used. Measured in
+`e2e/clause-library.spec.ts`, against a row added during the test, because
+every stored clause holds enough prose to wrap and only an empty field shows
+the floor.
 
 **Enforced** (`design-system.test.ts` fails the build):
 
@@ -700,8 +919,89 @@ and long values truncate with the full string on `title`. All of it lives in
 
 ### 2.3 Tables
 
-The primary surface of this app. Rules, most of them open against
-`ui-elevation.md` Phase 2:
+The primary surface of this app, and the one place where "every instance
+behaves the same" is not a preference but the product working.
+
+**The rule above all the others: a list of records is a `RecordTable`**
+(`components/admin/RecordTable.tsx`). Not a `<Table>` you assemble. You pass
+rows and a column spec; it brings paging, the caption, the actions column, row
+selection and the row that opens its record. **Enforced:
+`design-system.test.ts` fails a `TableBody` outside `ui/` and `RecordTable`.**
+
+The reason is this section's own history. Every rule below was already written
+here, in this file, in these words, and the clause library was built in
+September 2026 with no paging over 28 rows, no caption and no sortable heads,
+by an author who had read the file. Prose describing a default is not a default.
+**The only defaults that hold are the ones you would have to take deliberate
+action to lose**, so the behaviours are the component's and departing from one
+is an explicit prop at the call site, where a reader can see it and ask why.
+
+`DocumentsTable` is the reference: where this section and that file disagree,
+that file is right and this section is stale.
+
+**What every table does, without being asked.** Each is a `RecordTable` default;
+the opt-out is named beside it and is the *only* way to lose the behaviour.
+
+| Behaviour | Opt out with | Why it is the default |
+|---|---|---|
+| Pages at ten rows | `pageSize` | A list longer than a screen buries whatever follows it. Ten is `PAGE_SIZE`, one number for the whole app. |
+| Row count and pager in the card footer | not optional | The answer to "is this all of them", asked at the end of a list. |
+| An `sr-only` `<TableCaption>` | not optional | A table with no caption is an unnamed region. It is one string. |
+| Column headings sort | **opt-in: pass `sortable`** | The one default that runs the other way. See below. |
+| A right-aligned actions column | `actions` omitted | The column exists whether or not a row has actions, or rows jump width. |
+| The whole row opens the record | `open` omitted | See below: it is one stretched link, not an `onClick`. |
+| A row-select checkbox column | **not optional** | See below. |
+| A bulk delete in the bar | `onBulkDelete` omitted | |
+| Empty state | `empty` | A table that renders zero rows and nothing else looks broken (§2.5). |
+
+**Selection is unconditional; the bar is not.** Every table draws the checkbox
+column, whether or not anything can act on a selection. That is a deliberate
+asymmetry with the rest of this table: the column is cheap to remove from one
+table later and expensive to remember to add to each new one, and a list where
+some rows tick and others do not is a list nobody trusts to be tickable. What
+*is* conditional is the bar underneath, which renders nothing until the table
+passes `onBulkDelete` or a `bulkActions` entry, so a tick never implies an
+action that does not exist.
+
+Three rules follow it:
+
+- **Only rows that can be acted on get a control.** `useBulkSelect`'s
+  `deletable` decides per row; a finalized document is immutable (CONTEXT §4)
+  and gets an empty cell of the same width. Offering a checkbox on a row the
+  server will refuse is offering an action one confirm dialog later.
+- **The checkbox cell paints above the row's overlay** (`relative z-10`), and
+  it is the first cell, so DOM order alone loses to the stretched link. Without
+  it, ticking a row opens the record instead. **Enforced in the browser**, and
+  confirmed red on removing the `z-10`.
+- **Delete keeps the bar's destructive slot; everything else is an ordinary
+  button.** The clause library carries both: bulk archive is reversible and
+  keeps each clause's number, so it is an outline button, while bulk delete
+  retires those numbers for good and is drawn as the destructive action it is.
+  A reversible action generally skips its confirm, because confirming one
+  teaches people to click through the dialog guarding the irreversible one.
+
+**The geometry rules, which are the ones that break silently.**
+
+- **A row that opens a record is `relative`, and the link is stretched**
+  (`after:absolute after:inset-0`). Both halves are load-bearing and neither is
+  obvious. An absolutely positioned overlay resolves against its nearest
+  *positioned* ancestor, so a `relative` on any cell between row and overlay
+  shrinks the hit area to that column, and **no `relative` anywhere lets the
+  overlay escape to the card and cover every row at once**, which makes a click
+  on row 4 open row 6. Both have happened here: `CopyCell` carried a `relative`
+  once, and the clause library shipped with neither. **Enforced in the browser**
+  (`e2e/clause-library.spec.ts` asserts *which* record opened, not that one
+  did), because jsdom does no hit-testing and reports both bugs as working.
+- **It is a real `<Link>`, never a row `onClick`.** Middle-click, ⌘-click,
+  "copy link address" and the keyboard all have to work, and the table stays
+  server-rendered. Where the row opens something that is not a URL (a drawer),
+  it is a `<button>` spanning the row, never a handler on the `<tr>`: a `tr` is
+  not a control, so a handler there is invisible to the keyboard and announces
+  nothing.
+- **What must sit above the overlay is positioned and later in DOM order**: the
+  actions cell, and the copy button's own `relative z-10`.
+
+**Everything else, unchanged and still true:**
 
 - **Every table sits in a `TableCard`** (`components/admin/Page.tsx`):
   `rounded-md border bg-background`, `overflow-clip`. **Enforced.** The fill is
@@ -717,8 +1017,49 @@ The primary surface of this app. Rules, most of them open against
   and nothing else. The count is `rowCountLabel` so its wording is the same
   everywhere; the pager is `ui/pagination`, which shows nothing at a single
   page, so "paginate past ten rows" needs no condition written anywhere.
-- **Header row:** `text-xs font-medium text-muted-foreground`, sticky when the
-  body scrolls, one hairline below.
+  `RecordTable` supplies both; nothing else should be constructing them.
+- **Header row:** sticky, one hairline below, and **filled `bg-sidebar`**, not
+  the `bg-background` the rows are on. **Enforced** (`ui/__tests__/table.test.tsx`).
+  That value is the shell's own ground, so a table's header band matches the
+  page's header band and the margin the card floats in: the card reads as data
+  held inside the chrome rather than as a box whose first row happens to be
+  bold. Before it, the header and the rows were the same fill and a hairline
+  carried the whole distinction, which in dark mode is close to carrying
+  nothing. Subtle in light (slate-50 on white) and strong in dark (slate-950
+  against the card), which is the right way round. Opaque either way, because
+  `sticky` means rows scroll under it.
+- **The footer's padding is asymmetric: 36px left, 8px right.** The left holds
+the row count, which is prose and lines up with the first column's text. The
+right holds the pager, whose ghost icon buttons carry their own padding inside
+the hit target, so the glyph already sits well inside the box and 36px on top
+of it pushed the last arrow off the card's corner. Padding to a control is not
+padding to a letterform. **Enforced** (`ui/__tests__/table.test.tsx`, and
+measured in `e2e/shell-sheets.spec.ts`).
+
+**Sorting is opt-in, and the reason is a rule about pairs.** Every other
+behaviour here is on by default; this one is off until a caller passes
+`sortable` (or passes an order of its own, which demonstrates the same thing).
+
+Sorting's controls only appear on a heading under the pointer, so the one piece
+of UI that advertises them is `SortToggle`, the eye. That eye lives in a
+`FilterBar`, which `RecordTable` does not own and cannot render into. So a table
+that sorted by default put arrows on hover wherever its caller had no bar, with
+nothing anywhere on the page to turn them off. The clause library and the
+employees list both shipped that way.
+
+**A control and the thing that governs it are one unit.** Where a component
+cannot carry both halves, the half it does carry is the one that waits to be
+asked for. **Enforced** (`design-system.test.ts`): a file that turns sorting on
+with no `SortToggle` rendered in its own folder fails the build.
+
+**The card *footer* carries the same fill**, so the data sits between two
+  bands of chrome rather than under one. **Enforced** in the same file. It was
+  left plain for an hour on the argument that sinking the pager would make it
+  harder to find; seeing it decided the other way, since the pager is a control
+  with its own hover and focus states and the asymmetry read as an unfinished
+  card. Its text is `muted-foreground`, and that pair on `sidebar` is asserted
+  in `contrast.test.ts`: it is the token that file's own header records as
+  having failed twice on a background nobody had checked.
 - **No icons in column headers.** A glyph beside a word that already names the
   column decorates rather than disambiguates (§1.5). `ColumnLabel` was deleted
   when the icons went.
@@ -733,7 +1074,8 @@ The primary surface of this app. Rules, most of them open against
   its own column.
 - **Row hover is a background step only.** No scale, no shadow, no border
   change (see §1.6, layout must not shift).
-- **The whole row is the link** where a row navigates, not the first cell.
+- **The whole row is the link** where a row navigates, not the first cell. See
+  the geometry rules above for the two ways this breaks.
 - **Row actions live in a right-aligned column** and may reveal on hover, but
   must remain keyboard-focusable when hidden (`opacity-0
   group-focus-within:opacity-100`, not `hidden`).
@@ -913,6 +1255,353 @@ deciding any of it again, and a change to one is a change to both.
   says where the controls stop and the board starts. Only the view that has an
   arrangement to change is shown any of it.
 
+### 2.10 Pagination
+
+**One pager, `ui/pagination.tsx`, and the pages are a tab group.** A trough
+with the page you are on raised on it, which is the shape the app already uses
+for tabs and profiles. It replaced a "Page 3 / 9" label between two arrows: a
+readout rather than a control, where every page but the two either side of you
+took a click each to reach, and whose one piece of information was already in
+the row count beside it.
+
+**Three shapes, by length.** One page renders nothing. Up to six, every page is
+a button, with no arrows and no box, because each is already one click away.
+Past six it becomes **three runs** — the first page, a sliding window of four,
+the last page — 8px apart with a hairline between them.
+
+**Everything is in one container**: both arrows, both anchors, the window and
+the go-to box. It was three troughs with the arrows and the box loose outside
+them, which drew six separate objects to say one thing and made a reader work
+out that they were one control. Only the container carries a stroke; nothing
+inside it does.
+
+- **A short rule says numbers are missing.** `1 7 8 9 10 23` run together would
+  be a lie about which numbers are adjacent. The gap alone carried this while
+  each run had its own trough, since the space between two backgrounds is a
+  boundary; with one container the background groups everything *together*, and
+  8px became indistinguishable from loose tracking. The rule is what the trough
+  edges used to be. It sits between runs, never after the last, or it would
+  claim pages beyond the last page, and it is `aria-hidden`: it speaks about
+  numbers a screen reader is already reading one at a time.
+- **It is drawn in the text ramp at 40%, not in `--border`, and it is half a
+  button tall.** `--border` bounds a box, and in dark it is white at 10%, about
+  as faint as a line gets here; this one is the only thing left carrying that
+  meaning, and a mark that means something cannot be quieter than the frame
+  around it. Height and weight are separate knobs and only weight should be
+  doing the work: at a full 18px it read as a structural divider cutting the
+  control into sections, so it is 12px against 24px buttons, a tick between
+  groups rather than a wall.
+- **Runs that touch are merged, and get no separator.** Near either end the
+  honest answer is two runs, not three: an anchor beside its own window would
+  print `1 … 1 2 3 4`, and a rule between neighbours claims something is elided
+  when nothing is.
+- **The arrow steps one page; the window turns in batches.** Inside a window it
+  moves the pill, and stepping off the last slot starts the next four. The
+  arrow's meaning stays constant while the numbers turn a page at a time rather
+  than crawling a column per click.
+- **Four, because the window serves neighbours rather than distance.** A sliding
+  window covers a rounding error of a long list at any width (on 23 pages, four
+  slots have the page you want 24% of the time, one slot 13%); reaching a
+  distant page is the box's job, in one interaction whatever this number is.
+  What the width decides is how often your *immediate* neighbours are already
+  there, which is the motion people actually make: next, next, back one. Within
+  two of where you are, W=1 shows 1%, W=2 26%, **W=4 63%**, W=6 76%. At one slot
+  the numbers stop being a control and become a readout of where you are, which
+  is the `Page 3 / 9` label this replaced. Six costs two more slots for 13
+  points, and on a 23-page list is the whole list minus the anchors. Four is
+  also the widest that still elides something at the six-page threshold, without
+  which the simple and windowed forms would be the same shape.
+- All of that arithmetic is `ui/pageGroups.ts`, pure and separately tested,
+  because every hard case here is a number rather than a box.
+
+**The box you type a page into** was the original rule here: it existed only in
+the document preview, so a nine-page document went to page 9 in one keystroke
+while a nine-page table took eight clicks. Neither surface decided that. The
+second one simply had nothing to copy from, which is §2.3's lesson about a value
+that appears twice, applied to a control.
+
+- **`usePagedRows`** holds the page and slices the rows. It clamps during
+  render, so filtering or deleting under the page you are on shows the last real
+  page rather than an empty table.
+- **Nothing renders at a single page.** A pager whose every control is disabled
+  is noise under a short table.
+- **The box is local state until it is committed**, on Enter or on blur, because
+  typing "1" on the way to "12" must not visit page 1. It re-syncs whenever the
+  page changes underneath, or it is a box lying about where you are. An empty or
+  out-of-range value returns to the current page rather than moving anybody.
+- **Digits only, sanitised on the way in** (`AGENTS.md`, input rules), and not a
+  shadcn `Input`: this is a two-character box in a card footer beside two ghost
+  buttons, so it carries a fill and no border.
+- **The box is filled one shade off whatever it sits on, never transparent.** It
+  was transparent until hovered once, which made the one control you can *type*
+  into look like the counter printed beside it; a field that takes input should
+  say so before it is touched. The step moved with the box: it was
+  `--sidebar-field` on the `--sidebar` band when it sat outside the pager, and
+  is `--hover` now that it sits inside the container. The rule is the step, not
+  the token. It stays borderless either way: the fill identifies it, and a
+  stroke as well would make a form field of it. **Enforced in a browser**
+  (`e2e/shell-sheets.spec.ts`, both themes, bounded above as well as below),
+  because a computed colour is what jsdom cannot see, and because this started
+  at two shades and was brought down: a test asking only "different from its
+  surroundings" would pass against the value that was too strong.
+- **Three surfaces, one step apart each.** The band is `--sidebar` (slate-50 /
+  slate-950), the container `--sidebar-field` (slate-100 / slate-900), and the
+  active page `--card` (slate-50 / slate-900). `--sidebar-field` is its own
+  token because no existing role means "one step off `--sidebar`" in both
+  themes: `--muted` is slate-100 in light and slate-800 in dark, one step here
+  and three there.
+- **The active page is `--page-active`, its own surface, lighter than the
+  container in both themes.** No existing role is a step up from
+  `--sidebar-field` on both sides, which is why it needed a token rather than a
+  borrowed one: `--card` is right in light (slate-50) and is the container's own
+  value in dark, where the fill separated by **0.000** and only the border drew
+  the active page; `--raised`, which every other active pill in the app uses, is
+  the mirror problem, fixing dark and sitting a step *down* in light, making the
+  pill a well. It replaced a `bg-card` plus `dark:bg-raised` pair, because two
+  tokens describing one surface is a surface with no name.
+- **Dark is slate-700, two ramp steps up rather than the symmetrical one.**
+  3.04 against the container where slate-800 gives 0.91, chosen for contrast:
+  the active page is the one thing here that has to be found at a glance. The
+  note refusing slate-700 for `--hover` does not apply, and the distinction is
+  worth keeping: that one is about `--muted-foreground` landing at 3.94:1, and
+  half of what a hovered *card* prints is muted, where this pill prints
+  `--foreground` at full strength (9.71:1 measured). Asserted in
+  `contrast.test.ts`, which was seen red against a value pushed up the ramp
+  until the text stopped clearing AA.
+- Lighter is what "nearer" means under a light source and does not invert with
+  the theme, so dark raises rather than sinks. The stroke stays either way.
+- **The go-to box goes the other way: a well, not a pill.** `--hover`, one step
+  *down* from the container (slate-200 light, slate-950 dark) while every other
+  filled thing here steps up. It is the one control you type into rather than
+  press, and `--hover` is the token that already means that step in both
+  directions, which a literal "one shade darker" cannot do at the ramp's floor
+  where slate-950 is the last value there is. It shares its fill with a hovered
+  page, which is coherent: both mean "this is interactive", and shape and
+  position keep them apart.
+- **An inactive page is bare until hovered.** A resting fill on every number
+  would rebuild the per-page box the container replaced, and leave the active
+  one nothing to be raised from.
+- **The pill is rounded tighter than the container** (`rounded-sm` inside
+  `rounded-lg`). Two boxes at one radius read as a single shape with a line
+  through it; a tighter inner corner is what says the pill is *in* the box.
+- **A measurement, not a preference, and the history is the argument.** The
+  trough was `bg-muted` once, borrowed from the tab list, and `--raised` and
+  `--muted` are the same ramp step in dark: the active page was invisible but
+  for its border, found only in a browser. The tab group escapes this because
+  its trough sits on `--card`; the pager's sits in a footer on `--sidebar`, the
+  ramp's floor. Measured in both themes in `e2e/shell-sheets.spec.ts` and
+  `e2e/component-library.spec.ts`.
+- **One way in: `onPageChange`.** `DocumentPager` used to pass `onPrev`/`onNext`
+  as well, because the preview scrolls a continuous strip where a table swaps a
+  slice. **That distinction was never real** — the box already went through
+  `onGoToPage`, and every caller pointed all three props at one `goToPage`, so
+  typing a page scrolled and the arrow beside it also scrolled, through two
+  props doing one job. Clicking a number scrolls for the same reason, and the
+  extra props are gone. `DocumentPager` is `Pagination` with the document's
+  vocabulary and no control of its own.
+
+**Enforced** (`design-system.test.ts`): a hand-written `Page {n} / {total}`
+counter outside the primitive fails the build.
+
+### 2.11 Sheets and where they open
+
+**Every sheet opens inside the inset card, and no caller says so.** `AdminShell`
+publishes the card through `InsetProvider` and `SheetContent` reads it from
+context.
+
+A sheet is `fixed`, so left alone it resolves against the viewport whatever DOM
+it is portalled into, and covers the whole window: the nav, the header band and
+the margin the card floats in all dim to report something happening inside the
+card. The scrim belongs to the surface being covered. Containing the sheet swaps
+the panel **and its backdrop** to `absolute`, which resolve against the card,
+which is `relative` and already carries `overflow-clip`, so the panel is clipped
+to its own corners.
+
+**Why context and not a prop.** `Notifications` was handed the ref and worked,
+because it is a direct child of the shell. The clause library's drawer is four
+levels into a page and could not be handed anything, so it spilled over the
+inset: the drawer was contained where the plumbing reached and not where it did
+not. A prop chain from the shell down to every page that might open a drawer is
+the rule being remembered rather than held.
+
+- **The backdrop is never removed**, only un-darkened. It is what closes the
+  sheet on an outside click and what keeps the page behind it inert.
+  `ClauseLibrary` passes `overlayClassName` to make it transparent, because its
+  drawer opens on a row whose neighbouring rows are the context being consulted.
+- **Outside the shell a sheet falls back to the window.** The `PageHeaderSlot`
+  degradation: every production route renders inside `AdminShell`, and a
+  component on its own in a test must still open.
+
+**How wide: one of three sizes, never a number at the call site.**
+
+| Size | Share of the card | Floor | For |
+|---|---|---|---|
+| `sm` | 30% | `min-w-sm` | A feed read down one column: notifications, activity |
+| `md` | 48% | `min-w-md` | Something worked through beside the list it opened from: a clause, a service's scope |
+| `lg` | 90% | `min-w-2xl` | A record consulted rather than edited, wide enough for columns, still a drawer because it is a glance rather than a page |
+
+There were three drawers in the app and three unrelated answers: the feed took
+the base `sm:max-w-sm`, the clause drawer overrode it to `sm:max-w-xl`, the
+mobile nav set a CSS variable. None of those was a decision about drawers; each
+was a number typed once at one call site.
+
+**Percentages, not fixed maxima**, because a contained sheet is positioned
+against the inset card and that card's width moves with the sidebar. A fixed
+`max-w` reads as one proportion with the nav open and another with it collapsed.
+
+- **The floors are measured, not named after their size.** A floor above the
+  percentage at ordinary widths is not a floor, it is the width, and the
+  percentage beside it is decoration. `md` was `min-w-2xl` (672px) first, which
+  is the obvious pairing and wrong: the card is 1028px at a 1280 viewport, so
+  60% was 617px and the floor governed the whole laptop range. **The same trap
+  caught the next change**: when `md` came down to 48%, `min-w-lg` (512px) is
+  again the obvious pairing and again sits above what the share yields (493px).
+  The test is what caught it both times. Re-measure if the shell's margins
+  change.
+- **A drawer is under half the card, not most of it.** `md` was 60% until 17
+  September 2026, at which width the panel and its scrim left the list it
+  opened from unreadable, which defeats the point of a drawer that opens on a
+  row. If a surface needs more than half the card, it wants `lg` and the
+  dimming that goes with it, or it wants a page.
+- **`sm` is the exception and its floor does bind on a laptop.** 30% of that
+  card is 308px against the 384px the feed had before, and a notification list
+  narrower than the one it replaces would be this rule making something worse.
+- **Only a side drawer takes a width.** A top or bottom sheet spans the card and
+  is sized by its content.
+
+**Flush or floating, and the scrim is what decides.** A drawer defaults to
+flush: full height, hard against the card's edge, square where it meets it. It
+reads as a *region* of the card, and what tells you the page has receded is the
+scrim over the page. `float` insets it from all four edges instead, with
+`rounded-sm` (one step under the card's own `rounded-md`, per §1.3) and a ring,
+so it reads as an *object* resting on the page.
+
+**The two travel together.** A floating panel needs its own edge, because
+nothing behind it is reporting that it is on top. That is why the clause drawer
+carries a ring as well as its shadow: flush, in dark mode, its surface and the
+inset behind it are close enough in lightness that the shadow alone does not
+read and there is no boundary anywhere.
+
+**How much the scrim darkens follows how much of the card the panel covers**,
+because they answer the same question: how much of what is behind is still
+being read. The clause drawer is `bg-black/10` as a drawer, with the table
+beside it still in use, and `bg-black/40` expanded, where the panel covers nine
+tenths of the card and the list is not usable anyway. Both are well under the
+app's default `bg-black/80`, which is right for a notification feed (chrome
+over the app, so the app recedes) and wrong for a panel opened from a row whose
+neighbours are the context.
+
+**Never blurred.** Blur destroys text where dimming only mutes it, and on this
+drawer being able to *read* the neighbouring clause numbers is the requirement
+the weight exists to protect.
+
+**The backdrop element is never removed**, whatever its weight. It is what
+catches the click outside and keeps the page inert, so a click on a neighbouring
+row closes the drawer rather than opening that row underneath it. Un-painting it
+entirely was tried on the clause drawer and reverted the same day: with nothing
+at all behind it, the panel read as floating in the page rather than over it.
+
+**A floating drawer at `lg` centres itself.** Tucked to the right at `md`,
+centred when expanded, because a panel that detaches from the edge on one side
+only is a wide drawer rather than the window that expanding is for. The height
+comes off the edges with it: inset on two sides and flush on the other two is a
+shape nobody chose.
+
+**Enforced** (`design-system.test.ts`): a `<SheetContent container=…>` outside
+the primitive fails the build, and so does one whose `className` names a width.
+The floating geometry is `sheet.test.tsx` for the classes and
+`e2e/clause-library.spec.ts` for the four gaps and the centring, which were
+each confirmed red against a panel with `float` removed.
+
+---
+
+### 2.12 Multi-step flows
+
+**Every multi-step flow is built on `FlowShell`** (`src/components/flow/`).
+There were two coming (client onboarding, the contract builder), and a second
+hand-built step row is a second set of answers about what a locked step looks
+like, whether the current one is announced, and where the submit sits. None of
+that is visible as a bug in either flow alone; it shows up as the two drifting.
+
+**Three bands, and which band a thing is in is the whole layout rule: what
+belongs to the wizard is pinned, what belongs to the step moves.** The step row
+and the button are the same on every step and the button is pressed once per
+step in a row, so neither travels with the fields sliding in and out between
+them. Only the middle band scrolls.
+
+- **The step is in the URL.** These are tasks people get pulled away from, and a
+  wizard whose back button leaves the flow entirely is a wizard people lose work
+  in.
+- **One form per step, each saving its own section.** That is what makes an
+  interrupted flow survivable without a draft column or a "resume" concept:
+  whatever was saved is simply on the record already.
+- **The submit is portalled into the footer**, so it sits in the pinned band
+  while keeping the step's own `submitting` and label. Lifting it into the shell
+  would mean a second copy of that state kept in step with the first.
+- **Completeness is derived, never stored** (`PRINCIPLES.md` rule 3). A column
+  recording which step somebody stopped on disagrees with the record the first
+  time a step is revisited and left empty.
+- **A step that needs a saved record is disabled until there is one**, which is
+  the honest state rather than a link that fails on arrival.
+- **`fill` drops the centred column** for a phase that is its own layout: a
+  preview beside a rail, a ledger of cards.
+
+**Enforced** (`design-system.test.ts`): `aria-current="step"` outside
+`components/flow/` fails the build. It is the attribute that marks which step of
+a sequence you are on, so a file carrying one has built its own row.
+
+### 2.13 The component library
+
+**`/client/library` is where a component is decided.** Every component the app
+uses, every variant of it, live and drivable, with a rail of components on the
+left and one component's specimens on the right. A change to a primitive is
+made, looked at and tried here first.
+
+**There is no second step where it ships**, and that is the point rather than a
+convenience. The page imports the real primitive from `src/components/ui/`, so
+this page and every caller are one import of one file. A library holding its own
+copies would be a place for the app to disagree with its own documentation,
+which is §5e's argument one layer up: the failure would be the library looking
+right while the app did not.
+
+- **A component is addressable.** `?component=` carries which one is showing, so
+  a variant can be linked to in a review. `replace`, not `push`: moving between
+  components changes what the page shows rather than navigating away from it,
+  and one history entry per component looked at is a back button nobody can use.
+- **Every variant is named and explained**, not merely shown. A gallery of
+  unlabelled specimens is a picture of the component; the note is what says
+  which rule each one is demonstrating and when it appears.
+- **The specimens are wired to real state.** This is the difference from a
+  screenshot and the reason behaviour can be finalised here: the pager's batch
+  turn, its runs merging at either end and its box committing on blur are all
+  behaviours, and a static render proves none of them.
+- **A specimen is drawn on the band the component actually lives on**, never a
+  neutral backdrop chosen to flatter it. The pager's trough is one step off
+  `--sidebar`, and that step is precisely what a reviewer is here to judge; on
+  `--card` it would separate cleanly here and vanish in the table footer it
+  ships into. In light mode the two surfaces are indistinguishable, so this is
+  a mistake only dark mode can show.
+- **An absence is labelled.** Some variants are the component declining to
+  render (a pager at one page). An empty stage among full ones reads as
+  something that broke rather than as the rule being demonstrated.
+- **A variant opens where it is actually interesting.** The pager's trailing
+  merge is a specimen of its own opening on the *last* page, because every long
+  list shows the leading merge on open and a specimen of that would be
+  demonstrating the shape the reader already knows.
+
+It supersedes `/admin/kit`, a flat scroll of static examples with no way to
+drive any of them, which stays until its six sections have been re-homed here
+one at a time.
+
+**Enforced** (`library/__tests__/catalogue.test.ts`): every entry's `source`
+must name a file that exists, its `rule` must name a heading that is actually in
+this document, and `Specimen.tsx` must import each catalogued primitive rather
+than reproduce it. All three are one-line edits somebody makes without opening
+that folder, and none of them look broken on the page afterwards.
+**`e2e/component-library.spec.ts`** owns the half only a browser can see: that a
+specimen's surfaces match the real table footer's, byte for byte, in both
+themes.
+
 ---
 
 ## 3. Writing
@@ -949,6 +1638,16 @@ when a house rule gets broken twice.
 | Page title comes from `PageHeader` (§1.4) | `src/__tests__/design-system.test.ts` |
 | Every duration is on the three-tier scale (§1.6) | `src/__tests__/design-system.test.ts` |
 | Every table is in a `TableCard` (§2.3) | `src/__tests__/design-system.test.ts` |
+| Every pager is `Pagination` (§2.10) | `src/__tests__/design-system.test.ts` |
+| A sorting table has a `SortToggle` (§2.3) | `src/__tests__/design-system.test.ts` |
+| The pager's box is a step down from its container, the footer `pr-2` (§2.3, §2.10) | `src/components/ui/__tests__/table.test.tsx`, `e2e/shell-sheets.spec.ts` |
+| No sheet names its own container (§2.11) | `src/__tests__/design-system.test.ts` |
+| No sheet names its own width; it takes a size (§2.11) | `src/__tests__/design-system.test.ts` |
+| Each size resolves to its share of the card (§2.11) | `src/components/ui/__tests__/sheet.test.tsx`, `e2e/shell-sheets.spec.ts` |
+| Every multi-step flow is built on `FlowShell` (§2.12) | `src/__tests__/design-system.test.ts` |
+| Every catalogued component points at a real file and a real section (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
+| The library imports each primitive, never copies it (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
+| A specimen's surfaces match the real footer's, both themes (§2.13) | `e2e/component-library.spec.ts` |
 | No phone printed in its stored form (§2.3) | `src/__tests__/design-system.test.ts` |
 | Optional is marked by `OptionalMark`, never by hand (§3) | `src/__tests__/design-system.test.ts` |
 | Labels are sentence case, never `uppercase` (§1.4) | `src/__tests__/design-system.test.ts` |
@@ -1316,3 +2015,417 @@ Append a line when a rule here changes. Keep it to one line and name the
   content: **`height: fit-content` does not animate.** Four tests in
   `e2e/sidebar-float.spec.ts` were rewritten around the new shape and confirmed
   red on the one-line revert to `h-fit`.
+- **15 September 2026** — **§1.9 added.** The arrow, hand, open hand, fist and
+  col-resize cursors are drawn in slate rather than the platform's black on
+  white, one variable per theme in `globals.css` and the four Tailwind
+  utilities redefined to resolve to them. The section records the arrow and
+  hand built earlier this month, which had no row until now.
+- **16 September 2026** — **A row may open a drawer, and a drawer need not
+  dim.** The clause library became a table whose whole row opens a `Sheet` on
+  the right. Two rules fall out. A row's open target is one absolutely
+  positioned button, and the **row** carries `relative`: resolving against the
+  cell covers the number alone, and resolving against the table card lays one
+  tall target over every row, which opened clause 6 from row 4. And
+  `SheetContent` takes `overlayClassName`, so a caller may make the backdrop
+  transparent while keeping it (it is what closes the sheet on an outside click
+  and keeps the page inert). A drawer dims what it is *about*: `Notifications`
+  is about the app, so the app recedes, while a clause is one row of the list
+  still being read, whose neighbours it cites by number. Both are geometry, so
+  both are pinned in `e2e/clause-library.spec.ts` against
+  `/preview/clause-library` and were each confirmed red on a one-line revert.
+- **16 September 2026** — **§2.3 rewritten around `RecordTable`, and the table
+  rules became defaults rather than prose.** Every rule that section stated was
+  already written down when the clause library shipped with no paging over 28
+  rows, no caption and no sortable headings, by an author who had read the
+  file. So the behaviours moved into `components/admin/RecordTable.tsx`, all
+  five lists were migrated onto it (documents, clients, employees, clauses),
+  and `design-system.test.ts` now fails a `TableBody` outside `ui/table.tsx`,
+  `RecordTable` and `Page.tsx`'s skeleton. Paging at ten, the count and pager,
+  the caption, sortable headings, the reserved actions column and the empty
+  state are on unless a named prop turns them off. Two geometry rules went with
+  it into `e2e/record-table.spec.ts`, which asserts *which* record a click
+  reaches rather than that one does, and was confirmed red on removing the
+  single word `relative`.
+- **16 September 2026** — **The row-select checkbox column became
+  unconditional.** Every `RecordTable` draws it, on instruction, on the grounds
+  that removing a column from one table is smaller and rarer work than
+  remembering to add it to each new one. The *bar* stays conditional and
+  renders nothing where neither `onBulkDelete` nor a `bulkActions` entry is
+  passed, so a tick never implies an action that does not exist. `BulkBar`
+  gained non-destructive actions for it, and the clause library gained bulk
+  archive beside bulk delete, drawn differently because one is reversible and
+  the other retires clause numbers for good. `e2e/record-table.spec.ts` gained
+  a hit test proving the checkbox cell paints above the row's stretched link,
+  confirmed red on removing its `z-10`.
+- **16 September 2026** — **The table header sits on `bg-sidebar`.** Tried on
+  the documents table first and kept: the header band of a table now matches
+  the page's header band and the margin its card floats in, so the card reads
+  as data held inside the chrome. It went into `ui/table.tsx` rather than a
+  call site, so every table has it and none can miss it, and it is pinned in
+  `ui/__tests__/table.test.tsx`, confirmed red on reverting the fill. The
+  contrast pair `foreground` on `sidebar` was added to `contrast.test.ts` and
+  clears 4.5:1 in both themes.
+- **16 September 2026** — **The card footer took the same fill**, reversing the
+  line written an hour earlier in this log. Both bands of furniture are now
+  `bg-sidebar` and the rows sit between them. The argument for leaving it plain
+  (that a sunk pager is harder to find) did not survive looking at it. Pinned
+  alongside the header and confirmed red on revert; `muted-foreground` on
+  `sidebar` added to `contrast.test.ts`.
+- **16 September 2026** — **There is one pager, and it has the number box.**
+  `ui/pagination.tsx` gained the go-to-page control the document preview had
+  been the only surface to carry, and `DocumentPager` became a thin wrapper
+  over it rather than a second copy. Two implementations of one control is how
+  it came to be true that a nine-page document went to page 9 in a keystroke
+  and a nine-page table took eight clicks. The preview keeps its own arrows,
+  through `onPrev`/`onNext`, because it scrolls a strip rather than swapping a
+  slice. All thirteen of `DocumentPager`'s existing behaviours pass unchanged
+  against the shared component, which is what says the move lost nothing. New
+  rule in `design-system.test.ts`, confirmed red on a hand-written counter in a
+  policed file. §2.10.
+- **16 September 2026** — **Every sheet opens inside the inset card, from
+  context.** `AdminShell` publishes the card through `InsetProvider` and
+  `SheetContent` reads it, so the `container`/`contained` pair that
+  `Notifications` was handed as props is gone from all three files that passed
+  it down. The clause library's drawer spilled over the inset for the reason a
+  prop chain always eventually fails: it was four levels into a page and could
+  not be handed anything. The drawer was fixed by deleting plumbing rather than
+  by extending it. New rule banning a hand-named `container`, confirmed red.
+  §2.11.
+- **16 September 2026** — **Magic move.** The house name for one highlight that
+  slides between rows rather than each row painting its own; adopted as the
+  term for the tab pill and the profile switcher's fill too, which were the
+  same idea by other names. Also extended to the nav rail in `hover` mode, with
+  the active fill left untouched. Four new tests in `e2e/header.spec.ts`, each
+  confirmed red: the transition removed, the fill painted in the active colour,
+  and the rows' own hover restored. Two more followed once it was in use: the
+  rail's 8px inter-row gap went, because the fill was crossing dead space on
+  every move and the gaps broke the column into seven plates, and the chevron and ⌘D keycap gained a
+  500ms delay so running the pointer down the column stops flashing a hint
+  on every row. Then the gap went entirely rather than moving inside the
+  rows and came back as the same 8px expressed as padding inside them, and the
+  hover text darkening was removed so the fill is the only thing a hover
+  changes. Two shapes were tried and reverted on the way: 36px rows, and 4px
+  of spacing. The rail ends up looking as it always did, with the hole gone.
+  All confirmed red, including that the original `gap-[8px]` fails the
+  contiguity half while being pixel-identical. One unrelated fix fell out
+  of it, in two parts. `e2e/popup.spec.ts`'s frame recorder counted a fixed 30
+  frames from when it was installed, so under five competing workers the move
+  could begin after they were spent; it records until the value settles now.
+  That was not the whole of it: the real failure was `goto` resolving before
+  hydration, so a click reached a trigger with no handler and the popup never
+  opened. The block waits for a control to be interactive first. Measured at
+  roughly one full-suite run in three before, and twelve of thirteen green
+  after. Note for anyone editing those: a synthetic `pointerover` moves the
+  rail's highlight but *not* a select's or combobox's, which track the pointer
+  internally, so those must be driven by a real hover.
+- **16 September 2026** — **The menu highlight moves.** One fill per popup,
+  translated between rows instead of painted on each: `useMagicMove` /
+  `MagicMove` in `ui/magic-move.tsx`, wired into the dropdown menu, the select
+  and the combobox, on the Panel tier. §1.7a carries the four rules and the
+  three endpoint-invisible causes; `e2e/popup.spec.ts` counts the frames in
+  between, confirmed red on removing the transition and again on swapping the
+  callback ref for a plain one.
+- **16 September 2026** — **Two table rules, both on the footer.** Its right
+  padding is 8px against the left's 36px, because the pager's ghost buttons
+  carry their own padding and 36px on top of it pushed the last arrow off the
+  card's corner: padding to a control is not padding to a letterform. And the
+  go-to-page box is filled `bg-raised`, two steps off the band, where it had
+  been transparent until hovered and so read as the counter beside it rather
+  than as something you can type into. The fill is a role and not a step
+  because the ramp runs opposite ways per theme, which is what §1.1 exists to
+  let us say. Both measured in the browser in both themes and confirmed red on
+  reverting each independently.
+- **16 September 2026** — **The pager's box came down to one shade.** Two was
+  too strong on the footer. `--sidebar-field` is a new token rather than a
+  reused role, because "one step off `--sidebar`" is not a value any existing
+  role holds in both themes: `--muted` is one step in light and three in dark.
+  slate-100 in light, slate-900 in dark, stepping up rather than down because
+  slate-950 is the ramp's floor. The browser check gained an upper bound with
+  it, since the rule it now guards is a value that was already once too dark.
+- **16 September 2026** — **Sorting became opt-in, and the clause library lost
+  it.** The clause library showed sort arrows on hover with no eye anywhere on
+  the page to hide them, and so did the employees list: `RecordTable` sorted by
+  default while `SortToggle` lives in a `FilterBar` neither of them has. A
+  control and the thing that governs it are one unit, so the half `RecordTable`
+  can carry is now the half that waits to be asked for. Documents and clients
+  are unaffected, since passing an order implies the opt-in and both already
+  render the eye. Enforced per feature folder, and the first version of that
+  rule was **wrong in a way worth recording**: it let a table fall back to its
+  parent folder's toggle, so removing the clients eye left it green. Folder-only
+  now, and confirmed red on both real tables.
+- **17 September 2026.** **A body row grows with its text, and drags by a
+  grip.** The clause body editor's rows were `rows={2}` plus `resize-y`: a
+  two-line floor on every row whatever it held, and a drag corner in each
+  corner. Both are answers to a question `field-sizing-content` had already
+  answered on the primitive, so the fix was deleting two overrides rather than
+  adding anything. Rows start at the 36px rung and grow (§2.2), and the rule is
+  now enforced, with the nine files that already broke it grandfathered rather
+  than swept: that judgement wants making per form, with the form on screen.
+
+  **The rule's first version was wrong in a way worth recording.**
+  `<Textarea[^>]*rows=` cannot cross a `>`, so it stopped at the first arrow
+  function in the props and read as passing on the very file it was written
+  for, catching only the tags whose attributes came in a lucky order. It is
+  matched per tag then per attribute now. A rule confirmed red against *some*
+  violation is not confirmed: it has to be the one in front of you.
+
+  Same pass: the two move chevrons became one `GripVertical` that drags with a
+  pointer **and** moves on the arrow keys, because a handle alone is unreachable
+  by keyboard and this is the form for editing the words of an agreement. The
+  drawer's title became the clause's heading (the number says nothing about
+  which clause is open and now sits in the pager), the standing line under it
+  went, and a **clause pager** took the centre of the control row: previous,
+  the number, next, walking by position rather than by number because a number
+  is never reissued and arithmetic would page into a gap. Paging flushes the
+  autosave first, like archive and delete do.
+
+  **A panel's state belongs to the panel, not to what is inside it.** The pager
+  shipped with a bug that is worth keeping written down: `expanded` sat in the
+  drawer, and the drawer is keyed by clause number so that a new clause arrives
+  with its own draft and its own parsed body. Paging therefore remounted it, and
+  expanding then paging dropped the reader out of the full panel and back into a
+  side drawer, mid-read. The key is correct and stays; the state moved up to the
+  list, which owns which clause is open and now also owns how the panel is
+  shown. The general form: **a remount key is a statement about identity, so any
+  state that should outlive a change of identity has to live above it.** Cleared
+  on close, or state lifted up outlives the thing it described.
+
+  Then the title took `text-base` and the header lost its rule. "About 4px
+  bigger" is 18px by arithmetic and there is no 18px: §1.4 is four sizes and
+  says a fifth is a mistake rather than a nuance, so it lands on 16, the
+  card/section heading rung, which is what a panel title is. **A size request
+  resolves to the nearest rung, not to the number**; where the gap is too wide
+  for that to satisfy the request, the scale is what wants revisiting, in its
+  own change.
+- **17 September 2026.** **A drawer can float, and the clause drawer does**
+  (§2.11). `SheetContent` gained `float`: inset from all four of the card's
+  edges, `rounded-sm`, ringed, and centred at `lg` rather than merely wider.
+  Flush stays the default, because a feed dropping from the edge belongs
+  against it.
+
+  **The scrim and the float are one decision, not two.** The clause drawer's
+  backdrop went 80% to 25% to transparent to a weight that follows the panel's
+  size, all in one day, each step for the same reason: a clause is read against
+  its neighbours, which cite it by number. What the passes kept discovering is
+  that an undimmed page leaves a flush panel with no edge at all, worst in dark
+  mode where the sheet's surface and the inset behind it are close in lightness
+  and the shadow does not read. Floating answers that, so the panel carries its
+  own boundary; fully transparent then proved a step too far, because a panel
+  over an entirely untouched page reads as being *in* it. It settled at 10% as
+  a drawer and 40% expanded (§2.11). **The backdrop element is never deleted**,
+  whatever its weight: it catches the outside click and keeps the page inert.
+
+  Confirmed red with `float` removed: the panel measured flush on three edges
+  and 128px off centre when expanded. Also this pass: the control row lost its
+  bottom border, expand took Lucide's `Maximize`, and each control's tooltip
+  became one word while its `aria-label` kept its object, the two being read in
+  different contexts (§1.5). **`ConfirmActionButton` gained `tooltip`** for the
+  one control in that row that had none, which was also the only irreversible
+  one.
+- **17 September 2026** — **A sheet takes one of three sizes.** There were three
+  drawers and three unrelated answers to how wide a drawer is: the notifications
+  feed took the base `sm:max-w-sm`, the clause drawer overrode it to
+  `sm:max-w-xl`, the mobile nav set a CSS variable. `size` is 30/60/90% of the
+  inset card, percentages rather than maxima because a contained sheet resolves
+  against a card whose width moves with the sidebar. A hand-typed width now
+  fails the build. **The floors were the part that had to be measured**: `md`
+  was set to `min-w-2xl` from the size's name, and since the card is 1028px at a
+  1280 viewport, that 672px floor sat above 60% and silently governed the whole
+  laptop range. Each floor is now under what its share yields on the narrowest
+  real screen, except `sm`, which deliberately holds 384px so the feed never
+  gets narrower than the fixed width it replaced.
+- **17 September 2026** — **`devIndicators: false`.** Next's dev-tools portal
+  pins itself to the viewport corner the header's last control sits in: at
+  1280px the notifications bell is at x=1240 and `elementFromPoint` on its
+  centre answered `NEXTJS-PORTAL`, so three sheet specs timed out on a button
+  they could see, that was enabled and stable, and that nothing would let them
+  click. Dev-only, so nothing a user meets changes; in the config rather than
+  worked around in Playwright, because the collision is with the page.
+- **17 September 2026** — **`components/flow/` extracted from onboarding**, with
+  no behaviour change: the three-band layout, the step row, the submit portal,
+  the finish moment and the four form helpers. Onboarding was the only wizard in
+  the app, so all of it lived inside `ClientOnboarding`; the contract builder
+  needed the same frame, and copying it would have been two sets of answers
+  about locking, announcing and where the button sits. 555 lines left that file
+  against 93 added, and **its twelve test files were not touched**, which is what
+  proves the move: 135 assertions passing against code they never mention. The
+  shell gained two props onboarding does not use, `fill` and `rightAction`, for
+  a phase that is its own layout. Enforced: `aria-current="step"` outside
+  `components/flow/` fails the build, seen red while `StepNav` was still in the
+  onboarding file.
+- **17 September 2026** — **The contract is built in five phases, not a rail.**
+  `ContractEditor` (686 lines, three stages in local state) became
+  `contract/flow/` on `FlowShell`: client, services, scope, terms, preview, with
+  the phase in the URL. The old file argued against that ("a remount would throw
+  it away"), which held for a component whose stages shared one unsaved
+  `useState` and does not here: autosave writes on every change and
+  `router.replace` does not remount. Services now seed from the client record
+  (`PRINCIPLES.md` rule 3, the invoice's precedent at `CONTEXT.md` §5i), and
+  telling the record about a service added on a contract is a separate explicit
+  act that never removes.
+- **17 September 2026** — **A door guard became a ledger, and it needed two
+  signals.** `ServiceDialog` refused to commit a Part until every blank was
+  filled, which made "complete or not at all" true by construction; seeded Parts
+  never pass through that button, so the guarantee moved to phase 3 and the form
+  (now a 60% sheet beside the list it came from) saves what is in front of it.
+  The count is derived from `contractScopes`, the enumeration finalize reads, so
+  the ledger can never disagree with the guard. **Measured while building it: 21
+  of the 22 seeded Services have no blank outside their fee**, so a derived count
+  alone would have waved almost every service straight through — which is why a
+  Part is also confirmed by hand, the one piece of stored state here, gating the
+  phase and never finalize.
+- **17 September 2026** — **The standing terms lost their dividers.** Thirteen
+  figures sat in seven sections, two of which spent a heading, a separator and a
+  whole row on one input. One grid per group instead: 28 figures land in 9 rows
+  on a two-Schedule contract. The clause headings were checked before they went
+  rather than assumed redundant — all thirteen `blankMeta` titles already name
+  their own clause and none collide.
+- **17 September 2026** — **The pager's pages became a tab group.** A trough
+  with the current page raised on it, replacing a "Page 3 / 9" readout between
+  two arrows where every page but the two either side of you took a click each.
+  Up to six pages every page is a button and there are no arrows and no box;
+  past six it is three runs (first, a sliding window of four, last) gapped 8px,
+  with runs merged where they touch so no number is ever drawn twice and no gap
+  ever falls between neighbours. The arrow still means "next page" and the
+  window turns in batches behind it. The arithmetic is `ui/pageGroups.ts`, pure
+  and separately tested, because every hard case here is a number rather than a
+  box. **Two things fell out of it:** the trough had to be `bg-sidebar-field`
+  rather than the tab list's `bg-muted`, since `--raised` and `--muted` are the
+  same ramp step in dark and the active page was invisible but for its border
+  (caught in a browser, now measured in both themes); and `onPrev`/`onNext` are
+  gone, because the box already went through `onGoToPage` and every caller
+  pointed all three at one function, so the "the preview scrolls where a table
+  swaps" distinction they existed for was never real.
+- **17 September 2026** — **The component library, at `/client/library`.** The
+  place a component is decided: a rail of components, and one component's
+  variants live and drivable beside it. It imports the real primitive, so there
+  is no second step where a change ships and no second copy to disagree with the
+  app. Pagination is its first and only entry, with the four shapes it takes at
+  the lengths that produce them. It supersedes `/admin/kit`, a flat scroll of
+  static examples with no way to drive any of them, which stays until its six
+  sections are re-homed one at a time. **Three things the page itself taught,
+  all in the browser:** the trailing merge was invisible until a specimen opened
+  on the last page, since every long list shows the leading one on open; an
+  empty stage reads as a broken render unless it says it is empty on purpose;
+  and a specimen must be drawn on the band the component ships onto, which is a
+  mistake only dark mode can show, because `--card` and `--sidebar` are
+  indistinguishable in light. **The e2e spec was vacuous when written** and is
+  recorded as such in its own header: it compared each element's own
+  `background-color`, the pager's `<nav>` has none, so transparent matched
+  transparent and it passed against a specimen moved to the wrong surface
+  entirely.
+- **17 September 2026** — **The pager became one control rather than five.**
+  Both arrows, both anchors and the window now sit in a single container, and
+  nothing inside it carries a stroke: it was three troughs with the arrows loose
+  outside them, five separate objects saying one thing. The active page moved to
+  `--card` (slate-50 in light, as specified) with its border kept, an inactive
+  one is bare until hovered, and the pill is rounded tighter than the box so the
+  nesting reads. **One thing fell out of it and needed its own fix:** the 8px
+  gap between runs stopped meaning anything. It worked while each run had a
+  trough, because the space between two backgrounds is a boundary; with one
+  container the background groups everything together and the gap became
+  indistinguishable from loose tracking, so `‹ 1 9 10 11 12 23 ›` read as one
+  continuous list. That is §2.10's own lie, arrived at from the opposite
+  direction. A hairline now stands in each gap, never after the last run, and
+  none is drawn where two runs are merged. Caught in a browser; the Jest tests
+  were all green.
+- **17 September 2026** — **The go-to box joined the container, and the dark
+  pill got its fill back.** Three corrections to the pass above, each from
+  looking at the thing rather than at the numbers. The box was left outside on
+  the reasoning that a field you type into is a different kind of thing from a
+  page you can be on: true of the control, false of the layout, since it moves
+  with the pager and floating beside it read as a second widget that happened to
+  be adjacent. It is `--hover`, a step *down* from the container while every
+  other filled thing steps up, which is the difference between a well and a
+  pill. The active page was `--card` in both themes, and `--card` is the
+  container's own value in dark, so its fill separated by **0.000** and the
+  border alone was drawing it; `dark:bg-raised` restores +0.91 while light keeps
+  slate-50 as specified. And the run separator moved off `--border` (white at
+  10% in dark, fainter than the frame around it) onto the text ramp at 40%,
+  then came *down* from 18px to 12px: weight and height are separate knobs and
+  only weight should have been doing the work, since a full-height rule read as
+  a structural divider cutting the control into sections.
+- **17 September 2026** — **The pager's active page got its own token, and dark
+  went two steps up.** `--page-active` (slate-50 / slate-700) replaces the
+  `bg-card` plus `dark:bg-raised` pair that was describing one surface with two
+  names. Dark is slate-700 rather than the symmetrical slate-800, on request:
+  3.04 against the container where slate-800 gave 0.91, and 0.000 before that
+  when both were `--card`. The note in `globals.css` refusing slate-700 for
+  `--hover` was checked rather than assumed to apply: it is about
+  `--muted-foreground` at 3.94:1 on a hovered card, and this pill prints
+  `--foreground` at 9.71:1. Added to `contrast.test.ts` and seen red against a
+  value pushed up the ramp until the text stopped clearing AA.
+- **17 September 2026** — **The ⌘D palette's cards share one moving fill**, the
+  magic move's third caller and the first that is a grid. Two rules came out of
+  the shape rather than out of the colour. **One fill serves the pointer and
+  the keyboard cursor**, the opposite of the nav rail, because a rail's active
+  fill says which page you are on while a palette's selection is only a cursor:
+  hovering a card selects it, and Enter opens whatever the fill sits on.
+  **And the focus ring had to be taken off `focus-visible:`.** Selecting a card
+  focuses it, which is what makes Enter work, but a programmatic `.focus()`
+  inherits the modality the dialog was entered with, so Chromium painted the
+  keyboard ring for a mouse move: measured in both themes, with the ring
+  chasing the pointer across the grid. The card records what moved the
+  selection and the ring follows that instead. Two e2e tests in
+  `e2e/popup.spec.ts`, both confirmed red, and the second catches something no
+  existing caller could: pinning `left` to 0 in the hook leaves all four popup
+  tests green and fails only the palette's landing test, because every other
+  caller is a list of full-width rows where the horizontal axis never moves.
+  Then the grid's own scrolling had to be fixed to match: five cards do not
+  fit, so hovering the clipped bottom row lifted it into view with a hard snap
+  under a fill that was gliding. `scroll-behavior: smooth` does not fix that,
+  which was measured rather than assumed, because a focus scroll ignores the
+  property; `focus({ preventScroll: true })` plus `scrollIntoView` does. Two
+  more tests, both seen red. The second exists because the blanket
+  reduced-motion rule in `globals.css` cannot reach a behavior passed as an
+  argument, so this scroll kept animating for somebody who asked it not to
+  while every CSS transition in the app correctly stopped. One test was wrong
+  before the code was: `hover()` scrolls its own target into view, so it was
+  measuring Playwright rather than the palette, and failed against a fix that
+  worked.
+- **17 September 2026** — **A 36px rung, and the clause drawer resized around
+  it.** The drawer's Heading and Description were the compact 32px under a
+  full-width body editor and the three add-a-paragraph buttons were `form`
+  (38px), which is the size for a button sitting *inline with* an Input: these
+  sit in a row of their own with no field beside them, so it only made them the
+  largest thing on the panel. Fields to 36, buttons to 28 (`default`, the dense
+  height this tool is built at). The conflict was named before it was built,
+  because §2.2 fixed the ladder at two values on purpose, and the answer chosen
+  was a real rung rather than a one-off class. So `md` exists on all five
+  typed-into primitives, not on the `Input` that needed it: a height declared by
+  one control is how a field row comes out two heights the day a select joins
+  the form. `control-size.test.tsx` holds the five together and was confirmed
+  red with one of them missing the rung; the drawer's own measurements are in
+  `e2e/clause-library.spec.ts`, since jsdom resolves no stylesheet and any size
+  would pass there. The citations and those three buttons then joined one band,
+  "Refers to" at the left and the buttons at the right end, which also recovered
+  a row of the drawer's height. Two things it is worth knowing the shape of:
+  the buttons became their own export rather than moving into `ClauseLibrary`,
+  so the `add` logic stays where the parts are and only the layout moved, and
+  they are deliberately **not** nested inside `ClauseCitations`, which renders
+  `null` for a clause that cites nothing and would have taken them with it. The
+  row uses `mr-auto` on an always-rendered left slot rather than
+  `justify-between`, because `justify-between` with one child pushes that child
+  left: on the clauses that cite nothing the buttons landed at x=806 against a
+  right edge of 1262, caught by the test written for exactly that case.
+- **17 September 2026** — **The clause drawer lost its Save button and gained a
+  control row.** Five controls above the title, ordered by what each acts on:
+  leaving (back), then the panel (expand), then, pushed right, the clause in
+  rising order of consequence (download, archive, delete). Four things about it
+  are decisions rather than defaults. **Autosave is debounced at 800ms, and the
+  debounce is the safety mechanism rather than a tweak**: this file said
+  "saved explicitly, not autosaved" on the argument that a clause is the source
+  text for every contract drafted afterwards, and waiting for the typing to stop
+  is what answers that argument rather than discarding it. The conflict was
+  raised before it was built. **Delete keeps its confirmation**, and needs it
+  more than before: an icon in a row is easier to hit by accident than the
+  labelled button it replaced. **Expand is one toggle, not two buttons**, taking
+  the sheet's existing `lg` (90% of the inset), so there is never an inert
+  control and no second component to keep in step. **The sheet's own close X is
+  off**, because the back arrow does that job. That last one was a real bug
+  caught by eye in a screenshot: left on, the X sat *over* the delete icon, two
+  controls in one corner and one of them irreversible. Pinned by hit-testing the
+  delete button rather than by counting buttons, which would pass with the two
+  stacked, and confirmed red against the overlap. The Markdown download is
+  `domain/contract/clauseMarkdown.ts`, pure and tested there, with three lines
+  of Blob plumbing in the drawer.

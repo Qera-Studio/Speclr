@@ -79,7 +79,9 @@ Three things hold the line, and none may be quietly undone:
 
 - **A contract copies the library once, when its draft is created.** `NewDocumentRoute` passes `clauseLibrary` to `ContractEditor`, which seeds `content.clauses`. `DocumentRoute` deliberately does **not** pass it — an existing document already carries its own copy, and its test mocks `@/db/store` *without* `listClauses` so a future edit that reaches for the live library fails loudly.
 - **`contentOf` is unchanged and must stay pure.** Every sheet calls it per render; it never reads the database. Documents written before the library have no `clauses` override and keep resolving `MSA_CLAUSES` exactly as they always did.
-- **Numbers are identity.** Clause bodies cite each other ("has the meaning given at clause 11.2"), so a new clause appends at the next number — claimed server-side, counting past archived rows — and nothing is ever inserted, renumbered or deleted. Archiving is the only removal.
+- **Numbers are identity.** Clause bodies cite each other ("has the meaning given at clause 11.2"), so a new clause appends at the next number, claimed server-side, and nothing is ever inserted or renumbered. **A number, once issued, is never handed out again**, which is the rule the two removals are built to hold rather than to break. *Archiving* keeps the row, so the number stays taken by construction, and it is what the list offers on a row. *Deleting* (added 16 September 2026, on request, at the foot of the drawer and behind a confirmation) really removes the row, and therefore has to retire the number separately: `deleteClause` raises a high-water mark in `counters` under `('CLAUSE', '-')` **before** the delete, and `nextClauseNumber` answers one past the higher of that mark and the highest row. The order matters, or a concurrent add between the two statements sees neither and reissues. The mark is read alongside the rows rather than replacing them, so a library seeded before it existed needed no backfill.
+
+  The library page is the one caller that passes `includeArchived`, because otherwise archiving would be a deletion nothing could undo; every contract still reads the live list.
 
 ### 5d. The client record is the source of truth, and documents derive from it
 
@@ -727,10 +729,34 @@ the studio quotes *from* before there is a contract. Nothing reads it into a
 document. What it is *per* is `rateUnitOf(scheduleKey)` and is derived, not
 stored: a Retainer is the Schedule under which work recurs monthly (rule 3).
 
-**Re-running `scripts/seed-contract.ts` clears every rate.** Its upsert replaces
-`content` wholesale, so anything typed into the dialog goes with it. Always true
-of that script; it only started mattering when the screen began to write. That is
-also why no rate is written into the seed file.
+**The app is where a service is edited; the seed is a first load only.** Changed
+15 September 2026. `scripts/seed-contract.ts` used to upsert `content` wholesale,
+so re-running it cleared every rate and name typed in the dialog. It now inserts
+a row that is missing and touches nothing that exists, for services, the two
+libraries and the clauses alike (the clause upsert was silently reverting in-app
+clause edits, against §5c). What that requires is that every field be editable
+in the app, and it is: the dialog keeps the five-field pass, and each service's
+own page at `/client/services/<code>` carries three forms, each posting only its
+own section through `saveServiceSection` (the `saveClientSection` shape): the
+**menu**, the **wording** (every prose list and the two tables) and the
+**libraries** (which exclusions and client inputs it names). "Start from…" on
+the add dialog clones an existing service, and "Archive" is the only removal.
+
+**A service carries a menu.** `menu[]` on `ServiceContent`: the priced lines a
+contract ticks from, each `{ id, text, ratePaise?, unit, unitLabel?, group }`,
+with the unit on the line because the lines under one service do not share one
+("Mobile app UI" is per screen; "WhatsApp automation" is a set-up fee and a
+monthly one). It is a **new array, deliberately not `included[]`**: `included[]`
+is the frame's standing prose and is parsed for `[blanks]`, each with
+hand-authored copy in `blankMeta.ts` held to an exact key set by its test, so a
+form writing into it would shift ordinals and move a client's stored figure onto
+a different sentence. A menu line is never parsed for blanks. Its id (`M1`,
+`M2`…) is assigned server-side and **never reissued** (`assignMenuIds`, with
+`menuSeq` as the floor), because a client record and a contract line cite it.
+The five rate cards were loaded once by `scripts/import-menu.ts` from
+`scripts/rate-card-menu.json`; after that the menu is the app's. A new kind of
+work ("3D / Three.js scene") is a line here, inheriting the service's handover,
+completion, exclusions and Schedule, and not a new service.
 
 **One unrelated bug fell out of it.** `service.ts` importing `domain/fields.ts`
 put `domain/phone.ts` in the seed script's import graph, and libphonenumber's CJS
