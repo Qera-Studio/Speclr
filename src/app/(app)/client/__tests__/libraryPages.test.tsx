@@ -1,12 +1,18 @@
 import { render, screen } from '@testing-library/react';
-import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
+import { MSA_CLAUSES, type ClauseInput } from '@/lib/domain/contract/msa';
 import { SERVICES } from '@/lib/domain/contract/seed/services';
 
 const requireAuthorizedUser = jest.fn();
 const listServices = jest.fn(() => Promise.resolve(SERVICES));
-const listClauses = jest.fn(() => Promise.resolve([] as typeof MSA_CLAUSES));
+const listClauses = jest.fn(() => Promise.resolve([] as ClauseInput[]));
+const getService = jest.fn();
+const listExclusions = jest.fn(() => Promise.resolve([]));
+const listClientInputs = jest.fn(() => Promise.resolve([]));
 const redirect = jest.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`);
+});
+const notFound = jest.fn(() => {
+  throw new Error('NOT_FOUND');
 });
 
 jest.mock('@/lib/auth/session', () => ({
@@ -15,13 +21,20 @@ jest.mock('@/lib/auth/session', () => ({
 jest.mock('@/db/store', () => ({
   listServices: () => listServices(),
   listClauses: () => listClauses(),
+  getService: (...a: unknown[]) => getService(...a),
+  listExclusions: (...a: unknown[]) => listExclusions(...(a as [])),
+  listClientInputs: (...a: unknown[]) => listClientInputs(...(a as [])),
 }));
 jest.mock('next/navigation', () => ({
   redirect: (u: string) => redirect(u),
+  notFound: () => notFound(),
   useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
 }));
 jest.mock('@/server/actions/services', () => ({
   updateServiceDetails: jest.fn(),
+  createService: jest.fn(),
+  saveServiceSection: jest.fn(),
+  removeService: jest.fn(),
 }));
 jest.mock('@/server/actions/clauses', () => ({
   updateClause: jest.fn(),
@@ -30,6 +43,7 @@ jest.mock('@/server/actions/clauses', () => ({
 }));
 
 import ServiceCataloguePage from '../services/page';
+import ServiceDetailPage from '../services/[code]/page';
 import ClauseLibraryPage from '../clauses/page';
 
 beforeEach(() => {
@@ -37,6 +51,43 @@ beforeEach(() => {
   requireAuthorizedUser.mockResolvedValue({});
   listServices.mockResolvedValue(SERVICES);
   listClauses.mockResolvedValue([]);
+  getService.mockImplementation(async (code: string) =>
+    SERVICES.find((s) => s.code === code) ?? null,
+  );
+});
+
+/**
+ * One Service's own page. The same two locks as every other page, a 404 for
+ * a code that names nothing, and the libraries loaded *with* their archived
+ * rows so a line this Service still cites can be unticked.
+ */
+describe('Service page', () => {
+  const params = Promise.resolve({ code: '06' });
+
+  it('shows the service with its three sections', async () => {
+    render(await ServiceDetailPage({ params }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Custom web build' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Menu' })).toBeInTheDocument();
+    expect(listExclusions).toHaveBeenCalledWith(true);
+    expect(listClientInputs).toHaveBeenCalledWith(true);
+  });
+
+  it('404s on a code that names nothing', async () => {
+    await expect(ServiceDetailPage({ params: Promise.resolve({ code: '99' }) })).rejects.toThrow(
+      'NOT_FOUND',
+    );
+  });
+
+  it('sends a signed-out visitor to sign in', async () => {
+    requireAuthorizedUser.mockRejectedValue(new Error('UNAUTHENTICATED'));
+    await expect(ServiceDetailPage({ params })).rejects.toThrow('REDIRECT:/sign-in');
+  });
+
+  it('sends a signed-in but non-allowlisted visitor to /no-access', async () => {
+    requireAuthorizedUser.mockRejectedValue(new Error('UNAUTHORIZED'));
+    await expect(ServiceDetailPage({ params })).rejects.toThrow('REDIRECT:/no-access');
+  });
 });
 
 /**
@@ -68,13 +119,13 @@ describe('Service catalogue page', () => {
 describe('Clause library page', () => {
   it('shows the stored clauses when the table has been seeded', async () => {
     listClauses.mockResolvedValue([
-      { number: 1, heading: 'Something else entirely', body: ['Stored text.'] },
+      { number: 1, heading: 'Something else entirely', body: ['Stored text.'], archived: false },
     ]);
 
     render(await ClauseLibraryPage());
 
     expect(
-      screen.getByRole('button', { name: /1\. Something else entirely/ }),
+      screen.getByRole('button', { name: 'Open Something else entirely' }),
     ).toBeInTheDocument();
   });
 
@@ -88,7 +139,7 @@ describe('Clause library page', () => {
     render(await ClauseLibraryPage());
 
     expect(
-      screen.getByRole('button', { name: new RegExp(`1\\. ${MSA_CLAUSES[0].heading}`) }),
+      screen.getByRole('button', { name: `Open ${MSA_CLAUSES[0].heading}` }),
     ).toBeInTheDocument();
   });
 

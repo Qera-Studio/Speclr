@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Package, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -157,9 +158,15 @@ export default function ServiceCards({
                       {/* <Separator /> */}
 
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium">
+                        {/* The way into the Service's own page, where the
+                            menu, the wording and the libraries live. The
+                            pencil stays for the five-field pass. */}
+                        <Link
+                          href={`/client/services/${service.code}`}
+                          className="text-sm font-medium hover:underline"
+                        >
                           {service.name}
-                        </span>
+                        </Link>
                         {/* One line, clipped. The full overview is contract
                             source material and belongs to the dialog; here it
                             is only enough to tell two similar names apart. */}
@@ -181,6 +188,15 @@ export default function ServiceCards({
                         <span>
                           {service.sacCode ? `SAC ${service.sacCode}` : NIL}
                         </span>
+                        {/* How many priced lines sit under this frame, so the
+                            board reads which services have a menu yet. The
+                            lines themselves are on the Service's page. */}
+                        {service.menu?.length ? (
+                          <span>
+                            {service.menu.length}{" "}
+                            {service.menu.length === 1 ? "line" : "lines"}
+                          </span>
+                        ) : null}
                         <span className="ml-auto">
                           {service.ratePaise === undefined
                             ? "Quoted"
@@ -210,6 +226,7 @@ export default function ServiceCards({
         <ServiceEditDialog
           key={`add-${adding}`}
           scheduleKey={adding}
+          startFrom={services}
           onClose={() => setAdding(null)}
         />
       ) : null}

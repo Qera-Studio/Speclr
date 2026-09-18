@@ -1,0 +1,18 @@
+-- A few words per clause, for the library's own list.
+--
+-- The list showed the clause's first *body* line in a column called "Opens",
+-- which is the text itself truncated: it told two clauses apart only when
+-- their opening sentences happened to differ, and on clause 1 it showed
+-- "1.1 In this Agreement, unless the context otherwise requires:", which says
+-- nothing about the clause at all.
+--
+-- **Nullable, and it never prints.** This is an editorial aid for whoever is
+-- scanning the library. A contract renders `heading` and `body`; `MsaClause`
+-- has no `summary` field, so a document has no way to reach one. Nullable
+-- rather than DEFAULT '' so "nobody has written one" stays distinguishable
+-- from "this one needs none".
+--
+-- No backfill here. `scripts/seed-contract.ts` fills existing rows from
+-- MSA_CLAUSE_SUMMARIES, and only where the column is still null, so it cannot
+-- overwrite a summary somebody has since typed in the library.
+ALTER TABLE "clauses" ADD COLUMN "summary" text;

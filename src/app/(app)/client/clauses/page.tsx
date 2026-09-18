@@ -33,12 +33,19 @@ export default async function ClauseLibraryPage() {
     redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
-  const stored = await listClauses();
+  // Archived clauses included, unlike everywhere else that reads this table.
+  // A contract must never see one; the library must, or archiving would be a
+  // deletion that nothing can undo.
+  const stored = await listClauses(true);
 
   return (
     <PageBody>
       <ClauseLibrary
-        clauses={stored.length > 0 ? stored : MSA_CLAUSES}
+        clauses={
+          stored.length > 0
+            ? stored
+            : MSA_CLAUSES.map((clause) => ({ ...clause, archived: false }))
+        }
         stored={stored.length > 0}
       />
     </PageBody>

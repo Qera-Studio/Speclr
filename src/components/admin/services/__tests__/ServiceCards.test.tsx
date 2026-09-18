@@ -87,4 +87,69 @@ describe('ServiceCards', () => {
     render(<ServiceCards services={[]} />);
     expect(screen.getByText('No services yet')).toBeInTheDocument();
   });
+
+  /**
+   * The card is the way into the Service's own page, where the menu, the
+   * wording and the libraries live. The pencil stays for the five-field pass.
+   */
+  it('links each card to its own page', () => {
+    render(<ServiceCards services={SERVICES} />);
+    expect(screen.getByRole('link', { name: 'Custom web build' })).toHaveAttribute(
+      'href',
+      '/client/services/06',
+    );
+  });
+
+  /**
+   * "Start from…": a new kind of work is usually a near copy of one that
+   * exists, and naming the source is what turns adding it into a two-minute
+   * form. Offered only when adding; an existing Service has nothing to start
+   * from.
+   */
+  it('offers a service to start from when adding, and posts it', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCards services={SERVICES} />);
+
+    const build = screen.getByRole('region', { name: 'Build' });
+    await user.click(within(build).getByRole('button', { name: /Add to Build/ }));
+    await user.click(screen.getByRole('combobox', { name: 'Start from' }));
+    await user.click(await screen.findByRole('option', { name: /Custom web build/ }));
+    await user.type(screen.getByLabelText('Title'), 'Three.js experience');
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+
+    expect(createService).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Three.js experience', cloneFrom: '06' }),
+    );
+  });
+
+  /**
+   * A card says how many priced lines the Service carries, so the board reads
+   * which services have a menu yet and which are still a frame with nothing
+   * under it. One number; the lines themselves are on the Service's page.
+   */
+  it('says how many menu lines a service has', () => {
+    const withMenu = SERVICES.map((s) =>
+      s.code === '06'
+        ? {
+            ...s,
+            menu: [
+              { id: 'M1', text: 'GSAP motion system', ratePaise: 20_000_00, unit: 'fixed' as const },
+              { id: 'M2', text: 'Dark/Light theme', ratePaise: 12_000_00, unit: 'fixed' as const },
+            ],
+          }
+        : s,
+    );
+    render(<ServiceCards services={withMenu} />);
+
+    expect(screen.getByText('2 lines')).toBeInTheDocument();
+    expect(screen.queryByText('0 lines')).not.toBeInTheDocument();
+  });
+
+  it('offers nothing to start from when editing', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCards services={SERVICES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
+    expect(screen.queryByRole('combobox', { name: 'Start from' })).not.toBeInTheDocument();
+  });
 });

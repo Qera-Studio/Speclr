@@ -66,8 +66,18 @@ export const msaClauseSchema = z.object({
     .max(60),
 });
 
-/** A clause as the library edits it, plus the archive flag the table carries. */
+/**
+ * A clause as the library edits it: the printed clause, plus the two fields
+ * that belong to the library rather than to the agreement.
+ *
+ * `summary` is deliberately **not** on `MsaClause`. A contract renders a
+ * clause's heading and body and must never gain access to an editorial note
+ * about it, so the field lives on the side of the seam that documents cannot
+ * reach. Optional, because writing one is a courtesy to the next reader and
+ * refusing to save a clause without one would be an odd place to be strict.
+ */
 export const clauseInputSchema = msaClauseSchema.extend({
+  summary: textSchema(200).optional(),
   archived: z.boolean(),
 });
 
@@ -397,3 +407,54 @@ export const MSA_CLAUSES: MsaClause[] = [
     ],
   },
 ];
+
+/**
+ * A few words per clause, for whoever is scanning the library's list.
+ *
+ * **These are not part of the agreement and never print.** They are separate
+ * from `MSA_CLAUSES` rather than a field on it precisely so that a document
+ * cannot reach them: `MsaClause` is what a contract renders, and adding a
+ * `summary` there would have put an editorial gloss one careless `.map` away
+ * from a signed page. They seed `clauses.summary`, which the library edits and
+ * `ContractSheet` has no access to.
+ *
+ * They describe what a clause *does*, in the present tense, in the fewest
+ * words that still distinguish it from its neighbours. They are deliberately
+ * **not** summaries of the legal effect: a shorter restatement of an
+ * indemnity is a second version of the indemnity, and this file's own header
+ * says the text needs a commercial lawyer. A reader who needs to know what
+ * clause 21 does opens clause 21.
+ *
+ * Drafted here for review rather than left blank, on request. Edit them in the
+ * library; this map only seeds a row that has none.
+ */
+export const MSA_CLAUSE_SUMMARIES: Record<number, string> = {
+  1: 'Defined terms, and how to read the agreement',
+  2: 'How the Agreement, Schedules, Parts and Proposal rank when they disagree',
+  3: 'What each Party undertakes to do for the other',
+  4: 'What is in scope, and how work beyond it is quoted and approved',
+  5: 'Which channels count as operational, and where formal notice must go',
+  6: 'Feedback windows, and what happens when one passes',
+  7: 'What counts as a revision rather than new work',
+  8: 'Fees, invoicing, payment terms and late payment',
+  9: 'Who pays for platforms, hosting, licences and ad spend',
+  10: 'When ownership of the deliverables passes to the client',
+  11: 'What the studio keeps, and the licence the client gets to it',
+  12: 'Whether the work may appear in the portfolio',
+  13: "Each Party's duty over the other's non-public information",
+  14: 'Data protection duties, including under the DPDP Act 2023',
+  15: 'The studio may bring in freelancers and specialists',
+  16: 'No liability for outages, bans or changes at third parties',
+  17: 'AI outputs may be wrong, and what the client accepts about that',
+  18: 'No guarantee of growth, rankings, reach or revenue',
+  19: 'The assurances each Party gives about itself',
+  20: 'Who covers whom when a third party brings a claim',
+  21: 'Caps on liability, and the losses neither Party can claim',
+  22: 'Relief when something outside either Party stops the work',
+  23: "Neither Party poaches the other's people",
+  24: 'How an engagement is suspended or brought to an end',
+  25: 'What each Party hands over and settles once it ends',
+  26: 'Talk first, then mediate, before anyone litigates',
+  27: 'Indian law, and the courts at Ghaziabad',
+  28: 'Entire agreement, amendment, assignment, severability and the rest',
+};

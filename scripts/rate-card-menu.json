@@ -1,0 +1,387 @@
+{
+  "_review": [
+    "Drafted 15 September 2026 from the five rate cards (Automation, Branding, Design, Development, Social media), each line filed under the closest of the twenty-two services. `group` is the rate-card heading it came from, so every line can be traced back. Correct the filing before --apply; a line under the wrong service inherits the wrong handover, completion and exclusions.",
+    "Design card, Product & App (Mobile app UI, SaaS product design, dashboards): filed under 06 Custom web build with group 'Product & app'. None of the twenty-two is a product-design service; this group probably wants its own, cloned from 06.",
+    "Design card, Retainership (Design support, Product design, Campaign, Motion, Brand consistency): filed under 15 Content production with group 'Design retainers'. A 'Design retainer' service may be wanted; UX Optimization Retainer went to 19.",
+    "Development card, Retainership (SEO, Analytics monitoring, Performance monitoring, Technical support, Content/CMS management): filed under 18 Website maintenance. An 'SEO retainer' service may be wanted.",
+    "AI chat and lead-qualification lines appear on both the Development card and the Automation card at different prices (AI Chat Assistant 45,000 vs Basic Chat Assistant 20,000; AI Lead Qualification 35,000 vs AI Lead Qualification Bot 25,000). Both are loaded under 13 with the card named in the group. Reconcile to one price or keep both as tiers.",
+    "Social media card: 'Engagement (comments, replies - monthly)' appears twice, at 8,000 under Organic growth (filed 16) and 25,000 under Performance marketing (filed 17). Check which is meant.",
+    "Design card: 'Spline Experience Design' is printed as 4,000, which looks like 40,000 beside its neighbours. Loaded as written.",
+    "Retainer ranges (e.g. Website Maintenance 8,000 - 25,000) are loaded at the low end, with the range kept in the line's text.",
+    "Multi-channel automation has a set-up column and a monthly column: the set-up fee is a fixed line under 12 Automation build, the monthly one a monthly line under 20 AI system operation."
+  ],
+
+  "01": [
+    { "text": "Domain & DNS configuration", "ratePaise": 400000, "unit": "fixed", "group": "Foundation system" }
+  ],
+
+  "03": [
+    { "text": "Google Analytics setup", "ratePaise": 600000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Google Tag Manager setup", "ratePaise": 600000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Search Console setup", "ratePaise": 200000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Heatmap integration", "ratePaise": 800000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Session recording setup", "ratePaise": 800000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Funnel tracking setup", "ratePaise": 1500000, "unit": "fixed", "group": "Conversion & CRO" }
+  ],
+
+  "04": [
+    { "text": "Profile optimisation", "ratePaise": 500000, "unit": "fixed", "group": "Base social media structure" }
+  ],
+
+  "06": [
+    { "text": "Discovery & strategy workshop", "ratePaise": 1000000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Information architecture / sitemap", "ratePaise": 800000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Responsive frontend development", "ratePaise": 1500000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Core website setup (5 pages)", "ratePaise": 2500000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Additional standard page", "ratePaise": 400000, "unit": "perUnit", "unitLabel": "per page", "group": "Foundation system" },
+    { "text": "Design system setup", "ratePaise": 1800000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "CMS-ready architecture", "ratePaise": 1200000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Hosting & deployment setup", "ratePaise": 500000, "unit": "fixed", "group": "Foundation system" },
+    { "text": "Performance baseline optimisation", "ratePaise": 1000000, "unit": "fixed", "group": "Foundation system" },
+
+    { "text": "Premium scroll storytelling", "ratePaise": 1200000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "GSAP motion system", "ratePaise": 2000000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Page transition system", "ratePaise": 1500000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Micro-interaction system", "ratePaise": 1200000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Dark/light theme system", "ratePaise": 1200000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Premium loading experience", "ratePaise": 800000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Interactive showcase sections", "ratePaise": 1500000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Portfolio / case study system", "ratePaise": 2000000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "Advanced testimonial system", "ratePaise": 1000000, "unit": "fixed", "group": "Brand experience systems" },
+    { "text": "FAQ experience section", "ratePaise": 600000, "unit": "fixed", "group": "Brand experience systems" },
+
+    { "text": "SEO foundation setup", "ratePaise": 1500000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Technical SEO optimisation", "ratePaise": 2000000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Schema markup system", "ratePaise": 800000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Blog / CMS setup", "ratePaise": 3500000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Newsletter infrastructure", "ratePaise": 1000000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "Social feed integration", "ratePaise": 800000, "unit": "fixed", "group": "Marketing & SEO" },
+    { "text": "GEO / AI search optimisation", "ratePaise": 800000, "unit": "fixed", "group": "Marketing & SEO" },
+
+    { "text": "Authentication system", "ratePaise": 2500000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Admin dashboard", "ratePaise": 4000000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Client portal", "ratePaise": 4500000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Database architecture", "ratePaise": 2500000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "API integration", "ratePaise": 1500000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "CRM integration", "ratePaise": 1800000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Payment gateway integration", "ratePaise": 1500000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Custom CMS development", "ratePaise": 5000000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "SaaS MVP development", "ratePaise": 20000000, "unit": "fixed", "group": "Backend & platform" },
+    { "text": "Membership platform", "ratePaise": 6000000, "unit": "fixed", "group": "Backend & platform" },
+
+    { "text": "Security hardening", "ratePaise": 1800000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Cloudflare setup", "ratePaise": 1000000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Performance engineering", "ratePaise": 2000000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Accessibility compliance", "ratePaise": 1500000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Error monitoring setup", "ratePaise": 1000000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Monitoring & uptime systems", "ratePaise": 800000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Backup & recovery systems", "ratePaise": 800000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Staging environment setup", "ratePaise": 1000000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "CI/CD deployment pipeline", "ratePaise": 2000000, "unit": "fixed", "group": "Infrastructure" },
+    { "text": "Email infrastructure setup", "ratePaise": 1000000, "unit": "fixed", "group": "Infrastructure" },
+
+    { "text": "Multi-location architecture", "ratePaise": 2500000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Multi-language system", "ratePaise": 2500000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Enterprise CMS architecture", "ratePaise": 7500000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Headless commerce setup", "ratePaise": 8000000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Internal business tools", "ratePaise": 5000000, "unit": "fixed", "group": "Expansion" },
+    { "text": "White-label platform systems", "ratePaise": 10000000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Analytics dashboard systems", "ratePaise": 3500000, "unit": "fixed", "group": "Expansion" },
+    { "text": "API platform development", "ratePaise": 12000000, "unit": "fixed", "group": "Expansion" },
+    { "text": "Multi-brand infrastructure", "ratePaise": 6000000, "unit": "fixed", "group": "Expansion" },
+
+    { "text": "Multi-page website design", "ratePaise": 9000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Conversion-focused website UX", "ratePaise": 12000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "SaaS website design", "ratePaise": 15000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "High-end portfolio experience", "ratePaise": 8000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Interactive storytelling website", "ratePaise": 15000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Developer-ready UI package", "ratePaise": 2500000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Motion-driven website experience", "ratePaise": 18000000, "unit": "fixed", "group": "UI/UX design" },
+
+    { "text": "Mobile app UI", "ratePaise": 500000, "unit": "perUnit", "unitLabel": "per screen", "group": "Product & app" },
+    { "text": "Web app UI", "ratePaise": 600000, "unit": "perUnit", "unitLabel": "per screen", "group": "Product & app" },
+    { "text": "Full app design (20 to 40 screens)", "ratePaise": 30000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "SaaS product design", "ratePaise": 40000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "Dashboard UI system", "ratePaise": 8000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "Admin panel design", "ratePaise": 7000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "Design prototype system", "ratePaise": 4000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "UX flow architecture", "ratePaise": 6000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "Product wireframing", "ratePaise": 5000000, "unit": "fixed", "group": "Product & app" },
+    { "text": "User journey mapping", "ratePaise": 2500000, "unit": "fixed", "group": "Product & app" },
+
+    { "text": "Basic motion graphics", "ratePaise": 800000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Premium motion system", "ratePaise": 3500000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "UI micro-interaction design", "ratePaise": 1200000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Scroll animation design", "ratePaise": 2000000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Interactive cursor systems", "ratePaise": 1500000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Loading experience design", "ratePaise": 1200000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Lottie animation systems", "ratePaise": 1500000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Product reveal animations", "ratePaise": 3000000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Cinematic web motion direction", "ratePaise": 8000000, "unit": "fixed", "group": "Motion & interactive design" },
+    { "text": "Sensory interaction design", "ratePaise": 8000000, "unit": "fixed", "group": "Motion & interactive design" },
+
+    { "text": "3D visual direction", "ratePaise": 8000000, "unit": "fixed", "group": "3D & advanced visual" },
+    { "text": "Spline experience design", "ratePaise": 400000, "unit": "fixed", "group": "3D & advanced visual" },
+    { "text": "Blender visual systems", "ratePaise": 12000000, "unit": "fixed", "group": "3D & advanced visual" },
+    { "text": "Premium animation system", "ratePaise": 10000000, "unit": "fixed", "group": "3D & advanced visual" },
+    { "text": "Interactive 3D product visuals", "ratePaise": 9000000, "unit": "fixed", "group": "3D & advanced visual" },
+    { "text": "Experimental digital experience", "ratePaise": 25000000, "unit": "fixed", "group": "3D & advanced visual" }
+  ],
+
+  "07": [
+    { "text": "Webflow-ready design system", "ratePaise": 6000000, "unit": "fixed", "group": "UI/UX design" }
+  ],
+
+  "08": [
+    { "text": "Landing page UI design", "ratePaise": 3000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Premium landing experience", "ratePaise": 6000000, "unit": "fixed", "group": "UI/UX design" },
+    { "text": "Landing page integration", "ratePaise": 1500000, "unit": "fixed", "group": "Social conversion" }
+  ],
+
+  "09": [
+    { "text": "Logo design (basic)", "ratePaise": 1000000, "unit": "fixed", "group": "Logo" },
+    { "text": "Logo system (primary + variants)", "ratePaise": 3000000, "unit": "fixed", "group": "Logo" },
+    { "text": "Premium logo exploration (multiple directions)", "ratePaise": 5500000, "unit": "fixed", "group": "Logo" },
+
+    { "text": "Colour system", "ratePaise": 800000, "unit": "fixed", "group": "Visual identity" },
+    { "text": "Typography system (open-source)", "ratePaise": 800000, "unit": "fixed", "group": "Visual identity" },
+    { "text": "Spacing & layout system", "ratePaise": 1200000, "unit": "fixed", "group": "Visual identity" },
+    { "text": "Iconography", "ratePaise": 2000000, "unit": "fixed", "group": "Visual identity" },
+    { "text": "Visual language (illustrations, style)", "ratePaise": 2000000, "unit": "fixed", "group": "Visual identity" },
+
+    { "text": "Basic brand guide", "ratePaise": 3500000, "unit": "fixed", "group": "Brand guidelines" },
+    { "text": "Complete brand book", "ratePaise": 8000000, "unit": "fixed", "group": "Brand guidelines" },
+
+    { "text": "Business cards", "ratePaise": 500000, "unit": "fixed", "group": "Business branding" },
+    { "text": "Letterhead / documents", "ratePaise": 500000, "unit": "fixed", "group": "Business branding" },
+    { "text": "Email signature system", "ratePaise": 500000, "unit": "fixed", "group": "Business branding" },
+    { "text": "Presentation deck template", "ratePaise": 1000000, "unit": "fixed", "group": "Business branding" },
+
+    { "text": "Rebranding (full overhaul)", "ratePaise": 50000000, "unit": "fixed", "group": "Positioning" },
+
+    { "text": "Visual identity integration", "ratePaise": 4000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Brand experience direction", "ratePaise": 4000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Premium digital brand language", "ratePaise": 7000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Cross-platform brand consistency", "ratePaise": 4000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Brand-led UX systems", "ratePaise": 6000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Luxury visual systems", "ratePaise": 10000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Brand motion language", "ratePaise": 5000000, "unit": "fixed", "group": "Brand experience" },
+
+    { "text": "Illustration system", "ratePaise": 6000000, "unit": "fixed", "group": "Advanced visual" },
+    { "text": "Custom iconography system", "ratePaise": 2500000, "unit": "fixed", "group": "Advanced visual" }
+  ],
+
+  "10": [
+    { "text": "Brand UI direction", "ratePaise": 1500000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Layout grid system", "ratePaise": 1000000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Typography system", "ratePaise": 1200000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Spacing & rhythm system", "ratePaise": 1000000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Colour & token system", "ratePaise": 1200000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "UI component library", "ratePaise": 2500000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Accessibility design layer", "ratePaise": 1200000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Responsive design adaptation", "ratePaise": 1500000, "unit": "fixed", "group": "Design foundations" },
+
+    { "text": "Figma design system setup", "ratePaise": 3500000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Component variant system", "ratePaise": 2000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Token-based design architecture", "ratePaise": 2500000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Developer handoff package", "ratePaise": 1500000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Design documentation", "ratePaise": 1500000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Scalable UI system", "ratePaise": 6000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Enterprise component library", "ratePaise": 10000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Multi-brand design system", "ratePaise": 12000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Product design governance", "ratePaise": 8000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Team collaboration system", "ratePaise": 3000000, "unit": "fixed", "group": "Design scalability" },
+    { "text": "Design system library", "ratePaise": 4000000, "unit": "fixed", "group": "Expansion" }
+  ],
+
+  "11": [
+    { "text": "Smart lead capture system", "ratePaise": 1200000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Multi-step conversion forms", "ratePaise": 1800000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "WhatsApp lead integration", "ratePaise": 1000000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Booking & scheduling system", "ratePaise": 1800000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Funnel architecture setup", "ratePaise": 2000000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "A/B testing infrastructure", "ratePaise": 2000000, "unit": "fixed", "group": "Conversion & CRO" },
+
+    { "text": "Landing page optimisation", "ratePaise": 2500000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "CTA optimisation system", "ratePaise": 1000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Funnel UX design", "ratePaise": 6000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Lead capture UX system", "ratePaise": 2000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Form optimisation UX", "ratePaise": 1500000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "A/B test design variants", "ratePaise": 2500000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Mobile UX optimisation", "ratePaise": 3000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Trust-building UX systems", "ratePaise": 2500000, "unit": "fixed", "group": "Brand experience" }
+  ],
+
+  "12": [
+    { "text": "Website / WhatsApp / chat intake", "ratePaise": 1200000, "unit": "fixed", "group": "Base automation structure" },
+    { "text": "Structured data capture", "ratePaise": 800000, "unit": "fixed", "group": "Base automation structure" },
+    { "text": "Google Sheets / CRM logging", "ratePaise": 500000, "unit": "fixed", "group": "Base automation structure" },
+    { "text": "Basic notifications", "ratePaise": 700000, "unit": "fixed", "group": "Base automation structure" },
+
+    { "text": "Lead database setup (Sheets / CRM)", "ratePaise": 1000000, "unit": "fixed", "group": "Lead management" },
+    { "text": "Lead routing logic", "ratePaise": 1200000, "unit": "fixed", "group": "Lead management" },
+    { "text": "Status tracking system", "ratePaise": 800000, "unit": "fixed", "group": "Lead management" },
+    { "text": "Lead scoring system", "ratePaise": 1500000, "unit": "fixed", "group": "Lead management" },
+
+    { "text": "WhatsApp automation (set-up)", "ratePaise": 1200000, "unit": "fixed", "group": "Multi-channel automation" },
+    { "text": "Instagram / Facebook DM automation (set-up)", "ratePaise": 500000, "unit": "fixed", "group": "Multi-channel automation" },
+    { "text": "Email automation (set-up)", "ratePaise": 1000000, "unit": "fixed", "group": "Multi-channel automation" },
+    { "text": "SMS automation (set-up)", "ratePaise": 800000, "unit": "fixed", "group": "Multi-channel automation" },
+
+    { "text": "CRM integration", "ratePaise": 3000000, "unit": "fixed", "group": "Integrations" },
+    { "text": "Google Workspace automation", "ratePaise": 1000000, "unit": "fixed", "group": "Integrations" },
+    { "text": "Calendar integration", "ratePaise": 800000, "unit": "fixed", "group": "Integrations" },
+    { "text": "Payment gateway automation", "ratePaise": 1500000, "unit": "fixed", "group": "Integrations" },
+    { "text": "Custom API integration", "ratePaise": 4500000, "unit": "fixed", "group": "Integrations" },
+
+    { "text": "Task automation system", "ratePaise": 1500000, "unit": "fixed", "group": "Internal operations" },
+    { "text": "Internal notifications", "ratePaise": 800000, "unit": "fixed", "group": "Internal operations" },
+    { "text": "Approval workflows", "ratePaise": 1200000, "unit": "fixed", "group": "Internal operations" },
+
+    { "text": "Appointment automation", "ratePaise": 1500000, "unit": "fixed", "group": "Client operations" },
+    { "text": "Follow-up system", "ratePaise": 1000000, "unit": "fixed", "group": "Client operations" },
+    { "text": "No-show reduction system", "ratePaise": 1000000, "unit": "fixed", "group": "Client operations" },
+
+    { "text": "Analytics dashboard", "ratePaise": 1500000, "unit": "fixed", "group": "Analytics and dashboards" },
+    { "text": "Reporting automation", "ratePaise": 1000000, "unit": "fixed", "group": "Analytics and dashboards" },
+    { "text": "Performance tracking", "ratePaise": 1200000, "unit": "fixed", "group": "Analytics and dashboards" },
+
+    { "text": "Workflow automation", "ratePaise": 1500000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "CRM automation", "ratePaise": 2000000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "Email automation systems", "ratePaise": 1800000, "unit": "fixed", "group": "AI automation (Development card)" },
+
+    { "text": "Lead funnel set-up", "ratePaise": 4500000, "unit": "fixed", "group": "Social conversion" },
+    { "text": "WhatsApp funnel", "ratePaise": 4500000, "unit": "fixed", "group": "Social conversion" },
+    { "text": "Auto-DM flow", "ratePaise": 2500000, "unit": "fixed", "group": "Social conversion" },
+    { "text": "Full funnel integration (social to website to CRM)", "ratePaise": 7000000, "unit": "fixed", "group": "Complete engine" }
+  ],
+
+  "13": [
+    { "text": "Basic chat assistant", "ratePaise": 2000000, "unit": "fixed", "group": "AI chat systems (Automation card)" },
+    { "text": "Custom trained AI", "ratePaise": 5000000, "unit": "fixed", "group": "AI chat systems (Automation card)" },
+    { "text": "Multi-language AI", "ratePaise": 2500000, "unit": "fixed", "group": "AI chat systems (Automation card)" },
+
+    { "text": "AI content generator (internal)", "ratePaise": 2000000, "unit": "fixed", "group": "AI business tools (Automation card)" },
+    { "text": "AI FAQ system", "ratePaise": 1500000, "unit": "fixed", "group": "AI business tools (Automation card)" },
+    { "text": "AI lead qualification bot", "ratePaise": 2500000, "unit": "fixed", "group": "AI business tools (Automation card)" },
+
+    { "text": "AI chat assistant", "ratePaise": 4500000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "AI lead qualification", "ratePaise": 3500000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "AI knowledge base", "ratePaise": 5000000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "AI search experience", "ratePaise": 4000000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "AI internal tooling", "ratePaise": 6000000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "Voice AI integration", "ratePaise": 7500000, "unit": "fixed", "group": "AI automation (Development card)" },
+    { "text": "AI personalisation layer", "ratePaise": 5000000, "unit": "fixed", "group": "AI automation (Development card)" }
+  ],
+
+  "14": [
+    { "text": "Generative visual design", "ratePaise": 7000000, "unit": "fixed", "group": "Advanced visual" },
+    { "text": "AI-assisted visual concepts", "ratePaise": 3000000, "unit": "fixed", "group": "Advanced visual" },
+    { "text": "AI content engine (bulk scripting + ideation)", "ratePaise": 3500000, "unit": "fixed", "group": "Complete engine" }
+  ],
+
+  "15": [
+    { "text": "Content and visual alignment", "ratePaise": 500000, "unit": "fixed", "group": "Base social media structure" },
+
+    { "text": "Script writing", "ratePaise": 200000, "unit": "perUnit", "unitLabel": "per video", "group": "Short form content" },
+    { "text": "Video editing (basic)", "ratePaise": 100000, "unit": "perUnit", "unitLabel": "per video", "group": "Short form content" },
+    { "text": "Video editing (premium storytelling)", "ratePaise": 500000, "unit": "perUnit", "unitLabel": "per video", "group": "Short form content" },
+    { "text": "Motion graphics add-on", "ratePaise": 200000, "unit": "perUnit", "unitLabel": "per video", "group": "Short form content" },
+    { "text": "Voiceover (AI / human)", "ratePaise": 400000, "unit": "perUnit", "unitLabel": "per video", "group": "Short form content" },
+    { "text": "Bundle: 10 reels a month", "ratePaise": 4500000, "unit": "monthly", "group": "Short form content" },
+
+    { "text": "Carousel content research + copy", "ratePaise": 200000, "unit": "perUnit", "unitLabel": "per carousel", "group": "Carousel content" },
+    { "text": "Carousel design (5 slides)", "ratePaise": 300000, "unit": "perUnit", "unitLabel": "per carousel", "group": "Carousel content" },
+    { "text": "Premium carousel", "ratePaise": 400000, "unit": "perUnit", "unitLabel": "per carousel", "group": "Carousel content" },
+    { "text": "Bundle: 6 carousels a month", "ratePaise": 4000000, "unit": "monthly", "group": "Carousel content" },
+
+    { "text": "Static post: design + caption", "ratePaise": 200000, "unit": "perUnit", "unitLabel": "per post", "group": "Static post" },
+
+    { "text": "Monthly content strategy", "ratePaise": 1500000, "unit": "monthly", "group": "Content strategy" },
+    { "text": "Content calendar (30 days)", "ratePaise": 2500000, "unit": "monthly", "group": "Content strategy" },
+    { "text": "Hook library creation", "ratePaise": 1500000, "unit": "fixed", "group": "Content strategy" },
+
+    { "text": "Monthly performance report", "ratePaise": 1000000, "unit": "monthly", "group": "Analytics & optimisation" },
+    { "text": "Content optimisation strategy", "ratePaise": 800000, "unit": "fixed", "group": "Analytics & optimisation" },
+    { "text": "A/B testing (hooks, formats)", "ratePaise": 1000000, "unit": "fixed", "group": "Analytics & optimisation" },
+
+    { "text": "Social creative retainer (20,000 to 1,00,000)", "ratePaise": 2000000, "unit": "monthly", "group": "Design retainers" },
+    { "text": "Design support retainer (25,000 to 1,50,000)", "ratePaise": 2500000, "unit": "monthly", "group": "Design retainers" },
+    { "text": "Product design retainer (50,000 to 3,00,000)", "ratePaise": 5000000, "unit": "monthly", "group": "Design retainers" },
+    { "text": "Campaign design retainer (30,000 to 2,00,000)", "ratePaise": 3000000, "unit": "monthly", "group": "Design retainers" },
+    { "text": "Motion design retainer (40,000 to 2,00,000)", "ratePaise": 4000000, "unit": "monthly", "group": "Design retainers" },
+    { "text": "Brand consistency management (20,000 to 1,00,000)", "ratePaise": 2000000, "unit": "monthly", "group": "Design retainers" }
+  ],
+
+  "16": [
+    { "text": "Hashtag + SEO strategy", "ratePaise": 300000, "unit": "fixed", "group": "Organic growth" },
+    { "text": "Posting + scheduling", "ratePaise": 1000000, "unit": "monthly", "group": "Organic growth" },
+    { "text": "Engagement (comments, replies)", "ratePaise": 800000, "unit": "monthly", "group": "Organic growth" },
+    { "text": "DM handling", "ratePaise": 1000000, "unit": "monthly", "group": "Organic growth" }
+  ],
+
+  "17": [
+    { "text": "Meta ads", "ratePaise": 1500000, "unit": "monthly", "group": "Performance marketing" },
+    { "text": "Google ads", "ratePaise": 3000000, "unit": "monthly", "group": "Performance marketing" },
+    { "text": "Engagement (comments, replies)", "ratePaise": 2500000, "unit": "monthly", "group": "Performance marketing" },
+    { "text": "Social media hygiene", "ratePaise": 2000000, "unit": "monthly", "group": "Performance marketing" }
+  ],
+
+  "18": [
+    { "text": "Website maintenance (8,000 to 25,000)", "ratePaise": 800000, "unit": "monthly", "group": "Retainership" },
+    { "text": "SEO retainer (25,000 to 75,000)", "ratePaise": 2500000, "unit": "monthly", "group": "Retainership" },
+    { "text": "Analytics monitoring (10,000 to 30,000)", "ratePaise": 1000000, "unit": "monthly", "group": "Retainership" },
+    { "text": "Performance monitoring (8,000 to 20,000)", "ratePaise": 800000, "unit": "monthly", "group": "Retainership" },
+    { "text": "Technical support (10,000 to 40,000)", "ratePaise": 1000000, "unit": "monthly", "group": "Retainership" },
+    { "text": "Content / CMS management (10,000 to 35,000)", "ratePaise": 1000000, "unit": "monthly", "group": "Retainership" }
+  ],
+
+  "19": [
+    { "text": "CRO optimisation (20,000 to 1,00,000)", "ratePaise": 2000000, "unit": "monthly", "group": "Retainership" },
+    { "text": "UX optimisation retainer (30,000 to 1,50,000)", "ratePaise": 3000000, "unit": "monthly", "group": "Design retainers" }
+  ],
+
+  "20": [
+    { "text": "WhatsApp automation (monthly)", "ratePaise": 350000, "unit": "monthly", "group": "Multi-channel automation" },
+    { "text": "Instagram / Facebook DM automation (monthly)", "ratePaise": 250000, "unit": "monthly", "group": "Multi-channel automation" },
+    { "text": "Email automation (monthly)", "ratePaise": 300000, "unit": "monthly", "group": "Multi-channel automation" },
+    { "text": "SMS automation (monthly)", "ratePaise": 200000, "unit": "monthly", "group": "Multi-channel automation" },
+
+    { "text": "Basic maintenance", "ratePaise": 500000, "unit": "monthly", "group": "Retainer model" },
+    { "text": "Active monitoring", "ratePaise": 1200000, "unit": "monthly", "group": "Retainer model" },
+    { "text": "Full optimisation", "ratePaise": 4000000, "unit": "monthly", "group": "Retainer model" },
+    { "text": "AI automation maintenance (15,000 to 50,000)", "ratePaise": 1500000, "unit": "monthly", "group": "Retainership" }
+  ],
+
+  "21": [
+    { "text": "CRO audit", "ratePaise": 1500000, "unit": "fixed", "group": "Conversion & CRO" },
+    { "text": "Design audit & visual review", "ratePaise": 1000000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "Visual consistency audit", "ratePaise": 1500000, "unit": "fixed", "group": "Design foundations" },
+    { "text": "CRO-focused UX audit", "ratePaise": 2000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Behavioural UX analysis", "ratePaise": 2500000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Heatmap-based UX review", "ratePaise": 2000000, "unit": "fixed", "group": "Conversion & UX systems" },
+    { "text": "Brand perception audit", "ratePaise": 2000000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Competitor audit", "ratePaise": 400000, "unit": "fixed", "group": "Base social media structure" },
+    { "text": "Competitor content analysis", "ratePaise": 1000000, "unit": "fixed", "group": "Content strategy" }
+  ],
+
+  "22": [
+    { "text": "Brand discovery session", "ratePaise": 500000, "unit": "fixed", "group": "Base branding structure" },
+    { "text": "Audience & market research", "ratePaise": 1000000, "unit": "fixed", "group": "Base branding structure" },
+    { "text": "Competitor analysis", "ratePaise": 800000, "unit": "fixed", "group": "Base branding structure" },
+    { "text": "Brand positioning statement", "ratePaise": 1200000, "unit": "fixed", "group": "Base branding structure" },
+    { "text": "Brand messaging framework", "ratePaise": 1500000, "unit": "fixed", "group": "Base branding structure" },
+
+    { "text": "Naming (brand name creation)", "ratePaise": 2500000, "unit": "fixed", "group": "Brand strategy" },
+    { "text": "Tagline / slogan", "ratePaise": 1000000, "unit": "fixed", "group": "Brand strategy" },
+    { "text": "Tone of voice system", "ratePaise": 1000000, "unit": "fixed", "group": "Brand strategy" },
+    { "text": "Brand story writing", "ratePaise": 1500000, "unit": "fixed", "group": "Brand strategy" },
+    { "text": "Content direction strategy", "ratePaise": 2000000, "unit": "fixed", "group": "Brand strategy" },
+
+    { "text": "Personal brand strategy", "ratePaise": 7500000, "unit": "fixed", "group": "Positioning" },
+    { "text": "High-end brand positioning", "ratePaise": 20000000, "unit": "fixed", "group": "Positioning" },
+    { "text": "Emotional design strategy", "ratePaise": 3500000, "unit": "fixed", "group": "Brand experience" },
+    { "text": "Platform strategy (IG / LinkedIn / YouTube)", "ratePaise": 300000, "unit": "fixed", "group": "Base social media structure" },
+    { "text": "Personal brand system", "ratePaise": 5000000, "unit": "fixed", "group": "Complete engine" }
+  ]
+}

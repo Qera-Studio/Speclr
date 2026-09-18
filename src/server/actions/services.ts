@@ -3,9 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { sacSchema } from '@/lib/domain/fields';
-import { multilineSchema, textSchema } from '@/lib/domain/text';
+import { codeSchema, multilineSchema, textSchema } from '@/lib/domain/text';
+import {
+  assignMenuIds,
+  menuLineSchema,
+  serviceContentSchema,
+  type ServiceContent,
+} from '@/lib/domain/service';
 import type { ActionResult } from '@/lib/domain/types';
-import { getService, insertService, listServices, saveService } from '@/db/store';
+import { archiveService, getService, insertService, listServices, saveService } from '@/db/store';
 import { logger } from '@/lib/logger';
 import { authorized } from './authGate';
 
@@ -37,13 +43,33 @@ const detailFields = {
   ratePaise: z.number().int().min(0).max(10_000_000_000).nullable(),
 };
 
-const serviceDetailsSchema = z.object({
-  code: z.string().regex(/^\d{2}$/, 'A service code is two digits.'),
-  ...detailFields,
-});
+const serviceCode = z.string().regex(/^\d{2}$/, 'A service code is two digits.');
 
-/** The same five fields, minus the code, which the server assigns. */
-const newServiceSchema = z.object(detailFields);
+const serviceDetailsSchema = z.object({ code: serviceCode, ...detailFields });
+
+/**
+ * The same five fields, minus the code, which the server assigns, plus the
+ * Service to start from, if any: see `createService`.
+ */
+const newServiceSchema = z.object({ ...detailFields, cloneFrom: serviceCode.optional() });
+
+/** What a Service carries before anything has been written into it. */
+const EMPTY_CONTENT: ServiceContent = {
+  dependencies: [],
+  pairings: [],
+  overview: [],
+  included: [],
+  accountTerms: [],
+  limits: [],
+  limitsNotes: [],
+  completion: [],
+  receives: [],
+  receivesNotes: [],
+  thirdPartyCosts: '',
+  exclusionIds: [],
+  clientInputIds: [],
+  fee: [],
+};
 
 /**
  * Edits a Service in the catalogue.
@@ -114,15 +140,18 @@ export async function updateServiceDetails(data: unknown): Promise<ActionResult>
  *
  * **The code is assigned server-side, never sent.** It is the primary key and
  * it is cited by every contract that used it, so it is claimed as one past the
- * highest that exists — counting archived rows, exactly as the clause library
+ * highest that exists, counting archived rows, exactly as the clause library
  * counts past archived clauses, because a retired code must never be handed to
  * different work. That is also why the insert refuses a collision rather than
  * upserting: on a duplicate the honest answer is an error, not an overwrite.
  *
- * The five fields the dialog collects are all it writes. Scope, limits,
- * exclusions and the Fee table start empty and are filled from the spec, which
- * is the same division of labour the dialog holds for an edit: this screen is
- * for what a Service *is*, not for the contract text it carries.
+ * The five fields the dialog collects are all it writes of its own. Everything
+ * else starts empty, **or is copied from the Service it starts from**. A
+ * genuinely new kind of work is usually a near copy of one that exists, and
+ * "Start from…" is what makes adding it a two-minute form rather than a spec
+ * edit: scope, limits, libraries and the menu come across, and the five fields
+ * typed here replace the source's own. The copy is a copy; editing the new
+ * Service afterwards touches nothing on the old one.
  */
 export async function createService(data: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
@@ -131,9 +160,18 @@ export async function createService(data: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid service.' };
   }
-  const { name, scheduleKey, overview, sacCode, ratePaise } = parsed.data;
+  const { name, scheduleKey, overview, sacCode, ratePaise, cloneFrom } = parsed.data;
 
   try {
+    let base = EMPTY_CONTENT;
+    if (cloneFrom) {
+      const source = await getService(cloneFrom);
+      if (!source) return { success: false, error: 'The service to start from no longer exists.' };
+      // The content schema names exactly the content fields, so parsing the
+      // whole record through it is the split the store makes on every write.
+      base = serviceContentSchema.parse(source);
+    }
+
     const all = await listServices(true);
     const next = Math.max(0, ...all.map((s) => Number(s.code))) + 1;
     // Two digits is the shape of a code, and 99 services is far past the point
@@ -142,6 +180,7 @@ export async function createService(data: unknown): Promise<ActionResult> {
 
     const siblings = all.filter((s) => s.scheduleKey === scheduleKey);
     await insertService({
+      ...base,
       code: String(next).padStart(2, '0'),
       name,
       scheduleKey,
@@ -150,23 +189,108 @@ export async function createService(data: unknown): Promise<ActionResult> {
       overview,
       sacCode: sacCode || undefined,
       ratePaise: ratePaise ?? undefined,
-      dependencies: [],
-      pairings: [],
-      included: [],
-      accountTerms: [],
-      limits: [],
-      limitsNotes: [],
-      completion: [],
-      receives: [],
-      receivesNotes: [],
-      thirdPartyCosts: '',
-      exclusionIds: [],
-      clientInputIds: [],
-      fee: [],
     });
   } catch (err) {
     logger.error({ action: 'createService', event: 'insert_failed', error: err });
     return { success: false, error: 'Failed to add the service.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * The three sections of the service page, each a form that posts only its
+ * own fields.
+ *
+ * The same shape as `saveClientSection`: the client names a section, the
+ * server reads the row and overwrites exactly that section's keys. A page
+ * with three forms writing one row is how a section quietly goes missing
+ * unless each one is blind to the others, and this is what makes them blind.
+ *
+ * A menu line posts with `id: ''` to mean "new"; ids are assigned here and
+ * never reissued (`assignMenuIds`).
+ */
+const SECTION_SCHEMAS = {
+  menu: z.object({
+    menu: z.array(menuLineSchema.extend({ id: codeSchema(12) })).max(200),
+  }),
+  wording: serviceContentSchema.pick({
+    included: true,
+    accountTerms: true,
+    limits: true,
+    limitsNotes: true,
+    completion: true,
+    receives: true,
+    receivesNotes: true,
+    thirdPartyCosts: true,
+    fee: true,
+  }),
+  libraries: serviceContentSchema.pick({ exclusionIds: true, clientInputIds: true }),
+} as const;
+
+export type ServiceSection = keyof typeof SECTION_SCHEMAS;
+
+const isServiceSection = (value: unknown): value is ServiceSection =>
+  typeof value === 'string' && value in SECTION_SCHEMAS;
+
+export async function saveServiceSection(
+  code: unknown,
+  section: unknown,
+  data: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsedCode = serviceCode.safeParse(code);
+  if (!parsedCode.success) return { success: false, error: 'Invalid service code.' };
+  if (!isServiceSection(section)) return { success: false, error: 'Unknown section.' };
+
+  const parsed = SECTION_SCHEMAS[section].safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid section.' };
+  }
+
+  try {
+    const existing = await getService(parsedCode.data);
+    if (!existing) return { success: false, error: 'That service no longer exists.' };
+
+    if ('menu' in parsed.data) {
+      const assigned = assignMenuIds(existing, parsed.data.menu);
+      // The domain rule on a finished menu (no two lines on one id) runs on the
+      // ids as they will be stored, which is after assignment.
+      const check = serviceContentSchema.shape.menu.safeParse(assigned.menu);
+      if (!check.success) {
+        return { success: false, error: check.error.issues[0]?.message ?? 'Invalid menu.' };
+      }
+      await saveService({ ...existing, ...assigned });
+    } else {
+      await saveService({ ...existing, ...parsed.data });
+    }
+  } catch (err) {
+    logger.error({ action: 'saveServiceSection', event: 'save_failed', section, error: err });
+    return { success: false, error: 'Failed to save the service.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * Archives a Service. Never deletes: a Service that has been on a contract
+ * stays readable for audit, and every contract holds its own copy regardless,
+ * so removing the row is never the right answer (`archiveService`).
+ */
+export async function removeService(code: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsed = serviceCode.safeParse(code);
+  if (!parsed.success) return { success: false, error: 'Invalid service code.' };
+
+  try {
+    await archiveService(parsed.data);
+  } catch (err) {
+    logger.error({ action: 'removeService', event: 'archive_failed', error: err });
+    return { success: false, error: 'Failed to archive the service.' };
   }
 
   revalidatePath('/', 'layout');

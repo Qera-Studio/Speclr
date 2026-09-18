@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { clauseInputSchema } from '@/lib/domain/contract/msa';
 import type { ActionResult } from '@/lib/domain/types';
-import { archiveClause, nextClauseNumber, saveClause } from '@/db/store';
+import { archiveClause, deleteClause, nextClauseNumber, saveClause } from '@/db/store';
 import { logger } from '@/lib/logger';
 import { authorized } from './authGate';
 
@@ -67,9 +67,8 @@ export async function addClause(data: unknown): Promise<ActionResult> {
 }
 
 /**
- * Archives a clause. Never deletes: the number must stay taken, or a later
- * clause would inherit a number that signed agreements use to mean something
- * else entirely.
+ * Archives a clause: it leaves the library and its row stays, so its number
+ * stays taken. The ordinary removal, and the one the list offers on a row.
  */
 export async function removeClause(number: unknown): Promise<ActionResult> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
@@ -82,6 +81,36 @@ export async function removeClause(number: unknown): Promise<ActionResult> {
   } catch (err) {
     logger.error({ action: 'removeClause', event: 'archive_failed', error: err });
     return { success: false, error: 'Failed to archive the clause.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * Deletes a clause outright.
+ *
+ * Offered because a clause typed by mistake should be removable rather than
+ * sitting in the library's history forever, and kept at the foot of the drawer
+ * rather than on a row, behind a confirmation, because it is the one action
+ * here that cannot be undone.
+ *
+ * **The number does not come back with it** (`deleteClause` raises a
+ * high-water mark in `counters` before removing the row). Clause bodies cite
+ * each other by number, and reissuing one would silently change what a signed
+ * agreement says. That is the same rule archiving holds by keeping the row.
+ */
+export async function destroyClause(number: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+  if (typeof number !== 'number' || !Number.isInteger(number)) {
+    return { success: false, error: 'Invalid clause.' };
+  }
+
+  try {
+    await deleteClause(number);
+  } catch (err) {
+    logger.error({ action: 'destroyClause', event: 'delete_failed', error: err });
+    return { success: false, error: 'Failed to delete the clause.' };
   }
 
   revalidatePath('/', 'layout');

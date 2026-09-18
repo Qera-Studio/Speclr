@@ -53,9 +53,14 @@ const formSchema = z.object({
       (v) => v.trim() === '' || /^\d+(\.\d{1,2})?$/.test(v.trim()),
       'Enter an amount like 45000 or 45000.50.',
     ),
+  /** A service code, or `NONE`. Read only when adding. */
+  cloneFrom: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+/** A `Select` cannot hold an empty value, so "start from nothing" is this. */
+const NONE = 'NONE';
 
 /**
  * One Service, edited — or a new one added.
@@ -78,17 +83,23 @@ type FormValues = z.infer<typeof formSchema>;
  * **Adding is the same five fields, and the code is not one of them.** A code
  * is the primary key and is cited by every contract that used it, so the server
  * assigns it; there is nothing here for a person to get wrong. Everything else a
- * Service carries starts empty and is filled from the spec.
+ * Service carries starts empty, **or is copied from the Service it starts
+ * from**: a genuinely new kind of work is usually a near copy of one that
+ * exists, and naming it is what makes adding one a two-minute form. The rest
+ * is then edited on the new Service's own page.
  */
 export default function ServiceEditDialog({
   service,
   scheduleKey,
+  startFrom,
   onClose,
 }: {
   /** Absent means this is a new Service. */
   service?: ContractService;
   /** Which column the add card was clicked in. Ignored when editing. */
   scheduleKey?: ScheduleKey;
+  /** What a new Service may start from. Ignored when editing. */
+  startFrom?: ContractService[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -113,6 +124,7 @@ export default function ServiceEditDialog({
       overview: service?.overview.join('\n') ?? '',
       sacCode: service?.sacCode ?? '',
       rateRupees: service?.ratePaise === undefined ? '' : paiseToRupees(service.ratePaise),
+      cloneFrom: NONE,
     },
   });
 
@@ -135,7 +147,10 @@ export default function ServiceEditDialog({
       };
       const result = service
         ? await updateServiceDetails({ ...payload, code: service.code })
-        : await createService(payload);
+        : await createService({
+            ...payload,
+            ...(values.cloneFrom === NONE ? {} : { cloneFrom: values.cloneFrom }),
+          });
 
       if (!result.success) {
         // On the name, because it is the first field and the one a message can
@@ -180,6 +195,39 @@ export default function ServiceEditDialog({
         </DialogHeader>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
+          {/* Adding only. First, because it seeds everything the fields below
+              do not ask for. An existing Service has nothing to start from. */}
+          {!service && startFrom && startFrom.length > 0 ? (
+            <Field>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="service-clone">Start from</FieldLabel>
+                <InfoTip
+                  label="What starting from a service does"
+                  info="Copies its scope, limits, exclusions, client inputs and menu onto the new service. The fields below replace the copy's own. Edit the rest on the new service's page."
+                />
+              </div>
+              <Controller
+                control={control}
+                name="cloneFrom"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                    <SelectTrigger id="service-clone" size="form" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Nothing, start empty</SelectItem>
+                      {startFrom.map((s) => (
+                        <SelectItem key={s.code} value={s.code}>
+                          {s.code} {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+          ) : null}
+
           {/* 35/65 rather than an even split: a Section is one of four short
               words, a Title is a sentence fragment. The explicit columns also
               override `FieldRow`'s container query, which needs a
