@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { sacSchema } from '@/lib/domain/fields';
-import { multilineSchema, textSchema } from '@/lib/domain/text';
+import { codeSchema, multilineSchema, textSchema } from '@/lib/domain/text';
 import {
   EMPTY_PART_CONTENT,
   serviceContentSchema,
@@ -270,6 +270,107 @@ export async function saveServiceSection(
   } catch (err) {
     logger.error({ action: 'saveServiceSection', event: 'save_failed', section, error: err });
     return { success: false, error: 'Failed to save the service.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * Saves **one** item, leaving every other item on the Service untouched.
+ *
+ * Deliberately not `saveServiceSection('items', …)`, which posts the whole
+ * list. That is right for a form holding every row at once, and wrong here: a
+ * panel editing one item out of `WEB`'s 52 would carry the other 51 back with
+ * it, so two people editing different items would each save their own copy of
+ * the list and the second would silently undo the first. Sending one item means
+ * the row the server reads is the row it writes.
+ *
+ * A blank id means a new item and is assigned here, never reissued
+ * (`assignItemIds`). An id that is set must already exist: the alternative is
+ * that a stale panel silently resurrects an item somebody deleted.
+ */
+export async function saveServiceItem(
+  code: unknown,
+  data: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsedCode = serviceCode.safeParse(code);
+  if (!parsedCode.success) return { success: false, error: 'Invalid service code.' };
+
+  // The list schema, given one item: the same rules, including the blank id
+  // that means "new", without a second copy of them here.
+  const parsed = serviceItemsSchema.safeParse([data]);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid item.' };
+  }
+  const incoming = parsed.data[0];
+
+  try {
+    const existing = await getService(parsedCode.data);
+    if (!existing) return { success: false, error: 'That service no longer exists.' };
+
+    const items = existing.items ?? [];
+    const at = incoming.id ? items.findIndex((item) => item.id === incoming.id) : -1;
+    if (incoming.id && at === -1) {
+      return { success: false, error: 'That item no longer exists.' };
+    }
+
+    // One list either way, so `assignItemIds` sees every id that has ever been
+    // used and the high-water mark cannot go backwards.
+    const next =
+      at === -1
+        ? [...items, incoming]
+        : items.map((item, i) => (i === at ? incoming : item));
+
+    await saveService({ ...existing, ...assignItemIds(existing, next) });
+  } catch (err) {
+    logger.error({ action: 'saveServiceItem', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to save the item.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * Archives one item, which is how an item leaves the catalogue.
+ *
+ * Never deletes, for the same reason a Service is never deleted: a client
+ * record and a contract cite the id, and `assignItemIds` counts past the row to
+ * guarantee the id is never handed to different work. Archiving keeps the row,
+ * so the id stays taken by construction.
+ */
+export async function archiveServiceItem(
+  code: unknown,
+  id: unknown,
+  archived: unknown,
+): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsedCode = serviceCode.safeParse(code);
+  if (!parsedCode.success) return { success: false, error: 'Invalid service code.' };
+  const parsedId = codeSchema(12, { required: 'An item needs an id.' }).safeParse(id);
+  if (!parsedId.success) return { success: false, error: 'Invalid item id.' };
+  if (typeof archived !== 'boolean') return { success: false, error: 'Invalid state.' };
+
+  try {
+    const existing = await getService(parsedCode.data);
+    if (!existing) return { success: false, error: 'That service no longer exists.' };
+    if (!(existing.items ?? []).some((item) => item.id === parsedId.data)) {
+      return { success: false, error: 'That item no longer exists.' };
+    }
+
+    await saveService({
+      ...existing,
+      items: (existing.items ?? []).map((item) =>
+        item.id === parsedId.data ? { ...item, archived } : item,
+      ),
+    });
+  } catch (err) {
+    logger.error({ action: 'archiveServiceItem', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to archive the item.' };
   }
 
   revalidatePath('/', 'layout');

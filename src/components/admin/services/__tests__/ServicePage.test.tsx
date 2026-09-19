@@ -34,13 +34,18 @@ describe('ServicePage', () => {
     expect(screen.getByText('Build')).toBeInTheDocument();
   });
 
-  it('holds the three sections, each with its own save', () => {
+  /**
+   * Items is a table and a panel rather than a form, so it has no save of its
+   * own: an item is saved from the panel it opens in, one item at a time. The
+   * other two are still whole-section forms and still carry theirs.
+   */
+  it('holds the three sections, and saves the two that are forms', () => {
     render(<ServicePage service={build} exclusions={[]} clientInputs={[]} />);
 
     expect(screen.getByRole('heading', { name: 'Items' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Wording' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Libraries' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save items' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add item' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save wording' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save libraries' })).toBeInTheDocument();
   });

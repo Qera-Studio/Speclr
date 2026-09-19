@@ -29,7 +29,13 @@ jest.mock('@/db/store', () => ({
 }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
-import { createService, removeService, saveServiceSection } from '../services';
+import {
+  archiveServiceItem,
+  createService,
+  removeService,
+  saveServiceItem,
+  saveServiceSection,
+} from '../services';
 
 /** Custom web build, as seeded: twelve inclusions, a Limits table, one item. */
 const existing: ContractService = {
@@ -238,5 +244,135 @@ describe('removeService', () => {
     const result = await removeService('not-a-code');
     expect(result.success).toBe(false);
     expect(archiveService).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * One item at a time, which is what the panel on the service page posts.
+ *
+ * The rule these exist for: `saveServiceSection('items', …)` replaces the whole
+ * list, so two people editing different items under `WEB` would each save their
+ * own copy of its 52 and the second would silently undo the first. This action
+ * reads the row and replaces exactly one item in it.
+ */
+describe('saveServiceItem', () => {
+  const item = {
+    id: 'I1',
+    name: 'GSAP motion system',
+    ratePaise: 20_00_000,
+    unit: 'fixed' as const,
+    archived: false,
+  };
+
+  it('refuses a signed-out caller before reading anything', async () => {
+    authorized.mockResolvedValue(null);
+    const result = await saveServiceItem('06', item);
+    expect(result).toEqual({ success: false, error: 'Unauthorized.' });
+    expect(getService).not.toHaveBeenCalled();
+  });
+
+  it('replaces the item it names and leaves the others alone', async () => {
+    getService.mockResolvedValue({
+      ...existing,
+      items: [item, { ...item, id: 'I2', name: 'Other', ratePaise: 5_00_000 }],
+      itemSeq: 2,
+    });
+
+    const result = await saveServiceItem('06', { ...item, ratePaise: 28_00_000 });
+    expect(result).toEqual({ success: true });
+
+    const saved = saveService.mock.calls[0][0];
+    expect(saved.items?.map((i) => [i.id, i.ratePaise])).toEqual([
+      ['I1', 28_00_000],
+      ['I2', 5_00_000],
+    ]);
+  });
+
+  /** A blank id means new, and the id is assigned past the high-water mark. */
+  it('appends a new item with an id that was never used before', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 7 });
+
+    await saveServiceItem('06', { ...item, id: '', name: 'Three.js scene' });
+
+    const saved = saveService.mock.calls[0][0];
+    expect(saved.items?.map((i) => i.id)).toEqual(['I1', 'I8']);
+    expect(saved.itemSeq).toBe(8);
+  });
+
+  /**
+   * A stale panel must not resurrect an item somebody deleted. The id is
+   * checked against the stored row rather than trusted.
+   */
+  it('refuses an id the service does not carry', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 1 });
+
+    const result = await saveServiceItem('06', { ...item, id: 'I99' });
+    expect(result).toEqual({ success: false, error: 'That item no longer exists.' });
+    expect(saveService).not.toHaveBeenCalled();
+  });
+
+  it('refuses an item with no name', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 1 });
+
+    const result = await saveServiceItem('06', { ...item, name: '' });
+    expect(result.success).toBe(false);
+    expect(saveService).not.toHaveBeenCalled();
+  });
+
+  /** Everything the panel never showed survives by never having left the row. */
+  it('leaves the rest of the service untouched', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 1 });
+
+    await saveServiceItem('06', { ...item, name: 'Renamed' });
+
+    const saved = saveService.mock.calls[0][0];
+    expect(saved.included).toEqual(existing.included);
+    expect(saved.limits).toEqual(existing.limits);
+    expect(saved.name).toBe(existing.name);
+  });
+});
+
+describe('archiveServiceItem', () => {
+  const item = {
+    id: 'I1',
+    name: 'GSAP motion system',
+    unit: 'fixed' as const,
+    archived: false,
+  };
+
+  it('archives without deleting, so the id stays taken', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 1 });
+
+    const result = await archiveServiceItem('06', 'I1', true);
+    expect(result).toEqual({ success: true });
+
+    const saved = saveService.mock.calls[0][0];
+    expect(saved.items).toHaveLength(1);
+    expect(saved.items?.[0].archived).toBe(true);
+  });
+
+  it('restores one that was archived', async () => {
+    getService.mockResolvedValue({
+      ...existing,
+      items: [{ ...item, archived: true }],
+      itemSeq: 1,
+    });
+
+    await archiveServiceItem('06', 'I1', false);
+    expect(saveService.mock.calls[0][0].items?.[0].archived).toBe(false);
+  });
+
+  it('refuses an id the service does not carry', async () => {
+    getService.mockResolvedValue({ ...existing, items: [item], itemSeq: 1 });
+
+    const result = await archiveServiceItem('06', 'I99', true);
+    expect(result).toEqual({ success: false, error: 'That item no longer exists.' });
+    expect(saveService).not.toHaveBeenCalled();
+  });
+
+  it('refuses a signed-out caller', async () => {
+    authorized.mockResolvedValue(null);
+    const result = await archiveServiceItem('06', 'I1', true);
+    expect(result).toEqual({ success: false, error: 'Unauthorized.' });
   });
 });

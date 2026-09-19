@@ -10,7 +10,7 @@ import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import { removeService } from '@/server/actions/services';
 import LibrariesForm from './LibrariesForm';
-import ItemsEditor from './ItemsEditor';
+import ItemsManager from './ItemsManager';
 import WordingForm from './WordingForm';
 
 const SECTIONS = [
@@ -71,7 +71,7 @@ export default function ServicePage({
     });
 
   const forms = {
-    items: <ItemsEditor service={service} />,
+    items: <ItemsManager service={service} />,
     wording: <WordingForm service={service} />,
     libraries: (
       <LibrariesForm service={service} exclusions={exclusions} clientInputs={clientInputs} />
