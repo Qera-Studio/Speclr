@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/status-badge';
-import { DocumentCard } from './DocumentsCards';
-import { formatDisplayMonth } from '@/lib/domain/dates';
-import { DOC_TYPES } from '@/lib/domain/registry';
-import { newDocHref } from '@/lib/profile';
-import type { DocumentGroup, GroupBy } from '@/lib/domain/documentQuery';
-import type { DocStatus, DocTypeCode } from '@/lib/domain/types';
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { DocumentCard } from "./DocumentsCards";
+import { formatDisplayMonth } from "@/lib/domain/dates";
+import { DOC_TYPES } from "@/lib/domain/registry";
+import { newDocHref } from "@/lib/profile";
+import type { DocumentGroup, GroupBy } from "@/lib/domain/documentQuery";
+import type { DocStatus, DocTypeCode } from "@/lib/domain/types";
 
 /**
  * The same documents as the table and the cards, cut into columns.
@@ -83,9 +83,9 @@ export default function DocumentsKanban({
               id={headingId(group.key)}
               className="min-w-0 truncate text-sm font-medium"
             >
-              {groupBy === 'status' ? (
+              {groupBy === "status" ? (
                 <StatusBadge status={group.key as DocStatus} />
-              ) : groupBy === 'type' ? (
+              ) : groupBy === "type" ? (
                 DOC_TYPES[group.key as DocTypeCode].label
               ) : (
                 formatDisplayMonth(group.key)
@@ -96,14 +96,14 @@ export default function DocumentsKanban({
             </span>
           </div>
 
-          {groupBy === 'type' && group.documents.length === 0 ? (
+          {groupBy === "type" && group.documents.length === 0 ? (
             <NewInColumn code={group.key as DocTypeCode} />
           ) : (
             /* The scroll lives here, not on the page: one busy column should not
                push the others off the bottom, and the heading stays put outside
                it. `flex-1` reaches a real height because the page runs full
                height for this view, exactly as the catalogue's does. */
-            <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
+            <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1 pb-1">
               {group.documents.map((doc) => (
                 <li key={doc.id}>
                   <DocumentCard doc={doc} />

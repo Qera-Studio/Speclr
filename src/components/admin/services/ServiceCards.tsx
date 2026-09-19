@@ -125,7 +125,7 @@ export default function ServiceCards({
               {/* `pb-2` so the last card ends clear of the column's bottom
                   edge rather than flush against it, which is what the add
                   button used to provide. */}
-              <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
+              <ul className="scrollbar-none flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1 pb-1">
                 {mine.map((service) => (
                   <li key={service.code}>
                     {/* `bg-background`, not `bg-card`: in dark mode `--card`
