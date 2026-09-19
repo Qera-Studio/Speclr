@@ -1134,6 +1134,27 @@ of supply, no CGST/SGST split, no legal position at all. It also prints money
 without the paise (`formatQuote`) because every figure is a round estimate,
 except where the paise are real, as a ₹0.15 per-message rate is.
 
+**A deliverable is a catalogue item** (19 September 2026). The Add-line menu
+offers all 293, grouped by the Service each belongs to, and a chosen one fills
+the row with its name and its rate. A preset was one row per *Service* before
+this, which put "Custom Website" on a quotation where the reader needs the dozen
+things that phrase covers. Grouped by Service and not by the item's own `group`,
+because 18 of the 46 rate-card headings span more than one service, so grouping
+on them would file the website's "Foundation system" items and the domain's
+under one label belonging to neither. The whole catalogue is offered, unfiltered
+by what the client has engaged, which is the opposite call from the invoice's
+menu: a quotation is pre-sale, and there is nothing yet agreed to filter against.
+
+An item's `blurb` lands in the line's **`detail`**, which is the sub-line this
+sheet already prints under every deliverable and which no other sheet sets. Two
+things are worth knowing before that is relied on. **No item in the catalogue
+carries a blurb yet**: `docs/service-catalogue.md` §5 gives one to each Service
+and none to any item, so the path is wired and currently carries nothing. And
+the detail row **renders whether or not it has text**, so a blurb adds no row,
+only height when it wraps. `DELIVERABLES_PER_PAGE` is 8 and is a measurement
+rather than an arithmetic result, so writing blurbs is the change that has to
+re-measure it.
+
 **Five things are derived, and four have no input at all**
 (`PRINCIPLES.md` rule 3):
 

@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import QuotationEditor from '../QuotationEditor';
 import type { ClientRecord } from '@/lib/domain/types';
+import type { ContractService } from '@/lib/domain/service';
 
 const push = jest.fn();
 const createDraft = jest.fn();
@@ -48,6 +49,54 @@ const editor = () =>
     <QuotationEditor
       clients={clients}
       services={[]}
+      studio={undefined as never}
+      title="New quotation"
+    />,
+  );
+
+/**
+ * A catalogue Service carrying items, which is what all 16 look like. One item
+ * has a blurb and one does not, because the sheet prints the blurb as a line's
+ * `detail` and an absent one must not become an empty string on the document.
+ */
+const catalogue = [
+  {
+    code: 'WEB',
+    name: 'Custom Website',
+    scheduleKey: 'build',
+    sortOrder: 1,
+    archived: false,
+    sacCode: '998314',
+    itemSeq: 55,
+    items: [
+      {
+        id: 'I4',
+        name: 'Core website setup (5 pages)',
+        blurb: 'The technical foundation, ready before any design work starts.',
+        ratePaise: 25_00_000,
+        unit: 'fixed',
+        archived: false,
+      },
+      { id: 'I11', name: 'GSAP motion system', ratePaise: 20_00_000, unit: 'fixed', archived: false },
+      { id: 'I99', name: 'Retired line', ratePaise: 100, unit: 'fixed', archived: true },
+    ],
+  },
+  {
+    code: 'OLD',
+    name: 'Archived service',
+    scheduleKey: 'build',
+    sortOrder: 2,
+    archived: true,
+    itemSeq: 1,
+    items: [{ id: 'I1', name: 'Should never appear', ratePaise: 100, unit: 'fixed', archived: false }],
+  },
+] as unknown as ContractService[];
+
+const withCatalogue = () =>
+  render(
+    <QuotationEditor
+      clients={clients}
+      services={catalogue}
       studio={undefined as never}
       title="New quotation"
     />,
@@ -268,6 +317,73 @@ describe('QuotationEditor (new)', () => {
     await waitFor(() => {
       const totals = screen.getByRole('region', { name: 'Totals' });
       expect(totals).toHaveTextContent('₹ 1,500 - ₹ 5,000');
+    });
+  });
+
+  /**
+   * The Add-line menu, which is how the catalogue reaches a quotation.
+   *
+   * A quotation is pre-sale, so the whole catalogue is offered rather than one
+   * client's engagement, and the unit offered is the **item**: a preset naming
+   * "Custom Website" put one row on the page where the reader needs the dozen
+   * things that phrase covers.
+   */
+  describe('the catalogue menu', () => {
+    const openMenu = async (user: ReturnType<typeof userEvent.setup>) =>
+      user.click(within(service(1)).getByRole('button', { name: /add deliverable/i }));
+
+    it('offers one entry per item, grouped under its service', async () => {
+      const user = userEvent.setup();
+      withCatalogue();
+      await openMenu(user);
+
+      expect(await screen.findByRole('menuitem', { name: 'Core website setup (5 pages)' }))
+        .toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'GSAP motion system' })).toBeInTheDocument();
+      // The Service's own name is a heading, never something to add.
+      expect(screen.queryByRole('menuitem', { name: 'Custom Website' })).not.toBeInTheDocument();
+    });
+
+    it('never offers an archived item, or anything under an archived service', async () => {
+      const user = userEvent.setup();
+      withCatalogue();
+      await openMenu(user);
+
+      await screen.findByRole('menuitem', { name: 'GSAP motion system' });
+      expect(screen.queryByRole('menuitem', { name: 'Retired line' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('menuitem', { name: 'Should never appear' })).not.toBeInTheDocument();
+    });
+
+    /** The rate comes across in rupees, and the blurb becomes the line's detail. */
+    it("fills the row with the item's name, rate and blurb", async () => {
+      const user = userEvent.setup();
+      withCatalogue();
+      await openMenu(user);
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'Core website setup (5 pages)' }),
+      );
+
+      // The row that was just added is the second: a new quotation opens with
+      // one empty deliverable, and the preset appends after it.
+      const descriptions = within(service(1)).getAllByLabelText('Description');
+      const details = within(service(1)).getAllByLabelText('Detail');
+      const rates = within(service(1)).getAllByLabelText(/^Rate/);
+      expect(descriptions[descriptions.length - 1]).toHaveValue('Core website setup (5 pages)');
+      expect(rates[rates.length - 1]).toHaveValue('25000.00');
+      expect(details[details.length - 1]).toHaveValue(
+        'The technical foundation, ready before any design work starts.',
+      );
+    });
+
+    /** An item with no blurb leaves the detail empty rather than inventing one. */
+    it('leaves the detail blank for an item that carries no blurb', async () => {
+      const user = userEvent.setup();
+      withCatalogue();
+      await openMenu(user);
+      await user.click(await screen.findByRole('menuitem', { name: 'GSAP motion system' }));
+
+      const details = within(service(1)).getAllByLabelText('Detail');
+      expect(details[details.length - 1]).toHaveValue('');
     });
   });
 });

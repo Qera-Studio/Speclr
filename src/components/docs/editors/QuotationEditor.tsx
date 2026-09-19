@@ -32,7 +32,7 @@ import { paiseToRupees, rupeesToPaise } from "@/lib/domain/money";
 import { clientContact } from "@/lib/domain/client";
 import type { ClientRecord, QuotationDocument } from "@/lib/domain/types";
 import type { StudioInfo } from "@/lib/domain/studio";
-import { rateUnitOf, type ContractService } from "@/lib/domain/service";
+import type { ContractService } from "@/lib/domain/service";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -427,22 +427,46 @@ export default function QuotationEditor({
     values.companyName || values.recipientName,
   );
 
-  // The catalogue groups by schedule, matching `DocumentEditor`'s
-  // "Retainer"/"Engaged" split. A quotation is pre-sale, so nothing is filtered
-  // by what a client has already engaged.
+  /*
+    Every item in the catalogue, grouped by the Service it belongs to.
+
+    A quotation is **pre-sale**, so nothing is filtered by what a client has
+    already engaged: the whole catalogue is on offer, which is the opposite call
+    from the invoice's menu and for the opposite reason (there, a line nobody
+    agreed to reads as a price list on a document that bills one client).
+
+    **The item is what a deliverable is.** Before this a preset was one row per
+    Service, carrying the Service's name and an empty `detail`, which put
+    "Custom Website" on a quotation where the reader needs the dozen things that
+    phrase covers. The item's blurb lands in `detail`, the sub-line this sheet
+    already prints under every deliverable and which no other sheet sets.
+
+    Grouped by Service rather than by the item's own `group`: 18 of the 46
+    rate-card headings span more than one service, so grouping on them would
+    file the website's "Foundation system" items and the domain's under one
+    label that belongs to neither.
+  */
   const linePresets: LineItemPreset[] = services
-    .filter((s) => !s.archived)
-    .map((service) => ({
-      group: service.scheduleKey === "retainer" ? "Retainer" : "One-off",
-      label: `${service.name} (${rateUnitOf(service.scheduleKey)})`,
-      item: {
-        description: service.name,
-        detail: "",
-        rate: service.ratePaise ? paiseToRupees(service.ratePaise) : "",
-        qty: "1",
-        sacCode: "",
-      } satisfies LineItemFormValues,
-    }));
+    .filter((service) => !service.archived)
+    .flatMap((service) =>
+      (service.items ?? [])
+        .filter((item) => !item.archived)
+        .map((item) => ({
+          group: service.name,
+          label: item.name,
+          item: {
+            description: item.name,
+            detail: item.blurb ?? "",
+            // `!== undefined`, not a truthiness test: zero is a real rate and
+            // means the work is given away, so blanking it would ask for a
+            // figure somebody had already decided. Same rule as the invoice.
+            rate:
+              item.ratePaise !== undefined ? paiseToRupees(item.ratePaise) : "",
+            qty: "1",
+            sacCode: "",
+          } satisfies LineItemFormValues,
+        })),
+    );
 
   const applyClient = (clientId: string) => {
     setFillClientId(clientId);
