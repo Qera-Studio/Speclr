@@ -74,6 +74,16 @@ export function partSectionLabel(section: string, scheduleKey: ScheduleKey): str
   switch (section) {
     case 'overview':
       return 'Overview';
+    /**
+     * The items this client bought, listed by name.
+     *
+     * Deliberately **not** in `partScopes` below: an item's name is its scope
+     * and is never parsed for `[blanks]`, which is the property that lets one
+     * be added from a form without shifting a stored figure onto a different
+     * sentence (`serviceItem.ts`).
+     */
+    case 'deliverables':
+      return 'Deliverables';
     case 'included':
       return retainer ? 'What is included each cycle' : 'What is included';
     case 'account':

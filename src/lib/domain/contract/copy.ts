@@ -24,13 +24,38 @@ import type { ClientRecord, ContractData } from '../types';
  * to grow and be reworded. Without the map an issued contract would resolve its
  * "not included" list against a table that has moved on, which is the same
  * compliance bug as reading live studio details (`CONTEXT.md` §5).
+ *
+ * **`agreed` narrows the items to what this client bought.** A Service is a
+ * container: `WEB` carries 52 items and `SOC` 32, and copying all of them onto
+ * a contract would print a Deliverables list promising work nobody agreed to
+ * and nobody is being paid for. That is a scope commitment, not a cosmetic
+ * excess, which is why the narrowing happens here at copy time rather than in
+ * the sheet: the contract owns its words from the moment it takes them, and a
+ * list filtered only at render would still be *stored* as the whole catalogue.
+ *
+ * Passing no `agreed` copies the Service whole, which is what the services
+ * phase does when somebody adds a Part by hand: they are choosing the Service,
+ * and the scope phase is where its items get narrowed.
  */
 export function copyPart(
   service: ContractService,
   exclusions: LibraryLine[],
   clientInputs: LibraryLine[],
+  agreed?: { id: string }[],
 ): { part: ContractService; library: Record<string, string> } {
   const part = { ...service };
+
+  // `undefined` and `[]` are different answers, so this tests for the array
+  // rather than its length: a client engaged on the Service as one line agreed
+  // to no particular items, and a contract for them names the Service and
+  // leaves the deliverables to the Part's own prose.
+  if (agreed) {
+    const wanted = new Set(agreed.map((item) => item.id));
+    part.items = (service.items ?? []).filter(
+      (item) => wanted.has(item.id) && !item.archived,
+    );
+  }
+
   const library: Record<string, string> = {};
   for (const line of [...exclusions, ...clientInputs]) {
     if (part.exclusionIds.includes(line.id) || part.clientInputIds.includes(line.id)) {
@@ -93,7 +118,9 @@ export function seedFromClient(
   for (const engaged of client.commercial?.services ?? []) {
     const service = byCode.get(engaged.code);
     if (!service) continue;
-    const copied = copyPart(service, exclusions, clientInputs);
+    // What onboarding recorded this client buying, so the contract's
+    // Deliverables list is their engagement rather than the whole catalogue.
+    const copied = copyPart(service, exclusions, clientInputs, engaged.items);
     parts.push(copied.part);
     Object.assign(library, copied.library);
   }

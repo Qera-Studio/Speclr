@@ -825,6 +825,30 @@ empties nothing. Pinned in `seed/__tests__/retirement.test.ts`, which also
 records that six Parts (`04`, `05`, `07`, `08`, `11`, `14`) have no Service
 pointing at them yet. That is a catalogue gap, not a bug.
 
+**A contract prints a Deliverables list, and it is the only thing on the page
+that is about this client** (19 September 2026). Every other section under a
+Part is standing prose shared by everybody who buys the same Service; the
+Deliverables are the items this client actually bought, listed by name. That is
+the gap `ROADMAP.md` §10 reported. It prints above "What is included" because it
+is the more specific answer: the named items first, then the frame's standing
+terms about how that work is done.
+
+**The narrowing happens at copy time, not at render.** `copyPart` takes the
+client's agreed items and keeps only those, because a Service is a container:
+`WEB` carries 52 items and copying all of them would have the contract promise
+work nobody agreed to and nobody is paying for. That is a scope commitment
+rather than a cosmetic excess, and a list filtered only in the sheet would still
+be **stored** as the whole catalogue, which the snapshot would then freeze.
+Passing no list copies the Service whole, which is what the services phase does
+when a Part is added by hand: choosing the Service is the act there, and the
+scope phase narrows it afterwards. An empty list and no list are different
+answers and both are tested.
+
+An item's name is never parsed for `[blanks]`, so a bracket in one prints
+literally. That property is what lets an item be added from a form without
+shifting a stored figure onto a different sentence, and it is pinned in
+`ContractSheet.test.tsx` rather than left as a comment.
+
 **One unrelated bug fell out of it.** `service.ts` importing `domain/fields.ts`
 put `domain/phone.ts` in the seed script's import graph, and libphonenumber's CJS
 build fails its own metadata check on load under `tsx`, taking the process with

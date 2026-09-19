@@ -683,6 +683,40 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
           part.name,
         ),
 
+        /*
+          The Deliverables: the items this client actually bought, by name.
+
+          **An item's name is its scope** (`docs/service-catalogue.md` §4), so
+          this list is the contract stating what was sold rather than a summary
+          of it. That is the gap `ROADMAP.md` §10 reported: every other section
+          under a Part is standing prose shared by every client who buys it, and
+          none of them said which work *this* agreement covers.
+
+          It prints above "What is included" because it is the more specific
+          answer: the named items first, then the frame's standing terms about
+          how that work is done. Plain text and never parsed for `[blanks]`,
+          which is what lets an item be added from a form.
+
+          Absent where the client engaged the Service as one line rather than
+          itemising it, and a heading over an empty list would be a heading
+          that lies (the same rule the sections below follow).
+        */
+        part.items && part.items.length > 0
+          ? section(
+              "deliverables",
+              <ul className="m-0 [column-gap:24px] [columns:2]">
+                {part.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="ml-[20px] text-black text-[14px] font-normal leading-[1.5] [break-inside:avoid]"
+                  >
+                    {item.name}
+                  </li>
+                ))}
+              </ul>,
+            )
+          : null,
+
         part.included.length > 0
           ? section(
               "included",

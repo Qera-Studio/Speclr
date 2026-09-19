@@ -22,6 +22,20 @@ const client = (over: Partial<ClientRecord['commercial']> = {}): ClientRecord =>
 
 const catalogue = [serviceByCode('01'), serviceByCode('02')];
 
+/** A catalogue Service carrying items, which is what all 16 sales rows are. */
+const withItems = () => ({
+  ...serviceByCode('01'),
+  code: 'WEB',
+  name: 'Custom Website',
+  itemSeq: 55,
+  items: [
+    { id: 'I4', name: 'Core website setup (5 pages)', unit: 'fixed' as const, archived: false },
+    { id: 'I11', name: 'GSAP motion system', unit: 'fixed' as const, archived: false },
+    { id: 'I47', name: 'Custom CMS development', unit: 'fixed' as const, archived: false },
+    { id: 'I99', name: 'Retired line', unit: 'fixed' as const, archived: true },
+  ],
+});
+
 describe('copyPart', () => {
   it('carries the text of every library line the Part names', () => {
     const service = serviceByCode('01');
@@ -51,6 +65,61 @@ describe('copyPart', () => {
     expect(part).not.toBe(service);
     part.name = 'Renamed on the contract';
     expect(serviceByCode('01').name).not.toBe('Renamed on the contract');
+  });
+
+  /**
+   * A Service is a container, and the contract prints its items as the
+   * Deliverables. Copying all 52 of `WEB` onto a contract would promise work
+   * nobody agreed to and nobody is paying for, which is a scope commitment
+   * rather than a cosmetic excess.
+   */
+  describe('narrowing the items to what was agreed', () => {
+    it('keeps only the items named, in catalogue order', () => {
+      const { part } = copyPart(withItems(), EXCLUSIONS, CLIENT_INPUTS, [
+        { id: 'I47' },
+        { id: 'I4' },
+      ]);
+      expect(part.items?.map((i) => i.id)).toEqual(['I4', 'I47']);
+    });
+
+    it('never carries an archived item, even when the record names it', () => {
+      const { part } = copyPart(withItems(), EXCLUSIONS, CLIENT_INPUTS, [
+        { id: 'I4' },
+        { id: 'I99' },
+      ]);
+      expect(part.items?.map((i) => i.id)).toEqual(['I4']);
+    });
+
+    it('skips an id the catalogue no longer carries', () => {
+      const { part } = copyPart(withItems(), EXCLUSIONS, CLIENT_INPUTS, [
+        { id: 'I4' },
+        { id: 'I404' },
+      ]);
+      expect(part.items?.map((i) => i.id)).toEqual(['I4']);
+    });
+
+    /**
+     * `undefined` and `[]` are different answers. No list at all means the
+     * Service was picked by hand in the services phase, where choosing the
+     * Service is the act and the scope phase narrows it afterwards.
+     */
+    it('copies the Service whole when no list is given', () => {
+      const { part } = copyPart(withItems(), EXCLUSIONS, CLIENT_INPUTS);
+      expect(part.items).toHaveLength(4);
+    });
+
+    /** An empty list is a client engaged on the Service as one line. */
+    it('carries no items for an engagement that named none', () => {
+      const { part } = copyPart(withItems(), EXCLUSIONS, CLIENT_INPUTS, []);
+      expect(part.items).toEqual([]);
+    });
+
+    /** The narrowing must not write back onto the catalogue row. */
+    it('leaves the catalogue row holding all of its items', () => {
+      const service = withItems();
+      copyPart(service, EXCLUSIONS, CLIENT_INPUTS, [{ id: 'I4' }]);
+      expect(service.items).toHaveLength(4);
+    });
   });
 });
 
@@ -94,6 +163,37 @@ describe('seedFromClient', () => {
     );
 
     expect(seeded.parts.map((p) => p.code)).toEqual(['01', '02']);
+  });
+
+  /**
+   * The seam this step exists for: what onboarding recorded the client buying
+   * becomes the contract's Deliverables list.
+   */
+  it("narrows each Part to the items the client's record names", () => {
+    const seeded = seedFromClient(
+      client({ services: [{ code: 'WEB', items: [{ id: 'I4' }, { id: 'I47' }] }] }),
+      [withItems()],
+      EXCLUSIONS,
+      CLIENT_INPUTS,
+    );
+
+    expect(seeded.parts[0].items?.map((i) => i.name)).toEqual([
+      'Core website setup (5 pages)',
+      'Custom CMS development',
+    ]);
+  });
+
+  it('carries every item for a client engaged on the service as one line', () => {
+    const seeded = seedFromClient(
+      client({ services: [{ code: 'WEB' }] }),
+      [withItems()],
+      EXCLUSIONS,
+      CLIENT_INPUTS,
+    );
+
+    // No list on the record means nothing to narrow to, so the Part keeps the
+    // catalogue's items and the scope phase is where they get chosen.
+    expect(seeded.parts[0].items).toHaveLength(4);
   });
 
   /**

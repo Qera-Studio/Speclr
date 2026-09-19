@@ -381,4 +381,66 @@ describe("a Part with no wording", () => {
       expect(screen.queryByText(heading)).not.toBeInTheDocument();
     }
   });
+
+  /**
+   * The Deliverables list: the one thing a contract says about *this* client
+   * rather than about everybody who buys the same Service.
+   *
+   * An item's name is its scope (`docs/service-catalogue.md` §4), so the list
+   * is the scope statement itself rather than a summary of one. Everything
+   * below it on the page is standing prose shared by every contract.
+   */
+  describe("the Deliverables list", () => {
+    const withItems = (items: { id: string; name: string }[]): ContractDocument => {
+      const doc = contractDoc({ codes: ["06"] });
+      return {
+        ...doc,
+        contract: {
+          ...doc.contract,
+          parts: doc.contract.parts.map((part) => ({
+            ...part,
+            items: items.map((item) => ({
+              ...item,
+              unit: "fixed" as const,
+              archived: false,
+            })),
+          })),
+        },
+      };
+    };
+
+    it("prints every item the Part carries, by name", () => {
+      renderContract(
+        withItems([
+          { id: "I4", name: "Core website setup (5 pages)" },
+          { id: "I47", name: "Custom CMS development" },
+        ]),
+      );
+
+      expect(screen.getByText("Deliverables")).toBeInTheDocument();
+      expect(screen.getByText("Core website setup (5 pages)")).toBeInTheDocument();
+      expect(screen.getByText("Custom CMS development")).toBeInTheDocument();
+    });
+
+    /** A heading over an empty list is a heading that lies. */
+    it("prints no heading for a Part carrying no items", () => {
+      renderContract(contractDoc({ codes: ["06"] }));
+      expect(screen.queryByText("Deliverables")).not.toBeInTheDocument();
+    });
+
+    it("prints nothing for a Part whose item list is empty", () => {
+      renderContract(withItems([]));
+      expect(screen.queryByText("Deliverables")).not.toBeInTheDocument();
+    });
+
+    /**
+     * An item's name is never parsed for `[blanks]`. That is the property
+     * which lets one be added from a form without shifting a stored figure
+     * onto a different sentence, so a bracket here must print literally.
+     */
+    it("prints a bracket in an item name literally, never as a blank", () => {
+      renderContract(withItems([{ id: "I1", name: "Additional page [per page]" }]));
+      expect(screen.getByText("Additional page [per page]")).toBeInTheDocument();
+    });
+  });
 });
