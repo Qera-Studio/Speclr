@@ -34,6 +34,22 @@ const client = {
 const service = (code: string, name: string, scheduleKey: string) =>
   ({ code, name, scheduleKey, sortOrder: 0, archived: false }) as ContractService;
 
+/** A service carrying items, which is what the whole sales catalogue looks like. */
+const withItems = {
+  code: 'SOC',
+  name: 'Social Media',
+  scheduleKey: 'retainer',
+  sortOrder: 0,
+  archived: false,
+  sacCode: '998361',
+  itemSeq: 32,
+  items: [
+    { id: 'I10', name: 'Bundle: 10 reels a month', ratePaise: 45_00_000, unit: 'fixed', archived: false },
+    { id: 'I21', name: 'Posting + scheduling', ratePaise: 10_00_000, unit: 'fixed', archived: false },
+    { id: 'I99', name: 'Retired line', ratePaise: 100, unit: 'fixed', archived: true },
+  ],
+} as ContractService;
+
 // Setup is the first tab, so 01 is on screen and 05 is behind Build.
 const services = [
   service('01', 'Domain and email setup', 'setup'),
@@ -127,5 +143,116 @@ describe('ServicesStep', () => {
     await submit(user);
 
     expect(payload().services).toEqual([]);
+  });
+
+  /**
+   * The point of items on the record: a Service is a container, and naming it
+   * alone said "Social Media, 45,000" and left which work that covered to
+   * memory. What is ticked here is what an invoice itemises.
+   */
+  describe('choosing items under a service', () => {
+    const showItems = () =>
+      render(
+        <ServicesStep
+          client={client}
+          onSaved={onSaved}
+          submitLabel="Attachments"
+          services={[...services, withItems]}
+        />,
+      );
+
+    const openService = async (user: ReturnType<typeof userEvent.setup>) => {
+      await openTab(user, 'Retainer');
+      await user.click(screen.getByRole('button', { name: 'Add Social Media' }));
+      await user.click(screen.getByRole('button', { name: /Whole service/ }));
+    };
+
+    it('records the items that were ticked, and no others', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openService(user);
+
+      await user.click(screen.getByRole('checkbox', { name: 'Bundle: 10 reels a month' }));
+      await submit(user);
+
+      expect(payload().services).toEqual([
+        { code: 'SOC', items: [{ id: 'I10' }] },
+      ]);
+    });
+
+    /**
+     * Absent, not empty. A service with no items is billed as one line, and
+     * `items: []` would be a third state that reads the same to `engagedLines`.
+     */
+    it('leaves items absent on a service billed as one line', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openTab(user, 'Retainer');
+      await user.click(screen.getByRole('button', { name: 'Add Social Media' }));
+      await submit(user);
+
+      expect(payload().services).toEqual([{ code: 'SOC' }]);
+    });
+
+    /** Unticking the last item is how a service goes back to one line. */
+    it('returns to a whole-service engagement when the last item is unticked', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openService(user);
+
+      const box = screen.getByRole('checkbox', { name: 'Bundle: 10 reels a month' });
+      await user.click(box);
+      await user.click(box);
+      await submit(user);
+
+      expect(payload().services).toEqual([{ code: 'SOC' }]);
+    });
+
+    it('records an agreed rate against the item that was priced', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openService(user);
+
+      await user.click(screen.getByRole('checkbox', { name: 'Posting + scheduling' }));
+      await user.type(screen.getByLabelText('Agreed rate for Posting + scheduling'), '8000');
+      await submit(user);
+
+      expect(payload().services).toEqual([
+        { code: 'SOC', items: [{ id: 'I21', ratePaise: 8_00_000 }] },
+      ]);
+    });
+
+    /** Archived items have left every picker, and this is one. */
+    it('never offers an archived item', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openService(user);
+
+      expect(screen.getByRole('checkbox', { name: 'Bundle: 10 reels a month' })).toBeInTheDocument();
+      expect(screen.queryByRole('checkbox', { name: 'Retired line' })).not.toBeInTheDocument();
+    });
+
+    /** Removing the service must not leave its items behind to return later. */
+    it('drops the items when the service is removed', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await openService(user);
+
+      await user.click(screen.getByRole('checkbox', { name: 'Bundle: 10 reels a month' }));
+      await user.click(screen.getByRole('button', { name: 'Remove Social Media' }));
+      await user.click(screen.getByRole('button', { name: 'Add Social Media' }));
+      await submit(user);
+
+      expect(payload().services).toEqual([{ code: 'SOC' }]);
+    });
+
+    /** A Part carries no items, so there is nothing to open and nothing shown. */
+    it('offers no item list on a service that carries none', async () => {
+      const user = userEvent.setup();
+      showItems();
+      await user.click(screen.getByRole('button', { name: 'Add Domain and email setup' }));
+
+      expect(screen.queryByRole('button', { name: /Whole service/ })).not.toBeInTheDocument();
+    });
   });
 });

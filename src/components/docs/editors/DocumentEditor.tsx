@@ -19,6 +19,7 @@ import {
   zeroRatingLabel,
 } from "@/lib/domain/placeOfSupply";
 import { gstTreatmentOf } from "@/lib/domain/gstTreatment";
+import { allEngagedLines } from "@/lib/domain/engagedLines";
 import { rateUnitOf, type ContractService } from "@/lib/domain/service";
 import { addDays } from "@/lib/domain/dates";
 import {
@@ -347,29 +348,27 @@ export default function DocumentEditor({
    * blank line. That case already exists: `ServicesStep` drops it from its own
    * summary the same way.
    */
-  const engagedRows = (selectedClient?.commercial?.services ?? []).flatMap(
-    (engaged) => {
-      const service = services?.find((s) => s.code === engaged.code);
-      if (!service) return [];
-      const ratePaise = engaged.ratePaise ?? service.ratePaise;
-      return [
-        {
-          service,
-          item: {
-            description: service.name,
-            /* No `detail`. The Service's overview used to seed one and the
-               sheet printed it under the description: a second, longer account
-               of the same supply that no rule asks for and that can disagree
-               with the first. The name, the rate and the SAC are what the
-               catalogue is for. */
-            rate: ratePaise ? paiseToRupees(ratePaise) : "",
-            qty: "1",
-            sacCode: service.sacCode ?? "",
-          },
-        },
-      ];
+  const engagedRows = allEngagedLines(
+    selectedClient?.commercial?.services,
+    services,
+  ).map((line) => ({
+    service: line.service,
+    line,
+    item: {
+      description: line.name,
+      /* No `detail`. The Service's overview used to seed one and the
+         sheet printed it under the description: a second, longer account
+         of the same supply that no rule asks for and that can disagree
+         with the first. The name, the rate and the SAC are what the
+         catalogue is for. */
+      // `!== undefined`, not a truthiness test: an agreed rate of zero is a
+      // real rate meaning the work is given away, and `0 ? … : ""` would blank
+      // it and quietly ask the operator to re-type a figure they had set.
+      rate: line.ratePaise !== undefined ? paiseToRupees(line.ratePaise) : "",
+      qty: "1",
+      sacCode: line.sacCode ?? "",
     },
-  );
+  }));
 
   /**
    * What the Add menu offers: this client's own services, and nothing else.
@@ -388,10 +387,18 @@ export default function DocumentEditor({
     values.lineItems.map((item) => item.description.trim().toLowerCase()),
   );
   const linePresets = engagedRows
-    .filter(({ service }) => !onDocument.has(service.name.trim().toLowerCase()))
-    .map(({ service, item }) => ({
+    .filter(({ item }) => !onDocument.has(item.description.trim().toLowerCase()))
+    .map(({ service, line, item }) => ({
       group: service.scheduleKey === "retainer" ? "Retainer" : "Engaged",
-      label: `${service.name} (${rateUnitOf(service.scheduleKey)})`,
+      /*
+        An itemised line is named by the item and placed by its Service, so a
+        menu of thirty rows still reads as the handful of services it came
+        from. A Service billed as one line keeps its old label, which is what
+        every record written before items shows.
+      */
+      label: line.item
+        ? `${service.name}: ${line.name}`
+        : `${service.name} (${rateUnitOf(service.scheduleKey)})`,
       item,
     }));
 

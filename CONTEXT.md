@@ -886,6 +886,28 @@ instead of assumed onto the document, along with the rest of the catalogue and a
 custom row. **The seed only ever fires onto an untouched list**, so changing the
 client on an invoice already written cannot throw the writing away.
 
+**A client engages items, not just a Service** (19 September 2026).
+`ClientEngagedService.items` names which items under a Service the client
+actually agreed to, and at what. A Service is a container: `SOC` carries 32
+items and no client buys all 32, so naming the Service alone printed "Social
+Media, ₹45,000" and left which work that covered to memory. Where `items` is
+present the invoice seeds one line each, carrying the item's name, its rate and
+its SAC. Where it is **absent** the Service is billed as one line, which is what
+every record written before this reads as, so nothing needed migrating.
+`items: []` is deliberately not a third state: the onboarding step removes the
+key when the last item is unticked.
+
+**The rate cascade lives in one place**, `domain/engagedLines.ts`, because the
+invoice and the quotation both ask the same question and two copies is two
+places for a rate to resolve differently (rule 1, with the second caller one
+step away). Three sources, most specific first: the rate agreed for **this
+item**, then the item's **list price**, then nothing, which means quoted per
+engagement. A blank is never resolved to zero at any step, since zero is a real
+rate meaning the work is given away. An id citing an item the catalogue no
+longer carries, or one since archived, is **skipped rather than printed blank**,
+the same call already made for a service code with no row: a line with no name
+reads as an app failure rather than as a retired item.
+
 This is what fired `PRINCIPLES.md` rule 1 on the Service: `contract/service.ts`
 moved to `domain/service.ts` in the same commit, before the second consumer was
 written. It is also the one place this diverges from the clause library (§5c):

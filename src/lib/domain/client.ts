@@ -386,11 +386,52 @@ export const clientContactsSchema = z.object({
 
 export const ENGAGEMENT_TYPES = ['retainer', 'project', 'hourly'] as const;
 
+/**
+ * One item this client agreed to, under a Service they are engaged on.
+ *
+ * **The id is the whole point of citing it.** `assignItemIds` never reissues
+ * one, so `I10` on this record means the same item it meant the day it was
+ * agreed, whatever has since been added to or removed from the catalogue. A
+ * scheme that reissued ids would seed a client "the booking system" at the rate
+ * they agreed for "the analytics set-up".
+ */
+export interface ClientEngagedItem {
+  /** `I10`. Cites `ServiceItem.id` under the Service this sits on. */
+  id: string;
+  /**
+   * What was agreed for this item, which may differ from the catalogue's list
+   * price. Integer paise, and absent means "the catalogue rate", deliberately
+   * not zero: zero is a real rate and means the work is given away.
+   */
+  ratePaise?: number;
+}
+
 export interface ClientEngagedService {
   /** The service's own code, as the library keys it. */
   code: string;
-  /** What was agreed, which may differ from the catalogue. Integer paise. */
+  /**
+   * What was agreed for the Service as a whole, where it is billed as one
+   * figure rather than itemised. Integer paise.
+   *
+   * Kept alongside `items` rather than replaced by it: every client onboarded
+   * before items existed carries one of these, and a Service genuinely can be
+   * billed as a single retainer line. Where `items` is present it is the more
+   * specific answer and the invoice reads it; this is the fallback.
+   */
   ratePaise?: number;
+  /**
+   * Which items under this Service the client actually agreed to, and at what.
+   *
+   * Absent means the Service is billed as one line at `ratePaise`, which is how
+   * every record written before 19 September 2026 reads. Present means the
+   * invoice seeds one line per item, each with its own name, rate and SAC,
+   * which is what CGST Rule 46(g) wants against a line.
+   *
+   * This exists because a Service is a container: `SOC` carries 32 items and no
+   * client buys all 32. Naming the Service alone said "Social Media, ₹45,000"
+   * on an invoice and left which work that covered to memory.
+   */
+  items?: ClientEngagedItem[];
 }
 
 export interface ClientCommercial {
@@ -443,6 +484,33 @@ export const clientCommercialSchema = z.object({
       z.object({
         code: codeSchema(20, { required: 'A service code is required.' }),
         ratePaise: z.number().int().min(0).max(1e13).optional(),
+        items: z
+          .array(
+            z.object({
+              id: codeSchema(12, { required: 'An item id is required.' }),
+              ratePaise: z.number().int().min(0).max(1e13).optional(),
+            }),
+          )
+          // A bound, not a business rule: `SOC` carries 32 items and `WEB` 52,
+          // so a client could agree to a long list without it being a mistake.
+          .max(400)
+          .optional()
+          .superRefine((items, ctx) => {
+            if (!items) return;
+            // Two rows under one id would make "the item they agreed to"
+            // ambiguous, and whichever was read second would silently win.
+            const seen = new Set<string>();
+            for (const [i, item] of items.entries()) {
+              if (seen.has(item.id)) {
+                ctx.addIssue({
+                  code: 'custom',
+                  path: [i, 'id'],
+                  message: `Item ${item.id} appears twice.`,
+                });
+              }
+              seen.add(item.id);
+            }
+          }),
       }),
     )
     .max(50)

@@ -2,7 +2,7 @@
 
 import "@/lib/zod-config";
 import { useCallback, useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, ChevronDown, Plus, X } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/field";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -82,6 +83,35 @@ export default function ServicesStep({
     }
     return initial;
   });
+  /**
+   * Which items are agreed under each service, and at what rate.
+   *
+   * `Record<code, Record<itemId, rupees>>`, the same shape as `selected` one
+   * level down: presence is the tick and the string is the rate, so an item
+   * agreed at the catalogue rate is `''` rather than a second flag that could
+   * disagree with the first.
+   *
+   * A service with **no entry here** is billed as one line, which is what every
+   * record written before items reads as. That distinction is the whole of
+   * `engagedLines`, so it has to survive the round trip through this form.
+   */
+  const [items, setItems] = useState<Record<string, Record<string, string>>>(
+    () => {
+      const initial: Record<string, Record<string, string>> = {};
+      for (const service of client?.commercial?.services ?? []) {
+        if (!service.items) continue;
+        initial[service.code] = Object.fromEntries(
+          service.items.map((item) => [
+            item.id,
+            item.ratePaise === undefined ? "" : paiseToRupees(item.ratePaise),
+          ]),
+        );
+      }
+      return initial;
+    },
+  );
+  /** Which service's item list is open. One at a time: this is a long list. */
+  const [openItems, setOpenItems] = useState<string | null>(null);
   const [rateError, setRateError] = useState<string | null>(null);
 
   const {
@@ -124,13 +154,37 @@ export default function ServicesStep({
   // things are added is one nobody can check.
   const added = services.filter((service) => service.code in selected);
 
-  const toggle = (code: string) =>
+  const toggle = (code: string) => {
     setSelected((current) => {
       if (code in current) {
         const { [code]: _removed, ...rest } = current;
         return rest;
       }
       return { ...current, [code]: "" };
+    });
+    // Removing a service takes its items with it, or a service added back
+    // later would silently return carrying a list nobody chose this time.
+    setItems((current) => {
+      const { [code]: _dropped, ...rest } = current;
+      return rest;
+    });
+  };
+
+  /** Ticks or unticks one item under a service. Presence is the tick. */
+  const toggleItem = (code: string, id: string) =>
+    setItems((current) => {
+      const forService = current[code] ?? {};
+      if (id in forService) {
+        const { [id]: _removed, ...rest } = forService;
+        // An empty map and no map are different answers: no map means "billed
+        // as one line", so unticking the last item must remove the key.
+        if (Object.keys(rest).length === 0) {
+          const { [code]: _dropped, ...others } = current;
+          return others;
+        }
+        return { ...current, [code]: rest };
+      }
+      return { ...current, [code]: { ...forService, [id]: "" } };
     });
 
   // Carry the previous step's half forward by naming it, rather than spreading
@@ -142,12 +196,27 @@ export default function ServicesStep({
       ...pruneEmpty({ ...client?.commercial, ...values }),
       services: Object.entries(selected).map(([code, rupees]) => {
         const trimmed = rupees.trim();
-        return trimmed === ""
-          ? { code }
-          : { code, ratePaise: rupeesToPaise(trimmed) ?? 0 };
+        const base =
+          trimmed === ""
+            ? { code }
+            : { code, ratePaise: rupeesToPaise(trimmed) ?? 0 };
+
+        // Absent, not empty. A service with no items is billed as one line,
+        // and `items: []` would read to `engagedLines` as the same thing while
+        // being a third state nobody needs.
+        const agreed = Object.entries(items[code] ?? {});
+        if (agreed.length === 0) return base;
+
+        return {
+          ...base,
+          items: agreed.map(([id, itemRupees]) => {
+            const rate = itemRupees.trim();
+            return rate === "" ? { id } : { id, ratePaise: rupeesToPaise(rate) ?? 0 };
+          }),
+        };
       }),
     }),
-    [client?.commercial, selected],
+    [client?.commercial, items, selected],
   );
 
   // Restores what was typed but not saved, so a refresh or a hop to the other
@@ -353,32 +422,147 @@ export default function ServicesStep({
               </p>
             ) : (
               <ul className="divide-y divide-border rounded-lg border border-border">
-                {added.map((service) => (
-                  <li
-                    key={service.code}
-                    className="flex items-center gap-3 px-3 py-1.5 text-sm"
-                  >
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {service.code}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {service.name}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {selected[service.code].trim() === ""
-                        ? "Catalogue rate"
-                        : `₹${selected[service.code]}`}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Remove ${service.name}`}
-                      onClick={() => toggle(service.code)}
-                      className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </li>
-                ))}
+                {added.map((service) => {
+                  const chosen = items[service.code];
+                  const count = chosen ? Object.keys(chosen).length : 0;
+                  const available = (service.items ?? []).filter(
+                    (item) => !item.archived,
+                  );
+                  const open = openItems === service.code;
+                  return (
+                    <li key={service.code} className="text-sm">
+                      <div className="flex items-center gap-3 px-3 py-1.5">
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {service.code}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {service.name}
+                        </span>
+
+                        {/*
+                          A service with no items in the catalogue has nothing
+                          to open, so it says nothing rather than offering an
+                          empty drawer. That is every one of the 22 Parts.
+                        */}
+                        {available.length > 0 ? (
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            onClick={() =>
+                              setOpenItems(open ? null : service.code)
+                            }
+                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                          >
+                            <ChevronDown
+                              aria-hidden
+                              className={cn(
+                                "size-3 transition-transform",
+                                open && "rotate-180",
+                              )}
+                            />
+                            {/*
+                              "Whole service" is the honest reading of no items
+                              chosen: the invoice bills one line at the agreed
+                              rate, which is what every record written before
+                              items does.
+                            */}
+                            {count === 0
+                              ? "Whole service"
+                              : `${count} of ${available.length} items`}
+                          </button>
+                        ) : null}
+
+                        {/*
+                          The service rate is what an unitemised engagement is
+                          billed at, so it stops being the answer once items
+                          carry their own.
+                        */}
+                        <span className="tabular-nums text-muted-foreground">
+                          {count > 0
+                            ? "Itemised"
+                            : selected[service.code].trim() === ""
+                              ? "Catalogue rate"
+                              : `₹${selected[service.code]}`}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${service.name}`}
+                          onClick={() => toggle(service.code)}
+                          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+
+                      {open ? (
+                        <ul
+                          aria-label={`Items under ${service.name}`}
+                          className="max-h-72 overflow-y-auto border-t border-border bg-muted/30 px-3 py-1.5"
+                        >
+                          {available.map((item) => {
+                            const on = chosen ? item.id in chosen : false;
+                            return (
+                              <li
+                                key={item.id}
+                                className="flex items-center gap-2 py-0.5"
+                              >
+                                <Checkbox
+                                  id={`item-${service.code}-${item.id}`}
+                                  checked={on}
+                                  onCheckedChange={() =>
+                                    toggleItem(service.code, item.id)
+                                  }
+                                />
+                                <FieldLabel
+                                  htmlFor={`item-${service.code}-${item.id}`}
+                                  className="min-w-0 flex-1 truncate text-xs font-normal"
+                                >
+                                  {item.name}
+                                </FieldLabel>
+                                {/*
+                                  The rate field appears once the item is
+                                  agreed. Blank means the catalogue's, which is
+                                  shown beside it so the reader can see what
+                                  they are leaving alone.
+                                */}
+                                {on ? (
+                                  <Input
+                                    aria-label={`Agreed rate for ${item.name}`}
+                                    inputMode="decimal"
+                                    placeholder={
+                                      item.ratePaise === undefined
+                                        ? "Quoted"
+                                        : paiseToRupees(item.ratePaise)
+                                    }
+                                    className="h-6 w-24 shrink-0 text-xs group-data-[size=form]/field-group:h-6 group-data-[size=form]/field-group:text-xs group-data-[size=form]/field-group:md:text-xs"
+                                    value={chosen?.[item.id] ?? ""}
+                                    onChange={(event) =>
+                                      setItems((current) => ({
+                                        ...current,
+                                        [service.code]: {
+                                          ...(current[service.code] ?? {}),
+                                          [item.id]: normalizeRupeeInput(
+                                            event.target.value,
+                                          ),
+                                        },
+                                      }))
+                                    }
+                                  />
+                                ) : (
+                                  <span className="w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                                    {item.ratePaise === undefined
+                                      ? "Quoted"
+                                      : `₹${paiseToRupees(item.ratePaise)}`}
+                                  </span>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </>
