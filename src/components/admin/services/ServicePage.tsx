@@ -10,14 +10,14 @@ import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import { removeService } from '@/server/actions/services';
 import LibrariesForm from './LibrariesForm';
-import MenuEditor from './MenuEditor';
+import ItemsEditor from './ItemsEditor';
 import WordingForm from './WordingForm';
 
 const SECTIONS = [
   {
-    id: 'menu',
-    heading: 'Menu',
-    note: 'The priced lines a contract ticks from. A new capability is a line here, not a new service: it inherits everything below.',
+    id: 'items',
+    heading: 'Items',
+    note: "The priced lines every document reads a slice of. A new capability is an item here, not a new service: it inherits everything below, and its name is its scope.",
   },
   {
     id: 'wording',
@@ -32,13 +32,13 @@ const SECTIONS = [
 ] as const;
 
 /**
- * One Service on its own page: the menu, the wording and the libraries, each
+ * One Service on its own page: the items, the wording and the libraries, each
  * its own form posting only its own section, and the one way to retire it.
  *
  * A page rather than a second tab in the details dialog. That dialog is five
  * scalar fields by design, and a Service also carries thirteen list fields
- * and a menu. Two surfaces writing one row is how a section quietly goes
- * missing, which is the call CONTEXT §5d already made for clients. The
+ * and a list of items. Two surfaces writing one row is how a section quietly
+ * goes missing, which is the call CONTEXT §5d already made for clients. The
  * dialog keeps the five-field pass; everything with a list comes here.
  *
  * **Editing here cannot reach a contract already written.** A Part is copied
@@ -71,7 +71,7 @@ export default function ServicePage({
     });
 
   const forms = {
-    menu: <MenuEditor service={service} />,
+    items: <ItemsEditor service={service} />,
     wording: <WordingForm service={service} />,
     libraries: (
       <LibrariesForm service={service} exclusions={exclusions} clientInputs={clientInputs} />

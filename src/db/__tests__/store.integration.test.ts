@@ -312,7 +312,7 @@ describe('services (integration)', () => {
     await db.delete(services).where(eq(services.code, CODE));
   });
 
-  it('round-trips a menu through the content column, and archives without deleting', async () => {
+  it('round-trips items through the content column, and archives without deleting', async () => {
     // A leftover from an interrupted run would make the insert collide.
     await db.delete(services).where(eq(services.code, CODE));
 
@@ -336,31 +336,41 @@ describe('services (integration)', () => {
       exclusionIds: [],
       clientInputIds: [],
       fee: [],
-      menu: [{ id: 'M1', text: 'One', ratePaise: 100, unit: 'fixed' }],
-      menuSeq: 1,
+      items: [{ id: 'I1', name: 'One', ratePaise: 100, unit: 'fixed', archived: false }],
+      itemSeq: 1,
     });
 
     const read = await getService(CODE);
-    expect(read?.menu).toEqual([{ id: 'M1', text: 'One', ratePaise: 100, unit: 'fixed' }]);
-    expect(read?.menuSeq).toBe(1);
+    expect(read?.items).toEqual([
+      { id: 'I1', name: 'One', ratePaise: 100, unit: 'fixed', archived: false },
+    ]);
+    expect(read?.itemSeq).toBe(1);
 
-    // A second line through the upsert path, with every other field standing.
+    // A second item through the upsert path, with every other field standing.
     await saveService({
       ...read!,
-      menu: [...read!.menu!, { id: 'M2', text: 'Two', unit: 'monthly', unitLabel: undefined }],
-      menuSeq: 2,
+      items: [
+        ...read!.items!,
+        { id: 'I2', name: 'Two', unit: 'monthly', unitLabel: undefined, archived: false },
+      ],
+      itemSeq: 2,
     });
     const again = await getService(CODE);
-    expect(again?.menu?.map((m) => m.id)).toEqual(['M1', 'M2']);
-    expect(again?.menu?.[1]).toEqual({ id: 'M2', text: 'Two', unit: 'monthly' });
-    expect(again?.menuSeq).toBe(2);
+    expect(again?.items?.map((m) => m.id)).toEqual(['I1', 'I2']);
+    expect(again?.items?.[1]).toEqual({
+      id: 'I2',
+      name: 'Two',
+      unit: 'monthly',
+      archived: false,
+    });
+    expect(again?.itemSeq).toBe(2);
     expect(again?.overview).toEqual(['A service that exists only while this test runs.']);
 
-    // Archived: gone from the default list, still readable, menu intact.
+    // Archived: gone from the default list, still readable, items intact.
     await archiveService(CODE);
     expect((await listServices()).some((s) => s.code === CODE)).toBe(false);
     expect((await listServices(true)).some((s) => s.code === CODE)).toBe(true);
-    expect((await getService(CODE))?.menu).toHaveLength(2);
+    expect((await getService(CODE))?.items).toHaveLength(2);
   });
 });
 

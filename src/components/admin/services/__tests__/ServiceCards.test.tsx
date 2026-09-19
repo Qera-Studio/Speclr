@@ -123,26 +123,38 @@ describe('ServiceCards', () => {
   });
 
   /**
-   * A card says how many priced lines the Service carries, so the board reads
-   * which services have a menu yet and which are still a frame with nothing
-   * under it. One number; the lines themselves are on the Service's page.
+   * A card says how many priced items the Service carries, so the board reads
+   * which services carry any yet and which are still a frame with nothing
+   * under it. One number; the items themselves are on the Service's page.
    */
-  it('says how many menu lines a service has', () => {
-    const withMenu = PARTS.map((s) =>
+  it('says how many items a service has', () => {
+    const withItems = PARTS.map((s) =>
       s.code === '06'
         ? {
             ...s,
-            menu: [
-              { id: 'M1', text: 'GSAP motion system', ratePaise: 20_000_00, unit: 'fixed' as const },
-              { id: 'M2', text: 'Dark/Light theme', ratePaise: 12_000_00, unit: 'fixed' as const },
+            items: [
+              {
+                id: 'I1',
+                name: 'GSAP motion system',
+                ratePaise: 20_000_00,
+                unit: 'fixed' as const,
+                archived: false,
+              },
+              {
+                id: 'I2',
+                name: 'Dark/Light theme',
+                ratePaise: 12_000_00,
+                unit: 'fixed' as const,
+                archived: false,
+              },
             ],
           }
         : s,
     );
-    render(<ServiceCards services={withMenu} />);
+    render(<ServiceCards services={withItems} />);
 
-    expect(screen.getByText('2 lines')).toBeInTheDocument();
-    expect(screen.queryByText('0 lines')).not.toBeInTheDocument();
+    expect(screen.getByText('2 items')).toBeInTheDocument();
+    expect(screen.queryByText('0 items')).not.toBeInTheDocument();
   });
 
   it('offers nothing to start from when editing', async () => {

@@ -1,18 +1,23 @@
-import { menuLineSchema, serviceContentSchema } from '../service';
+import { serviceContentSchema } from '../service';
 
 /**
- * A Service's menu: the priced lines a contract ticks from.
+ * A Service's items, as the **content schema** sees them.
  *
- * The menu is a **new array**, deliberately not `included[]`. `included[]` is
+ * The item rules themselves (the rate band, the duplicate id, the units) are
+ * `serviceItem.test.ts`'s. What is tested here is the seam: that a row written
+ * before items existed still parses, that items survive the round trip, and
+ * that a stored item is held to having an id where a posted one is not.
+ *
+ * Items are a **new array**, deliberately not `included[]`. `included[]` is
  * parsed for `[blanks]` and every one of those has hand-authored editor copy in
  * `blankMeta.ts`, which its test holds to an exact key set both ways; a form
  * writing into it would shift ordinals and move a client's stored figure onto
- * a different sentence. A menu line is never parsed for blanks, so nothing
- * here can reach that machinery. `blankMeta.test.ts` staying green with this
- * file present is the proof.
+ * a different sentence. An item is never parsed for blanks, so nothing here can
+ * reach that machinery. `blankMeta.test.ts` staying green with this file
+ * present is the proof.
  */
 
-/** A Service written before menus existed: every list empty, no `menu` key. */
+/** A Service written before items existed: every list empty, no `items` key. */
 const bare = {
   dependencies: [],
   pairings: [],
@@ -30,66 +35,107 @@ const bare = {
   fee: [],
 };
 
-describe("a service's menu", () => {
-  it('parses a row written before menus existed', () => {
+describe("a service's items", () => {
+  it('parses a row written before items existed', () => {
     const parsed = serviceContentSchema.safeParse(bare);
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.menu).toBeUndefined();
+    if (parsed.success) expect(parsed.data.items).toBeUndefined();
   });
 
-  it('parses a menu of priced lines and keeps it', () => {
+  it('parses a list of priced items and keeps it', () => {
     const parsed = serviceContentSchema.safeParse({
       ...bare,
-      menu: [
-        { id: 'm1', text: 'Dark/Light theme system', ratePaise: 12_000_00, unit: 'fixed' },
+      items: [
         {
-          id: 'm2',
-          text: 'Mobile app UI',
+          id: 'I1',
+          name: 'Dark/Light theme system',
+          ratePaise: 12_000_00,
+          unit: 'fixed',
+          archived: false,
+        },
+        {
+          id: 'I2',
+          name: 'Mobile app UI',
           ratePaise: 5_000_00,
           unit: 'perUnit',
           unitLabel: 'per screen',
           group: 'Product & App',
+          archived: false,
         },
-        // Quoted per engagement: no rate at all is a legitimate line.
-        { id: 'm3', text: 'Custom API integration', unit: 'fixed' },
+        // Quoted per engagement: no rate at all is a legitimate item.
+        { id: 'I3', name: 'Custom API integration', unit: 'fixed', archived: false },
       ],
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.menu).toHaveLength(3);
-      expect(parsed.data.menu?.[1].unitLabel).toBe('per screen');
-      expect(parsed.data.menu?.[2].ratePaise).toBeUndefined();
+      expect(parsed.data.items).toHaveLength(3);
+      expect(parsed.data.items?.[1].unitLabel).toBe('per screen');
+      expect(parsed.data.items?.[2].ratePaise).toBeUndefined();
     }
   });
 
   /**
-   * An id is what a client record and a contract line cite, so two lines
-   * sharing one would make "the line the client chose" ambiguous.
+   * `serviceItemsSchema` lets an id be blank, because that is how a form says
+   * "new". By the time a list is stored the server has assigned one, so the
+   * content schema is where the blank stops being acceptable.
    */
-  it('refuses two lines with one id', () => {
+  it('refuses a stored item with no id', () => {
     const parsed = serviceContentSchema.safeParse({
       ...bare,
-      menu: [
-        { id: 'm1', text: 'One', unit: 'fixed' },
-        { id: 'm1', text: 'Two', unit: 'fixed' },
+      items: [{ id: '', name: 'Unassigned', unit: 'fixed', archived: false }],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0].message).toBe('An item needs an id.');
+    }
+  });
+
+  /**
+   * An id is what a client record and a quotation line cite, so two items
+   * sharing one would make "the item the client chose" ambiguous.
+   */
+  it('refuses two items with one id', () => {
+    const parsed = serviceContentSchema.safeParse({
+      ...bare,
+      items: [
+        { id: 'I1', name: 'One', unit: 'fixed', archived: false },
+        { id: 'I1', name: 'Two', unit: 'fixed', archived: false },
       ],
     });
     expect(parsed.success).toBe(false);
   });
 
-  it('refuses a rate that is not whole paise', () => {
-    expect(
-      menuLineSchema.safeParse({ id: 'm1', text: 'One', ratePaise: 100.5, unit: 'fixed' }).success,
-    ).toBe(false);
+  /** The counter is a high-water mark and outlives the items it counted. */
+  it('keeps an itemSeq above the number of items', () => {
+    const parsed = serviceContentSchema.safeParse({ ...bare, items: [], itemSeq: 55 });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.itemSeq).toBe(55);
+  });
+});
+
+/**
+ * The two fields that carry the other half of `docs/service-catalogue.md` §2:
+ * a Service is sold and carries items, and it *names* the legal frames rather
+ * than restating them.
+ */
+describe("a service's blurb and part codes", () => {
+  it('parses a service that names the Parts a contract pulls', () => {
+    const parsed = serviceContentSchema.safeParse({
+      ...bare,
+      blurb: 'A website built in code rather than on a visual builder.',
+      partCodes: ['06'],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.partCodes).toEqual(['06']);
   });
 
-  it('refuses a unit it does not know', () => {
-    expect(
-      menuLineSchema.safeParse({ id: 'm1', text: 'One', unit: 'hourly' }).success,
-    ).toBe(false);
-  });
-
-  it('refuses a line with nothing to say', () => {
-    expect(menuLineSchema.safeParse({ id: 'm1', text: '  ', unit: 'fixed' }).success).toBe(false);
+  /** A Part names none, which is how the twenty-two rows still parse. */
+  it('leaves both absent on a row that carries neither', () => {
+    const parsed = serviceContentSchema.safeParse(bare);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.blurb).toBeUndefined();
+      expect(parsed.data.partCodes).toBeUndefined();
+    }
   });
 });

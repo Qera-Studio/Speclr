@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /**
- * One Service: its menu, its wording and its libraries, editable in the app.
+ * One Service: its items, its wording and its libraries, editable in the app.
  *
  * The two libraries are loaded **with** their archived rows: an archived line
  * this Service still cites has to stay on its list, or there is no way to

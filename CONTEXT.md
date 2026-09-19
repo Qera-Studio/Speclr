@@ -738,25 +738,52 @@ clause edits, against §5c). What that requires is that every field be editable
 in the app, and it is: the dialog keeps the five-field pass, and each service's
 own page at `/client/services/<code>` carries three forms, each posting only its
 own section through `saveServiceSection` (the `saveClientSection` shape): the
-**menu**, the **wording** (every prose list and the two tables) and the
+**items**, the **wording** (every prose list and the two tables) and the
 **libraries** (which exclusions and client inputs it names). "Start from…" on
 the add dialog clones an existing service, and "Archive" is the only removal.
 
-**A service carries a menu.** `menu[]` on `ServiceContent`: the priced lines a
-contract ticks from, each `{ id, text, ratePaise?, unit, unitLabel?, group }`,
-with the unit on the line because the lines under one service do not share one
-("Mobile app UI" is per screen; "WhatsApp automation" is a set-up fee and a
-monthly one). It is a **new array, deliberately not `included[]`**: `included[]`
-is the frame's standing prose and is parsed for `[blanks]`, each with
-hand-authored copy in `blankMeta.ts` held to an exact key set by its test, so a
-form writing into it would shift ordinals and move a client's stored figure onto
-a different sentence. A menu line is never parsed for blanks. Its id (`M1`,
-`M2`…) is assigned server-side and **never reissued** (`assignMenuIds`, with
-`menuSeq` as the floor), because a client record and a contract line cite it.
-The five rate cards were loaded once by `scripts/import-menu.ts` from
-`scripts/rate-card-menu.json`; after that the menu is the app's. A new kind of
-work ("3D / Three.js scene") is a line here, inheriting the service's handover,
-completion, exclusions and Schedule, and not a new service.
+**A service carries items.** `items[]` on `ServiceContent`
+(`src/lib/domain/serviceItem.ts`): the priced lines every document reads a slice
+of, each `{ id, name, blurb?, ratePaise?, unit, unitLabel?, group?, sacCode?,
+rateMaxPaise?, archived }`, with the unit on the item because the items under
+one service do not share one ("Mobile app UI" is per screen; "WhatsApp
+automation" is a set-up fee and a monthly one). It is a **new array,
+deliberately not `included[]`**: `included[]` is the frame's standing prose and
+is parsed for `[blanks]`, each with hand-authored copy in `blankMeta.ts` held to
+an exact key set by its test, so a form writing into it would shift ordinals and
+move a client's stored figure onto a different sentence. An item is never parsed
+for blanks. Its id (`I1`, `I2`…) is assigned server-side and **never reissued**
+(`assignItemIds`, with `itemSeq` as a high-water mark), because a client record
+and a quotation line cite it. A new kind of work ("3D / Three.js scene") is an
+item here, inheriting the service's handover, completion, exclusions and
+Schedule, and not a new service.
+
+**An item's name is its scope, and there is deliberately no wording field.**
+Three reasons, shortest first: the names are already precise ("Payment gateway
+integration" says what it is), twenty ticked items would add forty sentences to
+a contract, and a new user would have to author six hundred sentences before
+issuing anything. Exclusions stay at *service* level, attached from the shared
+library and rendered opt-out, which is what bounds them. Adding an inclusion or
+exclusion field to an item is a change to `docs/service-catalogue.md` first.
+
+**This replaced `menu[]` on 19 September 2026**, which carried the same job
+under a name that suggested a restaurant menu and reached no document: it was
+read by the services admin screen and nothing else, and `MenuLine.id`'s
+never-reissue rule protected `ClientEngagedService.menuIds`, a field that was
+never added. The five rate cards were loaded into it once by
+`scripts/import-menu.ts`, which is deleted: what a client buys is now seeded
+from `docs/service-catalogue.md`, and the 278 lines it carried are 293 items
+across 16 services there. Nothing had cited a menu id, so there was no
+back-compat shim to write and there should not be one.
+
+**A Service names its legal frames rather than restating them.** `partCodes` on
+`ServiceContent` is the seam between the two layers: a Service is what is sold
+and carries items; a **Part** is the legal frame with its blanks, limits,
+completion criteria and handover, and the twenty-two of them seed from
+`src/lib/domain/seed/parts.ts`. A quotation and an invoice never look at a Part.
+They were one concept under one name until `docs/service-catalogue.md` separated
+them, which is what let the rate cards be imported into contract scope units:
+88 of 278 lines landed on one row and two rows got none.
 
 **One unrelated bug fell out of it.** `service.ts` importing `domain/fields.ts`
 put `domain/phone.ts` in the seed script's import graph, and libphonenumber's CJS

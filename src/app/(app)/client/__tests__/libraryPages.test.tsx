@@ -68,7 +68,7 @@ describe('Service page', () => {
     render(await ServiceDetailPage({ params }));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Custom web build' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Menu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Items' })).toBeInTheDocument();
     expect(listExclusions).toHaveBeenCalledWith(true);
     expect(listClientInputs).toHaveBeenCalledWith(true);
   });

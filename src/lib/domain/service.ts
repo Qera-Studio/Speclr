@@ -25,48 +25,13 @@
 import { z } from 'zod';
 import { sacSchema } from './fields';
 import { codeSchema, multilineSchema, textSchema } from './text';
+import { serviceItemsSchema, type ServiceItem } from './serviceItem';
 import type { ScheduleKey } from './contract/schedules';
 
 /** A row in a Limits or Fee table: a label and a value, the value usually a blank. */
 export interface ServiceRow {
   label: string;
   value: string;
-}
-
-/**
- * What a menu line's rate is per.
- *
- * On the line rather than derived from the Schedule (`rateUnitOf` below): a
- * Service's own list price follows its Schedule, but the lines under one
- * Service do not all share a unit. "Mobile app UI" is per screen, "WhatsApp
- * automation" is a set-up fee and a monthly one, both under the same frame.
- */
-export type MenuUnit = 'fixed' | 'monthly' | 'perUnit';
-
-/**
- * One priced line a contract can tick from a Service's menu.
- *
- * **The menu is a new array, deliberately not `included[]`.** `included[]` is
- * the frame's standing prose and is parsed for `[blanks]`, each of which has
- * hand-authored editor copy in `blankMeta.ts` held to an exact key set by its
- * test. A form writing into it would shift every later ordinal, moving a
- * client's stored figure onto a different sentence. A menu line is **never
- * parsed for blanks**: a `[` in its text is a literal. Nothing here can reach
- * that machinery, which is what lets a line be added from a form.
- *
- * `id` is what a client record (`ClientEngagedService.menuIds`) and a contract
- * line cite, so it is assigned server-side and never reissued, the same rule a
- * clause number follows. Absent `ratePaise` means "quoted per engagement".
- */
-export interface MenuLine {
-  id: string;
-  text: string;
-  ratePaise?: number;
-  unit: MenuUnit;
-  /** 'per screen', 'per video'. Meaningful for `perUnit` only. */
-  unitLabel?: string;
-  /** The heading this line sits under in the menu, e.g. 'Brand experience'. */
-  group?: string;
 }
 
 /**
@@ -137,49 +102,43 @@ export interface ServiceContent {
    */
   ratePaise?: number;
   /**
-   * The priced lines a contract ticks from. Optional because the twenty-two
-   * rows predate it, exactly as `sacCode` and `ratePaise` are.
+   * One client-facing paragraph, printed as the quotation service page's blurb.
+   *
+   * Distinct from `overview`, which is the contract frame's 2-3 sentences of
+   * technical scope. This one is sales copy and prints on no contract.
    */
-  menu?: MenuLine[];
+  blurb?: string;
   /**
-   * The highest menu-line number this Service has ever given out. What lets
-   * `assignMenuIds` never reissue a deleted line's id. See it for why.
+   * The legal frames a contract pulls when this Service is on it, by Part code.
+   *
+   * This is the seam between the two layers (`docs/service-catalogue.md` §2): a
+   * Service is what is **sold** and carries items; a Part is the legal frame
+   * with its blanks, limits, completion criteria and handover. A quotation and
+   * an invoice never look at a Part, and a Service names the frames rather than
+   * restating them, because a Shopify build and a Webflow build need identical
+   * legal terms and only the scope differs.
+   *
+   * Optional because the twenty-two catalogue rows are themselves Parts and
+   * name none.
    */
-  menuSeq?: number;
-}
-
-/** 'M12' → 12; anything else → 0, so a foreign id never raises the counter. */
-const menuIdNumber = (id: string): number => {
-  const match = id.match(/^M(\d+)$/i);
-  return match ? Number(match[1]) : 0;
-};
-
-/**
- * Gives every new menu line an id, counting past every id ever used.
- *
- * A client record cites these ids (`ClientEngagedService.menuIds`) and so does
- * a contract line. If a deleted line's id were handed to a new line, a client
- * who chose "M5, the analytics set-up" would be seeded "M5, the booking system"
- * onto their next contract. So the counter is the floor: past `menuSeq`, past
- * every id still in the stored menu (a line dropped in *this* save is still
- * there), and past every id in the incoming list. The same rule a clause
- * number follows, counting past archived clauses.
- *
- * A line arrives with `id: ''` to mean "new". An id already set is kept, and
- * the incoming order is the order stored: the menu is a list the operator
- * arranges, not a set.
- */
-export function assignMenuIds(
-  existing: { menu?: MenuLine[]; menuSeq?: number },
-  incoming: MenuLine[],
-): { menu: MenuLine[]; menuSeq: number } {
-  let seq = Math.max(
-    existing.menuSeq ?? 0,
-    ...(existing.menu ?? []).map((line) => menuIdNumber(line.id)),
-    ...incoming.map((line) => menuIdNumber(line.id)),
-  );
-  const menu = incoming.map((line) => (line.id ? line : { ...line, id: `M${++seq}` }));
-  return { menu, menuSeq: seq };
+  partCodes?: string[];
+  /**
+   * The priced lines every document reads a slice of. Optional because the
+   * twenty-two rows predate them, exactly as `sacCode` and `ratePaise` are.
+   *
+   * **Deliberately not `included[]`.** That is the frame's standing prose and is
+   * parsed for `[blanks]`, each with hand-authored editor copy in `blankMeta.ts`
+   * held to an exact key set by its test. A form writing into it would shift
+   * every later ordinal, moving a client's stored figure onto a different
+   * sentence. An item is **never parsed for blanks**: a `[` in its name is a
+   * literal, which is what lets one be added from a form.
+   */
+  items?: ServiceItem[];
+  /**
+   * The highest item number this Service has ever given out. What lets
+   * `assignItemIds` never reissue a deleted item's id. See it for why.
+   */
+  itemSeq?: number;
 }
 
 /**
@@ -214,15 +173,6 @@ const refId = codeSchema(10);
 // The same ceiling as the Service's own rate: a bound, not a business rule.
 const paise = z.number().int().min(0).max(10_000_000_000);
 
-export const menuLineSchema = z.object({
-  id: codeSchema(12, { required: 'A menu line needs an id.' }),
-  text: textSchema(300, { required: 'A menu line needs a description.' }),
-  ratePaise: paise.optional(),
-  unit: z.enum(['fixed', 'monthly', 'perUnit']),
-  unitLabel: textSchema(40).optional(),
-  group: textSchema(80).optional(),
-});
-
 export const serviceContentSchema = z.object({
   dependencies: z.array(refId).max(22),
   pairings: z.array(refId).max(22),
@@ -242,27 +192,22 @@ export const serviceContentSchema = z.object({
   // A ceiling of ₹100 crore. Not a business rule — a bound, so a stray paste
   // cannot land a number that overflows the arithmetic downstream of it.
   ratePaise: paise.optional(),
-  // A bound, not a business rule. Custom web build alone carries 88 lines
-  // from the rate cards, so 80 was wrong on the day it was written.
-  menu: z
-    .array(menuLineSchema)
-    .max(200)
+  blurb: multilineSchema(1000).optional(),
+  partCodes: z.array(refId).max(22).optional(),
+  // `serviceItemsSchema` already bounds the list and refuses a duplicate id;
+  // this is the same rule read on a stored list rather than a posted one, so
+  // the id must be present. Written once there, applied here (CONTEXT.md §5f).
+  items: serviceItemsSchema
     .optional()
-    .superRefine((menu, ctx) => {
-      if (!menu) return;
-      const seen = new Set<string>();
-      for (const [i, item] of menu.entries()) {
-        if (seen.has(item.id)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `Menu line ${item.id} appears twice.`,
-            path: [i, 'id'],
-          });
+    .superRefine((items, ctx) => {
+      if (!items) return;
+      items.forEach((item, i) => {
+        if (!item.id) {
+          ctx.addIssue({ code: 'custom', message: 'An item needs an id.', path: [i, 'id'] });
         }
-        seen.add(item.id);
-      }
+      });
     }),
-  menuSeq: z.number().int().min(0).optional(),
+  itemSeq: z.number().int().min(0).optional(),
 });
 
 export const serviceInputSchema = serviceContentSchema.extend({

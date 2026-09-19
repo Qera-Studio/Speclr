@@ -188,13 +188,13 @@ export default function ServiceCards({
                         <span>
                           {service.sacCode ? `SAC ${service.sacCode}` : NIL}
                         </span>
-                        {/* How many priced lines sit under this frame, so the
-                            board reads which services have a menu yet. The
-                            lines themselves are on the Service's page. */}
-                        {service.menu?.length ? (
+                        {/* How many priced items sit under this frame, so the
+                            board reads which services carry any yet. The items
+                            themselves are on the Service's page. */}
+                        {service.items?.length ? (
                           <span>
-                            {service.menu.length}{" "}
-                            {service.menu.length === 1 ? "line" : "lines"}
+                            {service.items.length}{" "}
+                            {service.items.length === 1 ? "item" : "items"}
                           </span>
                         ) : null}
                         <span className="ml-auto">

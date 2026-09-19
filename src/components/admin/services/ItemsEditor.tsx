@@ -20,10 +20,11 @@ import {
 import { numericField } from '@/components/form/inputFilters';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import { textSchema } from '@/lib/domain/text';
-import type { ContractService, MenuLine, MenuUnit } from '@/lib/domain/service';
+import type { ContractService } from '@/lib/domain/service';
+import type { ItemUnit, ServiceItem } from '@/lib/domain/serviceItem';
 import { useSectionSave } from './useSectionSave';
 
-const UNITS: { value: MenuUnit; label: string }[] = [
+const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'fixed', label: 'Fixed' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'perUnit', label: 'Per unit' },
@@ -36,7 +37,7 @@ const UNITS: { value: MenuUnit; label: string }[] = [
  */
 const rowSchema = z.object({
   id: z.string(),
-  text: textSchema(300, { required: 'Say what this line is.' }),
+  name: textSchema(300, { required: 'Say what this item is.' }),
   rupees: z
     .string()
     .refine(
@@ -46,21 +47,31 @@ const rowSchema = z.object({
   unit: z.enum(['fixed', 'monthly', 'perUnit']),
   unitLabel: textSchema(40),
   group: textSchema(80),
+  archived: z.boolean(),
 });
 
 const formSchema = z.object({ lines: z.array(rowSchema) });
 type FormValues = z.infer<typeof formSchema>;
 type Row = FormValues['lines'][number];
 
-const EMPTY_ROW: Row = { id: '', text: '', rupees: '', unit: 'fixed', unitLabel: '', group: '' };
+const EMPTY_ROW: Row = {
+  id: '',
+  name: '',
+  rupees: '',
+  unit: 'fixed',
+  unitLabel: '',
+  group: '',
+  archived: false,
+};
 
-const toRow = (line: MenuLine): Row => ({
-  id: line.id,
-  text: line.text,
-  rupees: line.ratePaise === undefined ? '' : paiseToRupees(line.ratePaise),
-  unit: line.unit,
-  unitLabel: line.unitLabel ?? '',
-  group: line.group ?? '',
+const toRow = (item: ServiceItem): Row => ({
+  id: item.id,
+  name: item.name,
+  rupees: item.ratePaise === undefined ? '' : paiseToRupees(item.ratePaise),
+  unit: item.unit,
+  unitLabel: item.unitLabel ?? '',
+  group: item.group ?? '',
+  archived: item.archived,
 });
 
 /**
@@ -68,35 +79,40 @@ const toRow = (line: MenuLine): Row => ({
  * engagement" and "given away" are different facts, and zero is the second.
  * A unit label is kept only on a per-unit line, where it means something.
  */
-const toLine = (row: Row): MenuLine => {
+const toItem = (row: Row): ServiceItem => {
   const rupees = row.rupees.trim();
   return {
     id: row.id,
-    text: row.text,
+    name: row.name,
     ...(rupees === '' ? {} : { ratePaise: rupeesToPaise(rupees) ?? 0 }),
     unit: row.unit,
     ...(row.unit === 'perUnit' && row.unitLabel ? { unitLabel: row.unitLabel } : {}),
     ...(row.group ? { group: row.group } : {}),
+    archived: row.archived,
   };
 };
 
 /**
- * A Service's menu: the priced lines a contract ticks from.
+ * A Service's items: the priced lines every document reads a slice of.
  *
  * This is the form that makes adding a kind of work a two-minute job rather
- * than a code edit. A line is four things (what, how much, per what, under
+ * than a code edit. An item is four things (what, how much, per what, under
  * which heading) and inherits everything else from the Service it sits under:
  * its handover, its completion criteria, its exclusions, the Schedule's terms.
  * That is why a new capability ("3D / Three.js scene") is a row here and not a
  * new Service.
  *
- * Posts the whole menu to its own section and nothing else; the server reads
- * the row and overwrites `menu` alone (`saveServiceSection`). A new line
+ * **An item's name is its scope**, which is why there is no wording field here
+ * and adding one is a change to `docs/service-catalogue.md` first. See
+ * `serviceItem.ts` for the three reasons.
+ *
+ * Posts the whole list to its own section and nothing else; the server reads
+ * the row and overwrites `items` alone (`saveServiceSection`). A new item
  * carries `id: ''` and the server assigns one that is never reissued, because
  * client records cite these ids.
  */
-export default function MenuEditor({ service }: { service: ContractService }) {
-  const { pending, serverError, save } = useSectionSave(service.code, 'menu');
+export default function ItemsEditor({ service }: { service: ContractService }) {
+  const { pending, serverError, save } = useSectionSave(service.code, 'items');
 
   const {
     register,
@@ -107,29 +123,29 @@ export default function MenuEditor({ service }: { service: ContractService }) {
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: 'onTouched',
-    defaultValues: { lines: (service.menu ?? []).map(toRow) },
+    defaultValues: { lines: (service.items ?? []).map(toRow) },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
   const lines = watch('lines');
 
-  const submit = handleSubmit((values) => save({ menu: values.lines.map(toLine) }));
+  const submit = handleSubmit((values) => save({ items: values.lines.map(toItem) }));
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       {fields.map((field, i) => (
         // A fieldset per line, named, so each row is one group to a screen
         // reader and to a test rather than four unrelated inputs in a row.
-        <FieldSet key={field.id} aria-label={`Line ${i + 1}`} className="rounded-md border p-3">
+        <FieldSet key={field.id} aria-label={`Item ${i + 1}`} className="rounded-md border p-3">
           <FieldRow columns={2} className="grid-cols-[3fr_1fr]">
             <Field>
-              <FieldLabel htmlFor={`menu-text-${i}`}>Description</FieldLabel>
-              <Input id={`menu-text-${i}`} size="form" {...register(`lines.${i}.text`)} />
-              <FieldError errors={[errors.lines?.[i]?.text]} />
+              <FieldLabel htmlFor={`item-name-${i}`}>Description</FieldLabel>
+              <Input id={`item-name-${i}`} size="form" {...register(`lines.${i}.name`)} />
+              <FieldError errors={[errors.lines?.[i]?.name]} />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`menu-rate-${i}`}>Rate (₹)</FieldLabel>
+              <FieldLabel htmlFor={`item-rate-${i}`}>Rate (₹)</FieldLabel>
               <Input
-                id={`menu-rate-${i}`}
+                id={`item-rate-${i}`}
                 size="form"
                 placeholder="Quoted"
                 {...numericField(register(`lines.${i}.rupees`), 'money')}
@@ -140,13 +156,13 @@ export default function MenuEditor({ service }: { service: ContractService }) {
 
           <div className="flex flex-wrap items-end gap-3">
             <Field className="w-36">
-              <FieldLabel htmlFor={`menu-unit-${i}`}>Unit</FieldLabel>
+              <FieldLabel htmlFor={`item-unit-${i}`}>Unit</FieldLabel>
               <Controller
                 control={control}
                 name={`lines.${i}.unit`}
                 render={({ field: unit }) => (
                   <Select value={unit.value} onValueChange={(v) => unit.onChange(v)}>
-                    <SelectTrigger id={`menu-unit-${i}`} size="form" className="w-full">
+                    <SelectTrigger id={`item-unit-${i}`} size="form" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -165,9 +181,9 @@ export default function MenuEditor({ service }: { service: ContractService }) {
                 label on a fixed line would be a field that goes nowhere. */}
             {lines[i]?.unit === 'perUnit' ? (
               <Field className="w-36">
-                <FieldLabel htmlFor={`menu-unit-label-${i}`}>Unit label</FieldLabel>
+                <FieldLabel htmlFor={`item-unit-label-${i}`}>Unit label</FieldLabel>
                 <Input
-                  id={`menu-unit-label-${i}`}
+                  id={`item-unit-label-${i}`}
                   size="form"
                   placeholder="per screen"
                   {...register(`lines.${i}.unitLabel`)}
@@ -177,9 +193,9 @@ export default function MenuEditor({ service }: { service: ContractService }) {
             ) : null}
 
             <Field className="min-w-40 flex-1">
-              <FieldLabel htmlFor={`menu-group-${i}`}>Group</FieldLabel>
+              <FieldLabel htmlFor={`item-group-${i}`}>Group</FieldLabel>
               <Input
-                id={`menu-group-${i}`}
+                id={`item-group-${i}`}
                 size="form"
                 placeholder="Brand experience"
                 {...register(`lines.${i}.group`)}
@@ -187,7 +203,7 @@ export default function MenuEditor({ service }: { service: ContractService }) {
               <FieldError errors={[errors.lines?.[i]?.group]} />
             </Field>
 
-            <RemoveButton label={`Remove line ${i + 1}`} onConfirm={() => remove(i)} />
+            <RemoveButton label={`Remove item ${i + 1}`} onConfirm={() => remove(i)} />
           </div>
         </FieldSet>
       ))}
@@ -201,10 +217,10 @@ export default function MenuEditor({ service }: { service: ContractService }) {
       <div className="flex items-center justify-between gap-3">
         <Button type="button" variant="outline" onClick={() => append(EMPTY_ROW)}>
           <Plus aria-hidden="true" />
-          Add a line
+          Add an item
         </Button>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save menu'}
+          {pending ? 'Saving…' : 'Save items'}
         </Button>
       </div>
     </form>

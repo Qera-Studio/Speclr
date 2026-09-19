@@ -12,12 +12,12 @@ jest.mock('@/server/actions/services', () => ({
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: jest.fn() }) }));
 
 /**
- * One Service, on its own page: the menu, the wording and the libraries, each
+ * One Service, on its own page: the items, the wording and the libraries, each
  * its own form, and the one way to retire it.
  *
  * A page rather than a second tab in the details dialog. That dialog is five
  * scalar fields by design; a Service also carries thirteen list fields and a
- * menu, and two surfaces writing one row is how a section quietly goes
+ * list of items, and two surfaces writing one row is how a section quietly goes
  * missing (CONTEXT §5d made the same call for clients).
  */
 
@@ -37,10 +37,10 @@ describe('ServicePage', () => {
   it('holds the three sections, each with its own save', () => {
     render(<ServicePage service={build} exclusions={[]} clientInputs={[]} />);
 
-    expect(screen.getByRole('heading', { name: 'Menu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Items' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Wording' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Libraries' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save menu' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save items' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save wording' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save libraries' })).toBeInTheDocument();
   });

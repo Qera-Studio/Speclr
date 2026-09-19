@@ -31,12 +31,20 @@ jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
 import { createService, removeService, saveServiceSection } from '../services';
 
-/** Custom web build, as seeded: twelve inclusions, a Limits table, no menu. */
+/** Custom web build, as seeded: twelve inclusions, a Limits table, one item. */
 const existing: ContractService = {
   ...PARTS.find((s) => s.code === '06')!,
   ratePaise: 250_000_00,
-  menu: [{ id: 'M1', text: 'GSAP motion system', ratePaise: 20_000_00, unit: 'fixed' }],
-  menuSeq: 2,
+  items: [
+    {
+      id: 'I1',
+      name: 'GSAP motion system',
+      ratePaise: 20_000_00,
+      unit: 'fixed',
+      archived: false,
+    },
+  ],
+  itemSeq: 2,
 };
 
 beforeEach(() => {
@@ -48,7 +56,7 @@ beforeEach(() => {
 describe('saveServiceSection', () => {
   it('refuses a signed-out caller before reading anything', async () => {
     authorized.mockResolvedValue(null);
-    const result = await saveServiceSection('06', 'menu', { menu: [] });
+    const result = await saveServiceSection('06', 'items', { items: [] });
     expect(result).toEqual({ success: false, error: 'Unauthorized.' });
     expect(getService).not.toHaveBeenCalled();
     expect(saveService).not.toHaveBeenCalled();
@@ -62,28 +70,43 @@ describe('saveServiceSection', () => {
 
   it('refuses a code that no longer exists', async () => {
     getService.mockResolvedValue(null);
-    const result = await saveServiceSection('99', 'menu', { menu: [] });
+    const result = await saveServiceSection('99', 'items', { items: [] });
     expect(result).toEqual({ success: false, error: 'That service no longer exists.' });
     expect(saveService).not.toHaveBeenCalled();
   });
 
   /**
-   * The menu section: new lines get ids, kept lines keep theirs, and every
+   * The items section: new items get ids, kept items keep theirs, and every
    * field the form never showed (the twelve inclusions, the rate, the name)
    * is exactly as it was.
+   *
+   * The new item is `I3`, not `I2`: `itemSeq` is a high-water mark, so the id
+   * a deleted item once held is never handed out again.
    */
-  it('writes the menu with ids assigned and leaves the rest of the row alone', async () => {
-    const result = await saveServiceSection('06', 'menu', {
-      menu: [
-        { id: 'M1', text: 'GSAP motion system', ratePaise: 20_000_00, unit: 'fixed' },
-        { id: '', text: 'Dark/Light theme system', ratePaise: 12_000_00, unit: 'fixed' },
+  it('writes the items with ids assigned and leaves the rest of the row alone', async () => {
+    const result = await saveServiceSection('06', 'items', {
+      items: [
+        {
+          id: 'I1',
+          name: 'GSAP motion system',
+          ratePaise: 20_000_00,
+          unit: 'fixed',
+          archived: false,
+        },
+        {
+          id: '',
+          name: 'Dark/Light theme system',
+          ratePaise: 12_000_00,
+          unit: 'fixed',
+          archived: false,
+        },
       ],
     });
     expect(result).toEqual({ success: true });
 
     const saved = saveService.mock.calls[0][0];
-    expect(saved.menu?.map((m) => m.id)).toEqual(['M1', 'M3']);
-    expect(saved.menuSeq).toBe(3);
+    expect(saved.items?.map((m) => m.id)).toEqual(['I1', 'I3']);
+    expect(saved.itemSeq).toBe(3);
     expect(saved.included).toEqual(existing.included);
     expect(saved.limits).toEqual(existing.limits);
     expect(saved.ratePaise).toBe(existing.ratePaise);
@@ -91,11 +114,11 @@ describe('saveServiceSection', () => {
     expect(saved.code).toBe('06');
   });
 
-  it('refuses a menu with two lines on one id', async () => {
-    const result = await saveServiceSection('06', 'menu', {
-      menu: [
-        { id: 'M1', text: 'One', unit: 'fixed' },
-        { id: 'M1', text: 'Two', unit: 'fixed' },
+  it('refuses a list with two items on one id', async () => {
+    const result = await saveServiceSection('06', 'items', {
+      items: [
+        { id: 'I1', name: 'One', unit: 'fixed', archived: false },
+        { id: 'I1', name: 'Two', unit: 'fixed', archived: false },
       ],
     });
     expect(result.success).toBe(false);
@@ -103,7 +126,7 @@ describe('saveServiceSection', () => {
   });
 
   /** The wording section overwrites the prose fields and nothing commercial. */
-  it('writes the wording and leaves the menu, the rate and the libraries alone', async () => {
+  it('writes the wording and leaves the items, the rate and the libraries alone', async () => {
     const result = await saveServiceSection('06', 'wording', {
       included: ['One page template'],
       accountTerms: [],
@@ -122,7 +145,7 @@ describe('saveServiceSection', () => {
     expect(saved.completion).toEqual(['It works.']);
     expect(saved.thirdPartyCosts).toBe('Hosting');
     expect(saved.fee).toEqual([{ label: 'Fee', value: '[ ]' }]);
-    expect(saved.menu).toEqual(existing.menu);
+    expect(saved.items).toEqual(existing.items);
     expect(saved.ratePaise).toBe(existing.ratePaise);
     expect(saved.exclusionIds).toEqual(existing.exclusionIds);
     expect(saved.overview).toEqual(existing.overview);
@@ -140,7 +163,7 @@ describe('saveServiceSection', () => {
     expect(saved.exclusionIds).toEqual(['E01', 'E02']);
     expect(saved.clientInputIds).toEqual(['I01']);
     expect(saved.included).toEqual(existing.included);
-    expect(saved.menu).toEqual(existing.menu);
+    expect(saved.items).toEqual(existing.items);
   });
 });
 
@@ -165,12 +188,12 @@ describe('createService', () => {
     const inserted = insertService.mock.calls[0][0];
     expect(inserted.code).toBe('23');
     expect(inserted.included).toEqual([]);
-    expect(inserted.menu).toBeUndefined();
+    expect(inserted.items).toBeUndefined();
   });
 
   /**
    * "Start from…": a genuinely new kind of work is usually a near copy of one
-   * that exists, and copying its scope, limits, libraries and menu is what
+   * that exists, and copying its scope, limits, libraries and items is what
    * makes adding one a two-minute form rather than a spec edit.
    */
   it('clones the source service under the new code when asked to', async () => {
@@ -184,8 +207,8 @@ describe('createService', () => {
     expect(inserted.included).toEqual(existing.included);
     expect(inserted.limits).toEqual(existing.limits);
     expect(inserted.exclusionIds).toEqual(existing.exclusionIds);
-    expect(inserted.menu).toEqual(existing.menu);
-    expect(inserted.menuSeq).toBe(existing.menuSeq);
+    expect(inserted.items).toEqual(existing.items);
+    expect(inserted.itemSeq).toBe(existing.itemSeq);
     expect(inserted.archived).toBe(false);
   });
 

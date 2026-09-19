@@ -3,13 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { sacSchema } from '@/lib/domain/fields';
-import { codeSchema, multilineSchema, textSchema } from '@/lib/domain/text';
-import {
-  assignMenuIds,
-  menuLineSchema,
-  serviceContentSchema,
-  type ServiceContent,
-} from '@/lib/domain/service';
+import { multilineSchema, textSchema } from '@/lib/domain/text';
+import { serviceContentSchema, type ServiceContent } from '@/lib/domain/service';
+import { assignItemIds, serviceItemsSchema } from '@/lib/domain/serviceItem';
 import type { ActionResult } from '@/lib/domain/types';
 import { archiveService, getService, insertService, listServices, saveService } from '@/db/store';
 import { logger } from '@/lib/logger';
@@ -208,13 +204,11 @@ export async function createService(data: unknown): Promise<ActionResult> {
  * with three forms writing one row is how a section quietly goes missing
  * unless each one is blind to the others, and this is what makes them blind.
  *
- * A menu line posts with `id: ''` to mean "new"; ids are assigned here and
- * never reissued (`assignMenuIds`).
+ * An item posts with `id: ''` to mean "new"; ids are assigned here and never
+ * reissued (`assignItemIds`).
  */
 const SECTION_SCHEMAS = {
-  menu: z.object({
-    menu: z.array(menuLineSchema.extend({ id: codeSchema(12) })).max(200),
-  }),
+  items: z.object({ items: serviceItemsSchema }),
   wording: serviceContentSchema.pick({
     included: true,
     accountTerms: true,
@@ -254,13 +248,13 @@ export async function saveServiceSection(
     const existing = await getService(parsedCode.data);
     if (!existing) return { success: false, error: 'That service no longer exists.' };
 
-    if ('menu' in parsed.data) {
-      const assigned = assignMenuIds(existing, parsed.data.menu);
-      // The domain rule on a finished menu (no two lines on one id) runs on the
+    if ('items' in parsed.data) {
+      const assigned = assignItemIds(existing, parsed.data.items);
+      // The domain rule on a finished list (no two items on one id) runs on the
       // ids as they will be stored, which is after assignment.
-      const check = serviceContentSchema.shape.menu.safeParse(assigned.menu);
+      const check = serviceContentSchema.shape.items.safeParse(assigned.items);
       if (!check.success) {
-        return { success: false, error: check.error.issues[0]?.message ?? 'Invalid menu.' };
+        return { success: false, error: check.error.issues[0]?.message ?? 'Invalid items.' };
       }
       await saveService({ ...existing, ...assigned });
     } else {
