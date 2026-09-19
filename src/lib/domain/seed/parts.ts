@@ -1,6 +1,20 @@
 /**
- * Seed for the Services library — all twenty-two, transcribed from
+ * Seed for the **contract Parts** — all twenty-two, transcribed from
  * `docs/contract-content.md` §4 through §4ac.
+ *
+ * **Renamed from `SERVICES` and moved out of `contract/` on 19 September 2026.**
+ * These rows were always contract scope units: a Part is one of them *rendered
+ * inside a Schedule* as A1, A2, B1 (`contract-system.md` §4 step 5). They were
+ * never a sales catalogue, and calling them the Services library is what let
+ * the five rate cards be imported into them, where 88 of 278 lines landed on
+ * one row and two rows got none. What a client buys now lives in
+ * `seed/services.ts`, built from `docs/service-catalogue.md`; a Service names
+ * the Parts a contract pulls through `partCodes`.
+ *
+ * The move is out of `contract/` because `PRINCIPLES.md` rule 1 asks for it:
+ * the type these rows use (`ContractService`) already sits in `domain/`, and
+ * the seed trailing behind in a document type's subtree was the last half of
+ * that record parented under its first consumer. The text is untouched.
  *
  * `sortOrder` follows the canonical ordering in contract-system.md §3, which is
  * what fixes Part numbering: 01–04 Setup, 05–14 Build, 15–20 Retainer, 21–22
@@ -54,9 +68,9 @@
  * different matrices. Both are their own features; neither is service data.
  */
 
-import type { ContractService } from '../../service';
+import type { ContractService } from '../service';
 
-export const SERVICES: ContractService[] = [
+export const PARTS: ContractService[] = [
   {
     code: '01',
     sacCode: '998315',
