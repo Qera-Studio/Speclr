@@ -1,4 +1,4 @@
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import type { ContractService } from '@/lib/domain/service';
 
 /**
@@ -33,7 +33,7 @@ import { createService, removeService, saveServiceSection } from '../services';
 
 /** Custom web build, as seeded: twelve inclusions, a Limits table, no menu. */
 const existing: ContractService = {
-  ...SERVICES.find((s) => s.code === '06')!,
+  ...PARTS.find((s) => s.code === '06')!,
   ratePaise: 250_000_00,
   menu: [{ id: 'M1', text: 'GSAP motion system', ratePaise: 20_000_00, unit: 'fixed' }],
   menuSeq: 2,
@@ -146,7 +146,7 @@ describe('saveServiceSection', () => {
 
 describe('createService', () => {
   beforeEach(() => {
-    listServices.mockResolvedValue(SERVICES);
+    listServices.mockResolvedValue(PARTS);
   });
 
   const details = {

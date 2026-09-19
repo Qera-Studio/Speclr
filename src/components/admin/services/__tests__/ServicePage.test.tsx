@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ServicePage from '../ServicePage';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import { removeService } from '@/server/actions/services';
 
 const push = jest.fn();
@@ -21,7 +21,7 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: jest.fn
  * missing (CONTEXT §5d made the same call for clients).
  */
 
-const build = SERVICES.find((s) => s.code === '06')!;
+const build = PARTS.find((s) => s.code === '06')!;
 
 beforeEach(() => jest.clearAllMocks());
 

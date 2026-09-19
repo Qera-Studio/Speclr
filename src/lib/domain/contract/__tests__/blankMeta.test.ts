@@ -1,13 +1,13 @@
 import { blankMeta, PROSE_META, ROW_META } from '../blankMeta';
 import { contractScopes } from '../completeness';
-import { SERVICES } from '../seed/services';
+import { PARTS } from '../../seed/parts';
 
 /**
  * Every figure a contract can hold, from a contract holding every Service.
  * That covers all 22 Parts, the Master Agreement and all four Schedules — a
  * Schedule's own clauses only appear once one of its Parts is present.
  */
-const scopes = contractScopes({ parts: SERVICES.map((s) => ({ ...s })), blanks: {} });
+const scopes = contractScopes({ parts: PARTS.map((s) => ({ ...s })), blanks: {} });
 
 const rowLabels = new Set<string>();
 const proseKeys = new Set<string>();

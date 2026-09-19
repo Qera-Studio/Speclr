@@ -33,7 +33,7 @@ config({ path: '.env.local' });
 
 import { neon } from '@neondatabase/serverless';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../src/lib/domain/contract/seed/libraries';
-import { SERVICES } from '../src/lib/domain/contract/seed/services';
+import { PARTS } from '../src/lib/domain/seed/parts';
 import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/service';
 import {
   MSA_CLAUSES,
@@ -54,7 +54,7 @@ const sql = neon(url);
 async function main() {
   // Validate before touching the database. A transcription typo should fail
   // here, loudly, rather than land as a malformed JSONB payload.
-  for (const service of SERVICES) {
+  for (const service of PARTS) {
     const parsed = serviceInputSchema.safeParse(service);
     if (!parsed.success) {
       console.error(`Service ${service.code} is invalid:`, parsed.error.issues);
@@ -77,7 +77,7 @@ async function main() {
   }
 
   console.log(
-    `${SERVICES.length} services · ${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs · ${MSA_CLAUSES.length} clauses`,
+    `${PARTS.length} services · ${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs · ${MSA_CLAUSES.length} clauses`,
   );
 
   if (!APPLY) {
@@ -85,7 +85,7 @@ async function main() {
     return;
   }
 
-  for (const service of SERVICES) {
+  for (const service of PARTS) {
     const { code, name, scheduleKey, sortOrder, archived, ...content } = service;
     await sql`
       insert into services (code, name, schedule_key, sort_order, content, archived, updated_at)

@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { MSA_CLAUSES, type ClauseInput } from '@/lib/domain/contract/msa';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 
 const requireAuthorizedUser = jest.fn();
-const listServices = jest.fn(() => Promise.resolve(SERVICES));
+const listServices = jest.fn(() => Promise.resolve(PARTS));
 const listClauses = jest.fn(() => Promise.resolve([] as ClauseInput[]));
 const getService = jest.fn();
 const listExclusions = jest.fn(() => Promise.resolve([]));
@@ -49,10 +49,10 @@ import ClauseLibraryPage from '../clauses/page';
 beforeEach(() => {
   jest.clearAllMocks();
   requireAuthorizedUser.mockResolvedValue({});
-  listServices.mockResolvedValue(SERVICES);
+  listServices.mockResolvedValue(PARTS);
   listClauses.mockResolvedValue([]);
   getService.mockImplementation(async (code: string) =>
-    SERVICES.find((s) => s.code === code) ?? null,
+    PARTS.find((s) => s.code === code) ?? null,
   );
 });
 

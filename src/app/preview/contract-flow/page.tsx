@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import AdminShell from '@/components/admin/AdminShell';
 import ContractFlow from '@/components/contract/flow/ContractFlow';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import { CLIENT_INPUTS, EXCLUSIONS } from '@/lib/domain/contract/seed/libraries';
 import type { ClientRecord, ContractDocument } from '@/lib/domain/types';
 
@@ -65,7 +65,7 @@ const DOC = {
   lineItems: [],
   gstRatePercent: 0,
   contract: {
-    parts: [SERVICES.find((s) => s.code === '05')!, SERVICES.find((s) => s.code === '17')!],
+    parts: [PARTS.find((s) => s.code === '05')!, PARTS.find((s) => s.code === '17')!],
     blanks: {},
     library: {},
     // Carried across from the client's `commercial.termMonths` by
@@ -90,7 +90,7 @@ const DOC = {
  */
 const DOC_ALL_FILLED = {
   ...DOC,
-  contract: { ...DOC.contract, parts: [SERVICES.find((s) => s.code === '05')!] },
+  contract: { ...DOC.contract, parts: [PARTS.find((s) => s.code === '05')!] },
 } as unknown as ContractDocument;
 
 /**
@@ -129,7 +129,7 @@ export default async function ContractFlowPreview({
       */}
       <ContractFlow
         clients={[CLIENT]}
-        services={SERVICES}
+        services={PARTS}
         exclusions={EXCLUSIONS}
         clientInputs={CLIENT_INPUTS}
         doc={only === 'filled' ? DOC_ALL_FILLED : only === 'none' ? DOC_EMPTY : DOC}

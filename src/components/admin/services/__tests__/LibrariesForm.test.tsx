@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LibrariesForm from '../LibrariesForm';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import { saveServiceSection } from '@/server/actions/services';
 
@@ -35,7 +35,7 @@ const exclusions = [
 const clientInputs = [line('I01', 'Brand assets'), line('I02', 'Product photography')];
 
 const service: ContractService = {
-  ...SERVICES.find((s) => s.code === '06')!,
+  ...PARTS.find((s) => s.code === '06')!,
   exclusionIds: ['E01', 'E03'],
   clientInputIds: ['I02'],
 };

@@ -8,7 +8,7 @@
 
 import type { ClientSnapshot, ContractDocument } from '../../types';
 import { EXCLUSIONS, CLIENT_INPUTS } from '../seed/libraries';
-import { SERVICES } from '../seed/services';
+import { PARTS } from '../../seed/parts';
 import type { ContractService } from '../../service';
 import type { BlankValues } from '../blanks';
 
@@ -29,7 +29,7 @@ export function libraryFor(parts: ContractService[]): Record<string, string> {
 }
 
 export function serviceByCode(code: string): ContractService {
-  const service = SERVICES.find((s) => s.code === code);
+  const service = PARTS.find((s) => s.code === code);
   if (!service) throw new Error(`No seeded service ${code}`);
   return { ...service };
 }

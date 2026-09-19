@@ -15,7 +15,7 @@ import {
   stipendFinalizeSchema,
 } from "../registry";
 import { contractComplete } from "../contract/completeness";
-import { SERVICES } from "../contract/seed/services";
+import { PARTS } from "../seed/parts";
 
 const validLineItem = {
   description: "Shopify website final (50%)",
@@ -542,7 +542,7 @@ describe("CON registry entry", () => {
    * Stuioh" failure content §1 exists to prevent.
    */
   it("contract finalize requires at least one Part", () => {
-    const part = SERVICES.find((s) => s.code === "01")!;
+    const part = PARTS.find((s) => s.code === "01")!;
     const filled = Object.fromEntries(
       contractComplete({ parts: [part], blanks: {} }).map(({ blank }) => [
         blank.key,
@@ -563,7 +563,7 @@ describe("CON registry entry", () => {
   });
 
   it("contract finalize refuses an unfilled blank", () => {
-    const part = SERVICES.find((s) => s.code === "01")!;
+    const part = PARTS.find((s) => s.code === "01")!;
     // Untouched: Part 01's Fee row is drafted '[ ]' and resolves to nothing.
     const doc = {
       issueDate: "2026-07-21",

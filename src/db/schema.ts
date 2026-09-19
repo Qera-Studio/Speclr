@@ -271,7 +271,7 @@ export const exclusions = pgTable("exclusions", {
  *
  * Editing here changes the *next* contract only. A contract seeds its own copy
  * of the clause list when its draft is created and freezes it at finalize
- * (`materialiseContent`) — the same rule `seed/services.ts` states for
+ * (`materialiseContent`) — the same rule `seed/parts.ts` states for
  * Services, and CONTEXT.md §5b for document content generally.
  */
 export const clauses = pgTable("clauses", {

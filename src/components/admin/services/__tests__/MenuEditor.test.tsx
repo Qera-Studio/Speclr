@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MenuEditor from '../MenuEditor';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import type { ContractService } from '@/lib/domain/service';
 import { saveServiceSection } from '@/server/actions/services';
 
@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh: jest.fn() }) 
  * already cite.
  */
 
-const build = SERVICES.find((s) => s.code === '06')!;
+const build = PARTS.find((s) => s.code === '06')!;
 
 const withMenu: ContractService = {
   ...build,

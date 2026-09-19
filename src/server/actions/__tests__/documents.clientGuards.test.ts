@@ -42,7 +42,7 @@ jest.mock('@/server/pdf/url', () => ({
 }));
 
 import { finalizeDocument } from '../documents';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import { contractComplete } from '@/lib/domain/contract/completeness';
 
 const ACTOR = { userId: 'user_issuer', email: 'ops@qera.studio' };
@@ -308,7 +308,7 @@ describe('the tax-treatment guard', () => {
    * construction and cannot drift from it.
    */
   it('does not fire on a contract, which charges no tax by definition', async () => {
-    const part = SERVICES.find((s) => !s.archived)!;
+    const part = PARTS.find((s) => !s.archived)!;
     // Its one blank is the fee. Filled from `contractComplete` rather than
     // written out, so a clause edit that adds a blank fails loudly here instead
     // of silently returning this test to asserting nothing.

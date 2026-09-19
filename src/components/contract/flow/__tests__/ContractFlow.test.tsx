@@ -3,7 +3,7 @@ import { selectComboboxOption } from '@/test-utils/combobox';
 import userEvent from '@testing-library/user-event';
 import ContractFlow from '../ContractFlow';
 import { CLIENT_INPUTS, EXCLUSIONS } from '@/lib/domain/contract/seed/libraries';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import type { ClientRecord, ContractDocument } from '@/lib/domain/types';
 
 /**
@@ -86,7 +86,7 @@ function renderFlow(
   return render(
     <ContractFlow
       clients={[...clients, engagedClient]}
-      services={SERVICES}
+      services={PARTS}
       exclusions={EXCLUSIONS}
       clientInputs={CLIENT_INPUTS}
       title="New contract"
@@ -215,7 +215,7 @@ describe('the phase row', () => {
       // Client and Services are answered; Scope is not, because a seeded Part
       // has not been acknowledged.
       renderFlow(
-        { doc: savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }) },
+        { doc: savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }) },
         '',
       );
 
@@ -237,7 +237,7 @@ describe('the phase row', () => {
       renderFlow(
         {
           doc: savedDoc({
-            parts: [SERVICES.find((s) => s.code === '05')!],
+            parts: [PARTS.find((s) => s.code === '05')!],
             blanks: filledBlanksFor('05'),
             reviewed: ['05'],
           }),
@@ -266,7 +266,7 @@ describe('the phase row', () => {
      */
     it('honours an explicit phase over the resume', () => {
       renderFlow(
-        { doc: savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }) },
+        { doc: savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }) },
         'client',
       );
 
@@ -430,7 +430,7 @@ describe('phase 2, the services', () => {
    */
   it('seeds nothing over a contract that has already been written', async () => {
     const u = userEvent.setup();
-    const doc = savedDoc({ parts: [SERVICES.find((s) => s.code === '01')!] });
+    const doc = savedDoc({ parts: [PARTS.find((s) => s.code === '01')!] });
     renderFlow({ doc });
 
     await selectComboboxOption(u, /^client$/i, 'Engaged Co.');
@@ -442,14 +442,14 @@ describe('phase 2, the services', () => {
 
   /** The ledger of what was chosen is the Scope phase's, since the split. */
   it('lists what the contract covers', () => {
-    renderFlow({ doc: savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }) }, 'scope');
+    renderFlow({ doc: savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }) }, 'scope');
 
     expect(screen.getAllByText(/Shopify storefront/).length).toBeGreaterThan(0);
   });
 
   it('removes a service from the list', async () => {
     const u = userEvent.setup();
-    renderFlow({ doc: savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }) }, 'scope');
+    renderFlow({ doc: savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }) }, 'scope');
 
     await u.click(screen.getByRole('button', { name: /^Remove / }));
 
@@ -460,7 +460,7 @@ describe('phase 2, the services', () => {
 
   /** And the four tiles are what stands on Services either way. */
   it('offers the four Schedules whether or not the contract has services', () => {
-    renderFlow({ doc: savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }) }, 'services');
+    renderFlow({ doc: savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }) }, 'services');
 
     for (const schedule of ['Setup', 'Build', 'Retainer', 'Audit']) {
       expect(screen.getByRole('button', { name: new RegExp(schedule) })).toBeInTheDocument();
@@ -665,7 +665,7 @@ describe('phase 2, the services', () => {
       {
         clients: [engagedClient],
         doc: {
-          ...savedDoc({ parts: [SERVICES.find((s) => s.code === '01')!] }),
+          ...savedDoc({ parts: [PARTS.find((s) => s.code === '01')!] }),
           clientId: 'c3',
         },
       },
@@ -693,7 +693,7 @@ describe('phase 2, the services', () => {
       {
         clients: [engagedClient],
         doc: {
-          ...savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] }),
+          ...savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] }),
           clientId: 'c3',
         },
       },
@@ -715,7 +715,7 @@ describe('phase 3, the scope ledger', () => {
    * "nothing missing" — and 21 of the 22 Services say the latter the moment
    * they are added, which is exactly why the acknowledgement exists.
    */
-  const withPart = () => savedDoc({ parts: [SERVICES.find((s) => s.code === '17')!] });
+  const withPart = () => savedDoc({ parts: [PARTS.find((s) => s.code === '17')!] });
 
   it('lists a row per service with what is left to fill', () => {
     renderFlow({ doc: withPart() }, 'scope');
@@ -837,7 +837,7 @@ describe('phase 3, the scope ledger', () => {
    * like.
    */
   it('still asks for a confirmation once nothing is missing', () => {
-    const doc = savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] });
+    const doc = savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] });
     renderFlow({ doc }, 'scope');
 
     expect(screen.getByText('Nothing missing, not yet confirmed')).toBeInTheDocument();
@@ -846,7 +846,7 @@ describe('phase 3, the scope ledger', () => {
 
   it('lets the phase through once every row is confirmed', async () => {
     const u = userEvent.setup();
-    const doc = savedDoc({ parts: [SERVICES.find((s) => s.code === '05')!] });
+    const doc = savedDoc({ parts: [PARTS.find((s) => s.code === '05')!] });
     renderFlow({ doc }, 'scope');
 
     await u.click(screen.getByRole('button', { name: 'Nothing to change' }));
@@ -877,7 +877,7 @@ describe('phase 3, the scope ledger', () => {
 
   it('orders Parts canonically, not in the order they were added', () => {
     const doc = savedDoc({
-      parts: [SERVICES.find((s) => s.code === '05')!, SERVICES.find((s) => s.code === '01')!],
+      parts: [PARTS.find((s) => s.code === '05')!, PARTS.find((s) => s.code === '01')!],
     });
     renderFlow({ doc }, 'scope');
 
@@ -896,7 +896,7 @@ describe('phase 3, the scope ledger', () => {
 describe('phase 4, the terms', () => {
   const doc = () =>
     savedDoc({
-      parts: [SERVICES.find((s) => s.code === '05')!],
+      parts: [PARTS.find((s) => s.code === '05')!],
       blanks: filledBlanksFor('05'),
       reviewed: ['05'],
     });
@@ -949,7 +949,7 @@ describe('phase 4, the terms', () => {
 describe('phase 5, the preview', () => {
   const doc = () =>
     savedDoc({
-      parts: [SERVICES.find((s) => s.code === '05')!],
+      parts: [PARTS.find((s) => s.code === '05')!],
       blanks: filledBlanksFor('05'),
       reviewed: ['05'],
     });
@@ -1197,7 +1197,7 @@ function filledBlanksFor(code: string): Record<string, string> {
   const { blanksOf } = jest.requireActual<typeof import('@/lib/domain/contract/blanks')>(
     '@/lib/domain/contract/blanks',
   );
-  const part = SERVICES.find((s) => s.code === code)!;
+  const part = PARTS.find((s) => s.code === code)!;
   return Object.fromEntries(
     contractScopes({ parts: [part], blanks: {} })
       .flatMap((s) => blanksOf(s.parsed))

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ServiceCards from '../ServiceCards';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import { SCHEDULES } from '@/lib/domain/contract/schedules';
 import { createService, updateServiceDetails } from '@/server/actions/services';
 
@@ -21,7 +21,7 @@ describe('ServiceCards', () => {
    * tab strip, a scroll-spy and a settle timer.
    */
   it('gives every schedule a column', () => {
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
 
     for (const schedule of SCHEDULES) {
       expect(screen.getByRole('region', { name: schedule.name })).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe('ServiceCards', () => {
    */
   it('edits a service, and posts the rate in paise', async () => {
     const user = userEvent.setup();
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
 
     await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
 
@@ -68,7 +68,7 @@ describe('ServiceCards', () => {
    */
   it('adds a service into the column its card was clicked in', async () => {
     const user = userEvent.setup();
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
 
     const retainer = screen.getByRole('region', { name: 'Retainer' });
     await user.click(within(retainer).getByRole('button', { name: /Add to Retainer/ }));
@@ -93,7 +93,7 @@ describe('ServiceCards', () => {
    * wording and the libraries live. The pencil stays for the five-field pass.
    */
   it('links each card to its own page', () => {
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
     expect(screen.getByRole('link', { name: 'Custom web build' })).toHaveAttribute(
       'href',
       '/client/services/06',
@@ -108,7 +108,7 @@ describe('ServiceCards', () => {
    */
   it('offers a service to start from when adding, and posts it', async () => {
     const user = userEvent.setup();
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
 
     const build = screen.getByRole('region', { name: 'Build' });
     await user.click(within(build).getByRole('button', { name: /Add to Build/ }));
@@ -128,7 +128,7 @@ describe('ServiceCards', () => {
    * under it. One number; the lines themselves are on the Service's page.
    */
   it('says how many menu lines a service has', () => {
-    const withMenu = SERVICES.map((s) =>
+    const withMenu = PARTS.map((s) =>
       s.code === '06'
         ? {
             ...s,
@@ -147,7 +147,7 @@ describe('ServiceCards', () => {
 
   it('offers nothing to start from when editing', async () => {
     const user = userEvent.setup();
-    render(<ServiceCards services={SERVICES} />);
+    render(<ServiceCards services={PARTS} />);
 
     await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
     expect(screen.queryByRole('combobox', { name: 'Start from' })).not.toBeInTheDocument();

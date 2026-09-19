@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WordingForm from '../WordingForm';
-import { SERVICES } from '@/lib/domain/contract/seed/services';
+import { PARTS } from '@/lib/domain/seed/parts';
 import { saveServiceSection } from '@/server/actions/services';
 
 jest.mock('@/server/actions/services', () => ({
@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh: jest.fn() }) 
  * that, so the menu and the rate cannot be touched from here.
  */
 
-const build = SERVICES.find((s) => s.code === '06')!;
+const build = PARTS.find((s) => s.code === '06')!;
 const posted = () => (saveServiceSection as jest.Mock).mock.calls[0][2];
 
 beforeEach(() => jest.clearAllMocks());
@@ -104,7 +104,7 @@ describe('WordingForm', () => {
 
   /** A Retainer Part's headings say "each cycle", and the form's should agree. */
   it('uses the same section headings the sheet prints', () => {
-    const retainer = SERVICES.find((s) => s.scheduleKey === 'retainer')!;
+    const retainer = PARTS.find((s) => s.scheduleKey === 'retainer')!;
     render(<WordingForm service={retainer} />);
     expect(screen.getByLabelText('What is included each cycle')).toBeInTheDocument();
     expect(screen.getByLabelText('How delivery is measured')).toBeInTheDocument();

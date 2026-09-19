@@ -12,7 +12,7 @@ import { MSA_CLAUSES } from '../msa';
 import { SCHEDULES, SCHEDULE_BY_KEY } from '../schedules';
 import { serviceInputSchema } from '../../service';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../seed/libraries';
-import { SERVICES } from '../seed/services';
+import { PARTS } from '../../seed/parts';
 
 describe('the Master Service Agreement', () => {
   it('carries 28 clauses numbered 1 to 28', () => {
@@ -140,7 +140,7 @@ describe('the seeded Services', () => {
   const inputIds = new Set(CLIENT_INPUTS.map((c) => c.id));
 
   it('loads all twenty-two, numbered 01 to 22 with no gaps', () => {
-    expect(SERVICES.map((s) => s.code)).toEqual(
+    expect(PARTS.map((s) => s.code)).toEqual(
       Array.from({ length: 22 }, (_, i) => String(i + 1).padStart(2, '0')),
     );
   });
@@ -154,14 +154,14 @@ describe('the seeded Services', () => {
   it('files each service under the Schedule its code belongs to', () => {
     const expected = (code: number): string =>
       code <= 4 ? 'setup' : code <= 14 ? 'build' : code <= 20 ? 'retainer' : 'audit';
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(service.scheduleKey).toBe(expected(Number(service.code)));
       expect(service.sortOrder).toBe(Number(service.code));
     }
   });
 
   it('gives every service a name, an overview and something included', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(service.name.trim()).not.toBe('');
       expect(service.overview.length).toBeGreaterThan(0);
       expect(service.included.length).toBeGreaterThan(0);
@@ -176,7 +176,7 @@ describe('the seeded Services', () => {
    * is what makes "anything beyond these is Additional Work" enforceable.
    */
   it('quantifies every Part with a Limits table', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(service.limits.length).toBeGreaterThan(0);
       expect(service.limitsNotes.length).toBeGreaterThan(0);
     }
@@ -184,21 +184,21 @@ describe('the seeded Services', () => {
 
   /** Depending on yourself, or on a service that does not exist, is a typo. */
   it('never depends on itself', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(service.dependencies).not.toContain(service.code);
       expect(service.pairings).not.toContain(service.code);
     }
   });
 
   it('validates against the schema the Server Action uses', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(serviceInputSchema.safeParse(service).success).toBe(true);
     }
   });
 
   /** The silent failure this whole file exists to catch. */
   it('attaches only exclusions that exist in the library', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       for (const id of service.exclusionIds) {
         expect(exclusionIds.has(id)).toBe(true);
       }
@@ -206,7 +206,7 @@ describe('the seeded Services', () => {
   });
 
   it('attaches only client inputs that exist in the library', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       for (const id of service.clientInputIds) {
         expect(inputIds.has(id)).toBe(true);
       }
@@ -214,14 +214,14 @@ describe('the seeded Services', () => {
   });
 
   it('attaches no id twice', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(new Set(service.exclusionIds).size).toBe(service.exclusionIds.length);
       expect(new Set(service.clientInputIds).size).toBe(service.clientInputIds.length);
     }
   });
 
   it('points every dependency and pairing at a real service code', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       for (const code of [...service.dependencies, ...service.pairings]) {
         expect(code).toMatch(/^\d{2}$/);
         expect(Number(code)).toBeGreaterThanOrEqual(1);
@@ -231,7 +231,7 @@ describe('the seeded Services', () => {
   });
 
   it('belongs to exactly one Schedule each', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       expect(SCHEDULE_BY_KEY[service.scheduleKey]).toBeDefined();
     }
   });
@@ -243,7 +243,7 @@ describe('the seeded Services', () => {
    * the money rather than on a fixed label.
    */
   it('gives every Part a fee row drafted empty', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       const fee = service.fee.find((row) => /fee/i.test(row.label));
       expect(fee).toBeDefined();
       expect(fee?.value).toBe('[ ]');
@@ -252,7 +252,7 @@ describe('the seeded Services', () => {
 
   /** Every bracket must be parseable, or a blank silently prints as literal text. */
   it('parses every blank in every Part', () => {
-    for (const service of SERVICES) {
+    for (const service of PARTS) {
       const texts = [
         ...service.included,
         ...service.accountTerms,
