@@ -766,6 +766,19 @@ issuing anything. Exclusions stay at *service* level, attached from the shared
 library and rendered opt-out, which is what bounds them. Adding an inclusion or
 exclusion field to an item is a change to `docs/service-catalogue.md` first.
 
+**Two of an item's fields are absent rather than empty, and both matter.** The
+**blurb** is one client-facing sentence that only a quotation prints, under the
+name; an invoice and a contract print the name alone, because a deliverables
+list is a list. Posting an empty one would print an empty paragraph. The
+**`sacCode`** is an *override* of the Service's: blank means the Service's code,
+which is the ordinary case, and an empty string would be an override that
+overrides nothing, leaving the item with no classification to carry onto a Rule
+46(g) invoice line. It is filled only where an item genuinely classifies
+differently: a 3D scene under a web build is specialty design (998391) rather
+than IT development (998314). Both use the shared rules rather than new ones:
+`sacSchema` from `domain/fields.ts` and `SacField` from `form/fields.tsx`, which
+is the §5f pair.
+
 **This replaced `menu[]` on 19 September 2026**, which carried the same job
 under a name that suggested a restaurant menu and reached no document: it was
 read by the services admin screen and nothing else, and `MenuLine.id`'s

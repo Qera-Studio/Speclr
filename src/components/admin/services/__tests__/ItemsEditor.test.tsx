@@ -87,6 +87,65 @@ describe('ItemsEditor', () => {
     expect('ratePaise' in posted).toBe(false);
   });
 
+  /**
+   * The blurb is the one field only a quotation reads. An empty one posts as
+   * absent, or the quotation prints an empty paragraph under the name.
+   */
+  it('posts a blurb when one is written, and leaves it out when it is blank', async () => {
+    const user = userEvent.setup();
+    render(<ItemsEditor service={build} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add an item' }));
+    await user.type(line(1).getByLabelText('Description'), 'Core website setup');
+    await user.click(screen.getByRole('button', { name: 'Save items' }));
+
+    expect('blurb' in (saveServiceSection as jest.Mock).mock.calls[0][2].items[0]).toBe(false);
+
+    await user.type(
+      line(1).getByLabelText(/Blurb/),
+      'Getting the technical foundation ready first.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save items' }));
+
+    expect((saveServiceSection as jest.Mock).mock.calls[1][2].items[0].blurb).toBe(
+      'Getting the technical foundation ready first.',
+    );
+  });
+
+  /**
+   * A SAC on an item is an **override** of the Service's, so blank has to post
+   * as absent: an empty string would be an override that overrides nothing,
+   * and the item would carry no classification at all onto an invoice line.
+   */
+  it('posts a SAC override only when one is typed', async () => {
+    const user = userEvent.setup();
+    render(<ItemsEditor service={build} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add an item' }));
+    await user.type(line(1).getByLabelText('Description'), '3D / Three.js scene');
+    await user.click(screen.getByRole('button', { name: 'Save items' }));
+
+    expect('sacCode' in (saveServiceSection as jest.Mock).mock.calls[0][2].items[0]).toBe(false);
+
+    await user.type(line(1).getByLabelText('SAC override'), '998391');
+    await user.click(screen.getByRole('button', { name: 'Save items' }));
+
+    expect((saveServiceSection as jest.Mock).mock.calls[1][2].items[0].sacCode).toBe('998391');
+  });
+
+  /** The shared rule, not a second copy of it: six digits beginning 99. */
+  it('refuses a SAC that is not six digits beginning 99', async () => {
+    const user = userEvent.setup();
+    render(<ItemsEditor service={build} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add an item' }));
+    await user.type(line(1).getByLabelText('Description'), 'Something');
+    await user.type(line(1).getByLabelText('SAC override'), '123456');
+    await user.click(screen.getByRole('button', { name: 'Save items' }));
+
+    expect(saveServiceSection).not.toHaveBeenCalled();
+  });
+
   it("keeps an existing item's id, and the order the items are in", async () => {
     const user = userEvent.setup();
     render(<ItemsEditor service={withItems} />);

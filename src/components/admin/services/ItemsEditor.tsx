@@ -17,9 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { SacField } from '@/components/form/fields';
 import { numericField } from '@/components/form/inputFilters';
+import { sacSchema } from '@/lib/domain/fields';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
-import { textSchema } from '@/lib/domain/text';
+import { multilineSchema, textSchema } from '@/lib/domain/text';
 import type { ContractService } from '@/lib/domain/service';
 import type { ItemUnit, ServiceItem } from '@/lib/domain/serviceItem';
 import { useSectionSave } from './useSectionSave';
@@ -38,6 +41,13 @@ const UNITS: { value: ItemUnit; label: string }[] = [
 const rowSchema = z.object({
   id: z.string(),
   name: textSchema(300, { required: 'Say what this item is.' }),
+  /**
+   * Sales copy, printed under the name on a quotation and nowhere else.
+   *
+   * Not scope: the name is the scope (`serviceItem.ts`). An invoice prints the
+   * name alone and so does a contract, because a deliverables list is a list.
+   */
+  blurb: multilineSchema(500),
   rupees: z
     .string()
     .refine(
@@ -47,6 +57,12 @@ const rowSchema = z.object({
   unit: z.enum(['fixed', 'monthly', 'perUnit']),
   unitLabel: textSchema(40),
   group: textSchema(80),
+  /**
+   * Blank-tolerant, because blank is the ordinary answer: an item inherits its
+   * Service's code unless it is genuinely classified differently. The shared
+   * rule runs on anything typed (`CONTEXT.md` §5f, the pair rule).
+   */
+  sacCode: sacSchema(),
   archived: z.boolean(),
 });
 
@@ -57,20 +73,24 @@ type Row = FormValues['lines'][number];
 const EMPTY_ROW: Row = {
   id: '',
   name: '',
+  blurb: '',
   rupees: '',
   unit: 'fixed',
   unitLabel: '',
   group: '',
+  sacCode: '',
   archived: false,
 };
 
 const toRow = (item: ServiceItem): Row => ({
   id: item.id,
   name: item.name,
+  blurb: item.blurb ?? '',
   rupees: item.ratePaise === undefined ? '' : paiseToRupees(item.ratePaise),
   unit: item.unit,
   unitLabel: item.unitLabel ?? '',
   group: item.group ?? '',
+  sacCode: item.sacCode ?? '',
   archived: item.archived,
 });
 
@@ -78,16 +98,23 @@ const toRow = (item: ServiceItem): Row => ({
  * What leaves the form. A blank rate is **absent**, not zero: "quoted per
  * engagement" and "given away" are different facts, and zero is the second.
  * A unit label is kept only on a per-unit line, where it means something.
+ *
+ * A blank blurb and a blank SAC are absent for the same reason in two
+ * different keys. An empty blurb would print an empty paragraph under the name
+ * on a quotation; an empty SAC would be an override that overrides nothing,
+ * when what blank means is "the Service's code", which is the ordinary case.
  */
 const toItem = (row: Row): ServiceItem => {
   const rupees = row.rupees.trim();
   return {
     id: row.id,
     name: row.name,
+    ...(row.blurb.trim() ? { blurb: row.blurb.trim() } : {}),
     ...(rupees === '' ? {} : { ratePaise: rupeesToPaise(rupees) ?? 0 }),
     unit: row.unit,
     ...(row.unit === 'perUnit' && row.unitLabel ? { unitLabel: row.unitLabel } : {}),
     ...(row.group ? { group: row.group } : {}),
+    ...(row.sacCode ? { sacCode: row.sacCode } : {}),
     archived: row.archived,
   };
 };
@@ -154,6 +181,18 @@ export default function ItemsEditor({ service }: { service: ContractService }) {
             </Field>
           </FieldRow>
 
+          {/* One sentence, and only a quotation prints it. No `rows`: a
+              textarea grows with its content (`docs/design.md` §2.2). */}
+          <Field>
+            <FieldLabel htmlFor={`item-blurb-${i}`}>Blurb (quotation only)</FieldLabel>
+            <Textarea
+              id={`item-blurb-${i}`}
+              placeholder="Getting the technical foundation of your site ready before any design work starts."
+              {...register(`lines.${i}.blurb`)}
+            />
+            <FieldError errors={[errors.lines?.[i]?.blurb]} />
+          </Field>
+
           <div className="flex flex-wrap items-end gap-3">
             <Field className="w-36">
               <FieldLabel htmlFor={`item-unit-${i}`}>Unit</FieldLabel>
@@ -202,6 +241,19 @@ export default function ItemsEditor({ service }: { service: ContractService }) {
               />
               <FieldError errors={[errors.lines?.[i]?.group]} />
             </Field>
+
+            {/* Blank means the Service's own code, which is the ordinary case.
+                Filled only where this item classifies differently: a 3D scene
+                under a web build is specialty design, not IT development. */}
+            <div className="w-40">
+              <SacField
+                control={control}
+                name={`lines.${i}.sacCode`}
+                id={`item-sac-${i}`}
+                label="SAC override"
+                info="Blank means this item is classified under the Service's own SAC, which is almost always right. Fill it only where this particular item belongs somewhere else: a 3D scene under a web build is specialty design (998391) rather than IT development (998314)."
+              />
+            </div>
 
             <RemoveButton label={`Remove item ${i + 1}`} onConfirm={() => remove(i)} />
           </div>
