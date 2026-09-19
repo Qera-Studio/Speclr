@@ -1311,20 +1311,23 @@ survives.
 
 ### Still open
 
-**Five items carry no rate**, because they appear on no rate card. Four are work
-that is certainly sold and simply was never priced on paper; the fifth is on a
+**Three items carry no rate**, because they appear on no rate card. Two are work
+that is certainly sold and simply was never priced on paper; the third is on a
 real quotation and needs confirming.
 
 | Service | Item | Note |
 |---|---|---|
 | `DNS` | I3 Domain transfer or migration | Confirm it is a thing you sell, then price |
 | `HOST` | I4 VPS / private Linux provisioning | Likewise |
-| `MAIL` | I2 Google Workspace setup | Quoted at 5,000 on the Colorist document |
 | `ANLY` | I5 Cookie consent & data privacy | Quoted at 5,000 on the Colorist document |
+
+`MAIL` I2 was on this list and is not any more: §5 carries the ₹5,000 the
+Colorist quotation charged for it, which is a real figure from a real document
+rather than a rate card's, and that is what the seed loads.
 
 An item with no rate is valid: `ratePaise` absent means **quoted per
 engagement**, and the document asks for a figure when the item is ticked. So
-these do not block the build; they only mean four lines get typed by hand until
+these do not block the build; they only mean three lines get typed by hand until
 somebody sets a list price.
 
 ---

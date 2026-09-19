@@ -798,6 +798,33 @@ They were one concept under one name until `docs/service-catalogue.md` separated
 them, which is what let the rate cards be imported into contract scope units:
 88 of 278 lines landed on one row and two rows got none.
 
+**The catalogue is 16 Services and 293 items** (`src/lib/domain/seed/services.ts`),
+seeded 19 September 2026 from `docs/service-catalogue.md` §5 and **generated from
+it** rather than typed: hand-transcribing 293 rates is what produced the mess
+this replaced. Six Build services (`WEB`, `DSGN`, `APP`, `BRND`, `AUTO`, `AI`),
+four Setup (`DNS`, `HOST`, `MAIL`, `ANLY`), four Retainer (`MNT`, `SEO`, `SOC`,
+`AIOP`) and two Audit (`AUD`, `STR`). Three items carry no rate, which means
+quoted per engagement and is a real answer.
+
+**A code is no longer two digits.** The Parts are `01`-`22` and the Services are
+`WEB`, `DSGN`, `AIOP`, in one table, so the rule widened to what a code always
+was: two to six capitals or digits, stable, opaque, and never reassigned.
+`createService` counts past the *numbered* rows only, because `Number('WEB')` is
+`NaN` and `Math.max` given one answers `NaN`, which would have written a row
+whose code was the string 'NaN' the first time anybody added a service after the
+seed.
+
+**Seeding the 16 retires the 22, and retiring means archiving.** Otherwise the
+picker offers both "Custom web build" and "Custom Website". The archive in
+`scripts/seed-contract.ts` names the 22 codes explicitly rather than archiving
+whatever is not a sales code, fires only once all 16 are confirmed present (an
+empty picker is worse than a duplicated one), and never unarchives. **An open
+draft is unaffected**, which is the case worth stating: a draft carries its own
+`contract.parts`, copied when the service was ticked, so an archived source row
+empties nothing. Pinned in `seed/__tests__/retirement.test.ts`, which also
+records that six Parts (`04`, `05`, `07`, `08`, `11`, `14`) have no Service
+pointing at them yet. That is a catalogue gap, not a bug.
+
 **One unrelated bug fell out of it.** `service.ts` importing `domain/fields.ts`
 put `domain/phone.ts` in the seed script's import graph, and libphonenumber's CJS
 build fails its own metadata check on load under `tsx`, taking the process with

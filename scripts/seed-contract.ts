@@ -34,6 +34,7 @@ config({ path: '.env.local' });
 import { neon } from '@neondatabase/serverless';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../src/lib/domain/contract/seed/libraries';
 import { PARTS } from '../src/lib/domain/seed/parts';
+import { SERVICES } from '../src/lib/domain/seed/services';
 import { serviceInputSchema, libraryLineSchema } from '../src/lib/domain/service';
 import {
   MSA_CLAUSES,
@@ -54,7 +55,7 @@ const sql = neon(url);
 async function main() {
   // Validate before touching the database. A transcription typo should fail
   // here, loudly, rather than land as a malformed JSONB payload.
-  for (const service of PARTS) {
+  for (const service of [...PARTS, ...SERVICES]) {
     const parsed = serviceInputSchema.safeParse(service);
     if (!parsed.success) {
       console.error(`Service ${service.code} is invalid:`, parsed.error.issues);
@@ -76,8 +77,11 @@ async function main() {
     }
   }
 
+  const items = SERVICES.reduce((n, s) => n + (s.items?.length ?? 0), 0);
   console.log(
-    `${PARTS.length} services · ${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs · ${MSA_CLAUSES.length} clauses`,
+    `${SERVICES.length} services (${items} items) · ${PARTS.length} parts · ` +
+      `${EXCLUSIONS.length} exclusions · ${CLIENT_INPUTS.length} client inputs · ` +
+      `${MSA_CLAUSES.length} clauses`,
   );
 
   if (!APPLY) {
@@ -85,13 +89,52 @@ async function main() {
     return;
   }
 
-  for (const service of PARTS) {
+  for (const service of [...PARTS, ...SERVICES]) {
     const { code, name, scheduleKey, sortOrder, archived, ...content } = service;
     await sql`
       insert into services (code, name, schedule_key, sort_order, content, archived, updated_at)
       values (${code}, ${name}, ${scheduleKey}, ${sortOrder}, ${JSON.stringify(content)}, ${archived}, now())
       on conflict (code) do nothing
     `;
+  }
+
+  /*
+    Retire the 22 Parts from the catalogue picker.
+
+    They are **not deleted**, and that is the whole design. A Part still carries
+    the contract prose a Service names through `partCodes`, a finalized contract
+    froze its own copy (CONTEXT.md §5c), and an open draft holds one too, so
+    archiving empties nothing. What it does is stop the picker offering both
+    "Custom web build" and "Custom Website", which is what 38 rows in one
+    catalogue would look like.
+
+    Three things make this safe to re-run, and each is deliberate:
+
+    - **It names the 22 codes explicitly**, from `PARTS`, rather than archiving
+      whatever is not a sales code. A row somebody added by hand is not this
+      script's to retire.
+    - **It fires only once the 16 are actually in.** Archiving the old
+      catalogue while the new one failed to insert would leave the picker
+      empty, and an empty picker is worse than a duplicated one.
+    - **It never unarchives.** `and archived = false` means a Part retired by
+      hand stays retired, the same rule the rest of this file follows.
+  */
+  const [{ count }] = await sql`
+    select count(*)::int as count from services where code = any(${SERVICES.map((s) => s.code)})
+  `;
+  if (count === SERVICES.length) {
+    const retired = await sql`
+      update services set archived = true, updated_at = now()
+      where code = any(${PARTS.map((p) => p.code)}) and archived = false
+      returning code
+    `;
+    if (retired.length > 0) {
+      console.log(`Retired ${retired.length} Parts from the catalogue picker.`);
+    }
+  } else {
+    console.warn(
+      `Only ${count} of ${SERVICES.length} services are present. Leaving the Parts on the picker.`,
+    );
   }
 
   for (const [table, lines] of [

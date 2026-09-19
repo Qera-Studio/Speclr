@@ -153,6 +153,38 @@ export function rateUnitOf(scheduleKey: ScheduleKey): string {
   return scheduleKey === 'retainer' ? 'per month' : 'fixed';
 }
 
+/**
+ * What a Service carries before anything has been written into it.
+ *
+ * Every field here belongs to the **Part**: the contract prose, the blanks, the
+ * limits, the handover list. A sales Service carries none of them and names the
+ * frames it pulls through `partCodes` instead, so `seed/services.ts` spreads
+ * this and the type stays satisfied without sixteen copies of thirteen empty
+ * arrays. Shared rather than written twice, which is `PRINCIPLES.md` rule 1 on
+ * its second caller (`server/actions/services.ts` was the first).
+ *
+ * The honest alternative is making these optional on `ServiceContent`, which is
+ * where this ends up once a Service and a Part stop sharing one type. That
+ * reaches `ContractSheet`, `blankMeta` and `completeness`, all of which render
+ * a contract, so it waits for the step that is allowed to change a document.
+ */
+export const EMPTY_PART_CONTENT = {
+  dependencies: [],
+  pairings: [],
+  overview: [],
+  included: [],
+  accountTerms: [],
+  limits: [],
+  limitsNotes: [],
+  completion: [],
+  receives: [],
+  receivesNotes: [],
+  thirdPartyCosts: '',
+  exclusionIds: [],
+  clientInputIds: [],
+  fee: [],
+} satisfies ServiceContent;
+
 /** A Service as the domain uses it: the row and its content in one object. */
 export interface ContractService extends ServiceContent {
   /** '01'–'22'. Stable, and the primary key. */
@@ -211,7 +243,13 @@ export const serviceContentSchema = z.object({
 });
 
 export const serviceInputSchema = serviceContentSchema.extend({
-  code: codeSchema(2).pipe(z.string().regex(/^\d{2}$/, 'A service code is two digits.')),
+  // Two digits was the shape while the catalogue was the 22 Parts, which are
+  // numbered 01-22. The sales catalogue uses letters (`WEB`, `DSGN`, `AIOP`),
+  // and both live in one table, so the rule is what a code has always been: a
+  // short, stable, opaque key, never reassigned once issued.
+  code: codeSchema(6).pipe(
+    z.string().regex(/^[A-Z0-9]{2,6}$/, 'A service code is two to six capitals or digits.'),
+  ),
   name: textSchema(200, { required: 'A service name is required.' }),
   scheduleKey: z.enum(['build', 'retainer', 'setup', 'audit']),
   sortOrder: z.number().int().min(0).max(99),

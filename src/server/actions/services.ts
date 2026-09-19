@@ -4,7 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { sacSchema } from '@/lib/domain/fields';
 import { multilineSchema, textSchema } from '@/lib/domain/text';
-import { serviceContentSchema, type ServiceContent } from '@/lib/domain/service';
+import {
+  EMPTY_PART_CONTENT,
+  serviceContentSchema,
+  type ServiceContent,
+} from '@/lib/domain/service';
 import { assignItemIds, serviceItemsSchema } from '@/lib/domain/serviceItem';
 import type { ActionResult } from '@/lib/domain/types';
 import { archiveService, getService, insertService, listServices, saveService } from '@/db/store';
@@ -39,7 +43,17 @@ const detailFields = {
   ratePaise: z.number().int().min(0).max(10_000_000_000).nullable(),
 };
 
-const serviceCode = z.string().regex(/^\d{2}$/, 'A service code is two digits.');
+/**
+ * A service code.
+ *
+ * Two digits was the shape while the catalogue was the 22 Parts. The sales
+ * catalogue uses letters (`WEB`, `DSGN`, `AIOP`), so the rule is now what a code
+ * has always actually been: a short, stable, opaque key. It is never reassigned,
+ * because every contract that used one cites it.
+ */
+const serviceCode = z
+  .string()
+  .regex(/^[A-Z0-9]{2,6}$/, 'A service code is two to six capitals or digits.');
 
 const serviceDetailsSchema = z.object({ code: serviceCode, ...detailFields });
 
@@ -48,24 +62,6 @@ const serviceDetailsSchema = z.object({ code: serviceCode, ...detailFields });
  * Service to start from, if any: see `createService`.
  */
 const newServiceSchema = z.object({ ...detailFields, cloneFrom: serviceCode.optional() });
-
-/** What a Service carries before anything has been written into it. */
-const EMPTY_CONTENT: ServiceContent = {
-  dependencies: [],
-  pairings: [],
-  overview: [],
-  included: [],
-  accountTerms: [],
-  limits: [],
-  limitsNotes: [],
-  completion: [],
-  receives: [],
-  receivesNotes: [],
-  thirdPartyCosts: '',
-  exclusionIds: [],
-  clientInputIds: [],
-  fee: [],
-};
 
 /**
  * Edits a Service in the catalogue.
@@ -159,7 +155,7 @@ export async function createService(data: unknown): Promise<ActionResult> {
   const { name, scheduleKey, overview, sacCode, ratePaise, cloneFrom } = parsed.data;
 
   try {
-    let base = EMPTY_CONTENT;
+    let base: ServiceContent = EMPTY_PART_CONTENT;
     if (cloneFrom) {
       const source = await getService(cloneFrom);
       if (!source) return { success: false, error: 'The service to start from no longer exists.' };
@@ -169,9 +165,20 @@ export async function createService(data: unknown): Promise<ActionResult> {
     }
 
     const all = await listServices(true);
-    const next = Math.max(0, ...all.map((s) => Number(s.code))) + 1;
-    // Two digits is the shape of a code, and 99 services is far past the point
-    // where a catalogue wants a different screen anyway.
+    /**
+     * The next numeric code, counting past every numbered row including
+     * archived ones, because a retired code is never handed to different work.
+     *
+     * **Lettered codes are skipped rather than counted.** `Number('WEB')` is
+     * `NaN`, and `Math.max` given one answers `NaN`, so a catalogue holding the
+     * seeded sales services would otherwise write a row whose code was the
+     * string 'NaN'. A service added here gets the next number; the seeded
+     * letters are left alone, and the two kinds of code never collide because
+     * a number is not a letter.
+     */
+    const numbered = all.map((s) => Number(s.code)).filter(Number.isFinite);
+    const next = Math.max(0, ...numbered) + 1;
+    // 99 services is far past the point where a catalogue wants another screen.
     if (next > 99) return { success: false, error: 'The catalogue is full.' };
 
     const siblings = all.filter((s) => s.scheduleKey === scheduleKey);
