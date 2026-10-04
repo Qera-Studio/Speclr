@@ -6,6 +6,7 @@ import { CATALOGUE, entryOf, type LibraryEntry } from "./catalogue";
 import { Archive, Download, Trash2 } from "lucide-react";
 import { ButtonSpecimens } from "./ButtonSpecimens";
 import { IconSpecimens } from "./IconSpecimens";
+import { TableSpecimens } from "./TableSpecimens";
 import { DrawerTrigger, LivePager, Specimen } from "./Specimen";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
@@ -145,6 +146,7 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         ) : null}
         {entry.slug === "button" ? <ButtonSpecimens entry={entry} /> : null}
         {entry.slug === "icons" ? <IconSpecimens entry={entry} /> : null}
+        {entry.slug === "table" ? <TableSpecimens entry={entry} /> : null}
         {entry.slug === "drawer" ? <DrawerSpecimens entry={entry} /> : null}
       </div>
     </article>

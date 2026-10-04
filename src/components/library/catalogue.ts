@@ -144,6 +144,27 @@ export const CATALOGUE: LibraryEntry[] = [
     ],
   },
   {
+    slug: 'table',
+    name: 'Table',
+    blurb:
+      'Every list of records in this app, and the template a new one is copied from: one of every column kind over rows built to exercise each. RecordTable brings the behaviour; the column spec brings the decisions.',
+    // The primitive, as every other row here points at one. The template that
+    // is copied from is `library/table/columns.tsx` beside it, and the page
+    // says so; this field names the component the library is showing.
+    source: 'src/components/admin/RecordTable.tsx',
+    rule: '§2.3',
+    variants: [
+      {
+        name: 'Every column',
+        note: 'One of each of the eleven kinds, and the package that makes that many readable: fixed layout, sideways scroll inside the card, a frozen name and actions column, dividers, and every cell truncating. It buys reachability at any scroll position and gives up the sticky header, which is not recoverable. Drag a column edge to resize it, or a heading to move it: the frozen Name column is pinned and the checkbox and actions columns bound the range by not being columns. The absences are here too, on the row with no amount, owner, team or note.',
+      },
+      {
+        name: 'Empty',
+        note: 'Zero rows: no header, no footer, no pager, only the empty state. A table that drew its chrome around nothing would read as broken rather than as a list with nothing in it. Drawn at five columns, because an empty table should be the width a real one would be.',
+      },
+    ],
+  },
+  {
     slug: 'drawer',
     name: 'Drawer',
     blurb:

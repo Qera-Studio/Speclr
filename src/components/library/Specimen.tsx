@@ -83,7 +83,20 @@ export function Specimen({
       {empty ? null : (
         <div
           className={cn(
-            "mx-0.5 mb-0.5 flex min-h-14 items-center gap-4 rounded-sm border border-border bg-background px-4 py-3",
+            // `min-w-0` on the stage, and it is the same one-property lesson as
+            // `overflow-clip` on `AdminShell` and `min-h-0` on
+            // `UploadDropzone`'s preview (`CONTEXT.md` §5e): a **flex item's
+            // `min-width` is `auto`**, so a child that cannot shrink below its
+            // content floors the box holding it. A table specimen is exactly
+            // that child — a 1824px table in a 924px stage pushed the stage to
+            // 1842 and every ancestor with it, so the table ran out past the
+            // card, past the library pane and under the window's edge.
+            //
+            // On the stage rather than on the table, because the table is
+            // already `w-full` and doing the right thing: what was wrong was
+            // the box being asked to contain it. It costs nothing to a specimen
+            // whose content fits, which is every other one on this page.
+            "mx-0.5 mb-0.5 flex min-h-14 min-w-0 items-center gap-4 rounded-sm border border-border bg-background px-4 py-3",
             fill ? "justify-start" : "justify-between",
           )}
         >
