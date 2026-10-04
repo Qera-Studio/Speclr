@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import ServiceCards from '../ServiceCards';
 import { PARTS } from '@/lib/domain/seed/parts';
 import { SCHEDULES } from '@/lib/domain/contract/schedules';
-import { createService, updateServiceDetails } from '@/server/actions/services';
+import { createService, removeService, updateServiceDetails } from '@/server/actions/services';
 
 // The dialog reaches for the Server Actions, which pull `next/cache` into
 // jsdom. Mocked here rather than in the dialog's own test alone, because the
@@ -11,10 +11,13 @@ import { createService, updateServiceDetails } from '@/server/actions/services';
 jest.mock('@/server/actions/services', () => ({
   updateServiceDetails: jest.fn(async () => ({ success: true })),
   createService: jest.fn(async () => ({ success: true })),
+  removeService: jest.fn(async () => ({ success: true })),
 }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ refresh: jest.fn() }) }));
 
 describe('ServiceCards', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   /**
    * Every Schedule is a column and every Service is on screen. This replaced a
    * scrolling row where three of the four groups started off-screen behind a
@@ -30,10 +33,11 @@ describe('ServiceCards', () => {
   });
 
   /**
-   * The edit affordance is revealed on hover, which jsdom cannot simulate and
-   * which is not what is worth pinning anyway: `opacity-0` keeps the button in
-   * the tree and in the tab order the whole time, so what matters is that it is
-   * reachable, named, and opens the dialog on the Service it belongs to.
+   * "Quick edit" is the dialog, reached through the card's menu. It is named
+   * rather than drawn as a pencil because the card has two destinations and a
+   * glyph said "edit" for both: the title opens the Service's own page, where
+   * the items, the wording and the libraries are, and this is the five-field
+   * pass over the name, the rate and the SAC.
    *
    * The rate goes in as rupees and must leave as paise. That conversion is the
    * one thing in this dialog that can be wrong without looking wrong.
@@ -42,7 +46,10 @@ describe('ServiceCards', () => {
     const user = userEvent.setup();
     render(<ServiceCards services={PARTS} />);
 
-    await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Actions for Shopify storefront' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Quick edit' }));
 
     const sac = screen.getByLabelText('SAC');
     await user.clear(sac);
@@ -125,7 +132,12 @@ describe('ServiceCards', () => {
   /**
    * A card says how many priced items the Service carries, so the board reads
    * which services carry any yet and which are still a frame with nothing
-   * under it. One number; the items themselves are on the Service's page.
+   * under it. The chip prints the number and an icon; the word is `sr-only`,
+   * because "items" spends four characters saying what the icon says and a
+   * screen reader cannot see the icon.
+   *
+   * A Service with none shows no chip at all. A count of 0 is a number that
+   * reads as a failure to load rather than as an empty frame.
    */
   it('says how many items a service has', () => {
     const withItems = PARTS.map((s) =>
@@ -153,15 +165,76 @@ describe('ServiceCards', () => {
     );
     render(<ServiceCards services={withItems} />);
 
-    expect(screen.getByText('2 items')).toBeInTheDocument();
-    expect(screen.queryByText('0 items')).not.toBeInTheDocument();
+    // The number and the word are separate elements (the word is `sr-only`),
+    // so this matches the chip itself rather than a text node inside it.
+    const countChip = (_content: string, el: Element | null) =>
+      el?.getAttribute('data-slot') === 'badge' && /^\d+items?$/.test(el.textContent ?? '');
+
+    const web = screen.getByRole('link', { name: 'Custom web build' }).closest('li');
+    expect(web).not.toBeNull();
+    expect(within(web as HTMLElement).getByText(countChip)).toHaveTextContent('2items');
+
+    // A Service with no items carries no chip, so there is exactly one on the
+    // whole board.
+    expect(screen.getAllByText(countChip)).toHaveLength(1);
   });
 
   it('offers nothing to start from when editing', async () => {
     const user = userEvent.setup();
     render(<ServiceCards services={PARTS} />);
 
-    await user.click(screen.getByRole('button', { name: 'Edit Shopify storefront' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Actions for Shopify storefront' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Quick edit' }));
     expect(screen.queryByRole('combobox', { name: 'Start from' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * The two destinations are named in words, because the card now has one
+   * clickable title and one menu rather than a title and an unlabelled pencil.
+   * "Open page" is the title's own destination written down, for anyone who
+   * does not think to click a heading.
+   */
+  it('names both destinations in the menu', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCards services={PARTS} />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Actions for Custom web build' }),
+    );
+
+    expect(await screen.findByRole('menuitem', { name: 'Open page' })).toHaveAttribute(
+      'href',
+      '/client/services/06',
+    );
+
+    // Quick edit first: it is the action this board is for, and the page is
+    // already one click away on the title. Order is asserted rather than left
+    // to whichever item happens to be written first.
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual([
+      'Quick edit',
+      'Open page',
+      'Archive',
+    ]);
+  });
+
+  /**
+   * Archiving confirms before it fires. It is reversible, and still confirms,
+   * because it takes a Service off every new contract and the way back is a
+   * route this board does not offer.
+   */
+  it('confirms before archiving a service', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCards services={PARTS} />);
+
+    await user.click(
+      screen.getByRole('button', { name: 'Actions for Custom web build' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Archive' }));
+
+    expect(removeService).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole('button', { name: 'Archive' }));
+    expect(removeService).toHaveBeenCalledWith('06');
   });
 });

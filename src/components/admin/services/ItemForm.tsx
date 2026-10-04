@@ -7,7 +7,9 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
+import { Combobox } from '@/components/ui/combobox';
+import { RemoveButton } from '@/components/ui/remove-button';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,7 +26,7 @@ import { sacSchema } from '@/lib/domain/fields';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import { multilineSchema, textSchema } from '@/lib/domain/text';
 import type { ItemUnit, ServiceItem } from '@/lib/domain/serviceItem';
-import { saveServiceItem } from '@/server/actions/services';
+import { removeServiceGroup, saveServiceItem } from '@/server/actions/services';
 
 const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'fixed', label: 'Fixed' },
@@ -111,10 +113,23 @@ const toForm = (item: ServiceItem | null): FormValues => ({
 export default function ItemForm({
   code,
   item,
+  groups = [],
   onDone,
 }: {
   code: string;
   item: ServiceItem | null;
+  /**
+   * The group headings this service already uses, with how many items carry
+   * each, as suggestions.
+   *
+   * Derived by the caller from the items themselves, so the list cannot go
+   * stale against them. Empty is a real answer and the ordinary one for nine
+   * of the sixteen services: the field still accepts anything typed.
+   *
+   * The count is what the remove confirmation names. A heading with no count
+   * could not warn how much it was about to change.
+   */
+  groups?: { name: string; count: number }[];
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -125,6 +140,7 @@ export default function ItemForm({
     register,
     control,
     handleSubmit,
+    setValue,
     watch,
     formState: { errors },
   } = useForm<FormValues>({
@@ -134,6 +150,31 @@ export default function ItemForm({
   });
 
   const unit = watch('unit');
+  const group = watch('group');
+
+  /*
+    Clearing a group from every item that carries it.
+
+    **The form's own field is corrected too**, and that is not cosmetic: this
+    item may be one of the ones just cleared, so leaving the input holding a
+    heading that no longer exists anywhere would save it straight back on the
+    next submit and undo half of what was just confirmed.
+
+    `router.refresh()` re-reads the service, which is what makes the removed
+    heading leave the suggestion list: the list is derived from the items, so
+    once none carry it there is nothing to derive.
+  */
+  const removeGroup = (name: string) =>
+    startTransition(async () => {
+      setServerError(null);
+      const result = await removeServiceGroup(code, name);
+      if (!result.success) {
+        setServerError(result.error ?? 'Failed to remove the group.');
+        return;
+      }
+      if (group === name) setValue('group', '', { shouldDirty: false });
+      router.refresh();
+    });
 
   const submit = handleSubmit((values) => {
     const low = values.rupees.trim();
@@ -170,17 +211,33 @@ export default function ItemForm({
   });
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={submit} noValidate>
+      {/*
+        `FieldGroup`, not a bare flex column, and it is load-bearing rather than
+        tidy. `FieldRow` pairs its children through an `@2xs/field-group`
+        container query, and a container query resolves against a **named
+        container on an ancestor**. There was none here, so every row silently
+        stacked at one column: the rate sat above "Up to", the unit above its
+        label, which is not what either row was written to do. See the note at
+        the top of `ui/field-row.tsx`, which predicts exactly this.
+      */}
+      <FieldGroup size="form">
       <Field>
         <FieldLabel htmlFor="item-name">Name</FieldLabel>
         <Input id="item-name" size="form" {...register('name')} />
         <FieldError errors={[errors.name]} />
       </Field>
 
-      {/* One sentence, and only a quotation prints it. No `rows`: a textarea
-          grows with its content (`docs/design.md` §2.2). */}
+      {/* One sentence, and only a quotation prints it, under the item's name.
+          No `rows`: a textarea grows with its content (`docs/design.md` §2.2).
+
+          Labelled for what it is and where it appears rather than for the
+          property it is stored in. `blurb` is the field name on `ServiceItem`
+          and reads as a placeholder in the UI; what the reader needs to know
+          is that the sentence is client-facing and that no other document
+          prints it. */}
       <Field>
-        <FieldLabel htmlFor="item-blurb">Blurb (quotation only)</FieldLabel>
+        <FieldLabel htmlFor="item-blurb">Quotation description</FieldLabel>
         <Textarea
           id="item-blurb"
           placeholder="Getting the technical foundation of your site ready before any design work starts."
@@ -253,24 +310,69 @@ export default function ItemForm({
         ) : null}
       </FieldRow>
 
-      <Field>
-        <FieldLabel htmlFor="item-group">Group</FieldLabel>
-        <Input
-          id="item-group"
-          size="form"
-          placeholder="Brand experience"
-          {...register('group')}
-        />
-        <FieldError errors={[errors.group]} />
-      </Field>
+      {/* Two labels rather than two values: neither decides money, and a
+          reader filling one is usually filling the other. */}
+      <FieldRow columns={2}>
+        {/*
+          A combobox over the groups this service already uses, and **not a
+          closed list**: `freeText` keeps whatever is typed, so a heading nobody
+          has used yet can still be named.
 
-      <SacField
-        control={control}
-        name="sacCode"
-        id="item-sac"
-        label="SAC override"
-        info="Blank means this item is classified under the Service's own SAC, which is almost always right. Fill it only where this particular item belongs somewhere else: a 3D scene under a web build is specialty design (998391) rather than IT development (998314)."
-      />
+          The suggestions are what the field is for. A group is a label the eye
+          reads as a band, nothing keys off it, and retyping one by hand is how
+          'Foundation System' comes to sit beside 'Foundation system' as two
+          bands nothing will ever reconcile. Offering the 6 this service uses
+          makes the consistent choice the easy one without making it the only
+          one.
+        */}
+        <Field>
+          <FieldLabel htmlFor="item-group">Group</FieldLabel>
+          <Controller
+            control={control}
+            name="group"
+            render={({ field }) => (
+              <Combobox
+                id="item-group"
+                size="form"
+                freeText
+                placeholder="Brand experience"
+                options={groups.map((group) => ({
+                  value: group.name,
+                  label: group.name,
+                  action: (
+                    <RemoveButton
+                      label={`Remove the group ${group.name}`}
+                      onConfirm={() => removeGroup(group.name)}
+                      confirmTitle={`Remove "${group.name}"?`}
+                      confirmDescription={`This clears the group from ${group.count} ${
+                        group.count === 1 ? 'item' : 'items'
+                      } on this service. The ${
+                        group.count === 1 ? 'item stays' : 'items stay'
+                      }, with ${
+                        group.count === 1 ? 'its' : 'their'
+                      } name, rate and id unchanged, and simply ${
+                        group.count === 1 ? 'reads' : 'read'
+                      } as ungrouped. Nothing is deleted.`}
+                    />
+                  ),
+                }))}
+                value={field.value}
+                onValueChange={field.onChange}
+              />
+            )}
+          />
+          <FieldError errors={[errors.group]} />
+        </Field>
+
+        <SacField
+          control={control}
+          name="sacCode"
+          id="item-sac"
+          label="SAC override"
+          info="Blank means this item is classified under the Service's own SAC, which is almost always right. Fill it only where this particular item belongs somewhere else: a 3D scene under a web build is specialty design (998391) rather than IT development (998314)."
+        />
+      </FieldRow>
+      </FieldGroup>
 
       {serverError ? (
         <Alert variant="destructive">
@@ -278,7 +380,7 @@ export default function ItemForm({
         </Alert>
       ) : null}
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="mt-5 flex items-center justify-end gap-2">
         <Button type="button" variant="outline" onClick={onDone} disabled={pending}>
           Cancel
         </Button>

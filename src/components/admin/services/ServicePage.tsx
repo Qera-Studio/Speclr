@@ -13,11 +13,29 @@ import LibrariesForm from './LibrariesForm';
 import ItemsManager from './ItemsManager';
 import WordingForm from './WordingForm';
 
-const SECTIONS = [
+/** A section's heading, and the standing note under it where one is earned. */
+interface Section {
+  id: 'items' | 'wording' | 'libraries';
+  heading: string;
+  note?: string;
+}
+
+const SECTIONS: Section[] = [
   {
     id: 'items',
     heading: 'Items',
-    note: "The priced lines every document reads a slice of. A new capability is an item here, not a new service: it inherits everything below, and its name is its scope.",
+    /*
+      **No note, deliberately**, where the other two have one. What it said is
+      already on the screen: the table's own columns say an item is a priced
+      line with a group and a rate, and the empty state says the rest for a
+      service that has none. The two sections below describe wording and
+      libraries that a reader cannot see until they open a form, so theirs earn
+      their place.
+
+      It also bought back the row `ItemsManager` needs: the heading and "Add
+      item" now sit on one line directly above the table, instead of a heading,
+      a paragraph, and a third row carrying a count the pager already prints.
+    */
   },
   {
     id: 'wording',
@@ -29,7 +47,7 @@ const SECTIONS = [
     heading: 'Libraries',
     note: 'Which shared exclusions and client inputs this service names. Exclusions are pre-ticked as excluded on a contract; unticking there brings one into scope.',
   },
-] as const;
+];
 
 /**
  * One Service on its own page: the items, the wording and the libraries, each
@@ -109,7 +127,11 @@ export default function ServicePage({
             <h2 id={`${section.id}-heading`} className="text-base font-medium">
               {section.heading}
             </h2>
-            <p className="text-sm text-muted-foreground">{section.note}</p>
+            {/* Optional, so a section whose table explains itself does not
+                carry a paragraph restating it. */}
+            {section.note ? (
+              <p className="text-sm text-muted-foreground">{section.note}</p>
+            ) : null}
           </div>
           {forms[section.id]}
         </section>

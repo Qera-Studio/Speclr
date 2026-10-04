@@ -1,10 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Package, Pencil, Plus } from "lucide-react";
+import {
+  Archive,
+  ArrowUpRight,
+  LayoutGrid,
+  MoreHorizontal,
+  Package,
+  Pencil,
+  Plus,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
@@ -12,8 +39,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { removeService } from "@/server/actions/services";
 import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
-import { rateUnitOf, type ContractService } from "@/lib/domain/service";
+import { type ContractService } from "@/lib/domain/service";
 import { formatINR } from "@/lib/domain/money";
 import { NIL } from "@/lib/utils";
 import { PageHeader } from "@/components/admin/Page";
@@ -132,35 +160,55 @@ export default function ServiceCards({
                         and `--sidebar` are the same value, so a card on the
                         column would dissolve into it. The page background
                         reads as a well the cards sit in. */}
-                    <div className="group/card flex flex-col gap-3 rounded-md border border-border bg-background p-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="tabular-nums">{service.code}</span>
-                        {/*
-                          Revealed on hover, and equally on focus — `opacity-0`
-                          keeps a button in the tab order, so the keyboard reaches
-                          it in card order and `group-focus-within` is what makes
-                          it visible when it does. A control that only exists
-                          under a pointer is a control half the people using this
-                          cannot find.
-                        */}
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          aria-label={`Edit ${service.name}`}
-                          onClick={() => setEditing(service)}
-                          className="-my-1 ml-auto size-7 opacity-0 transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus-visible:opacity-100"
+                    <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3">
+                      {/* The code as a badge and the item count as a chip: two
+                          facts of different kinds, so they read as two chips at
+                          opposite ends rather than as one run of muted text.
+                          The count is a number and an icon, because "12 items"
+                          spends four characters saying what the icon says. */}
+                      {/* `rounded-sm` against the badge's own `rounded-full`,
+                          and `h-6` against its `h-5`. A pill reads as a status
+                          ("finalized", "overdue"), which is what the shape is
+                          spent on everywhere else in the app; these two are a
+                          filing code and a count, so a squarer container stops
+                          them claiming a meaning they do not carry. Both quiet:
+                          the code sits on the muted fill with no border and the
+                          count carries a border with none, so each reads as a
+                          label on the card rather than as a mark on it. */}
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="secondary"
+                          className="h-6 rounded-sm bg-muted px-2 text-xs font-normal text-muted-foreground tabular-nums"
                         >
-                          <Pencil />
-                        </Button>
+                          {service.code}
+                        </Badge>
+                        {/* Absent rather than zero: a Service with no items yet
+                            is a frame with nothing under it, and a chip reading
+                            0 is a count that looks like a failure to load. */}
+                        {service.items?.length ? (
+                          <Badge
+                            variant="outline"
+                            className="ml-auto h-6 gap-1.5 rounded-sm bg-transparent px-2 text-xs font-normal text-muted-foreground tabular-nums [&>svg]:size-3!"
+                          >
+                            <LayoutGrid aria-hidden />
+                            {service.items.length}
+                            <span className="sr-only">
+                              {service.items.length === 1 ? "item" : "items"}
+                            </span>
+                          </Badge>
+                        ) : null}
                       </div>
 
-                      {/* <Separator /> */}
-
-                      <div className="flex flex-col gap-1">
-                        {/* The way into the Service's own page, where the
-                            menu, the wording and the libraries live. The
-                            pencil stays for the five-field pass. */}
+                      {/* `-mt-1` against the card's own `gap-3`: the badge row
+                          and the name are one block (what this is, and what it
+                          is called), where the rule below separates that from
+                          the card's furniture. The gap is tightened here rather
+                          than on the card, which would have pulled the rule and
+                          the SAC line up with it. */}
+                      <div className="-mt-1 flex flex-col gap-1">
+                        {/* The title is the way in, and now the only one: the
+                            menu names the same destination in words for anyone
+                            who does not think to click a heading. */}
                         <Link
                           href={`/client/services/${service.code}`}
                           className="text-sm font-medium hover:underline"
@@ -175,35 +223,42 @@ export default function ServiceCards({
                             {service.overview[0]}
                           </span>
                         ) : null}
-                      </div>
+                        {/* The price last in the block, directly above the rule
+                            and so directly above the SAC line under it: the
+                            classification and what it costs end up adjacent,
+                            which is the pair a quote is read off.
 
-                      <Separator />
-
-                      {/* SAC left, price right: the classification and what it
-                          costs, which is the pair a quote is read off. A
-                          Retainer carries its unit, because the same number
-                          means something different by the month, and a Service
-                          with no list price is quoted per engagement. */}
-                      <div className="flex items-baseline gap-2 text-xs tabular-nums text-muted-foreground">
-                        <span>
-                          {service.sacCode ? `SAC ${service.sacCode}` : NIL}
-                        </span>
-                        {/* How many priced items sit under this frame, so the
-                            board reads which services carry any yet. The items
-                            themselves are on the Service's page. */}
-                        {service.items?.length ? (
-                          <span>
-                            {service.items.length}{" "}
-                            {service.items.length === 1 ? "item" : "items"}
-                          </span>
-                        ) : null}
-                        <span className="ml-auto">
+                            `mt-5` (24px counting the block's own `gap-1`)
+                            rather than a wider gap on the block: the name and
+                            its one-line description belong tight together, and
+                            only the figure wants the air. Set at the
+                            description's size, weight-carried rather than
+                            size-carried, so it reads as the answer the name
+                            asks for rather than as a second heading competing
+                            with it. */}
+                        <span className="mt-5 text-xs font-medium tabular-nums">
                           {service.ratePaise === undefined
                             ? "Quoted"
                             : service.scheduleKey === "retainer"
                               ? `${formatINR(service.ratePaise)} / mo`
                               : formatINR(service.ratePaise)}
                         </span>
+                      </div>
+
+                      <Separator />
+
+                      {/* SAC left, actions right. The classification is the
+                          quiet fact a card ends on, and the menu sits opposite
+                          it rather than on the title row, where it would have
+                          been a target beside the link that opens the page. */}
+                      <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                        <span>
+                          {service.sacCode ? `SAC ${service.sacCode}` : NIL}
+                        </span>
+                        <ServiceCardMenu
+                          service={service}
+                          onEdit={() => setEditing(service)}
+                        />
                       </div>
                     </div>
                   </li>
@@ -231,5 +286,139 @@ export default function ServiceCards({
         />
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A card's actions, behind one button in its bottom right corner.
+ *
+ * **It exists because "open" and "edit" are two different places and a card
+ * had one target for both.** The title goes to the Service's own page, where
+ * the items, the wording and the libraries are; the dialog is the five-field
+ * pass over the name, the description, the rate and the SAC. A pencil on hover
+ * said "edit" for both and named neither, so which one a click reached was
+ * something a reader learned by being surprised once. The menu says them in
+ * words: **Open page** is the title's own destination written down, and
+ * **Quick edit** is the dialog, named for being the small pass rather than the
+ * whole record.
+ *
+ * Three things about it are rules rather than this board's taste:
+ *
+ * - **The trigger names the Service, not just the action.** Reached out of the
+ *   card's visual context, "More" could be about anything on a board of forty.
+ *   `design-system.test.ts` fails an icon-only button that announces nothing.
+ * - **The dialog is a sibling of the menu, never inside it.** An `AlertDialog`
+ *   rendered within a menu item unmounts with the menu the instant the item is
+ *   chosen, so it never opens. Hoisting it to component state is what makes it
+ *   survive.
+ * - **`AlertDialog`, not `Dialog`, for anything destructive** (`AGENTS.md`).
+ *   Archiving is reversible and still confirms, because it takes a Service off
+ *   every new contract and the way back is a route this board does not offer.
+ */
+function ServiceCardMenu({
+  service,
+  onEdit,
+}: {
+  service: ContractService;
+  onEdit: () => void;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const archive = () =>
+    startTransition(async () => {
+      const result = await removeService(service.code);
+      if (result.success) router.refresh();
+    });
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          /*
+            **Opens on hover, and the two delays are what make that usable on a
+            board rather than a nuisance.** These triggers sit in the same
+            corner of every card in a packed column, so a pointer travelling to
+            a card further down crosses the ones above it on the way. At
+            base-ui's defaults (`delay` 100, `closeDelay` 0) that reads as menus
+            flashing open and shut under a pointer that was only passing
+            through.
+
+            `delay: 250` is longer than a pass-through and shorter than a
+            deliberate rest, so crossing a card costs nothing and stopping on
+            one opens without a wait. `closeDelay: 150` covers the gap between
+            the trigger and the popup: at 0, the diagonal from the button to the
+            first item leaves the trigger before it reaches the menu, and the
+            menu closes mid-reach.
+
+            Click still works and is still what the keyboard uses, so nothing
+            here is reachable by hover alone.
+          */
+          openOnHover
+          delay={250}
+          closeDelay={150}
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Actions for ${service.name}`}
+              // `ml-auto` here rather than on a wrapper: the trigger is the
+              // last thing in the row, so it is the one that pushes.
+              className="-my-1 ml-auto size-7 text-muted-foreground"
+            />
+          }
+        >
+          <MoreHorizontal aria-hidden />
+        </DropdownMenuTrigger>
+        {/* Aligned to the trigger's right edge so the menu grows inward from
+            the card rather than off the column, and opens upward where the
+            card is near the bottom of a scrolling list. */}
+        <DropdownMenuContent align="end" className="min-w-40">
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil aria-hidden />
+            Quick edit
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            render={<Link href={`/client/services/${service.code}`} />}
+          >
+            <ArrowUpRight aria-hidden />
+            Open page
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => setConfirming(true)}
+          >
+            <Archive aria-hidden />
+            Archive
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive this service?</AlertDialogTitle>
+            <AlertDialogDescription>
+              It leaves the catalogue and stops being offered on new contracts.
+              Contracts already holding it keep their own copy, and it stays
+              readable for audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={pending}
+              onClick={archive}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
