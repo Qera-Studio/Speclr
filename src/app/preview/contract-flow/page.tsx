@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import AdminShell from '@/components/admin/AdminShell';
 import ContractFlow from '@/components/contract/flow/ContractFlow';
 import { PARTS } from '@/lib/domain/seed/parts';
+import { SERVICES } from '@/lib/domain/seed/services';
+import { copyPart } from '@/lib/domain/contract/copy';
 import { CLIENT_INPUTS, EXCLUSIONS } from '@/lib/domain/contract/seed/libraries';
 import type { ClientRecord, ContractDocument } from '@/lib/domain/types';
 
@@ -106,6 +108,35 @@ const DOC_EMPTY = {
   contract: { ...DOC.contract, parts: [] },
 } as unknown as ContractDocument;
 
+/**
+ * The same draft carrying a **sold Service** rather than a legacy Part.
+ *
+ * `?only=sold` selects it, and it is the case every real contract now takes:
+ * the sixteen sales Services carry no legal text of their own and name the
+ * Parts that do through `partCodes`. It exists because the bug it stands for
+ * was invisible to every other fixture here — they all pass legacy Parts,
+ * which name no frame and carry their own sections, so a missing resolution
+ * changed nothing about them.
+ *
+ * `SOC` specifically, because it names three frames (15, 16 and 17) and so is
+ * the one that proves they concatenate rather than the first one winning.
+ */
+const DOC_SOLD = {
+  ...DOC,
+  contract: {
+    ...DOC.contract,
+    parts: [
+      copyPart(
+        SERVICES.find((s) => s.code === 'SOC')!,
+        EXCLUSIONS,
+        CLIENT_INPUTS,
+        undefined,
+        [...SERVICES, ...PARTS],
+      ).part,
+    ],
+  },
+} as unknown as ContractDocument;
+
 export default async function ContractFlowPreview({
   searchParams,
 }: {
@@ -127,12 +158,41 @@ export default async function ContractFlowPreview({
         the route it stands in for measures a layout nobody ships, which is the
         trap this file's own header warns about one paragraph up.
       */}
+      {/*
+        `services` is the sold catalogue and `frames` is everything, which is
+        the split `DocumentRoute` makes: the sixteen sales Services carry no
+        legal text and name the Parts that do through `partCodes`, and seeding
+        them archived all twenty-two (`contract/copy.ts`, `frameOf`).
+
+        The fixture passed `PARTS` as both for a while, which is why the
+        empty-frame bug was invisible here: a legacy Part names no frame and
+        carries its own sections, so the resolution being absent changed
+        nothing. `?only=sold` is the variant that actually exercises it.
+      */}
       <ContractFlow
         clients={[CLIENT]}
-        services={PARTS}
+        services={only === 'sold' ? SERVICES : PARTS}
+        frames={[...SERVICES, ...PARTS]}
         exclusions={EXCLUSIONS}
         clientInputs={CLIENT_INPUTS}
-        doc={only === 'filled' ? DOC_ALL_FILLED : only === 'none' ? DOC_EMPTY : DOC}
+        /*
+          `?only=new` passes **no document at all**, which is the one state
+          every other variant here hides: `/docs/new/contract` before anything
+          is saved. It is where picking a client both creates the draft and
+          seeds it, and therefore the only place the resume can fire against a
+          draft the reader is still filling in.
+        */
+        doc={
+          only === 'new'
+            ? undefined
+            : only === 'filled'
+              ? DOC_ALL_FILLED
+              : only === 'none'
+                ? DOC_EMPTY
+                : only === 'sold'
+                  ? DOC_SOLD
+                  : DOC
+        }
         title="Contract"
       />
     </AdminShell>

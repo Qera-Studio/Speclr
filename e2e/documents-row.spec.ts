@@ -27,6 +27,9 @@ const boxOf = async (locator: Locator) => {
 
 /** What the browser would deliver a click at the centre of `locator` to. */
 async function hitAt(page: Page, locator: Locator) {
+  // The table scrolls sideways now, so a cell can have a box and still be
+  // clipped out of the container: a hit there lands on the page behind it.
+  await locator.scrollIntoViewIfNeeded();
   const box = await boxOf(locator);
   return page.evaluate(
     ([x, y]) => {
@@ -49,15 +52,18 @@ test.describe('a documents list row', () => {
     page.locator('tbody tr').filter({ hasText: number });
 
   /**
-   * The bug, stated as the thing it broke. Type and Date are the two cells with
-   * nothing else in them, so a hit there is a hit on the row and nothing else.
+   * The bug, stated as the thing it broke. Type and Date are two cells with
+   * no control in them, so a hit there is a hit on the row and nothing else.
+   * Neither is frozen: a frozen cell is positioned and paints above the
+   * overlay, which is why the row's link lives in the frozen Title cell itself.
    */
   test('opens the document from a cell that is not the number', async ({ page }) => {
     const finalized = row(page, 'QS-INV-2627-001');
     const cells = finalized.locator('td');
 
-    // Type, then Date. Both must reach the anchor, not the cell they sit in.
-    for (const index of [2, 4]) {
+    // Checkbox, No., Title, Type, Services, Client, Date: Type at 3 and Date
+    // at 6. Both must reach the anchor, not the cell they sit in.
+    for (const index of [3, 6]) {
       const hit = await hitAt(page, cells.nth(index));
       expect(hit.href).toBe('/client/docs/inv-1/print');
     }
@@ -66,24 +72,24 @@ test.describe('a documents list row', () => {
   /** A draft's row is the same arrangement, pointed at its editor. */
   test('opens a draft in its editor, from the same places', async ({ page }) => {
     const draft = row(page, 'Service Quotation');
-    const hit = await hitAt(page, draft.locator('td').nth(2));
+    const hit = await hitAt(page, draft.locator('td').nth(3));
     expect(hit.href).toBe('/client/docs/sq-1');
   });
 
   /**
-   * The other half. The copy button and the row actions sit *over* the overlay,
+   * The other half. The copy button and the row's menu sit *over* the overlay,
    * and they have to keep their own hit area or the fix for the row would cost
-   * the two controls in it. Both are revealed on hover, so the row is hovered
-   * first, exactly as a person would.
+   * the two controls in it. The copy button is revealed on hover, so the row is
+   * hovered first, exactly as a person would.
    */
-  test('leaves the copy button and the row actions clickable', async ({ page }) => {
+  test('leaves the copy button and the row menu clickable', async ({ page }) => {
     const finalized = row(page, 'QS-INV-2627-001');
     await finalized.hover();
 
     const copy = finalized.getByRole('button', { name: /copy document number/i });
     expect((await hitAt(page, copy)).tag).not.toBe('TD');
 
-    const download = finalized.getByRole('button', { name: /download pdf/i });
-    expect((await hitAt(page, download)).href).toBeNull();
+    const more = finalized.getByRole('button', { name: /more actions for qs-inv-2627-001/i });
+    expect((await hitAt(page, more)).href).toBeNull();
   });
 });

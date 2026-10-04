@@ -243,15 +243,60 @@ test.describe('the contract builder', () => {
     expect(heights.size).toBe(4);
   });
 
+  /**
+   * The client phase narrows; the others take the shell's default.
+   *
+   * **Asserted as a relationship rather than a pixel count**, which is the fix
+   * for how this test broke. It hard-coded 896, that being the default panel
+   * width when it was written, so it went red the day `FlowShell`'s ceiling
+   * changed — reporting a phase-width bug when nothing about phase width was
+   * wrong. The property actually worth holding is that Services and Terms agree
+   * with each other and Client is narrower than both, and that survives the
+   * default moving.
+   *
+   * `CLIENT_PHASE_WIDTH` is the one number this phase really owns, and it is
+   * checked where it can be checked meaningfully: the test below measures the
+   * combobox against the row under it, which is what that cap exists to keep
+   * aligned.
+   */
   test('keeps the full-width panel on the phases that use it', async ({ page }) => {
     const widthOf = async (phase: string) => {
       await page.goto(`/preview/contract-flow?phase=${phase}`);
       return (await page.locator('section > div').first().boundingBox())!.width;
     };
 
-    expect(await widthOf('services')).toBe(896);
-    expect(await widthOf('terms')).toBe(896);
-    expect(await widthOf('client')).toBeLessThan(896);
+    const services = await widthOf('services');
+    const terms = await widthOf('terms');
+
+    expect(services).toBe(terms);
+    expect(await widthOf('client')).toBeLessThan(services);
+  });
+
+  /**
+   * The client phase's three controls end where the combobox above them ends.
+   *
+   * `FieldRow` defaults to `gap-8` and this row is `fit`, so its `max-content`
+   * tracks cannot shrink to absorb a gap that does not fit: 240 + 240 + 196
+   * with two 32px gaps came to 740 inside a 700px panel, and the term field
+   * hung 40px past the combobox. Measured rather than reasoned about, because
+   * `CLIENT_PHASE_WIDTH`'s own docblock had the arithmetic and the arithmetic
+   * was what was wrong.
+   */
+  test('ends the client phase row where the combobox ends', async ({ page }) => {
+    await page.goto('/preview/contract-flow?phase=client');
+    await page.locator('#con-client').waitFor();
+
+    const right = async (selector: string) => {
+      const box = (await page.locator(selector).first().boundingBox())!;
+      return Math.round(box.x + box.width);
+    };
+
+    const combobox = await right('.group\\/combobox');
+
+    // The term field is the last control in the row, so it is the one that
+    // overhangs when the gaps do not fit.
+    expect(await right('[data-slot="field-row"]')).toBe(combobox);
+    expect(await right('#con-term-months')).toBe(combobox);
   });
 
   test('lays the standing figures out in a grid, not a section each', async ({ page }) => {

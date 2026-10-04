@@ -8,6 +8,8 @@ import DocumentPager from '@/components/docs/DocumentPager';
 import DocumentsTable from '@/components/admin/DocumentsTable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { contractDoc } from '@/lib/domain/contract/__tests__/fixture';
+import type { ContractService } from '@/lib/domain/service';
 import type { AdminDocument } from '@/lib/domain/types';
 
 /**
@@ -60,10 +62,18 @@ const ROWS = [
     number: 'QS-INV-2627-001',
     issueDate: '2026-07-30',
     gstRatePercent: 18,
-    lineItems: [{ description: 'Design', ratePaise: 100000, qty: 1 }],
+    // Bills the Service by code, so the Services column has a badge to draw
+    // from `CATALOGUE` below.
+    lineItems: [{ description: 'Design', ratePaise: 100000, qty: 1, serviceCode: 'SOC' }],
     clientSnapshot: { name: 'Clayora' },
   },
+  // A contract with a Build Part and a priced Retainer Part, so the Services
+  // column and a "/mo" figure are on the page to be measured.
+  contractDoc({ codes: ['05', '15'], blanks: { 'part.15.fee#0': '₹45,000' } }),
 ] as unknown as AdminDocument[];
+
+/** Just enough catalogue to turn the invoice's `serviceCode` into a Schedule. */
+const CATALOGUE = [{ code: 'SOC', scheduleKey: 'retainer' }] as unknown as ContractService[];
 
 export default function ShellPreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
@@ -85,7 +95,7 @@ export default function ShellPreviewPage() {
           them existed in the copy. A row-wide click was broken for exactly as
           long as this fixture drew its own rows.
         */}
-        <DocumentsTable documents={ROWS} />
+        <DocumentsTable documents={ROWS} catalogue={CATALOGUE} />
         {/* The header row's page-owned half: the pager a document editor
             portals up there. The row is the thing this fixture exists to
             measure now — back, breadcrumbs and pager on one line, levelled
