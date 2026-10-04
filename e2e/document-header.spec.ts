@@ -60,7 +60,7 @@ test.describe('the document header row', () => {
     const row = header(page);
     await expect(row).toBeVisible();
 
-    const back = row.getByRole('button', { name: /back/i });
+    const back = row.getByLabel(/^Back to /);
     // The pager itself, not its box: a document short enough to list every
     // page has no box to find (`docs/design.md` §2.10).
     const pager = row.locator('[data-slot="pagination"]');
@@ -76,7 +76,7 @@ test.describe('the document header row', () => {
   test('orders them back, then pager', async ({ page }) => {
     const row = header(page);
     const [back, pager] = await Promise.all([
-      boxOf(row.getByRole('button', { name: /back/i })),
+      boxOf(row.getByLabel(/^Back to /)),
       boxOf(row.locator('[data-slot="pagination"]')),
     ]);
 
@@ -128,7 +128,7 @@ test.describe('the document header row', () => {
     const pager = await boxOf(
       header(page).locator('[data-slot="pagination"]'),
     );
-    const back = await boxOf(header(page).getByRole('button', { name: /back/i }));
+    const back = await boxOf(header(page).getByLabel(/^Back to /));
 
     const gapAfterPager = row.x + row.width - (pager.x + pager.width);
     const gapBeforePager = pager.x - (back.x + back.width);
@@ -195,7 +195,7 @@ test.describe('the shell’s top band', () => {
     // rail's title are different type sizes in different boxes, so the midpoint
     // is what has to agree.
     const [back, title] = await Promise.all([
-      midOf(inset.getByRole('button', { name: /back/i })),
+      midOf(inset.getByLabel(/^Back to /)),
       midOf(rail),
     ]);
 

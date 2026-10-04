@@ -150,7 +150,9 @@ test.describe('the header band', () => {
    * tooltip, which is exactly what it did on the first pass here.
    */
   test('says where back goes, on hover', async ({ page }) => {
-    const back = page.locator('header[data-print-hidden] button').first();
+    // By its label, not its role: back is a link wherever nothing can be lost
+    // and a dialog's button only on a document editor (`AdminHeader`).
+    const back = page.locator('header[data-print-hidden]').getByLabel(/^Back to /);
     await expect(back).toHaveAttribute('aria-label', /^Back to /);
 
     await back.hover();

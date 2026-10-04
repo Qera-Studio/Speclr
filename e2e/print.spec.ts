@@ -151,6 +151,8 @@ test.describe('the app chrome under print media', () => {
     // And the page itself is still there, or the rule above is hiding the
     // document rather than the furniture around it.
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'QS-INV-2627-001' })).toBeVisible();
+    // Anchored: the row's menu names the document too, so a substring match
+    // finds its cell as well as the number's.
+    await expect(page.getByRole('cell', { name: /^QS-INV-2627-001/ })).toBeVisible();
   });
 });
