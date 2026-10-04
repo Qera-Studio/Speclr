@@ -1417,49 +1417,31 @@ that appears twice, applied to a control.
 - **The box is filled one shade off whatever it sits on, never transparent.** It
   was transparent until hovered once, which made the one control you can *type*
   into look like the counter printed beside it; a field that takes input should
-  say so before it is touched. The step moved with the box: it was
-  `--sidebar-field` on the `--sidebar` band when it sat outside the pager, and
-  is `--hover` now that it sits inside the container. The rule is the step, not
-  the token. It stays borderless either way: the fill identifies it, and a
-  stroke as well would make a form field of it. **Enforced in a browser**
-  (`e2e/shell-sheets.spec.ts`, both themes, bounded above as well as below),
-  because a computed colour is what jsdom cannot see, and because this started
-  at two shades and was brought down: a test asking only "different from its
-  surroundings" would pass against the value that was too strong.
-- **Three surfaces, one step apart each.** The band is `--sidebar` (slate-50 /
-  slate-950), the container `--sidebar-field` (slate-100 / slate-900), and the
-  active page `--card` (slate-50 / slate-900). `--sidebar-field` is its own
-  token because no existing role means "one step off `--sidebar`" in both
-  themes: `--muted` is slate-100 in light and slate-800 in dark, one step here
-  and three there.
-- **The active page is `--page-active`, its own surface, lighter than the
-  container in both themes.** No existing role is a step up from
-  `--sidebar-field` on both sides, which is why it needed a token rather than a
-  borrowed one: `--card` is right in light (slate-50) and is the container's own
-  value in dark, where the fill separated by **0.000** and only the border drew
-  the active page; `--raised`, which every other active pill in the app uses, is
-  the mirror problem, fixing dark and sitting a step *down* in light, making the
-  pill a well. It replaced a `bg-card` plus `dark:bg-raised` pair, because two
-  tokens describing one surface is a surface with no name.
-- **Dark is slate-700, two ramp steps up rather than the symmetrical one.**
-  3.04 against the container where slate-800 gives 0.91, chosen for contrast:
-  the active page is the one thing here that has to be found at a glance. The
-  note refusing slate-700 for `--hover` does not apply, and the distinction is
-  worth keeping: that one is about `--muted-foreground` landing at 3.94:1, and
-  half of what a hovered *card* prints is muted, where this pill prints
-  `--foreground` at full strength (9.71:1 measured). Asserted in
-  `contrast.test.ts`, which was seen red against a value pushed up the ramp
-  until the text stopped clearing AA.
-- Lighter is what "nearer" means under a light source and does not invert with
-  the theme, so dark raises rather than sinks. The stroke stays either way.
-- **The go-to box goes the other way: a well, not a pill.** `--hover`, one step
-  *down* from the container (slate-200 light, slate-950 dark) while every other
-  filled thing here steps up. It is the one control you type into rather than
-  press, and `--hover` is the token that already means that step in both
-  directions, which a literal "one shade darker" cannot do at the ramp's floor
-  where slate-950 is the last value there is. It shares its fill with a hovered
-  page, which is coherent: both mean "this is interactive", and shape and
-  position keep them apart.
+  say so before it is touched. It is `--sidebar-field` on the `--sidebar` band:
+  a step down in light (slate-100 on slate-50) and a step up in dark
+  (slate-900 on slate-950, the ramp's floor, which has nothing below it). The
+  rule is the step, not the direction. It stays borderless: the fill identifies
+  it, and a stroke as well would make a form field of it. **Enforced in a
+  browser** (`e2e/shell-sheets.spec.ts`, both themes, bounded above as well as
+  below), because a computed colour is what jsdom cannot see, and because this
+  started at two shades and was brought down: a test asking only "different
+  from its surroundings" would pass against the value that was too strong.
+- **The container has no fill; its stroke is what groups it** (18 September
+  2026). It carried `--sidebar-field`, which in dark is also `--background`, so
+  the fill existed in one theme only: two different pagers rather than the ramp
+  doing its job. The border already says where the control ends and the rules
+  between runs say numbers are missing, so the fill was a third thing saying
+  what those two say. Everything inside is therefore measured against the band,
+  and the spec asserts the container is clear so it notices a fill coming back.
+- **The active page is `--page-active`, with a border and a shadow.** Against
+  the band it is a step down in light (it shares `--sidebar-field`'s value with
+  the go-to box) and slate-700 in dark, two steps up for contrast (9.71:1 for
+  its `--foreground` text, asserted in `contrast.test.ts`). **In light the
+  border is what separates it from the box**, which share one fill; that is
+  accepted, since shape and position keep them apart and the box holds no
+  number until you type one. What the spec rules out is the active page having
+  neither a fill step nor a painted stroke against the band, which is the
+  invisible pill described below.
 - **An inactive page is bare until hovered.** A resting fill on every number
   would rebuild the per-page box the container replaced, and leave the active
   one nothing to be raised from.
@@ -1722,7 +1704,7 @@ when a house rule gets broken twice.
 | Every table is in a `TableCard` (§2.3) | `src/__tests__/design-system.test.ts` |
 | Every pager is `Pagination` (§2.10) | `src/__tests__/design-system.test.ts` |
 | A sorting table has a `SortToggle` (§2.3) | `src/__tests__/design-system.test.ts` |
-| The pager's box is a step down from its container, the footer `pr-2` (§2.3, §2.10) | `src/components/ui/__tests__/table.test.tsx`, `e2e/shell-sheets.spec.ts` |
+| The pager's box is one step off the band it sits on, the footer `pr-2` (§2.3, §2.10) | `src/components/ui/__tests__/table.test.tsx`, `e2e/shell-sheets.spec.ts` |
 | No sheet names its own container (§2.11) | `src/__tests__/design-system.test.ts` |
 | No sheet names its own width; it takes a size (§2.11) | `src/__tests__/design-system.test.ts` |
 | Each size resolves to its share of the card (§2.11) | `src/components/ui/__tests__/sheet.test.tsx`, `e2e/shell-sheets.spec.ts` |
@@ -1776,6 +1758,14 @@ In order:
 Append a line when a rule here changes. Keep it to one line and name the
 `ui-elevation.md` id where there is one.
 
+- **4 October 2026**: §2.10 catches up with the pager that ships. The
+  container lost its fill on 18 September (it existed in light only), and the
+  rules still measured the box and the active page against it. Both are now
+  measured against the `--sidebar` band they sit on: the box is
+  `--sidebar-field`, one step off it in either direction, and the active page
+  is told apart by its border where, in light, it shares the box's fill. The
+  component library's Pagination specimen is staged on `--sidebar`, so what is
+  signed off there is the band it ships on.
 - **21 September 2026**: The documents list takes the wide-table arrangement
   the clients list settled on (frozen row number and Title, dividers,
   resizable columns, one row menu in place of the hover-revealed icons), with

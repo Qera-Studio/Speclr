@@ -26,6 +26,7 @@ export function Specimen({
   name,
   empty = false,
   fill = false,
+  stage = 'background',
   children,
 }: {
   name: string;
@@ -47,6 +48,13 @@ export function Specimen({
    * above it, and pushed right it wraps from the wrong edge.
    */
   fill?: boolean;
+  /**
+   * The surface the component really ships on, which is what the stage is for.
+   * Nearly everything stands on `--background`; a pager stands in a table
+   * footer on `--sidebar`, and judged on anything else it is signed off on a
+   * band it never sits on (`e2e/component-library.spec.ts` measures it).
+   */
+  stage?: 'background' | 'sidebar';
   children: ReactNode;
 }) {
   return (
@@ -96,7 +104,8 @@ export function Specimen({
             // already `w-full` and doing the right thing: what was wrong was
             // the box being asked to contain it. It costs nothing to a specimen
             // whose content fits, which is every other one on this page.
-            "mx-0.5 mb-0.5 flex min-h-14 min-w-0 items-center gap-4 rounded-sm border border-border bg-background px-4 py-3",
+            "mx-0.5 mb-0.5 flex min-h-14 min-w-0 items-center gap-4 rounded-sm border border-border px-4 py-3",
+            stage === "sidebar" ? "bg-sidebar" : "bg-background",
             fill ? "justify-start" : "justify-between",
           )}
         >

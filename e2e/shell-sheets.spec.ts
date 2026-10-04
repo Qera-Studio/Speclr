@@ -195,22 +195,16 @@ test('a table pager carries the go-to-page box', async ({ page }) => {
  * resolves no stylesheet, so a class name is all a unit test can check and a
  * class name is not a colour.
  *
- * The box is **one shade** off the band (`docs/design.md` §2.10), and what that
- * means depends on the theme, which is why it is a token rather than a literal.
- * In light the footer is slate-50 and the box slate-100, so the box is darker.
- * In dark the footer is slate-950, the ramp's floor, and the box is slate-900:
- * one shade *up*, because there is nothing below the floor. Both are checked,
- * because writing only the light one is how a token gets nudged in one theme
- * with nobody looking at the other.
+ * The box is **one shade** off the band it sits on (`docs/design.md` §2.10).
+ * The pager's container has had no fill since 18 September 2026, so the band is
+ * the footer itself: the box is a step down from slate-50 in light and a step
+ * up from slate-950 in dark, the ramp's floor. Both themes are checked, because
+ * writing only the light one is how a token gets nudged in one theme with
+ * nobody looking at the other.
  *
- * **It is measured against the container it sits in**, which is what changed
- * when the box moved inside the pager. Asserting against the footer band still
- * passed afterwards, because the numbers happened to stay in range: a test
- * measuring the wrong pair can be right by luck, and this one was.
- *
- * The *direction* is the load-bearing half. Everything else filled in this
- * control steps up from the container; the box steps down, because it is the
- * one thing you type into rather than press.
+ * **Bounded above as well as below.** The box started at two shades and was
+ * brought down; a test asking only "different from its surroundings" would pass
+ * against the value that was too strong.
  */
 for (const theme of ['light', 'dark'] as const) {
   test(`the pager's box is one shade off its band in ${theme}`, async ({ page }) => {
@@ -220,17 +214,14 @@ for (const theme of ['light', 'dark'] as const) {
     const box = page.getByRole('textbox', { name: /go to page/i });
     await expect(box).toBeVisible();
 
-    const { boxL, containerL, inside, padRight, padLeft } = await box.evaluate((el) => {
-      const container = el.closest('[data-slot="page-runs"]') as HTMLElement | null;
+    const { boxL, bandL, inside, padRight, padLeft } = await box.evaluate((el) => {
       const footer = el.closest('div[class*="min-h-11"]') as HTMLElement;
       const lightness = (c: string) => Number(/lab\(([-\d.]+)/.exec(c)?.[1] ?? NaN);
       const footerStyle = getComputedStyle(footer);
       return {
         boxL: lightness(getComputedStyle(el).backgroundColor),
-        containerL: container
-          ? lightness(getComputedStyle(container).backgroundColor)
-          : NaN,
-        inside: container !== null,
+        bandL: lightness(footerStyle.backgroundColor),
+        inside: el.closest('[data-slot="page-runs"]') !== null,
         padRight: footerStyle.paddingRight,
         padLeft: footerStyle.paddingLeft,
       };
@@ -238,23 +229,17 @@ for (const theme of ['light', 'dark'] as const) {
 
     // Filled at all: transparent would read as the counter beside it.
     expect(Number.isNaN(boxL)).toBe(false);
+    expect(Number.isNaN(bandL)).toBe(false);
 
     // In the pager's container, not floating beside it. It is part of the
     // control and moves with it.
     expect(inside).toBe(true);
 
-    /*
-      One shade *down* from the container, in both themes, and the direction is
-      the assertion rather than a detail. Everything else filled in this control
-      steps up (the active page, a hovered one), because a pill is lifted off a
-      surface. The box is the one thing you type into rather than press, so it
-      is a well sunk into it. `--hover` is the token that means that step in
-      whichever direction the theme needs (slate-200 in light, slate-950 in
-      dark), which is why a literal "darker" cannot be written here: slate-950
-      is the ramp's floor and has nothing below it.
-    */
-    expect(boxL).toBeLessThan(containerL);
-    expect(Math.abs(boxL - containerL)).toBeGreaterThan(1);
+    // One shade, not none and not two: measured at 2.6 in light and 3.1 in
+    // dark, where two shades is about 7.
+    const step = Math.abs(boxL - bandL);
+    expect(step).toBeGreaterThan(1);
+    expect(step).toBeLessThan(5);
 
     // And the footer's own asymmetry, measured rather than read off a class.
     expect(padRight).toBe('8px');
@@ -263,30 +248,24 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 /**
- * The pager's three tiers, measured, in both themes.
+ * The active page reads as the active page, measured, in both themes.
  *
- * The numbers are a tab group: a trough on the footer band, and the page you
- * are on raised on the trough (`docs/design.md` §2.10). That is three surfaces
- * that must stay distinguishable, and **the first version of this shipped with
- * two of them identical**: `--raised` and `--muted` are the same ramp step in
- * dark, so a pill on the tab list's own `bg-muted` trough had a lightness delta
- * of exactly 0.0 and the active page was invisible but for its border. jsdom
- * resolves no stylesheet, so nothing short of a browser could have caught it.
+ * The numbers are a tab group: the page you are on is a pill on the footer band
+ * (`docs/design.md` §2.10). **The first version of this shipped with the pill
+ * invisible**: `--raised` and `--muted` are the same ramp step in dark, so the
+ * active page had a lightness delta of exactly 0.0 and only its border said
+ * which page you were on. jsdom resolves no stylesheet, so nothing short of a
+ * browser could have caught it.
  *
- * The direction differs per theme and that is correct rather than sloppy: light
- * steps *down* the ramp to raise (the app's own tab group does the same), dark
- * steps *up*, because slate-950 is the floor. What is asserted is that each
- * tier is distinct from the one behind it, not which way it moved.
+ * The container it sits in has had no fill since 18 September 2026 (the fill
+ * only ever existed in light), so the pill is measured against the band behind
+ * that container, and the container is asserted to be clear so this test
+ * notices if a fill comes back and the comparison stops being the right one.
  *
- * **The pill is allowed to be carried by its border, and that is why this
- * asserts fill *or* stroke rather than a lightness floor.** `--card` and
- * `--sidebar-field` are both slate-900 in dark, so the active page's fill
- * separates by 0.0 there and only the border and shadow say which page you are
- * on (§2.10, recorded as a deliberate compromise). An earlier version of this
- * test demanded a fill delta above 3, which was true of the arrangement it was
- * written against and would now fail correct code. What must never happen is
- * the active page having *neither*: same fill and no stroke is the invisible
- * pill this file exists to catch.
+ * **Fill *or* stroke**, not a lightness floor: in light the pill shares its fill
+ * with the go-to box and is told apart by its border, which §2.10 records as
+ * accepted. What must never happen is the active page having *neither*: same
+ * fill as the band and no stroke is the invisible pill this test exists for.
  */
 for (const theme of ['light', 'dark'] as const) {
   test(`the pager's pill reads as raised in ${theme}`, async ({ page }) => {
@@ -296,11 +275,9 @@ for (const theme of ['light', 'dark'] as const) {
     const lightness = (colour: string) =>
       Number(/lab\(([-\d.]+)/.exec(colour)?.[1] ?? NaN);
 
-    const trough = lightness(
-      await page
-        .locator('[data-slot="page-runs"]')
-        .evaluate((el) => getComputedStyle(el).backgroundColor),
-    );
+    const container = await page
+      .locator('[data-slot="page-runs"]')
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
     const pill = await page.locator('[aria-current="page"]').evaluate((el) => {
       const style = getComputedStyle(el);
       return {
@@ -316,16 +293,14 @@ for (const theme of ['light', 'dark'] as const) {
       }),
     );
 
-    for (const value of [band, trough]) expect(Number.isNaN(value)).toBe(false);
+    expect(Number.isNaN(band)).toBe(false);
+    // The container is clear, so the band is what the pill is seen against.
+    expect(container).toBe('rgba(0, 0, 0, 0)');
 
-    // The container is clear of the band it sits in. The floor is deliberately
-    // low: what is ruled out is two surfaces resolving to one value.
-    expect(Math.abs(trough - band)).toBeGreaterThan(1);
-
-    // The active page is separated from the container by its fill, its stroke,
-    // or both. A stroke counts only while it is actually painted: a
+    // The active page is separated from the band by its fill, its stroke, or
+    // both. A stroke counts only while it is actually painted: a
     // `border-transparent` at 1px is a border that draws nothing.
-    const fillDelta = Math.abs(lightness(pill.fill) - trough);
+    const fillDelta = Math.abs(lightness(pill.fill) - band);
     const stroked =
       pill.borderWidth > 0 && !/^rgba\(.*,\s*0\)$/.test(pill.borderColour);
     expect(fillDelta > 1 || stroked).toBe(true);

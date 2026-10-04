@@ -170,10 +170,10 @@ function PaginationSpecimens({ entry }: { entry: LibraryEntry }) {
       <Specimen name={single.name} note={single.note} empty>
         <LivePager pageCount={1} />
       </Specimen>
-      <Specimen name={short.name} note={short.note}>
+      <Specimen name={short.name} note={short.note} stage="sidebar">
         <LivePager pageCount={6} />
       </Specimen>
-      <Specimen name={windowed.name} note={windowed.note}>
+      <Specimen name={windowed.name} note={windowed.note} stage="sidebar">
         <LivePager pageCount={23} start={9} />
       </Specimen>
       {/*
@@ -183,7 +183,7 @@ function PaginationSpecimens({ entry }: { entry: LibraryEntry }) {
         trailing one is only reached by walking to the end, which is exactly
         what a library is for.
       */}
-      <Specimen name={merged.name} note={merged.note}>
+      <Specimen name={merged.name} note={merged.note} stage="sidebar">
         <LivePager pageCount={23} start={22} />
       </Specimen>
     </>

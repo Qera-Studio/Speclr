@@ -96,29 +96,15 @@ for (const theme of ['light', 'dark'] as const) {
      *
      * ---
      *
-     * **KNOWN RED, 18 September 2026. Deliberately left failing.**
-     *
-     * The library's specimen stage moved from `--sidebar` to `--background`, so
-     * this no longer matches and the decision on what to do about it is open.
-     * Measured on the day, so whoever picks this up does not have to re-derive
-     * it:
-     *
-     * | | band | trough | pill |
-     * |---|---|---|---|
-     * | Real footer, light | 248,250,252 | 239,243,246 | 248,250,252 |
-     * | Library, light | **255,255,255** | 239,243,246 | 248,250,252 |
-     * | Real footer, dark | 6,7,10 | 14,17,24 | 44,54,69 |
-     * | Library, dark | **14,17,24** | 14,17,24 | 44,54,69 |
-     *
-     * The last row is the one that matters and it is not merely a mismatch: in
-     * dark mode the library's stage **is** the trough's own colour, so the
-     * trough vanishes completely. Light mode is only a mismatch, because the
-     * trough still reads against white.
-     *
-     * Three ways out, in the order they were offered: give the Pagination
-     * specimen back a `--sidebar` inset (one entry differs, this test passes on
-     * its real claim); accept the loss and drop to asserting pill-vs-trough
-     * only; or restyle the pager's trough so it holds against both surfaces.
+     * **Was left red on 18 September 2026 and resolved on 4 October.** The
+     * library's stage had moved to `--background`, so the pager was signed off
+     * on white in light and on slate-900 in dark, where the real footer is
+     * `--sidebar`. Of the three ways out (stage the specimen on `--sidebar`,
+     * assert pill-vs-container only, or restyle the pager), the first was
+     * chosen: `Specimen` takes `stage="sidebar"` and the pager specimens pass
+     * it, so this test passes on its real claim rather than a weakened one.
+     * The trough has had no fill since the same day, so its row compares two
+     * transparent values; the band is the comparison that does the work.
      */
     test('draws the pager on the same band the real table footer does', async ({ page }) => {
       await page.goto('/preview/record-table?long=1');
