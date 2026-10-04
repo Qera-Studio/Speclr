@@ -142,12 +142,14 @@ const lineToForm = (line: {
   detail?: string;
   ratePaise: number;
   qty: number;
+  serviceCode?: string;
 }): LineItemFormValues => ({
   description: line.description,
   detail: line.detail ?? "",
   rate: line.ratePaise > 0 ? paiseToRupees(line.ratePaise) : "",
   qty: String(line.qty),
   sacCode: "",
+  serviceCode: line.serviceCode,
 });
 
 function defaultsFor(doc?: QuotationDocument | null): QuotationFormValues {
@@ -192,6 +194,7 @@ const toLine = (line: LineItemFormValues) => ({
   detail: line.detail || undefined,
   ratePaise: rupeesToPaise(line.rate) ?? 0,
   qty: Number(line.qty) || 0,
+  serviceCode: line.serviceCode || undefined,
 });
 
 /** The form's own shapes, turned into the document's. */
@@ -464,6 +467,7 @@ export default function QuotationEditor({
               item.ratePaise !== undefined ? paiseToRupees(item.ratePaise) : "",
             qty: "1",
             sacCode: "",
+            serviceCode: service.code,
           } satisfies LineItemFormValues,
         })),
     );

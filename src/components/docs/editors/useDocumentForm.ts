@@ -24,6 +24,12 @@ export interface LineItemFormValues {
   /** Six digits beginning 99. Empty on a line nothing has classified yet. */
   sacCode: string;
   /**
+   * The Service a catalogue line bills (`LineItem.serviceCode`). Carried, not
+   * edited: no field registers it, so it rides in the row's values from seed
+   * to save. Absent on a typed line.
+   */
+  serviceCode?: string;
+  /**
    * The Service Quotation's sub-line, collected behind `showDetail` and left
    * empty everywhere else. On the shape rather than a separate quotation-only
    * type so `LineItemsEditor` and `LineItemPreset` stay one thing.
@@ -99,6 +105,7 @@ function defaultsFor(
         rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : "",
         qty: String(item.qty),
         sacCode: item.sacCode ?? "",
+        serviceCode: item.serviceCode,
       })),
       gstRatePercent: String(doc.gstRatePercent),
       gstLabel: doc.gstLabel ?? "",
@@ -172,6 +179,7 @@ export function toPayload(
       ratePaise: rupeesToPaise(item.rate) ?? 0,
       qty: Number(item.qty) || 0,
       sacCode: item.sacCode || undefined,
+      serviceCode: item.serviceCode || undefined,
     })),
     gstRatePercent: Number(values.gstRatePercent) || 0,
     gstLabel: values.gstLabel || undefined,

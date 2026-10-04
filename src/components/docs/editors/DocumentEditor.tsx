@@ -367,6 +367,9 @@ export default function DocumentEditor({
       rate: line.ratePaise !== undefined ? paiseToRupees(line.ratePaise) : "",
       qty: "1",
       sacCode: line.sacCode ?? "",
+      // Which Service the line bills, so a list can say what this document
+      // covers without matching its description back to the catalogue.
+      serviceCode: line.service.code,
     },
   }));
 
@@ -715,6 +718,7 @@ export default function DocumentEditor({
         rate: item.ratePaise > 0 ? paiseToRupees(item.ratePaise) : "",
         qty: String(item.qty),
         sacCode: item.sacCode ?? "",
+        serviceCode: item.serviceCode,
       })),
     );
   };

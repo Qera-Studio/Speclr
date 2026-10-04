@@ -750,6 +750,34 @@ describe("DocumentEditor (line items from the client record)", () => {
   });
 
   /**
+   * And the Service's code, which no input shows: it rides in the row from
+   * seed to save so the documents list can say which Schedule the invoice
+   * bills without matching its description back to the catalogue.
+   */
+  it("saves which Service a seeded line bills", async () => {
+    const u = userEvent.setup();
+    render(
+      <DocumentEditor
+        typeCode="INV"
+        clients={engaged}
+        services={services}
+        title="New invoice"
+      />,
+    );
+
+    await selectComboboxOption(u, "Client", "Acme Co.");
+    await autosaved(createDraft);
+
+    expect(createDraft).toHaveBeenCalledWith(
+      "INV",
+      engaged[0].id,
+      expect.objectContaining({
+        lineItems: [expect.objectContaining({ serviceCode: "15", sacCode: "998314" })],
+      }),
+    );
+  });
+
+  /**
    * And **not** the Service's overview as a second description under it. The
    * catalogue's own account of the work used to seed a `detail` line that the
    * sheet printed under the description; nothing in CGST Rule 46 asks for one,
