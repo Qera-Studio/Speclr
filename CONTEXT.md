@@ -459,13 +459,24 @@ Three rules, matching the kind chooser's:
   reason there is no `client_kind` column). `addressParts.country` is still
   where the value lives; the chooser only seeds it, and an existing client never
   sees the screen.
-- **Step 1's country field renders only once there is a record.** On the create
-  path the chooser has just asked, so the field would be the same question
-  twice, pre-answered, one screen apart. It is **not** removed, because an
-  existing client never reaches the chooser and this is the only editor for a
-  fact that decides place of supply, which registrations and legal forms are
-  offered, what a postcode is called and which documents are requested. A client
-  entered under the wrong country has to be fixable.
+- **Step 1 has no country field, and the row above the step tracker is the
+  editor** (20 September 2026). `ClientAxes` shows `Individual · India` above
+  the steps on every step, muted at rest and full-strength under the pointer,
+  and each half opens a control: a two-item menu for the kind, a searched list
+  for the country (the chooser's own row and filter, shared). It stores
+  nothing. Before the first save a change rewrites the URL, exactly as the
+  chooser does; after it the country goes through `setClientCountry`, which
+  writes `addressParts.country` and recomposes `address` server-side, and a
+  kind change goes to the identity step carrying `?kind=` as a pending
+  intent: the kind is derived from the entity type, so "make this a company"
+  can only mean "pick a company form", and the list there narrows to that
+  kind and empties the old answer until the save that makes the record agree.
+  The identity form *follows* the country (an effect after the draft restore)
+  and never asks for it. The field it replaced existed only so a client entered
+  under the wrong country could be fixed; this is that editor, reachable from
+  every step instead of one. Opacity was refused for the resting state on
+  purpose: it is the one way to put a label under WCAG 1.4.3 without any
+  token changing, and `contrast.test.ts` would not see it.
 - **The parameter is validated against the seed, never trusted.** It is a URL
   value that seeds a form field; an unknown code reads as unanswered.
 - **Choosing does not advance, and that is the opposite call from
@@ -903,7 +914,10 @@ Three things about the lock:
 **Line items come from the client record.** Picking a client fills the invoice
 with their **retainer** services at their agreed rate (else the catalogue's list
 price, since a blank rate on the record means "the catalogue rate" and
-deliberately not zero), each carrying the Service's SAC. Only retainers: those
+deliberately not zero), each carrying the Service's SAC and, since 21 September
+2026, its code (`LineItem.serviceCode`), which is how the documents list names
+the Schedules a document runs under without matching descriptions back to the
+catalogue; a typed line carries neither. Only retainers: those
 are the lines that are identical every month. A build or an audit is billed
 once, on a date nothing here knows, so it is offered on the Add-line menu
 instead of assumed onto the document, along with the rest of the catalogue and a

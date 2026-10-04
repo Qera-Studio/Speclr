@@ -364,6 +364,27 @@ Specific standing pushbacks:
 
 ### Logged deviations
 
+**21 September 2026: an exchange rate exists, for the clients list only.** §4
+says no multi-currency engine for invoices, and `currency.ts` said there was
+no exchange rate anywhere in the app. There is one now, on request, and it is
+bounded to a list: the clients table shows a foreign client's agreed price in
+their own currency at that day's market rate, the chip toggles back to INR,
+and an Indian client sees no toggle at all.
+
+Where the line is drawn, stated plainly:
+
+- **No document reads it.** `convertMinor` is display arithmetic in
+  `currency.ts`, the fetch is `server/rates.ts`, and the only caller is the
+  clients list. A sheet importing either is the compliance bug rule 4
+  describes, and both files say so where they are imported.
+- **The INR figure is never replaced.** It is the stored answer and the
+  toggle's other state; a failed fetch costs the toggle, not the figure.
+- **It is a market rate, not the notified one.** `docs/vendors.md` §1.5 records
+  why that is right for a reading convenience and wrong for anything a tax
+  return keys off.
+
+§4's "no multi-currency engine for invoices" stands unchanged.
+
 **3 September 2026 — the quotation's payment phases became editable.** Written
 down here because §3 records the schedule as one of the seven things the
 Service Quotation *derives*, and `quotation.ts` said outright that nothing

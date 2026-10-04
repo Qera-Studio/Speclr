@@ -1067,8 +1067,9 @@ with no `SortToggle` rendered in its own folder fails the build.
   through `formatPhoneForDisplay`, money through `formatINR`, dates through
   `formatDisplayDate`. **The phone half is enforced**, because that is the one
   that had silently never been done.
-- **Numeric columns right-aligned, `tabular-nums`, `font-mono` where the value
-  is an identifier.**
+- **Numeric columns `tabular-nums`, `font-mono` where the value is an
+  identifier.** Money is the exception to right alignment: it is left-aligned
+  behind its currency chip (§2.3, Money).
 - **No zebra striping and no row tinting by status.** Refused: it fights the
   hover and selected states, which carry actual meaning. A status is a badge in
   its own column.
@@ -1087,6 +1088,87 @@ with no `SortToggle` rendered in its own folder fails the build.
   provided it carries its figures in an `aria-label` and a tooltip. The
   onboarding ring is the example. **Nothing-yet draws as a dotted track**, never
   as a zero-length arc, which is indistinguishable from a rendering failure.
+
+**The template: where a new table is copied from.**
+
+Everything above is a rule; `library/table/` is that rule made into something
+you can copy. It is one `RecordTable` call site (`TemplateTable.tsx`) over a
+column spec holding **one of every kind of column this app has**
+(`columns.tsx`), over rows built to exercise each (`rows.ts`), shown live under
+`/client/library?component=table`. Build a new table by taking the column
+definitions it needs and deleting the rest.
+
+It is a **reference, not a second component.** There is exactly one table
+component here and it is `RecordTable`; a wrapper over it with one real shape is
+how every table's differences become props on a layer nobody can change. What
+the template holds is *column* definitions, which is the part that genuinely
+repeats. The spec is an array rather than JSX inside a component so that
+promoting it later is a move rather than a rewrite.
+
+**The eleven kinds, and the one decision each carries.**
+
+| Kind | The rule it exists to state |
+|---|---|
+| Identity | Frozen where the table scrolls, and the only column that says *which row you are on*. Returns a string, because the row's link and its accessible name are read from it. |
+| Copyable | A value somebody retypes elsewhere. The value *is* the button. `CopyValue` in the table's own cell, never `CopyCell`, which brings a cell no column can put a width on. |
+| Status | `StatusBadge`, never a ternary. Every status carries a word; the fill is the second reading. |
+| Money | `AmountCell`: integer minor units through `formatMoney`, the currency symbol in a `RaisedChip`, the digits beside it, `tabular-nums`, and **absent is `NIL`, never a zero**. **Left-aligned, under a `Banknote` heading**, as the library's template table draws it: the chip is what lines the figures up, and a right-aligned column would put the chip on the ragged side. `sortValue` is the number, or '₹1,200' sorts above '₹12,00,000'. |
+| Category | An accent hue that **means nothing**, with the word always beside it. A hash is right only while the set is unenumerated; a real enum names its hue per value. |
+| Person | A tinted disc of initials, never a photograph. `NIL` where there is none. |
+| People | Three discs then a count; the names go to the tooltip and the label. Not sortable, because a set of people has no order. |
+| Place | A flag is **never the only carrier** of a country. `minSize` is stated and `fit` is measured; the floor is whichever is larger. |
+| Date | `DateValue` at full strength, `tabular-nums`. A date is a value the list is read for, not a caption. |
+| Prose | The column that truncates, with the whole value on its `title`. `trunc` requires a plain-string cell. |
+| Glyph | The one kind allowed no *visible* heading. It still has a `label`, it carries its figures in an accessible name, and nothing-yet draws as a track. |
+
+Eleven is over the six-column budget on purpose: the template is a catalogue,
+not a table anybody reads.
+
+**Reordering is `reorderable`, and its bounds are structural.** Press a heading
+and move: past ~5px the press becomes a drag and the column follows the pointer,
+dropping where it is released. Under that it is still a click, so a sortable
+heading still sorts. Ctrl/alt with an arrow does the same from the keyboard, and
+that path is not optional (WCAG 2.1.1): a `<th>` takes no focus by default, so
+a reorderable heading is given `tabIndex={-1}`, which keeps it reachable without
+adding a third tab stop per column to a header that already has a sort button
+and a resize handle.
+
+Both bounds hold without anyone remembering them. The **checkbox and actions**
+columns are furniture `RecordTable` draws itself and are not in `columns`, so
+nothing can be dropped outside them by construction. A **frozen** column is
+pinned and nothing drops before one, because freezing is what makes a column the
+one that identifies the row and a sticky `left` is a running sum of the frozen
+widths before it.
+
+Two marks during the drag, and they say different things: the column in hand
+goes translucent, and the column under the pointer takes a `--primary` rule on
+the edge the dragged column would land on. A *fill* there would read as a second
+selection; this is an insertion point.
+
+**The order persists, per table, keyed on `caption`**, and that is the one place
+this departs from `resizable`, whose widths deliberately do not. The two differ
+in kind: a width is a momentary reading aid tied to the value in front of you,
+while an order says which columns matter to you, which does not change between
+visits. A stored order is always reconciled against the current spec, so a
+column added later appears rather than vanishing and a column removed does not
+strand the rest.
+
+**There is no drag-suppression flag, and that was measured rather than assumed.**
+The obvious worry is a drag ending in a click that also sorts. In a real browser
+it does not: a drag onto another heading fires no click at all, and a drag
+returned to its origin fires one on the `<th>`, never on the button inside it,
+because pointer capture retargets it. Capture is therefore taken *when the drag
+starts*, not on pointer-down. Taking it early stole the click that sorts, which
+is one of the two bugs `e2e/record-table.spec.ts` now pins.
+
+**The wide package is one decision, not five.** `resizable` switches the table
+to `table-layout: fixed` and wraps it in a horizontal scrollport. Three things
+follow and they arrive together: every column must state a `size` and content is
+**clipped** rather than widening (so every cell truncates); frozen columns become
+possible, because freezing needs known widths; and **the sticky header is lost**,
+because a horizontally scrolling container is the scrollport for both axes.
+`dividers` and `sticky` earn their place only here, where a row is no longer one
+glance. A table narrow enough to read at once takes none of it.
 
 ### 2.4 Cards and page layout
 
@@ -1694,6 +1776,33 @@ In order:
 Append a line when a rule here changes. Keep it to one line and name the
 `ui-elevation.md` id where there is one.
 
+- **21 September 2026**: The documents list takes the wide-table arrangement
+  the clients list settled on (frozen row number and Title, dividers,
+  resizable columns, one row menu in place of the hover-revealed icons), with
+  a row-number column first and the number column retitled "Title", where a
+  draft is the gray `StatusBadge` rather than the word. Every document type
+  names a hue in `DOC_TYPES.accent`, drawn as one solid 12px swatch of it
+  before the type (`accentSwatch`): the full-strength token as the fill, the
+  `ring-foreground` hairline inset as its edge, and `RaisedChip`'s one-pixel
+  drop, not a chip holding a tinted box holding a square.
+  `StatusBadge` is `rounded-sm`: §1.3 always said a badge was, and the
+  primitive's pill had been the one exception.
+- **21 September 2026**: The documents list gains a Services column, one
+  `accentBadge` per Schedule a contract's Parts run under, up to all four;
+  `Schedule.accent` names the hue (Setup cyan, Build violet, Retainer green,
+  Audit orange). A contract's Total is the fee its Parts state, read back from
+  the fee blank (`contract/listing.ts`), with a retainer's marked "/mo" and
+  kept apart from a one-off fee. `DocumentTotal` is the one component that
+  draws a document's figure, in the table and on a card, and it fixed a
+  quotation printing ₹0.00 in the list while storing its real total. The
+  figure is `AmountCell`'s, left-aligned behind its currency chip under a
+  `Banknote` heading, which the library's template table had already settled
+  and §2.3's Money row now records; the documents list also takes
+  `reorderable` from it. The Services column reads every type, not only a
+  contract: a line seeded from the catalogue now carries the Service's code
+  (`LineItem.serviceCode`, beside its SAC), and `documentSchedules` turns the
+  codes on an invoice, receipt, credit note or quotation into Schedules
+  through the catalogue the page passes down.
 - **22 August 2026** — File created. Foundations documented from the code as it
   stands; rules from `ui-elevation.md` Phases 0-2 recorded as **open** where not
   yet built. Page inset settled at 36px (`p-9`), header and body.

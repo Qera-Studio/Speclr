@@ -126,10 +126,11 @@ the free option cannot in principle produce the answer.
 
 | | |
 |---|---|
-| **Today** | **Nothing.** Invoices are INR only, by decision (`domain/currency.ts`: a GST document must show tax in INR regardless of billing currency). A foreign client's agreed currency is recorded as a commercial term and prints nothing. |
-| **Industry substitute** | **Open Exchange Rates** or **Fixer**, plus the **RBI reference rate** for anything a tax return depends on. |
+| **Today** | **ExchangeRate-API, open access endpoint** (`open.er-api.com/v6/latest/INR`). No key, updated once a day, 160+ currencies, attribution required (the toggle's tooltip carries it). Fetched server-side in `server/rates.ts`: 3s timeout, cached for six hours, silent failure. Wired 21 September 2026, **for the clients list only**: a foreign client's agreed price is shown in their own currency as a reading convenience, and the chip toggles back to INR. Invoices are INR only, by decision (`domain/currency.ts`: a GST document must show tax in INR regardless of billing currency), and nothing on a document reads a rate. |
+| **Why** | The list needs seven currencies and the RBI/FBIL reference rate publishes four (USD, EUR, GBP, JPY), so for a display figure a market-rate source is the right tool. A failed fetch costs the toggle and never the figure: the INR total is the stored answer and is always on the page. |
+| **Industry substitute** | **Open Exchange Rates** or **Fixer** for a keyed, SLA-backed market rate; the **RBI reference rate** for anything a tax return depends on. |
 | **Cost** | Open Exchange Rates: free tier 1,000 calls/month (USD base only), **$12/month** for other bases, $47/month for hourly rates. Fixer: similar. RBI reference rate: free, published daily. |
-| **Beats its two closest competitors** | Not applicable until there is a reason to convert. When there is, the answer is almost certainly **the RBI reference rate**, not a market-rate API, because Indian tax treatment of an export invoice keys off the notified rate, not the spot rate. A market-rate API would be the wrong tool bought for the right-sounding reason. |
+| **Beats its two closest competitors** | vs **Frankfurter** (ECB reference rates, no key, institutional): it does not publish AED, and the UAE is a plausible client. vs **`@fawazahmed0/currency-api`** (jsDelivr CDN, no key, no attribution, 200+ currencies): the more robust delivery, but a personal project; it is the substitute the day the open endpoint changes its terms. **Never for a document**: Indian tax treatment of an export invoice keys off the notified rate, not the spot rate, so a market-rate API there would be the wrong tool bought for the right-sounding reason. |
 
 ### 1.6 Email delivery
 
