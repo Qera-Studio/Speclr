@@ -90,8 +90,10 @@ export default async function NewDocumentRoute({
     );
   }
   if (spec.code === 'CON') {
-    const [services, exclusions, clientInputs, clauses] = await Promise.all([
-      listServices(),
+    // `true` for the same reason as `DocumentRoute`: the Parts a Service names
+    // through `partCodes` are archived, and they are the contract's legal text.
+    const [all, exclusions, clientInputs, clauses] = await Promise.all([
+      listServices(true),
       listExclusions(),
       listClientInputs(),
       listClauses(),
@@ -99,7 +101,8 @@ export default async function NewDocumentRoute({
     return (
       <ContractFlow
         clients={clients}
-        services={services}
+        services={all.filter((service) => !service.archived)}
+        frames={all}
         exclusions={exclusions}
         clientInputs={clientInputs}
         // Passed here and *only* here. A new contract copies the library onto

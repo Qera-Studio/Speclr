@@ -572,6 +572,33 @@ describe("CON registry entry", () => {
     expect(contractFinalizeSchema.safeParse(doc).success).toBe(false);
     expect(contractDraftSchema.safeParse(doc).success).toBe(true);
   });
+
+  /**
+   * The third guard, and it exists because the first two were both silent.
+   *
+   * A sold Service carries no legal sections of its own: it names them through
+   * `partCodes` and `copyPart` resolves them (`contract/copy.ts`, `frameOf`).
+   * While nothing resolved that, a contract for one of the sixteen had no fee
+   * rows and no scope, so there were no blanks to be unfilled, the
+   * unfilled-blank check found nothing, and the document could be issued and
+   * made immutable with no terms in it at all.
+   *
+   * This asks the two things a Part is *for* rather than re-listing every
+   * section: a statement of what is included, and a fee.
+   */
+  it("contract finalize refuses a Part carrying no scope or fee", () => {
+    const part = PARTS.find((s) => s.code === "01")!;
+    // What every sales Service looks like before its frame is resolved.
+    const unframed = { ...part, included: [], fee: [] };
+    const doc = {
+      issueDate: "2026-07-21",
+      contract: { parts: [unframed], blanks: {}, library: {} },
+    };
+
+    // No blank is unfilled, because there are no blanks. That is the trap.
+    expect(contractComplete(doc.contract)).toHaveLength(0);
+    expect(contractFinalizeSchema.safeParse(doc).success).toBe(false);
+  });
 });
 
 describe("HR registry entries", () => {

@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { requireAuthorizedUser } from "@/lib/auth/session";
-import { getClient, listServices } from "@/db/store";
+import { getClient, listEmployees, listServices } from "@/db/store";
+import { studioMemberOf } from "@/lib/profile";
 import ClientOnboarding from "@/components/admin/clients/onboarding/ClientOnboarding";
 
 export const metadata: Metadata = {
@@ -36,14 +37,24 @@ export default async function ClientPage({
   }
 
   const { id } = await params;
-  const [client, services] = await Promise.all([getClient(id), listServices()]);
+  // Employees are narrowed at this boundary, never passed on whole: see the
+  // note on `StudioMember` in `lib/profile.ts`.
+  const [client, services, employees] = await Promise.all([
+    getClient(id),
+    listServices(),
+    listEmployees(),
+  ]);
   if (!client) notFound();
 
   return (
     // Full height, so the flow can pin its step row and its button to the top
     // and bottom of the card and scroll only the fields between them.
-    <div className="flex h-full flex-col p-12">
-      <ClientOnboarding client={client} services={services} />
+    <div className="flex h-full flex-col px-12">
+      <ClientOnboarding
+        client={client}
+        services={services}
+        people={employees.map(studioMemberOf)}
+      />
     </div>
   );
 }

@@ -36,7 +36,10 @@ import {
 } from './clientQuery';
 import { countryName } from '@/lib/domain/countries';
 import { deleteClientAction, setClientArchivedAction } from '@/server/actions/clients';
+import type { DayRates } from '@/lib/domain/currency';
+import type { ContractService } from '@/lib/domain/service';
 import type { ClientRecord } from '@/lib/domain/types';
+import type { StudioMember } from '@/lib/profile';
 import { PageHeader } from '@/components/admin/Page';
 
 /**
@@ -60,7 +63,20 @@ const FIELD_ICONS: Record<ClientFilterField, typeof Globe> = {
   added: Calendar,
 };
 
-export default function ClientManager({ clients }: { clients: ClientRecord[] }) {
+export default function ClientManager({
+  clients,
+  people,
+  catalogue,
+  rates,
+}: {
+  clients: ClientRecord[];
+  /** For the lead and team columns. Narrowed by the page, see `lib/profile.ts`. */
+  people?: StudioMember[];
+  /** For the amount column: an engaged item's list price where none was agreed. */
+  catalogue?: ContractService[];
+  /** For the amount column's currency toggle. Null when today's could not be fetched. */
+  rates?: DayRates | null;
+}) {
   const router = useRouter();
   /**
    * Which list you are looking at. Component state, not the URL: it is a
@@ -301,18 +317,20 @@ export default function ClientManager({ clients }: { clients: ClientRecord[] }) 
       ) : (
         <ClientsTable
           clients={visible}
+          people={people}
+          catalogue={catalogue}
+          rates={rates}
           onBulkDelete={onBulkDelete}
           onDelete={onDelete}
           onArchive={onArchive}
           archived={showArchived}
           sort={sort}
-          // Omitted while the toggle is off — the headings then render as plain
+          // Omitted while the toggle is off: the headings then render as plain
           // text, which is `ClientsTable`'s existing unsortable mode.
           onSortChange={showSort ? onSortChange : undefined}
           paging={{ page, pageCount, onPageChange: setPage, start, total: shown.length }}
         />
       )}
-
     </div>
   );
 }

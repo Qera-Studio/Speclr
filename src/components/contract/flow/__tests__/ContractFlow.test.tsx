@@ -249,6 +249,44 @@ describe('the phase row', () => {
       expect(screen.queryByRole('navigation', { name: 'Steps' })).not.toBeInTheDocument();
     });
 
+    /**
+     * A resume happens on arrival, never mid-edit.
+     *
+     * Reported 21 September 2026: picking a client on a new contract jumped
+     * straight to Scope, so the agreement date, the effective date, the term
+     * and the whole Services phase were skipped.
+     *
+     * Two things combined. `seedFromClient` fills the Parts, their fee blanks
+     * and the acknowledgement in one go, so three phases go complete in the
+     * same render that answers the first. And the save rewrites the URL to
+     * `/docs/<id>` keeping `window.location.search`, which on
+     * `/docs/new/contract` is empty — so `active` kept falling back to a resume
+     * that was now being recomputed against a seeded draft.
+     *
+     * Driven here by re-rendering with a seeded document at the same phase,
+     * which is what the flow sees a frame after the client is picked. The
+     * assertion is that the phase does not move.
+     */
+    it('lands on the client phase when the URL names one, however complete the draft', () => {
+      // The state after a new contract's first save *and a refresh*: the path
+      // names a document whose seed answered three phases, and `?phase=client`
+      // is what this flow now writes into the URL so that refresh knows where
+      // the reader was. Without it the resume answers `preview`.
+      renderFlow(
+        {
+          doc: savedDoc({
+            parts: [PARTS.find((s) => s.code === '05')!],
+            blanks: filledBlanksFor('05'),
+            reviewed: ['05'],
+          }),
+        },
+        'client',
+      );
+
+      expect(phaseButton(/Client/)).toHaveAttribute('aria-current', 'step');
+      expect(screen.getByLabelText(/Agreement date/)).toBeInTheDocument();
+    });
+
     /** A new contract has no draft to read, so it starts at the start. */
     it('starts a new contract on the client phase', () => {
       renderFlow({}, '');

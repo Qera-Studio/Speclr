@@ -205,21 +205,35 @@ const refId = codeSchema(10);
 // The same ceiling as the Service's own rate: a bound, not a business rule.
 const paise = z.number().int().min(0).max(10_000_000_000);
 
+/*
+  The section caps are bounds, not business rules, and they are sized for a
+  **composed** Part rather than a hand-authored one.
+
+  A sold Service names its legal frames through `partCodes` and `copyPart`
+  concatenates them (`contract/copy.ts`, `frameOf`). `SOC` names three — content
+  production, community and paid social — so what lands on the contract is three
+  frames' sections end to end: 13 fee rows against a cap of 12, which refused
+  the finalize of a contract that was otherwise perfectly complete.
+
+  Three is the most any Service names today, so each cap below is the old
+  single-frame figure with room for that composition. They remain bounds against
+  a stray paste; none of them is a statement about how long a Part may be.
+*/
 export const serviceContentSchema = z.object({
   dependencies: z.array(refId).max(22),
   pairings: z.array(refId).max(22),
-  overview: z.array(para).max(10),
-  included: z.array(line).max(60),
-  accountTerms: z.array(para).max(20),
-  limits: z.array(row).max(30),
-  limitsNotes: z.array(para).max(10),
-  completion: z.array(para).max(10),
-  receives: z.array(line).max(40),
-  receivesNotes: z.array(para).max(10),
+  overview: z.array(para).max(30),
+  included: z.array(line).max(180),
+  accountTerms: z.array(para).max(60),
+  limits: z.array(row).max(90),
+  limitsNotes: z.array(para).max(30),
+  completion: z.array(para).max(30),
+  receives: z.array(line).max(120),
+  receivesNotes: z.array(para).max(30),
   thirdPartyCosts: para,
   exclusionIds: z.array(refId).max(120),
   clientInputIds: z.array(refId).max(80),
-  fee: z.array(row).max(12),
+  fee: z.array(row).max(36),
   sacCode: sacSchema().optional(),
   // A ceiling of ₹100 crore. Not a business rule — a bound, so a stray paste
   // cannot land a number that overflows the arithmetic downstream of it.

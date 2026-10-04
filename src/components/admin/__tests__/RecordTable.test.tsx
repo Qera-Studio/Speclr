@@ -235,6 +235,28 @@ describe('a row that opens its record', () => {
     expect(screen.getAllByRole('cell')[1]).toHaveTextContent(/^Record 1$/);
   });
 
+  /**
+   * A frozen first column is positioned, so the named link's overlay covers
+   * that cell alone. A pointer-only twin of it goes in the first unfrozen
+   * cell: same href, out of the tab order and hidden from assistive tech, so
+   * the row still has exactly one link to announce. Whether it actually
+   * covers the row is `e2e/record-table.spec.ts`'s question.
+   */
+  it('gives a frozen table a pointer-only twin of the link in the first unfrozen cell', () => {
+    const { container } = render(
+      <RecordTable
+        {...minimal}
+        columns={[{ ...columns[0], sticky: true }, columns[1]]}
+        open={(r) => ({ href: `/records/${r.id}` })}
+      />,
+    );
+
+    expect(screen.getAllByRole('link', { name: /^Record \d+$/ })).toHaveLength(10);
+    const twin = container.querySelector('td[data-col="city"] a[aria-hidden="true"]');
+    expect(twin).toHaveAttribute('href', '/records/1');
+    expect(twin).toHaveAttribute('tabindex', '-1');
+  });
+
   it('is a button, not a row handler, when it opens something that is not a URL', async () => {
     const u = userEvent.setup();
     const onOpen = jest.fn();

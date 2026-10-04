@@ -8,9 +8,11 @@
  */
 
 import { z } from "zod";
+import type { Accent } from "@/lib/accent";
 import { isISODate } from "./dates";
 import { addressPartsSchema } from "./address";
 import { CLIENT_ENTITY_TYPES } from "./client";
+import { INDUSTRY_KEYS } from "./industry";
 import { emailSchema, phoneSchema, sacSchema } from "./fields";
 import {
   codeSchema,
@@ -78,6 +80,8 @@ export const lineItemSchema = z.object({
    * visible on the sheet, which is where an operator can act on it.
    */
   sacCode: sacSchema().optional(),
+  /** The Service the line bills, by catalogue code. See `LineItem.serviceCode`. */
+  serviceCode: codeSchema(6).optional(),
 });
 
 /** Draft line items may be half-filled — only shape/limits are enforced. */
@@ -90,6 +94,7 @@ export const draftLineItemSchema = z.object({
     message: "Quantity cannot be negative.",
   }),
   sacCode: sacSchema().optional(),
+  serviceCode: codeSchema(6).optional(),
 });
 
 export const clientInputSchema = z.object({
@@ -146,6 +151,28 @@ export const clientInputSchema = z.object({
    * be explained.
    */
   entityType: z.enum(CLIENT_ENTITY_TYPES as [string, ...string[]]).optional(),
+  /**
+   * What they do, from the fixed fifty in `industry.ts`.
+   *
+   * An enum rather than a string, which is the whole point of the list: free
+   * text produces five spellings of 'SaaS' and a field that cannot group. A key
+   * not on the list is refused rather than stored, because the only ways to get
+   * one are a stale client and a hand-made request, and neither should write a
+   * value nothing can render.
+   *
+   * Optional, like `entityType` and for the same reason: every client that
+   * exists today has none, and a required field would make those rows
+   * un-editable. Unlike `entityType` the step does not require it either,
+   * because a client really can be one whose trade is nobody's business.
+   */
+  industry: z
+    .union([z.enum(INDUSTRY_KEYS), z.literal('')])
+    .optional()
+    // An unfilled `Combobox` submits `''`, and an empty string is how this form
+    // says "not answered" rather than a sixth-first industry called nothing.
+    // Normalised here rather than at the call site so every writer agrees, and
+    // so what reaches the column is a key or nothing.
+    .transform((value) => value || undefined),
 });
 
 /**
@@ -374,7 +401,36 @@ export const contractFinalizeSchema = z
   .refine((doc) => contractComplete(doc.contract).length === 0, {
     message: "Fill every blank before issuing this contract.",
     path: ["contract"],
-  });
+  })
+  /**
+   * Every Part carries its legal frame.
+   *
+   * The check above counts blanks that are *unfilled*, so it is silent about a
+   * Part that has no blanks because it has no terms. That is not hypothetical:
+   * a sold Service names its legal frame through `partCodes` and carries none
+   * of it itself, and for a while nothing resolved that (`contract/copy.ts`,
+   * `frameOf`). A contract for one of the sixteen therefore had no fee rows, no
+   * scope, no completion criteria and no handover, `contractComplete` found
+   * nothing missing, and it could be issued and made immutable with no terms in
+   * it at all.
+   *
+   * `frameOf` is the fix; this is the floor under it, because the failure was
+   * silent and the document is a signed agreement retained for 72 months. It
+   * asks the two things a Part is *for* rather than re-listing every section: a
+   * statement of what is included, and a fee. A Part with neither is not a
+   * frame whatever else it carries.
+   */
+  .refine(
+    (doc) =>
+      doc.contract.parts.every(
+        (part) => part.included.length > 0 && part.fee.length > 0,
+      ),
+    {
+      message:
+        "A service on this contract carries no scope or fee. Remove it, or give its catalogue entry a legal frame.",
+      path: ["contract"],
+    },
+  );
 
 // ── HR schemas ────────────────────────────────────────────────────────────────
 
@@ -663,6 +719,16 @@ export interface DocTypeSpec {
   /** URL segment for /kessler-admin/docs/new/[type]. */
   slug: string;
   label: string;
+  /**
+   * The hue the lists draw this type in, as a chip before its name.
+   *
+   * Named per type rather than hashed, for the reason `industry.ts` gives: a
+   * real enum names its hue so the frequent ones can be spread on purpose. It
+   * carries no meaning (`lib/accent.ts`) and the word is always beside it. The
+   * two profiles never share a list, so a hue may repeat across them and never
+   * within one: the five client types are distinct, and so are the five HR.
+   */
+  accent: Accent;
   /** The big black print title, e.g. 'RECEIPT'. */
   masthead: string;
   /**
@@ -694,6 +760,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "INV",
     slug: "invoice",
     label: "Invoice",
+    accent: "violet",
     masthead: "INVOICE",
     kind: "financial",
     hasPayment: false,
@@ -745,6 +812,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "REC",
     slug: "receipt",
     label: "Receipt",
+    accent: "teal",
     masthead: "RECEIPT",
     kind: "financial",
     hasPayment: true,
@@ -789,6 +857,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "CRN",
     slug: "credit-note",
     label: "Credit note",
+    accent: "rose",
     masthead: "CREDIT NOTE",
     kind: "financial",
     hasPayment: false,
@@ -836,6 +905,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "SQ",
     slug: "quotation",
     label: "Service Quotation",
+    accent: "cyan",
     masthead: "SERVICE QUOTATION",
     // Its own kind, not 'financial': a quotation carries no clientId, no
     // clientSnapshot and no place-of-supply — reusing 'financial' would risk
@@ -871,6 +941,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "CON",
     slug: "contract",
     label: "Contract",
+    accent: "amber",
     // What the cover prints. Editable per document like every other masthead —
     // the sheet reads `content.masthead`, it does not hardcode the title.
     masthead: "Master Service Agreement",
@@ -891,6 +962,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "STP",
     slug: "stipend",
     label: "Stipend slip",
+    accent: "green",
     masthead: "STIPEND",
     kind: "hr-slip",
     hasPayment: false,
@@ -912,6 +984,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "PAY",
     slug: "pay-slip",
     label: "Pay slip",
+    accent: "orange",
     masthead: "PAY SLIP",
     kind: "hr-slip",
     hasPayment: false,
@@ -940,6 +1013,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "OFR",
     slug: "offer-letter",
     label: "Offer letter",
+    accent: "magenta",
     masthead: "OFFER LETTER",
     kind: "hr-letter",
     hasPayment: false,
@@ -961,6 +1035,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "EXP",
     slug: "experience-letter",
     label: "Experience letter",
+    accent: "teal",
     masthead: "EXPERIENCE LETTER",
     kind: "hr-letter",
     hasPayment: false,
@@ -981,6 +1056,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     code: "EXIT",
     slug: "exit-letter",
     label: "Exit letter",
+    accent: "violet",
     masthead: "EXIT LETTER",
     kind: "hr-letter",
     hasPayment: false,

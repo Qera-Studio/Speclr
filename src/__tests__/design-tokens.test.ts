@@ -95,10 +95,16 @@ describe('design tokens', () => {
    * the ramp steps themselves, the chromatic signals (which keep their own
    * hues), and the alpha-white hairlines (an overlay composites to a
    * proportion of its ground, which is the point of it).
+   *
+   * `--accent-<hue>` joins the chromatic set for the obvious reason: a hue is
+   * the whole of what it carries, so aliasing it onto a neutral step would
+   * leave it with nothing to say. They are held to the contrast floor instead,
+   * in `contrast.test.ts`, which is the check that actually applies to them.
    */
   it('defines neutral roles as ramp aliases, not as raw values', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
-    const CHROMATIC = /^--(sidebar-)?(primary|destructive|warning|chart-\d)(-foreground)?$/;
+    const CHROMATIC =
+      /^--(sidebar-)?(primary|destructive|warning|chart-\d|accent-[a-z]+)(-foreground)?$/;
     const strays: string[] = [];
     for (const [, name, C] of css.matchAll(
       /^\s*(--[a-z0-9-]+):\s*oklch\((?:[\d.]+)\s+([\d.]+)\s+[\d.]+\)/gm,

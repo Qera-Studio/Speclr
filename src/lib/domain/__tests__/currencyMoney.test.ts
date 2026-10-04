@@ -1,6 +1,6 @@
 import { amountInWords } from '../amountInWords';
 import { formatINR, formatMoney } from '../money';
-import { currencyForCountry } from '../currency';
+import { convertMinor, currencyForCountry } from '../currency';
 
 /**
  * The currency-aware paths, added when stipend slips became payable in a
@@ -103,5 +103,15 @@ describe('currencyForCountry', () => {
     expect(currencyForCountry('JP')).toBe('INR');
     expect(currencyForCountry(undefined)).toBe('INR');
     expect(currencyForCountry('')).toBe('INR');
+  });
+});
+
+describe('convertMinor', () => {
+  it('multiplies minor units by the rate and rounds to the minor unit', () => {
+    // ₹53,000.00 at 1 INR = 0.0093 GBP is £492.90.
+    expect(convertMinor(53_000_00, 0.0093)).toBe(492_90);
+    // A fraction of a minor unit is rounded, never truncated.
+    expect(convertMinor(1, 0.6)).toBe(1);
+    expect(convertMinor(0, 0.0093)).toBe(0);
   });
 });

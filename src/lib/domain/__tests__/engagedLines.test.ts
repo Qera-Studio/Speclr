@@ -1,4 +1,4 @@
-import { allEngagedLines, engagedLines } from '../engagedLines';
+import { allEngagedLines, engagedLines, engagedTotalPaise } from '../engagedLines';
 import { EMPTY_PART_CONTENT, type ContractService } from '../service';
 import type { ServiceItem } from '../serviceItem';
 
@@ -202,5 +202,32 @@ describe('allEngagedLines', () => {
     const lines = allEngagedLines([{ code: 'SOC', items: [{ id: 'I10' }] }], catalogue);
     expect(lines[0].service.code).toBe('SOC');
     expect(lines[0].item?.id).toBe('I10');
+  });
+});
+
+describe('engagedTotalPaise', () => {
+  /**
+   * The clients list's Amount column. An item with no agreed rate falls to
+   * its list price, exactly as it would on the invoice, so the two figures
+   * cannot disagree.
+   */
+  it('adds every line through the same cascade the invoice uses', () => {
+    const lines = allEngagedLines(
+      [{ code: 'SOC', items: [{ id: 'I10' }, { id: 'I21', ratePaise: 8_00_000 }] }],
+      [service()],
+    );
+    // I10 at its list price, I21 at what was agreed.
+    expect(engagedTotalPaise(lines)).toBe(45_00_000 + 8_00_000);
+  });
+
+  it('leaves a line quoted per engagement out, and is nothing when none is priced', () => {
+    const catalogue = [service({ items: [item('I10', 'Reels', 45_00_000), item('I32', 'Report')] })];
+    const both = allEngagedLines([{ code: 'SOC', items: [{ id: 'I10' }, { id: 'I32' }] }], catalogue);
+    expect(engagedTotalPaise(both)).toBe(45_00_000);
+
+    // Not zero: zero is a real rate and means the work is given away.
+    const unpriced = allEngagedLines([{ code: 'SOC', items: [{ id: 'I32' }] }], catalogue);
+    expect(engagedTotalPaise(unpriced)).toBeUndefined();
+    expect(engagedTotalPaise([])).toBeUndefined();
   });
 });

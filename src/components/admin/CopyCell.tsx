@@ -53,13 +53,9 @@ export function CopyCell({
   iconOnly?: boolean;
   className?: string;
 }) {
-  const { copied, copy } = useCopy(value ?? '');
-
   if (!value) {
     return <TableCell className={className}>{display ?? NIL}</TableCell>;
   }
-
-  const Icon = copied ? CheckCheck : Copy;
 
   return (
     /*
@@ -73,49 +69,104 @@ export function CopyCell({
       else on the row did nothing. Confirmed in a browser, where the Type and
       Date cells hit-tested to themselves rather than to the anchor.
 
-      Nothing is lost by dropping it. The copy control in either branch below
-      carries its own `relative z-10`, which is what actually keeps it above the
-      overlay, and every table using this cell puts `relative` on the row.
+      Nothing is lost by dropping it. `CopyValue` carries its own `relative
+      z-10`, which is what actually keeps it above the overlay, and every table
+      using this cell puts `relative` on the row.
     */
     <TableCell className={cn('group/cell', className)}>
-      {iconOnly ? (
-        <span className="inline-flex max-w-full items-center gap-1">
-          <span
-            className="truncate"
-            style={width ? { maxWidth: width } : undefined}
-          >
-            {display ?? value}
-          </span>
-          <CopyButton
-            value={value}
-            label={label}
-            className="relative z-10 size-5 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"
-          />
-        </span>
-      ) : (
-        <button
-          type="button"
-          onClick={copy}
-          aria-label={copied ? 'Copied' : label}
-          className="group/copy relative z-10 inline-flex max-w-full cursor-pointer items-center gap-1 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <span
-            className="truncate"
-            style={width ? { maxWidth: width } : undefined}
-          >
-            {display ?? value}
-          </span>
-          <Icon
-            aria-hidden="true"
-            className={cn(
-              'size-3.5 shrink-0 transition-opacity',
-              copied
-                ? 'text-primary opacity-100'
-                : 'text-muted-foreground opacity-0 group-hover/cell:opacity-100 group-focus-visible/copy:opacity-100',
-            )}
-          />
-        </button>
-      )}
+      <CopyValue
+        value={value}
+        label={label}
+        display={display}
+        width={width}
+        iconOnly={iconOnly}
+      />
     </TableCell>
+  );
+}
+
+/**
+ * The same control, without the cell around it.
+ *
+ * `CopyCell` brings its own `<TableCell>`, which is right for most tables and
+ * impossible for two of them: a **frozen** or **resized** column needs the
+ * width, the `left` and the divider on that `<td>`, and a cell the column did
+ * not render is a cell it cannot put them on (`RecordTable`'s `ownCell` note).
+ * The clients table wanted both a copyable email and a resizable one, and that
+ * is the rule-1 second consumer, so the control moved out.
+ *
+ * Whoever renders the cell owns `group/cell`, because that is the hover scope
+ * the icon reveals against. Getting it wrong is visible immediately: the icon
+ * either never appears or appears on every column at once.
+ */
+export function CopyValue({
+  value,
+  label,
+  display,
+  width,
+  iconOnly = false,
+}: {
+  value: string;
+  label: string;
+  display?: React.ReactNode;
+  width?: string;
+  iconOnly?: boolean;
+}) {
+  const { copied, copy } = useCopy(value);
+
+  if (iconOnly) {
+    return (
+      <span className="inline-flex max-w-full items-center gap-1">
+        <span className="truncate" style={width ? { maxWidth: width } : undefined}>
+          {display ?? value}
+        </span>
+        <CopyButton
+          value={value}
+          label={label}
+          className="relative z-10 size-5 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/cell:opacity-100"
+        />
+      </span>
+    );
+  }
+
+  const Icon = copied ? CheckCheck : Copy;
+
+  return (
+    /*
+      Full width, with the icon pushed to the far end rather than sitting
+      against the text.
+
+      Beside the value the icon lands at a different x on every row, because it
+      follows the length of whatever it is copying, so a column of them is a
+      ragged edge that the eye has to re-find per row. At the cell's edge they
+      line up, which is what makes "this column is copyable" readable as a
+      property of the column instead of a thing that happens to each value.
+
+      It also stops the icon *moving the text*: appearing beside a value that
+      fills its column used to push the truncation point left, so the value
+      re-ellipsised under the cursor.
+    */
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={copied ? 'Copied' : label}
+      className="group/copy relative z-10 flex w-full cursor-pointer items-center gap-1 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      <span className="truncate" style={width ? { maxWidth: width } : undefined}>
+        {display ?? value}
+      </span>
+      <Icon
+        aria-hidden="true"
+        className={cn(
+          // `ml-auto` is what puts it at the edge; `shrink-0` keeps it from
+          // being squeezed out by a long value, which is the case it is most
+          // needed in.
+          'ml-auto size-3.5 shrink-0 transition-opacity',
+          copied
+            ? 'text-primary opacity-100'
+            : 'text-muted-foreground opacity-0 group-hover/cell:opacity-100 group-focus-visible/copy:opacity-100',
+        )}
+      />
+    </button>
   );
 }

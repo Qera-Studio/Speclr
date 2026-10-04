@@ -138,24 +138,33 @@ export function breadcrumbForPath(pathname: string, typeLabel?: string | null): 
     return [root, ...group, ...kind, { label: leaf, href: clean }];
   }
 
-  /**
-   * `…/clients/<uuid>` — the onboarding flow for one client.
-   *
-   * Unlike a document id, which is what people quote to each other, a client's
-   * uuid says nothing to anybody, and humanizing it printed thirty-six
-   * characters of hex across the top of the page. The trail can't name the
-   * client — it only has the path, and the record lives in the database — so it
-   * says what kind of thing this is and keeps the list navigable.
-   */
-  if (segments[0] === 'clients' && segments.length === 2) {
-    const listHref = `/${profile}/clients`;
+  /*
+    `…/<list>/<id>` — one record under a list the nav links to.
+
+    Two of these exist: `clients/<uuid>`, the onboarding flow, and
+    `services/<code>`, one service's page. Both were the same shape and only
+    the first was handled, so a service page trailed to the profile home and
+    its back arrow left for Documents rather than for the catalogue it came
+    from. Written once, so the third list added does not have to remember.
+
+    **The leaf is named by its kind, not by its identifier.** A client's uuid
+    says nothing to anybody and humanizing it printed thirty-six characters of
+    hex across the top of the page; a service's code is short and is what the
+    page itself prints under the title, so it stands as its own crumb. The
+    trail cannot name the *record* in either case, because it has the path and
+    the record lives in the database.
+  */
+  if (segments.length === 2) {
+    const listHref = `/${profile}/${segments[0]}`;
     const label = leafLabels(profile)[listHref];
     if (label) {
-      return [
-        root,
-        { label, href: listHref },
-        { label: leaf === 'new' ? 'New client' : 'Client', href: clean },
-      ];
+      const leafLabel =
+        segments[0] === 'clients'
+          ? leaf === 'new'
+            ? 'New client'
+            : 'Client'
+          : leaf;
+      return [root, { label, href: listHref }, { label: leafLabel, href: clean }];
     }
   }
 

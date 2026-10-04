@@ -3,27 +3,35 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, Copy, Download, Pencil, Printer } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { RemoveButton } from '@/components/ui/remove-button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { CalendarPlus, Copy, Download, Pencil, Printer, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { RowMenu } from './RowMenu';
 import {
   copySlipForNextMonth,
   deleteDraftAction,
   duplicateDocument,
 } from '@/server/actions/documents';
-import { DELETE_DRAFT_CONSEQUENCE, isSlip } from '@/lib/domain/registry';
+import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import { useDownloadPdf } from '@/lib/useDownloadPdf';
 import { docHref } from '@/lib/profile';
 import type { AdminDocument } from '@/lib/domain/types';
 
 /**
- * Per-row actions on the documents list, revealed on hover.
+ * Per-row actions on the documents list, behind one menu (`RowMenu`).
  *
  * A draft can be edited or thrown away; a finalized document can be
- * downloaded, printed or duplicated — it is immutable by design, so there is
+ * downloaded, printed or duplicated. It is immutable by design, so there is
  * deliberately no edit here. (`Delete` on a finalized document is the
  * pre-launch escape hatch only; `DEV_UNLIMITED` is inlined at build time, so it
  * is not in the production bundle.)
@@ -33,12 +41,15 @@ import type { AdminDocument } from '@/lib/domain/types';
  * number, which is what filing one needs. Print opens the browser's dialog,
  * which is what putting one on paper needs.
  *
- * The buttons fade in on hover but are never `display:none` — they stay in the
- * tab order, and `focus-within` on the row reveals them for keyboard users.
+ * Edit and Print are real links inside the menu rather than pushes, so
+ * middle-click and "copy link" keep working from a menu item. The delete
+ * confirm is hoisted beside the menu rather than inside an item, for the
+ * reason `RowMenu` gives: a dialog inside an item unmounts with the menu.
  */
 export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const { download: onDownload, downloading } = useDownloadPdf(doc.id, doc.number);
 
   const onDuplicate = async () => {
@@ -58,134 +69,97 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
     if (result.success && result.id) router.push(docHref({ ...doc, id: result.id }));
   };
 
-  // Refreshed either way: if the delete was refused, the row stays — which is
+  // Refreshed either way: if the delete was refused, the row stays, which is
   // the honest outcome, and better than a row that vanishes optimistically.
   const onDelete = async () => {
     await deleteDraftAction(doc.id);
     router.refresh();
   };
 
-  // `label` is the accessible name (specific); `tooltip` is the on-screen hint
-  // (short) — the row already says which document this is.
-  const iconLink = (href: string, label: string, tooltip: string, Icon: typeof Printer) => (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Link
-            href={href}
-            aria-label={label}
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'icon' }),
-              'text-muted-foreground transition-colors hover:text-foreground',
-            )}
-          >
-            <Icon aria-hidden="true" className="size-4" />
-          </Link>
-        }
-      />
-      <TooltipContent>{tooltip}</TooltipContent>
-    </Tooltip>
-  );
-
   const isDraft = doc.status === 'draft';
+  // Names the row for a screen reader: the number where there is one, else
+  // what kind of draft this is, since "draft" alone is every unnumbered row.
+  const name = doc.number ?? `draft ${DOC_TYPES[doc.type].label.toLowerCase()}`;
 
   return (
-    <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
-      {isDraft ? (
-        iconLink(docHref(doc), 'Edit draft', 'Edit', Pencil)
-      ) : (
-        <>
-          {/*
-            Download comes first: it is the ordinary action on an issued
-            document, and unlike Print it needs nothing from the reader.
+    <>
+      <RowMenu label={`More actions for ${name}`}>
+        {isDraft ? (
+          <DropdownMenuItem render={<Link href={docHref(doc)} />}>
+            <Pencil aria-hidden />
+            Edit draft
+          </DropdownMenuItem>
+        ) : (
+          <>
+            {/*
+              Download comes first: it is the ordinary action on an issued
+              document, and unlike Print it needs nothing from the reader.
 
-            Fetched rather than a plain `<a download>`, and that is a bug fix.
-            A `download` anchor hands the response to the browser whatever it
-            is, so a failure was saved to disk as a file named after the last
-            path segment: `pdf.txt`, containing an error, looking for all the
-            world like a corrupt document. There is no event for it either, so
-            nothing could report it. Reading the response here means a failure
-            is a message the operator can act on, and a success is still the
-            same one-click save under the document's own number.
-          */}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={downloading}
-                  onClick={onDownload}
-                  aria-label="Download PDF"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Download aria-hidden="true" className="size-4" />
-                </Button>
-              }
-            />
-            <TooltipContent>Download</TooltipContent>
-          </Tooltip>
-          {/* `auto=1` prints on arrival — from a list row, Print means print.
-              The document number in the first column is the way to preview. */}
-          {iconLink(docHref(doc, '/print?auto=1'), 'Print', 'Print', Printer)}
-          {isSlip(doc) ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={busy}
-                    onClick={onCopyNextMonth}
-                    aria-label="Copy for next month"
-                    className="text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <CalendarPlus aria-hidden="true" className="size-4" />
-                  </Button>
-                }
-              />
-              <TooltipContent>Copy for next month</TooltipContent>
-            </Tooltip>
-          ) : null}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={busy}
-                  onClick={onDuplicate}
-                  aria-label="Duplicate as new draft"
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <Copy aria-hidden="true" className="size-4" />
-                </Button>
-              }
-            />
-            <TooltipContent>Duplicate</TooltipContent>
-          </Tooltip>
-        </>
-      )}
+              Fetched rather than a plain `<a download>`, and that is a bug fix.
+              A `download` anchor hands the response to the browser whatever it
+              is, so a failure was saved to disk as a file named after the last
+              path segment: `pdf.txt`, containing an error, looking for all the
+              world like a corrupt document. There is no event for it either, so
+              nothing could report it. Reading the response here means a failure
+              is a message the operator can act on, and a success is still the
+              same one-click save under the document's own number.
+            */}
+            <DropdownMenuItem disabled={downloading} onClick={onDownload}>
+              <Download aria-hidden />
+              Download PDF
+            </DropdownMenuItem>
+            {/* `auto=1` prints on arrival: from a list row, Print means print.
+                The row itself is the way to preview. */}
+            <DropdownMenuItem render={<Link href={docHref(doc, '/print?auto=1')} />}>
+              <Printer aria-hidden />
+              Print
+            </DropdownMenuItem>
+            {isSlip(doc) ? (
+              <DropdownMenuItem disabled={busy} onClick={onCopyNextMonth}>
+                <CalendarPlus aria-hidden />
+                Copy for next month
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem disabled={busy} onClick={onDuplicate}>
+              <Copy aria-hidden />
+              Duplicate as new draft
+            </DropdownMenuItem>
+          </>
+        )}
+        {isDraft || DEV_UNLIMITED ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+              <Trash2 aria-hidden />
+              {isDraft ? 'Delete draft' : 'Delete (dev only)'}
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </RowMenu>
 
-      {isDraft ? (
-        <RemoveButton
-          label="Delete draft"
-          tooltip="Delete"
-          confirmTitle="Delete this draft?"
-          confirmDescription={DELETE_DRAFT_CONSEQUENCE}
-          onConfirm={onDelete}
-        />
-      ) : DEV_UNLIMITED ? (
-        <RemoveButton
-          label="Delete (dev only)"
-          tooltip="Delete"
-          confirmTitle="Delete this finalized document?"
-          confirmDescription="Testing escape hatch — finalized documents are permanent in production. This cannot be undone."
-          onConfirm={onDelete}
-        />
-      ) : null}
-    </div>
+      {/* `AlertDialog`, not `Dialog`: a destructive confirmation, which is the
+          house rule (AGENTS.md) and also what puts focus on the cancel and
+          traps it until a choice is made. */}
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isDraft ? 'Delete this draft?' : 'Delete this finalized document?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isDraft
+                ? DELETE_DRAFT_CONSEQUENCE
+                : 'Testing escape hatch: finalized documents are permanent in production. This cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

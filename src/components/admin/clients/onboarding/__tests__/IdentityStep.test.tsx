@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import IdentityStep from '../IdentityStep';
 import { StepActionsSlot } from '../stepKit';
@@ -138,6 +138,33 @@ describe('IdentityStep', () => {
   });
 
   /**
+   * The combobox is *marked* wrong, not only described as wrong.
+   *
+   * A combobox is chosen with a click and never blurs the way an input does,
+   * so under `mode: 'onTouched'` this error can only ever arrive at submit, in
+   * a pile with whatever else was never visited. Before this the message
+   * printed underneath while the control itself still looked untouched: no red
+   * border, because `aria-invalid` is what draws it.
+   *
+   * It is also what react-hook-form's own `shouldFocusError` and any
+   * "go to the first problem" pass look for, so an unmarked control is one
+   * nothing can send the operator to.
+   */
+  it('marks the entity type control itself, not just the message under it', async () => {
+    const user = userEvent.setup();
+    render(<IdentityStep client={null} onSaved={onSaved} submitLabel="Tax" />);
+
+    const entityType = screen.getByRole('combobox', { name: 'Entity type' });
+    expect(entityType).not.toHaveAttribute('aria-invalid', 'true');
+
+    await fillIdentity(user, { entityType: false });
+    await user.click(screen.getByRole('button', { name: /^tax$/i }));
+
+    await screen.findByText(/choose the entity type/i);
+    expect(entityType).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  /**
    * On the create path the country arrives as a prop from `CountryChooser`,
    * which asked it on its own page. It still has to reach the entity type
    * filter, which is the whole reason it is asked first.
@@ -165,16 +192,21 @@ describe('IdentityStep', () => {
 
   it('refuses an Indian legal form once the address has moved abroad', async () => {
     const user = userEvent.setup();
-    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+    const view = render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
 
-    // `/country/i` alone is ambiguous: the phone field has one too.
-    await user.click(screen.getByLabelText('Country'));
-    await user.click(await screen.findByRole('option', { name: /united arab emirates/i }));
+    // The country changes in the row above the tracker and lands on the
+    // record, so what this step sees is the same client, based elsewhere.
+    const abroad = {
+      ...savedClient,
+      addressParts: { ...savedClient.addressParts!, country: 'AE' },
+    } as ClientRecord;
+    view.rerender(<IdentityStep client={abroad} onSaved={onSaved} submitLabel="Tax" />);
+
+    // The saved form is not offered abroad, so the field is emptied rather
+    // than left holding a value the list no longer shows: saving it would
+    // file a UAE client as a company under the Companies Act.
+    await waitFor(() => expect(screen.getByLabelText('Entity type')).toHaveValue(''));
     await user.click(screen.getByRole('button', { name: /^tax$/i }));
-
-    // The field looks empty: the saved form is not in the list any more. But
-    // the value is still on the form, and saving it would file a UAE client as
-    // a company under the Companies Act.
     expect(await screen.findByText(/choose the entity type/i)).toBeInTheDocument();
     expect(updateClient).not.toHaveBeenCalled();
   });
@@ -199,43 +231,49 @@ describe('IdentityStep', () => {
   });
 
   /**
-   * Country decides what the fields after it mean: "Pincode" is India's word
-   * for a postal code and the lookup behind it is India Post, so both are a
-   * branch off the country rather than a default it gets appended to.
-   *
-   * **And it decides what entity type is allowed to offer**, which is why it
-   * was lifted out of the address block to the head of the step. While it sat
-   * at the bottom of the page, the filter above it only worked for someone who
-   * already knew to scroll down and set it first, which is a control whose
-   * effect appears above it: nobody finds that.
+   * The country is not asked on this step in either mode. `CountryChooser`
+   * asks it before step 1 and the row above the step tracker (`ClientAxes`)
+   * is its editor from then on, so a control here would be a second writer of
+   * `addressParts.country`, which is the bug hoisting it out of the address
+   * block once left behind. The form only *follows* what the row says.
    */
-  it('asks for the country before everything it decides', () => {
-    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
-
-    const country = screen.getByLabelText('Country');
-    for (const after of ['Entity type', 'Pincode']) {
-      expect(country.compareDocumentPosition(screen.getByLabelText(after))).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-    }
-  });
-
-  // One country field, not two. Hoisting it left the address block's own slot
-  // behind once, which is a second control writing the same value.
-  it('renders exactly one country control for the registered address', () => {
-    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
-    expect(screen.getAllByLabelText('Country')).toHaveLength(1);
-  });
-
-  /**
-   * `CountryChooser` asks this on its own page immediately before step 1, so a
-   * field here would be the same question twice, pre-answered, one screen
-   * apart. It comes back the moment there is a record, because that is the only
-   * way to correct a client entered under the wrong country.
-   */
-  it('does not ask for the country again while creating', () => {
-    render(<IdentityStep client={null} country="AE" onSaved={onSaved} submitLabel="Tax" />);
+  it('renders no country control, in either mode', () => {
+    const creating = render(
+      <IdentityStep client={null} country="AE" onSaved={onSaved} submitLabel="Tax" />,
+    );
     expect(screen.queryByLabelText('Country')).not.toBeInTheDocument();
+    creating.unmount();
+
+    render(<IdentityStep client={savedClient} onSaved={onSaved} submitLabel="Tax" />);
+    expect(screen.queryByLabelText('Country')).not.toBeInTheDocument();
+  });
+
+  it('follows the country chosen above it while creating', async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <IdentityStep client={null} country="IN" onSaved={onSaved} submitLabel="Tax" />,
+    );
+    view.rerender(<IdentityStep client={null} country="AE" onSaved={onSaved} submitLabel="Tax" />);
+
+    await user.click(screen.getByLabelText('Entity type'));
+    expect(await screen.findByRole('option', { name: /free zone entity/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /hindu undivided family/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('clears an entity type the new kind does not offer', async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <IdentityStep client={null} kind="individual" onSaved={onSaved} submitLabel="Tax" />,
+    );
+    await pickEntityType(user, /^sole proprietorship$/i);
+    expect(screen.getByLabelText('Entity type')).not.toHaveValue('');
+
+    view.rerender(
+      <IdentityStep client={null} kind="company" onSaved={onSaved} submitLabel="Tax" />,
+    );
+    await waitFor(() => expect(screen.getByLabelText('Entity type')).toHaveValue(''));
   });
 
   /**

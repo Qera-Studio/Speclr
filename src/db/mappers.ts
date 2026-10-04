@@ -1,7 +1,6 @@
 import "server-only";
 
-import { computeTotals, slipTotals } from "@/lib/domain/money";
-import { computeQuotationTotals } from "@/lib/domain/quotation";
+import { totalPaiseOf } from "@/lib/domain/documentQuery";
 import { isHrDocType } from "@/lib/domain/registry";
 import type {
   Actor,
@@ -117,6 +116,12 @@ export function clientToRow(client: ClientRecord) {
     // whole section must null the column, not leave the previous section's JSON
     // behind for a sheet or a derivation to read.
     entityType: client.entityType ?? null,
+    industry: client.industry ?? null,
+    leadEmployeeId: client.leadEmployeeId ?? null,
+    // `null` rather than `[]` for an empty team, so "nobody assigned" and "the
+    // team was emptied" are the same state. Two ways to say nothing is two
+    // things a reader has to tell apart for no gain.
+    teamEmployeeIds: client.teamEmployeeIds?.length ? client.teamEmployeeIds : null,
     tax: client.tax ?? null,
     contacts: client.contacts ?? null,
     commercial: client.commercial ?? null,
@@ -141,6 +146,9 @@ export function clientFromRow(r: ClientRow): ClientRecord {
     phone: r.phone,
     gstin: gstinOf({ tax: r.tax ?? undefined, gstin: r.gstin ?? undefined }),
     entityType: r.entityType ?? undefined,
+    industry: r.industry ?? undefined,
+    leadEmployeeId: r.leadEmployeeId ?? undefined,
+    teamEmployeeIds: r.teamEmployeeIds ?? undefined,
     tax: r.tax ?? undefined,
     contacts: r.contacts ?? undefined,
     commercial: r.commercial ?? undefined,
@@ -162,18 +170,11 @@ export type DocumentInsert = Omit<DocumentRow, "createdAt" | "updatedAt"> & {
 
 /** Split an AdminDocument into flat columns + JSONB for storage. */
 export function toRow(doc: AdminDocument): DocumentInsert {
-  const totals = computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc);
-  // `total_paise` is what the lists and amount filters read, so for a pay slip
-  // it has to be the net actually paid, not the gross before deductions; for a
-  // quotation it has to be the section-grouped, recurring-excluded, GST-estimated
-  // figure the sheet actually shows — `computeTotals` knows none of that (it
-  // reads `gstRatePercent`, which is pinned to 0 on a quotation).
-  const totalPaise =
-    doc.type === "PAY"
-      ? slipTotals(doc.lineItems ?? [], doc.deductions).netPaise
-      : doc.type === "SQ"
-        ? computeQuotationTotals(doc.services, doc.recurring).totalPaise
-        : totals.totalPaise;
+  // `total_paise` is what the lists sort on and the amount filter compares, so
+  // it is the one figure `totalPaiseOf` answers for every type: the net paid
+  // on a pay slip, a quotation's own arithmetic, a contract's stated fees, and
+  // nothing for a letter, stored as the column's zero.
+  const totalPaise = totalPaiseOf(doc) ?? 0;
 
   // Everything type-specific + shared-optional goes into `data`.
   const data: DocumentData = {

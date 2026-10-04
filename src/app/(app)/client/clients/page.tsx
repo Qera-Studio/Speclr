@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { listClients } from '@/db/store';
+import { listClients, listEmployees, listServices } from '@/db/store';
+import { studioMemberOf } from '@/lib/profile';
+import { inrRatesToday } from '@/server/rates';
 import ClientManager from '@/components/admin/clients/ClientManager';
 import { PageBody } from '@/components/admin/Page';
 
@@ -26,11 +28,28 @@ export default async function ClientsPage() {
     redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
-  const clients = await listClients();
+  // The list resolves a client's lead and team from ids and an engaged item's
+  // price from the catalogue, so both come with the rows. Employees are
+  // narrowed at this boundary, never passed on whole: see the note on
+  // `StudioMember` in `lib/profile.ts`.
+  // Today's rates ride along for the amount column's currency toggle. They are
+  // a reading convenience and null on a bad day, which costs the toggle and
+  // never the figure.
+  const [clients, services, employees, rates] = await Promise.all([
+    listClients(),
+    listServices(),
+    listEmployees(),
+    inrRatesToday(),
+  ]);
 
   return (
     <PageBody>
-      <ClientManager clients={clients} />
+      <ClientManager
+        clients={clients}
+        catalogue={services}
+        people={employees.map(studioMemberOf)}
+        rates={rates}
+      />
     </PageBody>
   );
 }

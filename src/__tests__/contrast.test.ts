@@ -184,15 +184,65 @@ const UI_PAIRS: Array<[string, string]> = [
   ['ring', 'card'],
 ];
 
+/**
+ * The eight accent hues, which are the one set of tokens whose real background
+ * is not a token at all.
+ *
+ * An accent badge is the hue as text over a **wash of itself** (10% in light,
+ * 15% in dark) over the card, which is what `accentBadge` in `lib/accent.ts`
+ * draws. So the pair the reader actually sees has to be composited before it is
+ * measured, and a `TEXT_PAIRS` row naming two tokens cannot express it: read
+ * against the bare card every one of these passes comfortably, and the wash is
+ * exactly what eats the margin.
+ *
+ * This is the check that licenses the accents to be raw `oklch()` values
+ * (`design-tokens.test.ts` exempts them from the ramp-alias rule on the grounds
+ * that a hue is the whole of what they carry). Without it they would be eight
+ * colours held to nothing.
+ */
+const ACCENTS = ['violet', 'cyan', 'teal', 'green', 'amber', 'orange', 'rose', 'magenta'];
+
+/** A wash of `hue` at `alpha` over `bg`, as the browser composites it. */
+function washed(hue: string, alpha: number, bg: string, tokens: Record<string, string>) {
+  const front = toLinearRgb(tokens[`--${hue}`]);
+  const back = toLinearRgb(tokens[`--${bg}`]);
+  const rgb = front.rgb.map((v, i) => alpha * v + (1 - alpha) * back.rgb[i]) as [
+    number,
+    number,
+    number,
+  ];
+  const fg = toLinearRgb(tokens[`--${hue}`]);
+  const [hi, lo] = [luminance(fg.rgb), luminance(rgb)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 describe.each([
-  ['light', tokensIn(':root')],
-  ['dark', tokensIn('.dark')],
-])('%s theme', (_theme, tokens) => {
+  ['light', tokensIn(':root'), 0.1],
+  ['dark', tokensIn('.dark'), 0.12],
+])('%s theme', (_theme, tokens, wash) => {
   it.each(TEXT_PAIRS)('%s on %s reaches 4.5:1', (fg, bg) => {
     expect(Number(contrast(fg, bg, tokens).toFixed(2))).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each(UI_PAIRS)('%s on %s reaches 3:1', (fg, bg) => {
     expect(Number(contrast(fg, bg, tokens).toFixed(2))).toBeGreaterThanOrEqual(3);
+  });
+
+  /**
+   * 4.5:1, because a category badge is text. It is small text at 10px, which
+   * 1.4.3 holds to the 4.5 floor rather than the 3:1 large-text allowance, so
+   * there is no relief to claim here.
+   */
+  it.each(ACCENTS)('accent-%s reads on a wash of itself over the card', (hue) => {
+    expect(
+      Number(washed(`accent-${hue}`, wash, 'card', tokens).toFixed(2)),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /** And over the page, since a badge lands on both. */
+  it.each(ACCENTS)('accent-%s reads on a wash of itself over the page', (hue) => {
+    expect(
+      Number(washed(`accent-${hue}`, wash, 'background', tokens).toFixed(2)),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });

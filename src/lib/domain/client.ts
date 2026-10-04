@@ -854,6 +854,43 @@ export const clientAccessSchema = z
   )
   .max(100);
 
+// ─── Lead and team ────────────────────────────────────────────────────────────
+
+/**
+ * Who at Qera brought this client in, and who is working with them.
+ *
+ * **Ids, never names**, for the reason `CONTEXT.md` §5d-i gives about
+ * `contacts.primary`: a copied name is wrong the first time somebody is
+ * renamed. Both resolve on read.
+ *
+ * Neither is required. A client added before anyone thought about ownership has
+ * neither, and a lead who has since left the studio leaves the field empty
+ * rather than holding a dangling id (the column is `ON DELETE SET NULL`).
+ *
+ * **The ids are not checked against the employee table here**, and that is the
+ * §5f split rather than an omission: this schema sees one section, and whether
+ * an id names a real employee needs the employee list, which lives on the other
+ * side of the profile seam. The action checks it, where both are in hand.
+ *
+ * The team is deduplicated on the way in. Two of the same person is not a
+ * different answer, and a duplicate would render twice in the stack.
+ */
+export const clientTeamSchema = z.object({
+  // `textSchema`, the shared primitive, rather than a hand-written string rule:
+  // §5g, and `design-system.test.ts` fails the build for one. It is the same
+  // rule the `access` and `attachments` ids use, one screen up. An id is
+  // opaque, so `codeSchema` would be wrong in a way that matters: it
+  // upper-cases, and these are UUIDs.
+  leadEmployeeId: textSchema(100).optional(),
+  teamEmployeeIds: z
+    .array(textSchema(100))
+    .max(50)
+    .transform((ids) => [...new Set(ids)])
+    .optional(),
+});
+
+export type ClientTeam = z.infer<typeof clientTeamSchema>;
+
 // ─── The sections, as one addressable set ─────────────────────────────────────
 
 /**
@@ -867,7 +904,20 @@ export const CLIENT_SECTION_SCHEMAS = {
   commercial: clientCommercialSchema,
   attachments: clientAttachmentsSchema,
   access: clientAccessSchema,
+  team: clientTeamSchema,
 } as const;
+
+/**
+ * The sections that are **real columns** rather than one JSONB group.
+ *
+ * `saveClientSection` writes `{ [section]: parsed.data }`, which is exactly
+ * right for the five groups and wrong for `team`: the lead and the team are two
+ * columns (`PRINCIPLES.md` rule 2, they are queried), so its parsed value is
+ * spread onto the record instead of nested under a key. Listed here rather than
+ * special-cased in the action, so adding another column-shaped section is one
+ * entry rather than another branch.
+ */
+export const SPREAD_SECTIONS: readonly string[] = ['team'];
 
 export type ClientSection = keyof typeof CLIENT_SECTION_SCHEMAS;
 

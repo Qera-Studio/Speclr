@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +65,28 @@ export default function AdminHeader() {
   // cannot name somewhere the click does not go.
   const parent = parentCrumb(pathname);
 
+  /*
+    Whether leaving can lose anything, which is what decides between a plain
+    link and a confirmation.
+
+    **A document editor is the only page that can.** Its edits live in the form
+    until the autosave runs or Finalize is pressed, so back is genuinely
+    destructive there. Every other secondary page saves a section at a time
+    against a row that already exists (`CONTEXT.md` §5d), and the one panel that
+    does hold unsaved input, the editor rail, carries its own discard guard in
+    `RecordPanel`.
+
+    So the dialog was firing on pages with nothing to discard: opening a service
+    and pressing back asked whether to abandon work that had already been
+    written. A confirmation that is usually wrong is a confirmation people learn
+    to click through, which spends the one on the document editor that matters.
+
+    Read off the path rather than published upward from the page. `/…/docs/…`
+    is what a document route is, and the alternative is a second context beside
+    `DocumentCrumb` whose only subscriber would be this one button.
+  */
+  const guarded = /^\/(client|admin)\/docs\//.test(pathname);
+
   return (
     <header
       data-print-hidden
@@ -120,50 +144,57 @@ export default function AdminHeader() {
         name is the one button rule `design-system.test.ts` fails the build
         over.
       */}
-      <AlertDialog>
-        {/*
-          The button is built once and passed *through* both triggers, which is
-          the pairing `ConfirmActionButton` uses for a dialog with a tooltip.
+      {guarded ? (
+        <AlertDialog>
+          {/*
+            The button is built once and passed *through* both triggers, which
+            is the pairing `ConfirmActionButton` uses for a dialog with a
+            tooltip.
 
-          Worth knowing when checking this in a browser: Base UI's tooltip is
-          not `[role=tooltip]`. The trigger carries `aria-haspopup="dialog"`,
-          so a hover check should look for `[data-slot=tooltip-content]`.
-        */}
+            Worth knowing when checking this in a browser: Base UI's tooltip is
+            not `[role=tooltip]`. The trigger carries `aria-haspopup="dialog"`,
+            so a hover check should look for `[data-slot=tooltip-content]`.
+          */}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <AlertDialogTrigger
+                  render={<BackButton label={parent.label} />}
+                />
+              }
+            />
+            <TooltipContent>{parent.label}</TooltipContent>
+          </Tooltip>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave this page?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Anything you have not saved will be lost.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Stay</AlertDialogCancel>
+              <AlertDialogAction onClick={() => router.push(parent.href)}>
+                Leave
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : (
+        /*
+          A real anchor where nothing can be lost, not a `router.push` behind a
+          button. Middle-click, cmd-click and "copy link address" all work on
+          the first and none work on the second, which is `RowOpener`'s own
+          argument one level up: a control that navigates and is not a link is
+          a link with its affordances removed.
+        */
         <Tooltip>
           <TooltipTrigger
-            render={
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Back to ${parent.label}`}
-                    className="shrink-0 text-muted-foreground"
-                  >
-                    <ArrowLeft className="size-3.5" />
-                  </Button>
-                }
-              />
-            }
+            render={<BackButton label={parent.label} href={parent.href} />}
           />
           <TooltipContent>{parent.label}</TooltipContent>
         </Tooltip>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Leave this page?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Anything you have not saved will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push(parent.href)}>
-              Leave
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      )}
 
       {/*
         The trail is not here any more: it moved to `TopPanel`, the band above
@@ -210,5 +241,57 @@ export default function AdminHeader() {
         className="flex min-w-0 flex-1 items-center gap-3"
       />
     </header>
+  );
+}
+
+/**
+ * The arrow itself, in both of its forms.
+ *
+ * One component because the two differ only in what happens on the click: with
+ * an `href` it is a link, without one it is the button a dialog trigger wraps.
+ * Writing it twice would be the same arrow, size, colour and label maintained
+ * in two places, and the failure mode is silent (they drift and nobody sees
+ * both at once).
+ *
+ * `...rest` is what makes the trigger pairing work: Base UI's `render` prop
+ * hands the trigger's own props to the element it is given, so they have to
+ * reach the `Button` rather than being dropped here.
+ */
+function BackButton({
+  label,
+  href,
+  ...rest
+}: Omit<React.ComponentProps<typeof Button>, 'href'> & { label: string; href?: string }) {
+  const shared = {
+    'aria-label': `Back to ${label}`,
+    className: cn(
+      buttonVariants({ variant: 'ghost', size: 'icon' }),
+      'shrink-0 text-muted-foreground',
+    ),
+  };
+
+  // `buttonVariants` on a `Link` rather than a polymorphic button, which is
+  // `add-button.tsx`'s own pairing: a Next `Link` and not a bare anchor,
+  // because an internal href on an `<a>` is a full document load that tears
+  // down the admin shell and brings a collapsed sidebar back expanded.
+  if (href) {
+    return (
+      <Link {...(rest as React.ComponentProps<typeof Link>)} {...shared} href={href}>
+        <ArrowLeft className="size-3.5" />
+      </Link>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={shared['aria-label']}
+      className="shrink-0 text-muted-foreground"
+      {...rest}
+    >
+      <ArrowLeft className="size-3.5" />
+    </Button>
   );
 }

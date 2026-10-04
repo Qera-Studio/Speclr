@@ -283,11 +283,12 @@ describe('the sorting toggle', () => {
   it('keeps the arrow slot occupying its space while hidden', () => {
     render(<DocumentsBrowser documents={documents} />);
 
-    const arrow = screen.getByRole('columnheader', { name: 'Date' }).querySelectorAll('svg');
-    // The reserved arrow, and only that: the column's decorative icon was
-    // removed with the rest of the header icons.
+    const svgs = screen.getByRole('columnheader', { name: 'Date' }).querySelectorAll('svg');
+    // The reserved arrow, told apart from the column's decorative heading icon
+    // (`aria-hidden`, always shown, part of the wide-table arrangement) by the
+    // class that hides it: the arrow is the one that goes invisible.
+    const arrow = [...svgs].filter((svg) => svg.classList.contains('invisible'));
     expect(arrow).toHaveLength(1);
-    expect(arrow[0]).toHaveClass('invisible');
   });
 
   it('reports its state to assistive tech', async () => {
@@ -401,7 +402,8 @@ describe('DocumentsBrowser pagination', () => {
       expect(screen.getByRole('link', { name: 'QS-INV-2627-001' })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Draft' })).toBeInTheDocument();
       expect(screen.getByText('Acme Co.')).toBeInTheDocument();
-      expect(screen.getByText('₹ 1,000.00')).toBeInTheDocument();
+      // `AmountCell` boxes the symbol in its own chip; the digits are the text.
+      expect(screen.getByText('1,000.00')).toBeInTheDocument();
     });
 
     /** Filters and paging belong to the browser, not to either renderer. */

@@ -8,16 +8,25 @@ import FlowShell, {
   useActionsSlot,
 } from "@/components/flow/FlowShell";
 import type { ContractService } from "@/lib/domain/service";
+import type { StudioMember } from "@/lib/profile";
 import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";
 import type { ClientRecord } from "@/lib/domain/types";
 import { COUNTRY_SEED } from "@/lib/domain/countries";
+import {
+  composeAddress,
+  emptyAddressParts,
+  isEmptyAddressParts,
+} from "@/lib/domain/address";
+import { setClientCountry } from "@/server/actions/clients";
+import { toast } from "sonner";
 import { onboardingSteps, stepIndex } from "./steps";
 import { StepActionsSlot, STEP_FORM_ID } from "./stepKit";
-import KindChooser from "./KindChooser";
 import CountryChooser from "./CountryChooser";
+import ClientAxes from "./ClientAxes";
 import IdentityStep from "./IdentityStep";
 import TaxStep from "./TaxStep";
 import ContactsStep from "./ContactsStep";
+import TeamStep from "./TeamStep";
 import CommercialStep from "./CommercialStep";
 import ServicesStep from "./ServicesStep";
 import AttachmentsStep from "./AttachmentsStep";
@@ -50,9 +59,18 @@ const FINISH_MS = 1400;
 export default function ClientOnboarding({
   client: initialClient,
   services,
+  people,
 }: {
   client?: ClientRecord | null;
   services: ContractService[];
+  /**
+   * Everyone in the studio, for the Lead & team step.
+   *
+   * Already narrowed to `StudioMember` by `lib/profile.ts` before it reaches
+   * this component, which is the point of that type: an `EmployeeRecord` is a
+   * payroll record, and nothing on the client side should be holding one.
+   */
+  people: StudioMember[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,13 +89,23 @@ export default function ClientOnboarding({
    *
    * `null` means "not chosen yet", which is the only state that shows the
    * chooser. Nothing is ever stored (`PRINCIPLES.md` rule 3).
+   *
+   * **On a saved record the URL may still carry one, as a pending change.**
+   * The row above the step tracker offers the other kind there too, and the
+   * kind is derived from the entity type, so "make this a company" can only
+   * mean "go and pick a company form". The row sends the operator to the
+   * identity step with `?kind=` set, this reads it ahead of the derivation,
+   * and the identity step narrows its list to that kind. It is transient by
+   * construction: `goTo` never carries the parameter once there is an id, so
+   * the next move, including the save that makes the record agree, drops
+   * it. The record stays the only place the answer is kept.
    */
   const kindParam = searchParams.get("kind");
+  const urlKind: ClientKind | null =
+    kindParam === "individual" || kindParam === "company" ? kindParam : null;
   const kind: ClientKind | null = client
-    ? clientKindOf(client.entityType)
-    : kindParam === "individual" || kindParam === "company"
-      ? kindParam
-      : null;
+    ? (urlKind ?? clientKindOf(client.entityType))
+    : urlKind;
 
   /**
    * Where the client is based, chosen on the screen after the kind and before
@@ -87,8 +115,7 @@ export default function ClientOnboarding({
    *
    * Validated against the list rather than trusted, because it is a URL
    * parameter that seeds a form field. An unknown code reads as unanswered and
-   * shows the chooser, which is the right failure: the country field on step 1
-   * is still there and still editable either way.
+   * shows the chooser, which is the right failure.
    */
   const countryParam = (searchParams.get("country") ?? "").toUpperCase();
   const country = client
@@ -96,6 +123,15 @@ export default function ClientOnboarding({
     : COUNTRY_SEED.some((c) => c.iso2 === countryParam)
       ? countryParam
       : null;
+  /**
+   * What the row above the step tracker shows and edits: the record's country
+   * once there is a record, the URL's before. A row with no parts is an
+   * address typed before they existed, and `composeAddress` reads a blank
+   * country as India, so the row says the same.
+   */
+  const shownCountry = client
+    ? client.addressParts?.country || emptyAddressParts.country
+    : country;
 
   const steps = useMemo(() => onboardingSteps(kind ?? "company"), [kind]);
   const active = stepIndex(steps, searchParams.get("step"));
@@ -176,6 +212,65 @@ export default function ClientOnboarding({
   );
 
   /**
+   * The row above the step tracker changed the kind.
+   *
+   * Always to the identity step, because that is where the entity type lives
+   * and the kind is nothing but a reading of it. Before the first save the
+   * URL is the answer and is simply rewritten, as the chooser does; after it
+   * the parameter is the pending intent described on `kind` above, and the
+   * id is what stops `goTo` carrying it any further than this one move.
+   */
+  const changeKind = (next: ClientKind) => {
+    if (next === kind) return;
+    setForward(false);
+    const first = onboardingSteps(next)[0].key;
+    if (client) {
+      router.replace(`/client/clients/${client.id}?step=${first}&kind=${next}`, {
+        scroll: false,
+      });
+      return;
+    }
+    router.replace(
+      `/client/clients/new?step=${first}&kind=${next}${country ? `&country=${country}` : ""}`,
+      { scroll: false },
+    );
+  };
+
+  /**
+   * The row above the step tracker changed the country.
+   *
+   * Before the first save it rides in the URL and this rewrites it in place,
+   * on whatever step is open. After it the record is the answer, so this is
+   * a save: `setClientCountry` writes `addressParts.country` and recomposes
+   * `address` on the server, and the same two are merged here so the step
+   * on screen re-derives from the new country without a round trip. The
+   * merge follows the server's rule for the printed line (a row with no
+   * parts keeps its hand-typed address), so the two cannot disagree.
+   */
+  const changeCountry = async (iso2: string) => {
+    if (iso2 === shownCountry) return;
+    if (!client) {
+      router.replace(
+        `/client/clients/new?step=${step.key}${kind ? `&kind=${kind}` : ""}&country=${iso2}`,
+        { scroll: false },
+      );
+      return;
+    }
+    const result = await setClientCountry(client.id, iso2);
+    if (!result.success) {
+      toast.error(result.error ?? "The country could not be changed.");
+      return;
+    }
+    const addressParts = { ...emptyAddressParts, ...client.addressParts, country: iso2 };
+    setClient({
+      ...client,
+      addressParts,
+      address: isEmptyAddressParts(addressParts) ? client.address : composeAddress(addressParts),
+      updatedAt: Date.now(),
+    });
+  };
+
+  /**
    * What the submit button says: where it goes, not what it does. Every step,
    * including the first — "Create client" named the mechanism, and the arrow
    * beside it was already promising a destination the word didn't give. Only
@@ -189,19 +284,23 @@ export default function ClientOnboarding({
   /**
    * Where the back arrow goes, which is not always a step.
    *
-   * On step 1 of a client that has not been saved yet, back is the country
-   * chooser, and from there the kind chooser. Both were previously
-   * unreachable the moment they had been answered once, so an Indian sole
-   * proprietor entered as "a company" could not be corrected: proprietorship is
-   * a natural-person form and never appears in the company dropdown, and every
-   * move in this flow is a `router.replace`, so the browser's back button
-   * leaves the wizard rather than stepping through it. An unrecoverable wrong
-   * click is worse than the mistake the chooser exists to prevent.
+   * On step 1 of a client that has not been saved yet, back is the chooser.
+   * It was previously unreachable the moment it had been answered once, so an
+   * Indian sole proprietor entered as "a company" could not be corrected:
+   * proprietorship is a natural-person form and never appears in the company
+   * dropdown, and every move in this flow is a `router.replace`, so the
+   * browser's back button leaves the wizard rather than stepping through it.
+   * An unrecoverable wrong click is worse than the mistake the chooser exists
+   * to prevent.
    *
    * Nothing is unwound by going back, because nothing has been written: the
    * kind and the country live only in the URL until step 1 saves. After that
-   * the record answers both, and the way to change them is the entity type and
-   * the country field on the identity step.
+   * the record answers both, and the way to change them is the row above the
+   * step tracker, on any step.
+   *
+   * Dropping *both* parameters is what shows the chooser again, now that it
+   * asks both. Dropping only one would return to a page with half an answer
+   * already filled in and no way to see which half.
    */
   const back = useMemo(() => {
     if (active > 0) {
@@ -210,13 +309,13 @@ export default function ClientOnboarding({
     }
     if (client || !country) return undefined;
     return {
-      label: "Back to the country",
+      label: "Back to the type and country",
       go: () =>
-        router.replace(`/client/clients/new?step=${steps[0].key}&kind=${kind}`, {
+        router.replace(`/client/clients/new?step=${steps[0].key}`, {
           scroll: false,
         }),
     };
-  }, [active, client, country, goTo, kind, router, steps]);
+  }, [active, client, country, goTo, router, steps]);
 
   const stepProps = useMemo(
     () => ({
@@ -234,49 +333,29 @@ export default function ClientOnboarding({
   );
 
   /**
-   * Nothing chosen and nothing saved: ask which kind of client this is before
-   * showing a form that would otherwise ask a freelancer for their CIN.
+   * Nothing saved, and the kind or the country unanswered: ask both before
+   * showing a form that would otherwise ask a freelancer for their CIN and
+   * offer an Indian client a US corporation.
    *
-   * Its own early return rather than a branch inside the layout below, because
-   * it has no step row, no back button and no submit — the three things that
-   * layout exists to pin.
+   * One screen for the two, on request. Its own early return rather than a
+   * branch inside the layout below, because it has no step row, no back button
+   * and no submit: the three things that layout exists to pin.
    */
-  if (!kind) {
-    return (
-      <div className="flex h-full min-h-0 flex-col p-1">
-        <h1 className="sr-only">Add a client</h1>
-        <KindChooser
-          onChoose={(chosen) =>
-            router.replace(`/client/clients/new?step=${steps[0].key}&kind=${chosen}`, {
-              scroll: false,
-            })
-          }
-        />
-      </div>
-    );
-  }
-
-  /**
-   * The kind is answered and the country is not: ask it before step 1, for the
-   * reason `CountryChooser` gives. Same shape of early return as the chooser
-   * above, and for the same reason.
-   */
-  if (!client && !country) {
+  if (!client && (!kind || !country)) {
     return (
       <div className="flex h-full min-h-0 flex-col p-1">
         <h1 className="sr-only">Add a client</h1>
         <CountryChooser
-          onContinue={(chosen) =>
+          onContinue={(chosenKind, chosenCountry) =>
             router.replace(
-              `/client/clients/new?step=${steps[0].key}&kind=${kind}&country=${chosen}`,
+              `/client/clients/new?step=${steps[0].key}&kind=${chosenKind}&country=${chosenCountry}`,
               { scroll: false },
             )
           }
-          // Dropping the kind from the URL is what shows the chooser again;
-          // there is no state to unwind, because there is no state.
-          onBack={() =>
-            router.replace(`/client/clients/new?step=${steps[0].key}`, { scroll: false })
-          }
+          // Out of the flow. There is no earlier screen to go back to now that
+          // the two questions share one, and nothing to unwind either way:
+          // neither answer has been written anywhere.
+          onBack={() => router.push('/client/clients')}
         />
       </div>
     );
@@ -298,6 +377,17 @@ export default function ClientOnboarding({
         </FinishPanel>
       }
       back={back}
+      lead={
+        <ClientAxes
+          // Neither `?? ` fires here: a null kind or country with no record
+          // renders the chooser above instead, and a record always derives
+          // both. They are the type narrowing, not defaults.
+          kind={kind ?? ("company" as ClientKind)}
+          country={shownCountry ?? emptyAddressParts.country}
+          onKindChange={changeKind}
+          onCountryChange={changeCountry}
+        />
+      }
       onSelect={(index) => goTo(index)}
       onActionsSlot={setActions}
       slideFrom={forward ? "right" : "left"}
@@ -341,6 +431,7 @@ export default function ClientOnboarding({
         {step.key === "identity" ? <IdentityStep {...stepProps} /> : null}
         {step.key === "tax" ? <TaxStep {...stepProps} /> : null}
         {step.key === "contacts" ? <ContactsStep {...stepProps} /> : null}
+        {step.key === "team" ? <TeamStep {...stepProps} people={people} /> : null}
         {step.key === "commercial" ? <CommercialStep {...stepProps} /> : null}
         {step.key === "services" ? (
           <ServicesStep {...stepProps} services={services} />

@@ -108,3 +108,20 @@ export function allEngagedLines(
     return service ? engagedLines(engaged, service) : [];
   });
 }
+
+/**
+ * What the engagement adds up to, in integer paise, or `undefined` where no
+ * line carries a rate.
+ *
+ * A line quoted per engagement is **left out rather than counted as zero**,
+ * for the reason the cascade gives: zero is a real rate. So an engagement with
+ * one priced item and one unpriced one totals the priced item, and one with
+ * nothing priced has no total, which the clients list prints as no figure
+ * rather than as ₹0. This is the agreed price on the record, not what has been
+ * billed: what a client has actually been invoiced is the documents' business.
+ */
+export function engagedTotalPaise(lines: EngagedLine[]): number | undefined {
+  const priced = lines.filter((line) => line.ratePaise !== undefined);
+  if (priced.length === 0) return undefined;
+  return priced.reduce((sum, line) => sum + (line.ratePaise ?? 0), 0);
+}

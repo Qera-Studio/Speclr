@@ -378,6 +378,78 @@ export async function archiveServiceItem(
 }
 
 /**
+ * Clears a group heading from every item on one Service.
+ *
+ * **A group is not a record, so this is a bulk edit rather than a delete.** The
+ * headings offered in the item form are *derived* by reading `group` off the
+ * items themselves (`PRINCIPLES.md` rule 3), which means there is no row to
+ * remove: the only way a heading stops existing is for nothing to carry it any
+ * more. So removing "Foundation system" from `WEB` unsets the group on its 9
+ * items, and the suggestion disappears on the next render because the
+ * derivation no longer finds it.
+ *
+ * **Its own action, deliberately, rather than a flag on `saveServiceItem`.**
+ * That one posts exactly one item and refuses an id the service does not
+ * carry, which is the rule that stops two people editing different items from
+ * overwriting each other. This writes many by design, so it says so in its
+ * name instead of widening the narrow one.
+ *
+ * **Nothing is deleted and no id moves.** The items keep their ids, their
+ * rates and their names, and simply read as ungrouped, which is already the
+ * ordinary state for nine of the sixteen services. That is what makes this
+ * recoverable by retyping the heading rather than a write somebody has to
+ * restore from a backup.
+ *
+ * It returns the number of items it touched so the caller can report it,
+ * which is also what the confirmation counts before firing.
+ */
+export async function removeServiceGroup(
+  code: unknown,
+  group: unknown,
+): Promise<ActionResult & { cleared?: number }> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsedCode = serviceCode.safeParse(code);
+  if (!parsedCode.success) return { success: false, error: 'Invalid service code.' };
+  const parsedGroup = textSchema(80, { required: 'Name the group to remove.' }).safeParse(
+    group,
+  );
+  if (!parsedGroup.success) return { success: false, error: 'Invalid group.' };
+
+  try {
+    const existing = await getService(parsedCode.data);
+    if (!existing) return { success: false, error: 'That service no longer exists.' };
+
+    const items = existing.items ?? [];
+    // Exact match, never case-insensitive: 'Foundation System' and 'Foundation
+    // system' are two headings here, and merging them is a rename rather than
+    // a removal. Clearing both from one confirmation that named one of them
+    // would be doing something the reader did not agree to.
+    const cleared = items.filter((item) => item.group === parsedGroup.data).length;
+    if (cleared === 0) return { success: false, error: 'No items carry that group.' };
+
+    await saveService({
+      ...existing,
+      items: items.map((item) => {
+        if (item.group !== parsedGroup.data) return item;
+        // The key is **removed**, not set to an empty string: `group` is
+        // optional and absent is how an ungrouped item is stored everywhere
+        // else, so writing '' would make this service's rows a third state
+        // that every reader would have to know about.
+        const { group: _group, ...rest } = item;
+        return rest;
+      }),
+    });
+
+    revalidatePath('/', 'layout');
+    return { success: true, cleared };
+  } catch (err) {
+    logger.error({ action: 'removeServiceGroup', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to remove the group.' };
+  }
+}
+
+/**
  * Archives a Service. Never deletes: a Service that has been on a contract
  * stays readable for audit, and every contract holds its own copy regardless,
  * so removing the row is never the right answer (`archiveService`).

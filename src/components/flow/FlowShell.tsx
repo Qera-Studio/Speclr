@@ -39,6 +39,7 @@ export default function FlowShell<R>({
   onSelect,
   onActionsSlot,
   rightAction,
+  lead,
   aside,
   width,
   anchor = "center",
@@ -68,6 +69,16 @@ export default function FlowShell<R>({
   onActionsSlot: (node: HTMLElement | null) => void;
   /** The far end of the footer: "Save and close", or a phase's own escape. */
   rightAction?: ReactNode;
+  /**
+   * A line above the step row, inside the same capped band.
+   *
+   * Onboarding puts the client's kind and country there: the two answers the
+   * whole flow is filled in under, kept in view on every step and editable
+   * from any of them. It sits *above* the row rather than in the footer or
+   * the form because it is not a step and not a field: it is the setting the
+   * steps are answered in. Nothing when the chrome is off, like the row.
+   */
+  lead?: ReactNode;
   /**
    * A column beside the step, under the step row rather than beside it.
    *
@@ -178,6 +189,7 @@ export default function FlowShell<R>({
         )}
       >
         <h1 className="sr-only">{title}</h1>
+        {chrome ? lead : null}
         {chrome ? (
           <StepNav
             steps={steps}

@@ -80,7 +80,16 @@ export default function ClientPhase({
         left 24px of unused space inside each date cell, which pushed the row
         wider than anything in it needed.
       */}
-      <FieldRow columns={3} fit>
+      {/*
+        `gap-4`, because `FieldRow`'s default `gap-8` does not fit here and the
+        row is `fit`, so `max-content` tracks cannot absorb the difference by
+        shrinking. Measured: the three controls are 240 + 240 + 196 = 676, and
+        two 32px gaps put the row at 740 inside a 700px panel, which is the
+        40px the term field hung past the combobox above it. 16px lands the row
+        at 708, and `CLIENT_PHASE_WIDTH` is derived from that rather than the
+        gap being taken off the scale (`docs/design.md` §1.2).
+      */}
+      <FieldRow columns={3} fit className="gap-4">
         <Field>
           <FieldLabel htmlFor="con-issue-date">Agreement date</FieldLabel>
           <DatePicker
@@ -136,11 +145,18 @@ export default function ClientPhase({
  * How wide this phase's panel is, handed to `FlowShell` by `ContractFlow`.
  *
  * The row below is two calendar-wide date fields (240px each, see
- * `CALENDAR_WIDTH`), two 12px gaps, and a term field wide enough for a label
- * reading "Term in months optional", which comes to 700. This is 780, because
+ * `CALENDAR_WIDTH`), two 16px gaps, and a term field wide enough for a label
+ * reading "Term in months optional", which comes to 708. This is 788, because
  * it caps the **panel** and the panel carries `p-10`: 40px of padding on each
- * side that the form inside does not get. Capping at 700 left the row 620 and
- * squeezed the very fields this exists to fit.
+ * side that the form inside does not get. Capping at the row's own width left
+ * it 80px short and squeezed the very fields this exists to fit.
+ *
+ * **The gaps are the row's, not this arithmetic's**, and that is what went
+ * wrong once: `FieldRow` defaults to `gap-8`, so the row measured 740 inside a
+ * 700px panel and the term field hung 40px past the combobox above it. The row
+ * is `fit`, so `max-content` tracks cannot shrink to absorb it. The gap is
+ * stated there and the cap derived from it here; they are checked by
+ * measurement in `e2e/contract-flow.spec.ts` rather than by this sum.
  *
  * It lives here rather than in the shell because it is a fact about this
  * form's controls, and it is a number rather than a shrink-to-fit because the
@@ -152,4 +168,4 @@ export default function ClientPhase({
  * asserts the combobox and the row below it end together, which is the thing
  * actually worth holding.
  */
-export const CLIENT_PHASE_WIDTH = 'max-w-[780px]';
+export const CLIENT_PHASE_WIDTH = 'max-w-[788px]';

@@ -16,6 +16,12 @@ import type { DocStatus } from '@/lib/domain/types';
  * Only the statuses that exist. `void` is in `DocStatus`'s docstring as
  * reserved and is not reachable; overdue and blocked are not modelled at all,
  * and a badge for a status nothing can be in is a badge nobody maintains.
+ *
+ * **A rectangle, not a pill.** `docs/design.md` §1.3 gives badges `rounded-sm`
+ * and the `Badge` primitive ships `rounded-full`, so this was the one badge
+ * the radius scale did not cover. Changed 21 September 2026, on request, here
+ * rather than on the primitive: the outline badges on the service pages are
+ * counts and names, and this is the one that is a state.
  */
 const STATUSES = {
   draft: { label: 'Draft', variant: 'secondary' as const },
@@ -32,7 +38,7 @@ export function StatusBadge({
 }) {
   const { label, variant } = STATUSES[status] ?? STATUSES.draft;
   return (
-    <Badge variant={variant} className={className}>
+    <Badge variant={variant} className={cn('rounded-sm', className)}>
       {label}
     </Badge>
   );

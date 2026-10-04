@@ -1,4 +1,6 @@
 import { toRow, fromRow, type DocumentRow } from '../mappers';
+import { contractDoc, serviceByCode } from '@/lib/domain/contract/__tests__/fixture';
+import { feeBlankOf } from '@/lib/domain/contract/listing';
 import { contentOf, materialiseContent } from '@/lib/domain/docContent';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import type { AdminDocument, EmployeeSnapshot } from '@/lib/domain/types';
@@ -148,5 +150,19 @@ describe('pay slip fields survive persistence', () => {
 
   it('still stores a stipend slip at its full amount', () => {
     expect(toRow(stipend()).totalPaise).toBe(1_500_000);
+  });
+
+  /**
+   * A contract's figure is the fee its Parts state, read back from the fee
+   * blank. Until one is filled in there is no figure, which the column's
+   * `NOT NULL` stores as zero.
+   */
+  it('stores a contract at the fees its Parts state', () => {
+    expect(toRow(contractDoc()).totalPaise).toBe(0);
+    const blank = feeBlankOf(serviceByCode('15'));
+    if (!blank) throw new Error('Part 15 has no fee blank');
+    expect(
+      toRow(contractDoc({ codes: ['15'], blanks: { [blank.key]: '₹45,000' } })).totalPaise,
+    ).toBe(4_500_000);
   });
 });

@@ -12,11 +12,15 @@
  * separate country field anywhere in this flow (`PRINCIPLES.md` rule 3: two
  * places to say where a client is means two places for them to disagree).
  *
- * **Seven steps for a company, six for an individual.** A person is their own
- * contact — the one they discuss the work with, the one who signs and, unless
- * they say otherwise, the one an invoice goes to — so Contacts collapses into
+ * **Eight steps for a company, seven for an individual.** A person is their own
+ * contact (the one they discuss the work with, the one who signs and, unless
+ * they say otherwise, the one an invoice goes to), so Contacts collapses into
  * a designation and one optional billing person on the identity step. Which
  * kind a client is comes from `entityType` and is never stored separately.
+ *
+ * Contacts is still the only step either kind is missing. **Lead & team applies
+ * to both**: who at Qera owns a client has nothing to do with whether that
+ * client is a person or a company.
  */
 
 import { clientKindOf, type ClientKind } from '@/lib/domain/entityType';
@@ -73,6 +77,26 @@ const ALL_STEPS: readonly OnboardingStep[] = [
     needsRecord: true,
     isComplete: (c) => Boolean(c.contacts && Object.keys(c.contacts).length > 0),
     only: 'company',
+  },
+  {
+    /**
+     * Who at Qera owns this client, and who is working with them.
+     *
+     * After Contacts (the client's people) and before Commercial (the money),
+     * because it is the same kind of question as the step before it asked from
+     * the other side: the client's people, then ours.
+     *
+     * Complete on a lead, not on a team: the lead is the answer that rarely
+     * changes and the one worth having, while a team with nobody on it is an
+     * ordinary state between engagements. Counting an empty team as incomplete
+     * would leave every dormant client permanently at six of eight.
+     */
+    key: 'team',
+    short: 'Team',
+    title: 'Lead & team',
+    description: 'Who owns this client, and who is working with them.',
+    needsRecord: true,
+    isComplete: (c) => Boolean(c.leadEmployeeId),
   },
   {
     key: 'commercial',

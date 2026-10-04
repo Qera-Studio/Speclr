@@ -10,9 +10,8 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import DocumentRowActions from './DocumentRowActions';
-import { hasTotal } from '@/lib/domain/documentQuery';
+import { DocumentTotal } from './DocumentTotal';
 import { formatDisplayDate } from '@/lib/domain/dates';
-import { computeTotals, formatINR } from '@/lib/domain/money';
 import { DOC_TYPES } from '@/lib/domain/registry';
 import { openDocHref } from '@/lib/profile';
 import { partyName } from '@/lib/domain/party';
@@ -51,10 +50,6 @@ export interface DocumentsCardsProps {
  * keeps its own hit area.
  */
 export function DocumentCard({ doc }: { doc: AdminDocument }) {
-  // Letters carry no line items — a ₹0 total would mislead, so show NIL.
-  const hasMoney = hasTotal(doc);
-  const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
-
   return (
     // `hover:bg-hover`, not the `hover:bg-muted/40` a table row uses. On the
     // board this card sits in a `bg-muted` column, and 40% of the column's own
@@ -86,7 +81,7 @@ export function DocumentCard({ doc }: { doc: AdminDocument }) {
 
       <CardContent className="relative mt-auto flex items-center justify-between gap-2">
         <span className="font-medium">
-          {hasMoney ? formatINR(totals.totalPaise) : NIL}
+          <DocumentTotal doc={doc} />
         </span>
         <DocumentRowActions doc={doc} />
       </CardContent>

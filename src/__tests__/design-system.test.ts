@@ -386,6 +386,29 @@ const TURNS_SORTING_ON =
 const RENDERS_SORT_TOGGLE = /<SortToggle[\s/>]/;
 
 /**
+ * Tables whose sort is driven by a toggle one folder up, listed by name.
+ *
+ * An explicit list rather than a path rule, because every path rule tried here
+ * opens the hole the sorting rule exists to close (see the note at the check
+ * itself). A named exemption cannot spread: adding a file to it is a line in a
+ * diff somebody reviews, which is the whole mechanism.
+ */
+const SORTS_UNDER_A_PARENTS_TOGGLE = [
+  /*
+    `library/table/TemplateTable` is the template a new table is copied from.
+    Its `sortable` **defaults to off**, which is the rule rather than an
+    exemption from it: a copied table does not sort until its caller asks.
+
+    What sorts is the specimen one folder up, `library/TableSpecimens.tsx`,
+    which renders the real `SortToggle` over the real `useShowSort` and passes
+    its state down. So the pairing is satisfied in the ordinary way, by the file
+    that owns the eye; this row exists only because the table and its bar sit
+    one directory apart, which is the case the note above anticipates.
+  */
+  'src/components/library/table/TemplateTable.tsx',
+];
+
+/**
  * A stored phone number printed straight into the page.
  *
  * Phones are stored E.164 (`+919876543210`) and shown grouped.
@@ -630,9 +653,20 @@ describe('design system', () => {
     // borrow the documents browser's toggle, which is the hole this rule was
     // written to close: with the parent fallback in, removing the clients
     // toggle left the rule green.
+    //
+    // A *descendant* fallback was tried and is just as bad, for a reason worth
+    // recording: `DocumentsBrowser` renders the only `SortToggle` in the app and
+    // it sits in `components/admin/`, so "inside a folder that has a toggle"
+    // makes every feature folder under `admin/` covered by it, which is the same
+    // hole reached from the other direction. Confirmed by removing the clients
+    // toggle and watching the rule stay green.
+    //
+    // So a nested folder that sorts declares its own coverage below, by name.
     const orphans = files.filter(
       (file) =>
-        TURNS_SORTING_ON.test(read(file)) && !foldersWithToggle.has(folderOf(file)),
+        TURNS_SORTING_ON.test(read(file)) &&
+        !foldersWithToggle.has(folderOf(file)) &&
+        !SORTS_UNDER_A_PARENTS_TOGGLE.includes(file),
     );
 
     expect(orphans).toEqual([]);

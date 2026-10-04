@@ -84,16 +84,74 @@ export function useFormDraft<T extends FieldValues>(
 
   useEffect(() => {
     const saved = readDraft<T>(key);
-    // `keepDefaultValues` so a later `reset()` still returns to what the record
-    // said, not to what happened to be half-typed when the tab was refreshed.
-    if (saved) reset(saved, { keepDefaultValues: true });
+    /**
+     * `keepDefaultValues` so a later `reset()` still returns to what the record
+     * said, not to what happened to be half-typed when the tab was refreshed.
+     *
+     * **`keepFieldsRef` is load-bearing, and its absence was the bug.** Without
+     * it `reset()` discards every registered field (`_fields = {}` in
+     * react-hook-form's `_reset`) and relies on the next render calling
+     * `register('name')` again to rebuild them. This app compiles with
+     * `reactCompiler: true`, which memoises that call, since `register` is a
+     * stable function and the name is a constant, so nothing ever re-registers.
+     * From the restore on, every `register`-based input was deaf: `onChange`
+     * looked up a field that no longer existed and did nothing, `onBlur` never
+     * marked anything touched, and a submit validated the restored store rather
+     * than what was on the screen. Typing, pasting and blur validation all
+     * "stopped working", but only on the second visit to a step, which is what
+     * made it look intermittent.
+     *
+     * With the option, `reset` keeps the fields and paints each one through
+     * `setValue`, so the inputs show the draft too. Confirmed in Chromium: with
+     * the option a restored name can be cleared, refused on blur and retyped;
+     * without it none of that reaches the form.
+     */
+    if (saved) reset(saved, { keepDefaultValues: true, keepFieldsRef: true });
+
+    // What the subscription last saw, so the flush below has something to
+    // write without reaching for `getValues` (which the compiler would cache;
+    // see the note on `useWatch` in the onboarding steps).
+    let pending: T | null = null;
 
     const subscription = watch((values) => {
+      pending = values as T;
       clearTimeout(timer.current);
       timer.current = setTimeout(() => writeDraft(key, values), DEBOUNCE_MS);
     });
 
+    /**
+     * The debounce must not be able to swallow the last edit.
+     *
+     * A paste is one event where typing is many, so the 300ms window is far
+     * easier to leave inside than it looks: paste a name, hit Continue, and the
+     * draft still holds what was there before. The step then restores its own
+     * stale copy the next time it is opened. Flushing on the way out closes
+     * that, and `pagehide` rather than `beforeunload` because Safari and every
+     * mobile browser may never fire the latter.
+     */
+    const flush = () => {
+      clearTimeout(timer.current);
+      if (pending) writeDraft(key, pending);
+    };
+    window.addEventListener('pagehide', flush);
+
     return () => {
+      window.removeEventListener('pagehide', flush);
+      /**
+       * **Not flushed on unmount**, and that asymmetry is deliberate.
+       *
+       * A step unmounts on the way *out*, which is almost always the moment
+       * after it saved and called `clearDraft`. Writing the pending values
+       * there would put the draft straight back, and the next visit would
+       * restore a copy of the record over itself: the exact resurrection the
+       * "cleared the moment its step saves" rule at the top of this file
+       * exists to prevent. Caught by `ContactsStep` and `CommercialStep`,
+       * which went red on nine cases when this called `flush()`.
+       *
+       * `pagehide` covers what an unmount flush was reaching for. A tab going
+       * away is the case where nothing has saved and the values would
+       * otherwise be lost; a navigation between steps is not.
+       */
       clearTimeout(timer.current);
       subscription.unsubscribe();
     };

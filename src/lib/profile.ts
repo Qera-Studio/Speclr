@@ -20,6 +20,7 @@
  * is one file to find rather than a rule scattered through the UI.
  */
 
+import { todayISO } from './domain/dates';
 import { DOC_TYPE_LIST, isHrDocType } from './domain/registry';
 import type { DocTypeCode } from './domain/types';
 
@@ -144,4 +145,66 @@ export function docTypesForProfile(profile: Profile): DocTypeCode[] {
 export function profileFromPath(pathname: string | null | undefined): Profile | null {
   const first = pathname?.split('/').filter(Boolean)[0];
   return isProfile(first) ? first : null;
+}
+
+// ─── The crossing ─────────────────────────────────────────────────────────────
+
+/**
+ * A member of the studio, as the **client** side is allowed to see them.
+ *
+ * This type is the seam doing its actual job rather than merely being a place
+ * to put a function. An `EmployeeRecord` carries the person's salary, PAN, UAN,
+ * PF and ESIC numbers, their home address and their engagement type: a payroll
+ * record. The client side needs to draw a name on a card and store an id, so
+ * handing it the record would put every person's pay one `console.log` away
+ * from a clients page, and one careless prop-spread away from the DOM.
+ *
+ * So the crossing **narrows**. Four fields, each because the card prints it:
+ *
+ * - `id` is what is stored on the client (ids, never names, §5d-i);
+ * - `name` and `role` are what the card shows;
+ * - `engagementType` is why an intern can be on a team but is drawn as one.
+ *
+ * Widening this is a decision, not a convenience. Before adding a field, ask
+ * what the client side renders it for, and whether it is a fact about the
+ * person's *employment* rather than about their work on a client.
+ */
+export interface StudioMember {
+  id: string;
+  name: string;
+  role: string;
+  engagementType: string;
+  /** Left the studio: still resolvable on old records, never newly assignable. */
+  departed: boolean;
+}
+
+/**
+ * Narrow a payroll record to what the client profile may see.
+ *
+ * Takes the fields it needs rather than the whole record, so this module never
+ * imports the employee type and the seam stays one-directional: the admin side
+ * knows about this shape, the client side does not know about `EmployeeRecord`.
+ */
+export function studioMemberOf(employee: {
+  id: string;
+  name: string;
+  role: string;
+  engagementType: string;
+  endDate?: string;
+}): StudioMember {
+  return {
+    id: employee.id,
+    name: employee.name,
+    role: employee.role,
+    engagementType: employee.engagementType,
+    // An end date in the past is what "no longer here" means. Computed rather
+    // than stored, and computed *here* so the client side never has to know
+    // that an employment ends with a date rather than a flag.
+    //
+    // `todayISO()`, never a UTC slice of the current timestamp: that converts
+    // to UTC first, so between 00:00 and 05:30 IST it answers yesterday and
+    // somebody whose last day is today reads as already gone.
+    // `design-system.test.ts` polices this, and caught it here.
+    departed: Boolean(employee.endDate && employee.endDate <= todayISO()),
+  };
 }

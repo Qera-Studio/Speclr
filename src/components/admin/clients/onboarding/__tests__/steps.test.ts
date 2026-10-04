@@ -14,9 +14,9 @@ const base: ClientRecord = {
 };
 
 describe('onboardingSteps', () => {
-  it('gives a company seven steps and an individual six', () => {
-    expect(onboardingSteps('company')).toHaveLength(7);
-    expect(onboardingSteps('individual')).toHaveLength(6);
+  it('gives a company eight steps and an individual seven', () => {
+    expect(onboardingSteps('company')).toHaveLength(8);
+    expect(onboardingSteps('individual')).toHaveLength(7);
   });
 
   // A person is their own contact; the step's two useful fields moved to
@@ -29,8 +29,8 @@ describe('onboardingSteps', () => {
   });
 
   it('reads a client with no entity type as a company', () => {
-    expect(onboardingStepsFor(base)).toHaveLength(7);
-    expect(onboardingStepsFor({ ...base, entityType: 'individual' })).toHaveLength(6);
+    expect(onboardingStepsFor(base)).toHaveLength(8);
+    expect(onboardingStepsFor({ ...base, entityType: 'individual' })).toHaveLength(7);
   });
 });
 
@@ -38,7 +38,7 @@ describe('stepIndex', () => {
   const individual = onboardingSteps('individual');
 
   it('finds a step by its slug', () => {
-    expect(stepIndex(individual, 'commercial')).toBe(2);
+    expect(stepIndex(individual, 'commercial')).toBe(3);
   });
 
   // A pasted link naming a step this client does not have must land somewhere
@@ -74,13 +74,23 @@ describe('resumeStep', () => {
   // The count and the gap are different questions: four of six complete does
   // not mean the first four are the complete ones.
   it('lands on the gap, not on the step after the count', () => {
-    expect(resumeStep({ ...person, tax: { gstin: '09AAACT2727Q1ZW' } })).toBe('commercial');
+    // Identity, Tax and Team are filled, so Commercial is the first gap. The
+    // lead is what completes Team: a client with no team yet is an ordinary
+    // state between engagements, so an empty team does not hold the step open.
+    expect(
+      resumeStep({
+        ...person,
+        tax: { gstin: '09AAACT2727Q1ZW' },
+        leadEmployeeId: 'e1',
+      }),
+    ).toBe('commercial');
   });
 
   it('opens a finished client on its last step', () => {
     const done: ClientRecord = {
       ...person,
       tax: { gstin: '09AAACT2727Q1ZW' },
+      leadEmployeeId: 'e1',
       commercial: { paymentTermsDays: 15, services: [{ code: 'brand' }] },
       attachments: [
         {

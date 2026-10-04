@@ -21,7 +21,12 @@ import DocumentRowActions from '../DocumentRowActions';
 // `type` is not optional padding: the row's links are built from it, because a
 // document belongs to a profile whatever page it is being listed on.
 const draft = { id: 'doc-1', status: 'draft', type: 'INV' } as unknown as AdminDocument;
-const finalized = { id: 'doc-2', status: 'finalized', type: 'INV' } as unknown as AdminDocument;
+const finalized = {
+  id: 'doc-2',
+  status: 'finalized',
+  type: 'INV',
+  number: 'QS-INV-2627-002',
+} as unknown as AdminDocument;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -32,13 +37,15 @@ describe('DocumentRowActions', () => {
     const user = userEvent.setup();
     render(<DocumentRowActions doc={draft} />);
 
-    await user.click(screen.getByRole('button', { name: /delete draft/i }));
+    // The menu names the row: an unnumbered draft by what kind it is.
+    await user.click(screen.getByRole('button', { name: /more actions for draft invoice/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /delete draft/i }));
 
     // The click opens a confirmation; nothing has been deleted yet.
     expect(deleteDraftAction).not.toHaveBeenCalled();
     expect(await screen.findByText('Delete this draft?')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /^remove$/i }));
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
     expect(deleteDraftAction).toHaveBeenCalledWith('doc-1');
   });
 
@@ -47,7 +54,8 @@ describe('DocumentRowActions', () => {
     const user = userEvent.setup();
     render(<DocumentRowActions doc={finalized} />);
 
-    await user.click(screen.getByRole('button', { name: /duplicate as new draft/i }));
+    await user.click(screen.getByRole('button', { name: /more actions for qs-inv-2627-002/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /duplicate as new draft/i }));
 
     expect(duplicateDocument).toHaveBeenCalledWith('doc-2');
     expect(push).toHaveBeenCalledWith('/client/docs/copy-1');
@@ -58,7 +66,8 @@ describe('DocumentRowActions', () => {
     const user = userEvent.setup();
     render(<DocumentRowActions doc={finalized} />);
 
-    await user.click(screen.getByRole('button', { name: /duplicate as new draft/i }));
+    await user.click(screen.getByRole('button', { name: /more actions for qs-inv-2627-002/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /duplicate as new draft/i }));
 
     expect(push).not.toHaveBeenCalled();
   });

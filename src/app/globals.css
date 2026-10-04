@@ -23,6 +23,17 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  /* The accent hues. See their note in `:root`: they are a grouping aid, not a
+     set of new signal colours, and every one of them is consumed through
+     `accentBadge` in `lib/accent.ts` rather than by name at a call site. */
+  --color-accent-violet: var(--accent-violet);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-green: var(--accent-green);
+  --color-accent-amber: var(--accent-amber);
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-rose: var(--accent-rose);
+  --color-accent-magenta: var(--accent-magenta);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -270,6 +281,48 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
+
+  /*
+    The accent hues. Eight of them, and they are the app's one licence to be
+    chromatic outside the four signal colours.
+
+    **They carry no meaning of their own.** `--primary` says "this is the
+    action", `--destructive` says "this destroys something", `--warning` says
+    "look at this". An accent says only "this is a different one from that
+    one", which is why they are named by hue rather than by role: the moment a
+    hue means something, it stops being available to the next category that
+    needs distinguishing, and there is no eighth colour left for it. A reader
+    must never have to learn that violet is media and teal is retail; the
+    colour is a grouping aid over a label that already says it.
+
+    So the only rule they have to satisfy is legibility, and there is exactly
+    one place they land: a badge drawn as text and a hairline over a 10%/15%
+    wash of the same hue (`accentBadge` in `lib/accent.ts`). That is the pair
+    `contrast.test.ts` measures, and it is why each hue is one token rather
+    than a triple: the fill and the border are the same colour at an alpha, so
+    a hue that moves takes all three with it and the three can never drift.
+
+    Lightness is held at 0.50 in light mode and 0.80 in dark, which is the
+    band where the hue is saturated enough to read as itself and still clears
+    4.5:1 against a wash of itself on the page. Chroma varies per hue rather
+    than being held flat, because equal chroma is not equal *perceived*
+    intensity: yellow-green at 0.19 shouts where violet at 0.19 is merely
+    present. These are tuned by eye against each other and then measured.
+
+    Hues are spaced around the wheel rather than picked: eight categories
+    wanted eight distinguishable colours, and neighbouring hues on a badge
+    read as the same colour at 10px. Violet sits clear of `--primary`'s 260
+    for the same reason.
+  */
+  --accent-violet: oklch(0.5 0.22 295);
+  --accent-cyan: oklch(0.5 0.12 220);
+  --accent-teal: oklch(0.5 0.11 182);
+  --accent-green: oklch(0.5 0.14 148);
+  --accent-amber: oklch(0.5 0.13 68);
+  --accent-orange: oklch(0.5 0.18 40);
+  --accent-rose: oklch(0.5 0.21 12);
+  --accent-magenta: oklch(0.5 0.23 335);
+
   --radius: 0.375rem;
   /* The page's own ground, deliberately, matching dark mode where the rail and
      the page have always shared --slate-950. The rail was a step down the ramp
@@ -528,6 +581,21 @@
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
+
+  /* The accent hues, lifted to 0.80 for a dark ground. Same hues and the same
+     relative chroma as light mode: a category must not change colour between
+     themes, only brightness. Chroma comes down a little across the board
+     because a saturated light colour on near-black is where haloing starts,
+     the same reason `--foreground` is slate 200 rather than white. */
+  --accent-violet: oklch(0.8 0.15 295);
+  --accent-cyan: oklch(0.8 0.11 220);
+  --accent-teal: oklch(0.8 0.11 182);
+  --accent-green: oklch(0.8 0.14 148);
+  --accent-amber: oklch(0.8 0.13 68);
+  --accent-orange: oklch(0.8 0.14 40);
+  --accent-rose: oklch(0.8 0.14 12);
+  --accent-magenta: oklch(0.8 0.15 335);
+
   /* The rail shares the page's step, and the seam is what separates them.
 
      This was tried once at 900, a step above the page, because chrome recedes
@@ -833,15 +901,24 @@
     and wants a look if this weight settles.
   */
   /*
-    1.5, down from 1.75. A button's label is 12px at weight 500, whose stems
-    land near 1.2px, and 1.75 beside that reads as a heavier icon next to a
-    lighter word — most visible on the create buttons, where the plus carries a
-    label rather than standing alone. This is the one place to fix it: a
-    `strokeWidth` on the plus alone would trade a mismatch inside one button for
-    a mismatch between that button and every other icon in the app.
+    2, up from 1.5, on request: against the table headings the icons read as
+    too light for the word beside them.
+
+    This number has now moved in both directions, which is worth recording
+    rather than overwriting. It went 1.75 → 1.5 against a *button's* label, 12px
+    at weight 500, whose stems land near 1.2px. It is 2 now against a *heading's*
+    label, which is the same 12px at 500 but sits on `--foreground` rather than
+    on a button's quieter ground, and reads heavier for it.
+
+    Both readings are honest and they disagree, because one weight across two
+    contexts cannot satisfy both. It stays one weight anyway: this is the single
+    place the rule is expressible, and `docs/design.md` §1.5's "do not set
+    `strokeWidth` per icon" is what stops the app acquiring a third weight every
+    time a surface looks slightly off. If the buttons now read heavy, the fix is
+    to move this number again, not to exempt them.
   */
   .lucide {
-    stroke-width: 1.5;
+    stroke-width: 2;
     vector-effect: non-scaling-stroke;
   }
 
@@ -880,6 +957,23 @@
       animation-duration: 1ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 1ms !important;
+      /*
+        **The delay has to go too, and it was the hole in this rule.** Killing
+        the duration alone leaves a `transition-delay` intact, so a deferred
+        reveal still waits its full delay and then snaps in over 1ms: the
+        motion is gone and the *waiting* is not, which is the half a
+        reduced-motion reader actually experiences as the interface being
+        stuck.
+
+        Found by measuring the combobox row's remove button, which defers 200ms
+        so it does not flash under the pointer on the way past a list. Under
+        `reduce` the computed delay was still 0.2s.
+
+        Blanket for the same reason as the rest of this rule: a delay added
+        later should not have to remember this.
+      */
+      transition-delay: 0ms !important;
+      animation-delay: 0ms !important;
       scroll-behavior: auto !important;
     }
   }

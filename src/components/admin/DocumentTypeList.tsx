@@ -10,6 +10,7 @@ import DocumentsBrowser from "./DocumentsBrowser";
 import { PageBody, PageHeader } from "./Page";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
 import type { DocTypeSpec } from "@/lib/domain/registry";
+import type { ContractService } from "@/lib/domain/service";
 import type { AdminDocument } from "@/lib/domain/types";
 import { newDocHref } from "@/lib/profile";
 
@@ -30,11 +31,14 @@ export default function DocumentTypeList({
   spec,
   documents,
   latestInvoice,
+  catalogue,
 }: {
   spec: DocTypeSpec;
   documents: AdminDocument[];
   /** Only passed for the receipt list, and only when an invoice has been issued. */
   latestInvoice?: AdminDocument | null;
+  /** The services, for the Services column to turn a line's code into a Schedule. */
+  catalogue?: ContractService[];
 }) {
   const label = spec.label.toLowerCase();
   const newHref = newDocHref(spec.code, spec.slug);
@@ -70,6 +74,7 @@ export default function DocumentTypeList({
 
       <DocumentsBrowser
         documents={documents}
+        catalogue={catalogue}
         emptyTitle={`No ${label}s yet`}
         emptyDescription={`Nothing here yet — create the first ${label}.`}
         // Every row here is already this type, so that filter would do nothing.

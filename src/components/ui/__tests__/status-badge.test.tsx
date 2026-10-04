@@ -13,6 +13,12 @@ describe('StatusBadge', () => {
     expect(screen.getByText('Void')).toBeInTheDocument();
   });
 
+  /** §1.3: a badge is `rounded-sm`. The primitive is a pill; this one is not. */
+  it('is a rectangle, not a pill', () => {
+    render(<StatusBadge status="draft" />);
+    expect(screen.getByText('Draft')).toHaveClass('rounded-sm');
+  });
+
   it('carries no icon: the word is the whole badge', () => {
     const { container } = render(<StatusBadge status="finalized" />);
     expect(container.querySelectorAll('svg')).toHaveLength(0);

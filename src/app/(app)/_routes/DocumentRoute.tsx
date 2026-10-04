@@ -56,15 +56,18 @@ export default async function DocumentRoute({
     // nothing. 404 rather than redirect: unlike a document id, a slug under the
     // wrong prefix is a typo or a stale link, not a thing that moved.
     if (profileOfDocType(listSpec.code) !== profile) notFound();
-    const [documents, latestInvoice] = await Promise.all([
+    const [documents, latestInvoice, catalogue] = await Promise.all([
       listDocumentsByType(listSpec.code),
       listSpec.code === 'REC' ? getLatestFinalizedInvoice() : Promise.resolve(null),
+      // For the Services column: a line names the Service it bills by code.
+      listServices(),
     ]);
     return (
       <DocumentTypeList
         spec={listSpec}
         documents={documents}
         latestInvoice={latestInvoice}
+        catalogue={catalogue}
       />
     );
   }
@@ -137,15 +140,21 @@ export default async function DocumentRoute({
     );
   }
   if (doc.type === 'CON') {
-    const [services, exclusions, clientInputs] = await Promise.all([
-      listServices(),
+    // `true`, because the legal frames a Service names through `partCodes` are
+    // the 22 Parts, and seeding the 16 sales Services archived every one of
+    // them (`CONTEXT.md` §5h). Archived is how a Part says "not sold", not
+    // "not law", so the picker still lists the live rows and `copyPart` reads
+    // the frames out of the same array. See `frameOf` in `contract/copy.ts`.
+    const [all, exclusions, clientInputs] = await Promise.all([
+      listServices(true),
       listExclusions(),
       listClientInputs(),
     ]);
     return (
       <ContractFlow
         clients={clients}
-        services={services}
+        services={all.filter((service) => !service.archived)}
+        frames={all}
         exclusions={exclusions}
         clientInputs={clientInputs}
         doc={doc}

@@ -42,6 +42,18 @@ export interface ComboboxOption {
    * list to filter, arrow through and announce.
    */
   separatorBefore?: boolean;
+  /**
+   * A control at the end of this row, revealed on hover: the item form's group
+   * list puts a remove there.
+   *
+   * It sits **inside** the row and stops the row's own selection, so pressing
+   * it acts on the option instead of choosing it. That is the whole reason it
+   * is a prop here rather than something a caller can wrap around a label: a
+   * button rendered into `label` would be inside `ComboboxPrimitive.Item`'s
+   * click target with nothing intercepting it, so removing an option would
+   * also select it on the way out.
+   */
+  action?: React.ReactNode;
 }
 
 /**
@@ -74,6 +86,28 @@ interface ComboboxProps {
   className?: string;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
+  /**
+   * The field accepts a value that is not on the list, and the options become
+   * suggestions rather than the permitted set.
+   *
+   * **Off by default, because for most callers it would be a bug.** A GST state,
+   * a country, a currency and an entity type are all closed sets where a typed
+   * near-miss is a wrong record, and the whole value of the control there is
+   * that it cannot produce one.
+   *
+   * It is on where the list is a *convention* instead of a rule. A Service's
+   * item group is the case it was added for: the 43 groups in the catalogue are
+   * real and worth offering, since retyping one invites 'Foundation System'
+   * beside 'Foundation system' as two bands nothing reconciles, but the set is
+   * editorial rather than fixed and a new service must be able to name a
+   * heading nobody has used yet.
+   *
+   * What changes: what is typed is reported on every keystroke rather than only
+   * when a row is chosen, so a value matching nothing still reaches the form,
+   * and the "no matches" line is suppressed because an empty list here means
+   * "this one is new" rather than "there is nothing to pick".
+   */
+  freeText?: boolean;
 }
 
 /**
@@ -99,7 +133,7 @@ function renderItem(item: ComboboxOption) {
         // several rows' worth of it can be on screen at once. The *highlight*
         // does not, because there is only ever one and it slides between rows
         // (`magic-move.tsx`). `z-10` keeps both the label and that tint above it.
-        "relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
+        "group/combobox-item relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
         item.separatorBefore &&
           "mt-1 rounded-t-none border-t border-border pt-2",
       )}
@@ -118,6 +152,44 @@ function renderItem(item: ComboboxOption) {
           {item.trailing}
         </span>
       ) : null}
+      {item.action ? (
+        /*
+          `stopPropagation` on the pointer, not just the click: Base UI selects
+          an item on pointer-down, so a click handler alone fires after the row
+          has already been chosen and the popup has closed underneath it.
+
+          Quiet until the row is under the pointer, which is `RowActions`' rule
+          one level down: a column of always-lit controls in a list of six
+          headings competes with the headings.
+        */
+        <span
+          /*
+            **The delay is on the way in only**, which is why it sits on the
+            hover variant rather than on the base class.
+
+            Unconditional, `delay-200` would also apply to the fade *out*, so
+            the button would hang around for a fifth of a second after the
+            pointer had left and follow the eye down the list. The base class
+            keeps `delay-0`, so leaving is immediate and only arriving waits.
+
+            What the wait buys: this control removes a heading from every item
+            that carries it, and the pointer crosses every row on its way to the
+            one it wants. Without a delay a destructive-looking button flashes
+            under the cursor six times on the way past, which reads as the list
+            twitching. 200ms is longer than a pass-through and shorter than a
+            decision.
+
+            `focus-within` is deliberately **not** delayed: a keyboard user has
+            arrived on purpose, and making them wait for a control they
+            navigated to is a pause with nothing behind it.
+          */
+          className="ms-2 shrink-0 opacity-0 transition-opacity delay-0 focus-within:opacity-100 group-hover/combobox-item:opacity-100 group-hover/combobox-item:delay-200"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {item.action}
+        </span>
+      ) : null}
     </ComboboxPrimitive.Item>
   );
 }
@@ -134,6 +206,7 @@ function Combobox({
   disabled,
   size = "default",
   className,
+  freeText,
   ...aria
 }: ComboboxProps) {
   // One highlight for the list, moved between rows rather than painted on each.
@@ -148,6 +221,43 @@ function Combobox({
     () => flat.find((o) => o.value === value) ?? null,
     [flat, value],
   );
+
+  /*
+    Under `freeText` the input is controlled by the caller's value rather than
+    by the selected row, which is the whole difference between the two modes.
+
+    Base UI derives the displayed text from the selected item, so a value that
+    matches no row displays as empty: the field would clear itself the moment
+    it lost focus, and a group nobody had used before could never be typed.
+    Binding `inputValue` to the value instead keeps what was typed on screen,
+    and `onInputValueChange` reports it per keystroke so it reaches the form
+    whether or not it is ever on the list.
+
+    Choosing a row still works, because Base UI sets the input value to that
+    row's label as part of selecting it, which arrives here as an ordinary
+    change. So the two paths converge rather than needing separate handling.
+  */
+  const freeTextProps = freeText
+    ? {
+        inputValue: value,
+        onInputValueChange: (next: string, details: { reason?: string }) => {
+          /*
+            **`input-clear` on blur is Base UI tidying up, not the reader
+            clearing the field**, and forwarding it was the one bug in this
+            mode. Leaving a value that matches no row makes the primitive reset
+            the input to the selected item's label, which for a new group is
+            nothing: typing 'Brand new heading' and clicking away emptied the
+            field, confirmed in the browser before this guard existed.
+
+            Ignoring that one reason keeps the typed value and costs nothing,
+            because a reader emptying the field by hand does it with keystrokes
+            that arrive as `input-change` with an empty string.
+          */
+          if (details?.reason === 'input-clear') return;
+          onValueChange(next);
+        },
+      }
+    : {};
 
   return (
     <ComboboxPrimitive.Root<ComboboxOption>
@@ -168,6 +278,7 @@ function Combobox({
       isItemEqualToValue={(item, v) => item.value === v.value}
       disabled={disabled}
       name={name}
+      {...freeTextProps}
     >
       {/*
         `InputGroup`, not a plain `div`. Base UI resolves the anchor as
@@ -232,9 +343,14 @@ function Combobox({
             data-size={size}
             className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
           >
-            <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
-              {emptyMessage}
-            </ComboboxPrimitive.Empty>
+            {/* Suppressed under `freeText`: there, a list matching nothing
+                means the typed value is new, which is allowed, so "No matches."
+                would report a failure that has not happened. */}
+            {freeText ? null : (
+              <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
+                {emptyMessage}
+              </ComboboxPrimitive.Empty>
+            )}
             {/* The highlight is a child of the popup rather than of the list:
                 the list takes a *render function* as its only child, so it has
                 no room for a sibling. The popup is the scrolling box and is

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, type LucideIcon } from "lucide-react";
 import { formatDisplayDate, localDateToISO } from "@/lib/domain/dates";
 import {
   Table,
@@ -221,10 +221,30 @@ export function DateCell({
 }) {
   return (
     <TableCell className={cn("whitespace-nowrap tabular-nums", className)}>
+      <DateValue value={value} />
+    </TableCell>
+  );
+}
+
+/**
+ * The same date, without the cell around it.
+ *
+ * Split off for the reason `CopyValue` was: a **frozen** or **resized** column
+ * needs its width, its `left` and its divider on the `<td>`, and a cell the
+ * column did not render is a cell it cannot put them on. Under
+ * `table-layout: fixed` that is not cosmetic: a cell with no width takes
+ * whatever is left and its text paints over the column beside it.
+ *
+ * The caller owning the cell also owns `tabular-nums`, which is what keeps a
+ * column of dates aligned on its digits.
+ */
+export function DateValue({ value }: { value: string | number }) {
+  return (
+    <>
       {formatDisplayDate(
         typeof value === "number" ? localDateToISO(new Date(value)) : value,
       )}
-    </TableCell>
+    </>
   );
 }
 
@@ -247,17 +267,28 @@ export function TruncCell({
   value,
   width = "16rem",
   className,
+  style,
+  ...rest
 }: {
   value: string;
   /** Any CSS length. Defaults to a width that holds a typical email. */
   width?: string;
   className?: string;
-}) {
+  /** The cell's own geometry, for a resizable or frozen column. */
+  style?: React.CSSProperties;
+  // Pass-through for the cell's own attributes, `data-col` being the one that
+  // matters: `RecordTable` queries it to measure a column's widest content.
+  // `children` is excluded because this cell renders `value`, and a second
+  // source of content here would silently win or silently be dropped.
+} & Omit<React.ComponentProps<typeof TableCell>, "children">) {
   return (
-    <TableCell className={className}>
+    <TableCell className={className} style={style} {...rest}>
       <span
         className="block truncate"
-        style={{ maxWidth: width }}
+        // A resized column sets a width on the cell, and the inner cap has to
+        // follow it or the span keeps the 16rem default and the truncation
+        // happens at the wrong place. `100%` defers to whatever the cell is.
+        style={{ maxWidth: style?.width ? "100%" : width }}
         title={value || undefined}
       >
         {value || NIL}
@@ -331,20 +362,38 @@ export function PageHeader({
 export function SortableHead<C extends string>({
   column,
   label,
+  icon: Icon,
   right,
   width,
+  className,
+  style,
   sort,
   onSortChange,
+  children,
+  ...rest
 }: {
   column: C;
   label: string;
+  /**
+   * A Lucide glyph before the label, for a table dense enough to be scanned.
+   *
+   * `aria-hidden`, always: the label is already the heading's accessible name,
+   * and an icon repeating it is one more thing read out per column.
+   */
+  icon?: LucideIcon;
   /** Right-aligned, as a money column is. Reverses the arrow's side too. */
   right?: boolean;
   /** A width utility for the `<th>`, e.g. `w-16`. */
   width?: string;
+  className?: string;
+  /** The heading's own geometry, for a resizable or frozen column. */
+  style?: React.CSSProperties;
   sort?: { column: C; direction: "asc" | "desc" } | null;
   onSortChange?: (column: C) => void;
-}) {
+  /** Anything positioned against the heading itself, e.g. a resize handle. */
+  children?: React.ReactNode;
+  /** Pointer and keyboard handlers for a heading that can be dragged. */
+} & Omit<React.ComponentProps<typeof TableHead>, "children" | "style" | "className">) {
   const active = sort?.column === column;
   const SortIcon = !active
     ? ArrowUpDown
@@ -354,7 +403,22 @@ export function SortableHead<C extends string>({
 
   return (
     <TableHead
-      className={cn(right && "text-right", width)}
+      // What `RecordTable` measures a resize floor against, and it is free
+      // here: the key it would need is already this component's `column`.
+      // The heading is measured alongside the values because a heading with an
+      // icon, a word and a sort arrow is routinely the widest thing in a
+      // narrow column.
+      data-col={column}
+      className={cn(
+        right && "text-right",
+        width,
+        // `relative` so a resize handle can position against this heading rather
+        // than escaping to the nearest positioned ancestor, which is the card
+        // and would put every handle at the table's own right edge.
+        children && "relative",
+        className,
+      )}
+      style={style}
       // Announced only for the column actually sorted; the rest are 'none',
       // which is what tells a screen reader they're sortable.
       aria-sort={
@@ -366,6 +430,7 @@ export function SortableHead<C extends string>({
               : "descending"
             : "none"
       }
+      {...rest}
     >
       {/*
         Both branches lay out identically: label, gap, then a 3.5 arrow slot
@@ -383,12 +448,23 @@ export function SortableHead<C extends string>({
           type="button"
           onClick={() => onSortChange(column)}
           className={cn(
-            "group/sort inline-flex items-center gap-1 transition-colors hover:text-foreground",
+            "group/sort inline-flex max-w-full items-center gap-1 transition-colors hover:text-foreground",
             right && "flex-row-reverse",
             !active && "text-muted-foreground",
           )}
         >
-          {label}
+          {/*
+            No `opacity` on the icon, and that is the fix rather than an
+            omission. It carried `opacity-70` while the label beside it ran at
+            full strength, so the pair read as two different weights of the same
+            heading: the word looked deliberate and the glyph looked faded. The
+            icon inherits `currentColor`, so leaving it alone is what keeps the
+            two in step through every state this heading has — muted at rest,
+            `text-foreground` on hover, full strength once the column is the one
+            being sorted. An opacity would have to be re-tuned for each.
+          */}
+          {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+          <span className="truncate">{label}</span>
           {/*
             The arrow is permanent on the column actually sorted and appears on
             hover or keyboard focus on the others. A standing arrow on every
@@ -409,14 +485,16 @@ export function SortableHead<C extends string>({
       ) : (
         <span
           className={cn(
-            "inline-flex items-center gap-1 text-muted-foreground",
+            "inline-flex max-w-full items-center gap-1 text-muted-foreground",
             right && "flex-row-reverse",
           )}
         >
-          {label}
-          <SortIcon className="invisible size-3.5" aria-hidden="true" />
+          {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+          <span className="truncate">{label}</span>
+          <SortIcon className="invisible size-3.5 shrink-0" aria-hidden="true" />
         </span>
       )}
+      {children}
     </TableHead>
   );
 }

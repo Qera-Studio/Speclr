@@ -3,9 +3,13 @@ import {
   matchesFilters,
   partyFieldLabel,
   sortDocuments,
+  totalPaiseOf,
   type FilterRow,
   type SortState,
 } from '../documentQuery';
+import { contractDoc, serviceByCode } from '../contract/__tests__/fixture';
+import { feeBlankOf } from '../contract/listing';
+import { computeQuotationTotals, type QuotationService } from '../quotation';
 import type { AdminDocument } from '../types';
 
 const line = (paise: number) => [{ description: 'Work', qty: 1, ratePaise: paise }];
@@ -348,5 +352,29 @@ describe('partyFieldLabel', () => {
   /** Sealed profiles mean this cannot happen today; it is still the honest answer. */
   it('says both only when a list actually holds both', () => {
     expect(partyFieldLabel([invoice, letter])).toBe('Client / employee');
+  });
+});
+
+describe('totalPaiseOf', () => {
+  /** A quotation keeps its lines under `services`; `lineItems` is empty by construction. */
+  it("reads a quotation's own arithmetic, not its empty line items", () => {
+    const services = [
+      { name: 'Web', lines: line(250000), addOns: [] },
+    ] as unknown as QuotationService[];
+    const quote = doc({ id: 'sq', type: 'SQ', lineItems: [], services, recurring: [] });
+    expect(totalPaiseOf(quote)).toBe(computeQuotationTotals(services, []).totalPaise);
+    expect(totalPaiseOf(quote)).toBeGreaterThan(0);
+  });
+
+  it("reads a contract's stated fee, and nothing until one is filled in", () => {
+    expect(totalPaiseOf(contract)).toBeNull();
+    const blank = feeBlankOf(serviceByCode('15'));
+    if (!blank) throw new Error('Part 15 has no fee blank');
+    const priced = contractDoc({ codes: ['15'], blanks: { [blank.key]: '₹45,000' } });
+    expect(totalPaiseOf(priced)).toBe(4_500_000);
+    const atLeast = row({ field: 'total', operator: 'atLeast', value: ['45000'] });
+    const atMost = row({ field: 'total', operator: 'atMost', value: ['44999'] });
+    expect(matchesFilters(priced, [atLeast])).toBe(true);
+    expect(matchesFilters(priced, [atMost])).toBe(false);
   });
 });

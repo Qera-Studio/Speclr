@@ -80,9 +80,24 @@ describe('ClientManager', () => {
     expect(screen.queryByLabelText(/^name$/i)).not.toBeInTheDocument();
   });
 
+  /**
+   * The page fetches the studio's people and the catalogue alongside the rows,
+   * and this is the hand-off the columns depend on: a table that never receives
+   * them shows a dash for a lead the record plainly names.
+   */
+  it('hands the studio’s people to the table, so a lead resolves to a name', () => {
+    render(
+      <ClientManager
+        clients={[{ ...clients[0], leadEmployeeId: 'e1' }]}
+        people={[{ id: 'e1', name: 'Ria Pareek', role: 'Designer', engagementType: 'employee', departed: false }]}
+      />,
+    );
+    expect(screen.getByText('Ria Pareek')).toBeInTheDocument();
+  });
+
   it('links each row to that client', () => {
     render(<ClientManager clients={clients} />);
-    expect(screen.getByRole('link', { name: /edit beta ltd/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Beta Ltd' })).toHaveAttribute(
       'href',
       '/client/clients/c2?step=identity',
     );
@@ -105,14 +120,21 @@ describe('ClientManager', () => {
     expect(screen.getByText('Beta Ltd')).toBeInTheDocument();
     expect(screen.queryByText('Acme Co.')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /restore beta ltd/i }));
+    await user.click(screen.getByRole('button', { name: /more actions for beta ltd/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /restore/i }));
     expect(setClientArchivedAction).toHaveBeenCalledWith('c2', false);
     expect(refresh).toHaveBeenCalled();
   });
 
   async function deleteFirstClient(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByRole('button', { name: /delete acme co\./i }));
-    await user.click(screen.getByRole('button', { name: /^remove$/i }));
+    await user.click(screen.getByRole('button', { name: /more actions for acme co\./i }));
+    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+  }
+
+  async function archiveFirstClient(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /more actions for acme co\./i }));
+    await user.click(await screen.findByRole('menuitem', { name: /archive/i }));
   }
 
   it('refreshes the list once a client is gone', async () => {
@@ -154,7 +176,7 @@ describe('ClientManager', () => {
     const user = userEvent.setup();
     render(<ClientManager clients={clients} />);
 
-    await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
+    await archiveFirstClient(user);
 
     expect(setClientArchivedAction).toHaveBeenCalledWith('c1', true);
     const [message, options] = toast.mock.calls[0] as [string, { action: { label: string; onClick: () => void } }];
@@ -172,7 +194,7 @@ describe('ClientManager', () => {
     setClientArchivedAction.mockResolvedValue({ success: false, error: 'Nope.' });
     render(<ClientManager clients={clients} />);
 
-    await user.click(screen.getByRole('button', { name: /archive acme co\./i }));
+    await archiveFirstClient(user);
 
     expect(toast.error).toHaveBeenCalledWith('Nope.', expect.objectContaining({ duration: 10000 }));
     expect(toast).not.toHaveBeenCalled();

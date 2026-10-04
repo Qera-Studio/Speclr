@@ -1,48 +1,57 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Check, Search } from "lucide-react";
+import { ArrowLeft, Building2, Check, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { COUNTRIES_BY_CONTINENT } from "@/lib/domain/countries";
+import { searchCountries } from "@/lib/domain/countries";
 import { CycleArrowIcon } from "@/components/ui/tray-arrow-icon";
+import type { ClientKind } from "@/lib/domain/entityType";
+import CountryRow from "./CountryRow";
 
 /**
- * Where is this client based? Asked after the kind and before the first field.
+ * What kind of client, and where are they based? Both, on one page, before the
+ * first field.
  *
- * The country is the most load-bearing answer in onboarding and it was buried
- * two thirds of the way down step 1. Nearly everything the rest of the flow
- * offers is filtered by it: which legal forms the entity type lists, which tax
- * registrations exist, whether a W-8BEN-E or reverse charge is asked about,
- * which documents are requested, what the postcode field is even called. A
- * field that decides five later fields should not sit below three of them.
+ * These were two screens and are now one, on request. They belong together:
+ * neither is stored, both ride in the URL until step 1 saves, and both exist to
+ * decide what the rest of the flow asks for. Splitting them made the shorter
+ * question its own page, which is a click and a page transition to answer
+ * something with two options.
  *
- * **The answer is never stored here.** It rides in the URL until step 1 saves,
- * at which point it is `addressParts.country` on the record and every later
- * reader derives from that (`PRINCIPLES.md` rule 3, the same reason the kind is
- * not stored either). `addressParts.country` is still where the value lives;
- * this only seeds it.
+ * **The country is the most load-bearing answer in onboarding.** Nearly
+ * everything the rest of the flow offers is filtered by it: which legal forms
+ * the entity type lists, which tax registrations exist, whether a W-8BEN-E or
+ * reverse charge is asked about, which documents are requested, what the
+ * postcode field is even called. The kind decides one thing, which entity types
+ * are offered, but it decides it first, so it is at the top.
  *
- * Step 1's own country field renders **only once there is a record**. On the
- * create path it would be this question twice, pre-answered, one screen apart.
- * It cannot go altogether, because an existing client never reaches this page
- * and something has to be able to correct a country entered wrongly.
+ * **Neither answer is stored here.** Both ride in the URL until step 1 saves,
+ * at which point `entityType` and `addressParts.country` are on the record and
+ * every later reader derives from those (`PRINCIPLES.md` rule 3: a column for
+ * either would be a second place for a record to say what it is, and a second
+ * place for it to disagree). This page only seeds them.
  *
- * **Choosing does not advance.** Two hundred and forty-three targets a click
- * apart is a page where the wrong one gets hit, and a wrong click that also
- * changes the page is a wrong click nobody notices. The choice and the move are
- * separate, so the selection can be read back before it is committed. That is
- * the opposite call from `KindChooser`, and deliberately: two options are not
- * mis-clicked.
+ * Neither is asked again on step 1. From here on both answers sit in the row
+ * above the step tracker (`ClientAxes`), where they can be changed on any
+ * step: before the first save that rewrites the URL, after it the record.
+ *
+ * **Choosing does not advance, for either answer.** Two hundred and forty-three
+ * targets a click apart is a page where the wrong one gets hit, and a wrong
+ * click that also changes the page is a wrong click nobody notices. Now that
+ * the kind shares the page it follows the same rule: it no longer advances on
+ * its own, because doing so would take the page away before the country below
+ * it had been answered.
  */
 export default function CountryChooser({
   onContinue,
   onBack,
 }: {
-  onContinue: (iso2: string) => void;
-  /** Back to the kind chooser. Nothing has been written yet, so nothing unwinds. */
+  onContinue: (kind: ClientKind, iso2: string) => void;
+  /** Out of the flow entirely. Nothing has been written yet, so nothing unwinds. */
   onBack: () => void;
 }) {
+  const [kind, setKind] = useState<ClientKind | null>(null);
   const [query, setQuery] = useState("");
   /**
    * Held here rather than in the URL, because a URL that changed on every click
@@ -51,24 +60,9 @@ export default function CountryChooser({
    */
   const [value, setValue] = useState<string | null>(null);
 
-  /**
-   * Filtered live, on the name and on the code. The code matters: somebody who
-   * knows a client is 'AE' should not have to remember whether this list files
-   * them under "United Arab Emirates" or "UAE".
-   *
-   * A continent that nothing matched does not render, so a search never returns
-   * a page of empty headings.
-   */
-  const groups = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return COUNTRIES_BY_CONTINENT;
-    return COUNTRIES_BY_CONTINENT.map((g) => ({
-      continent: g.continent,
-      countries: g.countries.filter(
-        (c) => c.name.toLowerCase().includes(q) || c.iso2.toLowerCase() === q,
-      ),
-    })).filter((g) => g.countries.length > 0);
-  }, [query]);
+  // Filtered live, on the name and on the code. The filter itself lives with
+  // the list, because the row above the step tracker searches it too.
+  const groups = useMemo(() => searchCountries(query), [query]);
 
   const matches = groups.reduce((n, g) => n + g.countries.length, 0);
 
@@ -77,11 +71,54 @@ export default function CountryChooser({
   return (
     <div className="m-auto flex w-full min-h-0 max-w-4xl flex-col gap-5">
       <div className="shrink-0 text-center">
-        <h2 className="mb-1 text-lg font-medium">Where are they based?</h2>
+        <h2 className="mb-1 text-lg font-medium">Who are you adding?</h2>
         <p className="text-sm text-muted-foreground">
-          It decides which registrations and documents they are asked for. You
-          can change it later, on the client’s identity step.
+          The type and the country decide what they are asked for. Both can be
+          changed later, on the client’s identity step.
         </p>
+      </div>
+
+      {/*
+        The kind, at the top, because it is the first decision and the smaller
+        one. Two cards rather than a select: there are exactly two answers and
+        the difference between them wants a sentence each, which a dropdown has
+        nowhere to put.
+      */}
+      <ul className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2">
+        <li>
+          <KindCard
+            icon={<User aria-hidden className="size-7" />}
+            title="An individual"
+            line="A freelancer, consultant or sole proprietor."
+            selected={kind === "individual"}
+            onClick={() => setKind("individual")}
+          />
+        </li>
+        <li>
+          <KindCard
+            icon={<Building2 aria-hidden className="size-7" />}
+            title="A company"
+            line="A private limited, LLP, partnership or trust."
+            selected={kind === "company"}
+            onClick={() => setKind("company")}
+          />
+        </li>
+      </ul>
+
+      {/*
+        A rule between the two questions, because they are two questions. The
+        heading alone was carrying that on its own and the cards above ran
+        straight into the list below, which read as one long page rather than
+        as "answer this, then this".
+
+        The heading sits *on* the rule rather than under it, so the divider
+        does not need a gap of its own: `items-center` plus a line either side
+        is the same trick the continent headings use one band down.
+      */}
+      <div className="flex shrink-0 items-center gap-3">
+        <span aria-hidden className="h-px flex-1 bg-border" />
+        <h3 className="text-sm font-medium">Where are they based?</h3>
+        <span aria-hidden className="h-px flex-1 bg-border" />
       </div>
 
       {/* Pinned above the list, because it is how the list is used. */}
@@ -103,14 +140,28 @@ export default function CountryChooser({
       </div>
 
       {/*
-        The only band that scrolls, and it is six country rows tall: a row is
-        `py-2` on `text-sm` (2.25rem) and the grid gap is 0.25rem, so
-        6 × 2.25 + 5 × 0.25 = 14.75rem. Fixed rather than `flex-1`, or the list
-        would grow with the viewport and the page would stop being one glance.
-        The continent heading is sticky *inside* this band, so it takes part of
-        the six while it is showing.
+        The only band that scrolls, and it is **four** country rows tall.
+
+        The arithmetic has to include the heading, which is the part the first
+        version got wrong: the continent heading is sticky *inside* this band,
+        so it is always showing and always taking its share. Sized for six rows
+        of list, five showed.
+
+        **Measured in a browser rather than derived from the classes**, which
+        is the second thing that went wrong: computing it from `py-2` and
+        `text-sm` gave 12.25rem and produced three rows, because a row's *pitch*
+        is not its height and the heading's block is not its line box. The
+        numbers, from `/preview/client-chooser`: the heading occupies 41px
+        before the list starts, a row is 36px tall and rows repeat every 40px.
+
+        Four rows fully inside the band is therefore 41 + 3 × 40 + 36 = 197px.
+        `e2e/client-chooser.spec.ts` counts them, so this stays honest when the
+        type sizes move.
+
+        Fixed rather than `flex-1`, or the list would grow with the viewport and
+        the page would stop being one glance.
       */}
-      <div className="h-[14.75rem] overflow-y-auto pr-1">
+      <div className="h-[197px] overflow-y-auto pr-1">
         {groups.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
             No country matches “{query.trim()}”.
@@ -164,39 +215,59 @@ export default function CountryChooser({
           variant="ghost"
           size="icon-sm"
           className="absolute left-0"
-          aria-label="Back to the kind of client"
+          aria-label="Back to the clients list"
           onClick={onBack}
         >
           <ArrowLeft aria-hidden />
         </Button>
+        {/*
+          Disabled until *both* are answered, and the label says which is
+          missing rather than leaving a dead button to be puzzled over. A
+          disabled control with no explanation is the commonest form of a form
+          that cannot be finished for reasons it will not state.
+        */}
         <Button
           type="button"
           size="lg"
-          disabled={!value}
-          onClick={() => value && onContinue(value)}
+          disabled={!kind || !value}
+          onClick={() => kind && value && onContinue(kind, value)}
           className="group/tray hover:bg-primary"
         >
           Continue
           <CycleArrowIcon />
         </Button>
       </div>
+      <p aria-live="polite" className="-mt-1 shrink-0 text-center text-xs text-muted-foreground">
+        {!kind && !value
+          ? "Choose a type and a country."
+          : !kind
+            ? "Choose a type above."
+            : !value
+              ? "Choose a country."
+              : ""}
+      </p>
     </div>
   );
 }
 
 /**
- * A real `<button>`, so Enter, Space and tab order come free. `aria-pressed`
- * rather than a radio: this is one control that is on or off, and a radiogroup
- * would owe a roving tabindex across 243 rows for no gain a reader can use.
+ * One of the two type cards.
+ *
+ * A real `<button>` with `aria-pressed`, matching `CountryRow` below rather
+ * than inventing a second selection idiom on the same page: both are one
+ * control that is on or off, and a radiogroup would owe a roving tabindex for
+ * nothing a reader could use.
  */
-function CountryRow({
-  flag,
-  name,
+function KindCard({
+  icon,
+  title,
+  line,
   selected,
   onClick,
 }: {
-  flag: string;
-  name: string;
+  icon: React.ReactNode;
+  title: string;
+  line: string;
   selected: boolean;
   onClick: () => void;
 }) {
@@ -205,19 +276,27 @@ function CountryRow({
       type="button"
       aria-pressed={selected}
       onClick={onClick}
-      className={`flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      // `items-center`, not `items-start`, now that the icon is tall enough to
+      // span both lines: aligned to the top it would hang off the first line
+      // and the card would read as a paragraph with a bullet. `gap-4` so the
+      // glyph and the words are two things beside each other rather than one
+      // crowded block.
+      className={`flex w-full cursor-pointer items-center gap-4 rounded-lg border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         selected
-          ? "bg-accent font-medium text-foreground"
-          : "text-muted-foreground"
+          ? "border-primary bg-accent"
+          : "border-border hover:bg-accent/50"
       }`}
     >
-      <span aria-hidden className="text-base leading-none">
-        {flag}
+      <span
+        className={`shrink-0 ${selected ? "text-primary" : "text-muted-foreground"}`}
+      >
+        {icon}
       </span>
-      <span className="min-w-0 flex-1 truncate">{name}</span>
-      {selected ? (
-        <Check aria-hidden className="size-4 shrink-0 text-primary" />
-      ) : null}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="block text-xs text-muted-foreground">{line}</span>
+      </span>
+      {selected ? <Check aria-hidden className="size-4 shrink-0 text-primary" /> : null}
     </button>
   );
 }

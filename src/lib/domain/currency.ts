@@ -14,6 +14,13 @@
  * currency-aware needs an exchange rate and a parallel INR tax line — its own
  * piece of work, not a label swap. See ROADMAP.md.
  *
+ * **One exchange rate exists, for one list, and it never reaches a sheet.**
+ * The clients list shows a foreign client's agreed price in their own currency
+ * at that day's market rate (`server/rates.ts`), as a reading convenience, with
+ * the chip toggling back to INR. `convertMinor` below is the only place money
+ * is multiplied by a rate, and a document importing it would be the compliance
+ * bug the paragraph above describes. Logged in `PRINCIPLES.md`.
+ *
  * Every currency here is a 2-decimal (minor-unit) currency, which is why
  * `money.ts` can assume a ×100 minor unit throughout. Adding a 0- or
  * 3-decimal currency (JPY, KWD) breaks that assumption — it needs a per-entry
@@ -84,4 +91,30 @@ export function currencyForCountry(iso2: string | undefined): CurrencyCode {
 export function currencyLabel(code: CurrencyCode): string {
   const currency = currencyByCode(code);
   return currency ? `${currency.code} · ${currency.name} (${currency.symbol})` : code;
+}
+
+/**
+ * A day's rates out of INR, for the clients list and nothing else.
+ *
+ * One entry per currency the upstream answered for, each being what one rupee
+ * buys in it. INR is never a key. `source` is who published them, for the
+ * attribution the toggle's tooltip prints.
+ */
+export interface DayRates {
+  /** ISO date the rates were published, as the upstream states it. */
+  asOf: string;
+  rates: Partial<Record<CurrencyCode, number>>;
+  source: string;
+}
+
+/**
+ * Minor units in one currency to minor units in another, at a given rate.
+ *
+ * Rounded to the minor unit, because every currency here is 2-decimal (the
+ * note at the top) and a figure with fractional pence is not money. Display
+ * arithmetic for the clients list: nothing that prints on a document may call
+ * it, for the reason that note gives.
+ */
+export function convertMinor(minor: number, rate: number): number {
+  return Math.round(minor * rate);
 }

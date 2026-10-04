@@ -93,6 +93,19 @@ export interface ClientRecord {
    * written before onboarding existed have none.
    */
   entityType?: string;
+  /**
+   * What they do, keyed to the fixed list in `industry.ts`. Never free text,
+   * and never snapshotted: no sheet prints it.
+   */
+  industry?: string;
+  /**
+   * Who at Qera brought this client in, as an **employee id**. A name copied
+   * here would go stale the first time somebody is renamed (§5d-i), so it is
+   * resolved on read, across the profile seam in `lib/profile.ts`.
+   */
+  leadEmployeeId?: string;
+  /** Who works with them, same rule. Filtered against the live employees. */
+  teamEmployeeIds?: string[];
   /** Tax registration. See `client.ts`. */
   tax?: ClientTax;
   /** The people. See `client.ts`. */
@@ -140,6 +153,16 @@ export interface LineItem {
    * documents written before it have none, and they must keep loading.
    */
   sacCode?: string;
+  /**
+   * The Service this line bills, by catalogue code.
+   *
+   * Copied when the line is seeded from a Service or one of its items, exactly
+   * as `sacCode` is, and absent on a typed line: a custom row names no
+   * Service. It is what lets a list say which Schedules a document runs under
+   * without matching descriptions back to the catalogue, and it freezes with
+   * the rest of the line at finalize. Nothing prints it.
+   */
+  serviceCode?: string;
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */

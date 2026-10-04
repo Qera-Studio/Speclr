@@ -275,3 +275,169 @@ describe('seedable', () => {
     expect(seedable({ parts: [], blanks: { 'msa.8#1': '30' }, library: {} })).toBe(false);
   });
 });
+
+/**
+ * The seam between a sold Service and its legal frame.
+ *
+ * `docs/service-catalogue.md` §2 splits the two: a Service is what is sold and
+ * carries priced items, a Part is the frame with the fee blanks, scope, limits,
+ * completion criteria and handover, and a Service names its frames through
+ * `partCodes` rather than restating them.
+ *
+ * **Nothing read `partCodes`.** It was on the type, in the Zod schema and
+ * asserted by two seed tests, while `copyPart` put the Service itself on the
+ * contract as though it were the Part. All sixteen sales Services carry every
+ * legal section empty, so a contract for one had no fee and no scope,
+ * `contractScopes` found nothing to fill, three phases were vacuously complete,
+ * and `contractComplete` returned zero unfilled — which let a contract with no
+ * terms in it reach finalize and become immutable.
+ *
+ * Confirmed red before it was trusted: without `frameOf`, the first test here
+ * reports 0 fee rows and 0 scope lines.
+ */
+describe('copyPart resolving partCodes', () => {
+  /** A sold Service naming three frames, which is what `SOC` does. */
+  const sold = () => ({
+    ...serviceByCode('15'),
+    code: 'SOC',
+    name: 'Social Media',
+    partCodes: ['15', '16', '17'],
+    items: [{ id: 'I1', name: 'Profile optimisation', unit: 'fixed' as const, archived: false }],
+    // The empty sections every sales Service actually carries.
+    overview: [],
+    included: [],
+    accountTerms: [],
+    limits: [],
+    limitsNotes: [],
+    completion: [],
+    receives: [],
+    receivesNotes: [],
+    thirdPartyCosts: '',
+    exclusionIds: [],
+    clientInputIds: [],
+    fee: [],
+  });
+
+  const frames = ['15', '16', '17'].map(serviceByCode);
+
+  it('takes the legal sections from the Parts it names', () => {
+    const { part } = copyPart(sold(), EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    expect(part.fee.length).toBeGreaterThan(0);
+    expect(part.included.length).toBeGreaterThan(0);
+    expect(part.completion.length).toBeGreaterThan(0);
+    expect(part.receives.length).toBeGreaterThan(0);
+  });
+
+  it('concatenates every frame it names, in partCodes order', () => {
+    const { part } = copyPart(sold(), EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+    const total = frames.reduce((sum, frame) => sum + frame.included.length, 0);
+
+    expect(part.included).toHaveLength(total);
+    expect(part.included.slice(0, frames[0].included.length)).toEqual(frames[0].included);
+  });
+
+  it('keeps the sold Service’s own identity and items', () => {
+    const { part } = copyPart(sold(), EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    // The frame supplies the law; the Service stays what the client bought.
+    expect(part.code).toBe('SOC');
+    expect(part.name).toBe('Social Media');
+    expect(part.items).toHaveLength(1);
+  });
+
+  it('carries the library text of exclusions the frame named', () => {
+    const { part, library } = copyPart(sold(), EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    expect(part.exclusionIds.length).toBeGreaterThan(0);
+    for (const id of [...part.exclusionIds, ...part.clientInputIds]) {
+      expect(library[id]).toEqual(expect.any(String));
+    }
+  });
+
+  it('de-duplicates an exclusion two frames both name', () => {
+    const { part } = copyPart(sold(), EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    expect(new Set(part.exclusionIds).size).toBe(part.exclusionIds.length);
+    expect(new Set(part.clientInputIds).size).toBe(part.clientInputIds.length);
+  });
+
+  it('leaves a Part that names no frame exactly as it was', () => {
+    // The 22 legacy Parts carry their own sections and name nobody.
+    const legacy = serviceByCode('15');
+    const { part } = copyPart(legacy, EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    expect(part.included).toEqual(legacy.included);
+    expect(part.fee).toEqual(legacy.fee);
+  });
+
+  it('skips a named frame that is not in the catalogue', () => {
+    const orphan = { ...sold(), partCodes: ['99'] };
+    const { part } = copyPart(orphan, EXCLUSIONS, CLIENT_INPUTS, undefined, frames);
+
+    // Skipped rather than thrown: a Part renamed since the catalogue was
+    // written should not make the Service unusable.
+    expect(part.fee).toEqual([]);
+  });
+});
+
+/**
+ * The fee, derived from what onboarding already recorded.
+ *
+ * The invoice and the quotation have read `commercial.services[].ratePaise`
+ * since `CONTEXT.md` §5i; the contract was the last document still asking for
+ * the same figure a second time (`PRINCIPLES.md` rule 3).
+ */
+describe('seedFromClient filling the fee', () => {
+  const frames = ['15', '16', '17'].map(serviceByCode);
+  const sold = {
+    ...serviceByCode('15'),
+    code: 'SOC',
+    name: 'Social Media',
+    partCodes: ['15', '16', '17'],
+    fee: [],
+    included: [],
+  };
+
+  it('writes the agreed rate into the Part’s first fee blank', () => {
+    const seeded = seedFromClient(
+      client({ services: [{ code: 'SOC', ratePaise: 4_500_000 }] }),
+      [sold],
+      EXCLUSIONS,
+      CLIENT_INPUTS,
+      frames,
+    );
+
+    // Formatted as `sanitiseBlank` would store it, so a seeded contract and a
+    // hand-filled one are byte-identical.
+    expect(seeded.blanks['part.SOC.fee#0']).toBe('₹45,000');
+  });
+
+  it('writes nothing when the client record names no rate', () => {
+    const seeded = seedFromClient(
+      client({ services: [{ code: 'SOC' }] }),
+      [sold],
+      EXCLUSIONS,
+      CLIENT_INPUTS,
+      frames,
+    );
+
+    // Absent, never zero: a blank rate means the list price or "quoted per
+    // engagement", and zero is a real rate meaning the work is given away.
+    expect(seeded.blanks).toEqual({});
+  });
+
+  it('leaves the rest of the fee section for the terms phase', () => {
+    const seeded = seedFromClient(
+      client({ services: [{ code: 'SOC', ratePaise: 4_500_000 }] }),
+      [sold],
+      EXCLUSIONS,
+      CLIENT_INPUTS,
+      frames,
+    );
+
+    // Only the first fee row is the money the record knows. The payment split,
+    // the timeline and the support window stay questions.
+    expect(Object.keys(seeded.blanks)).toEqual(['part.SOC.fee#0']);
+  });
+});

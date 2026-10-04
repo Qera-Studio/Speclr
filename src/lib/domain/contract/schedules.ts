@@ -27,6 +27,8 @@
  */
 
 /** Which Schedule a service belongs to. Closed set — see the note above. */
+import type { Accent } from '@/lib/accent';
+
 export type ScheduleKey = 'build' | 'retainer' | 'setup' | 'audit';
 
 export interface ScheduleClause {
@@ -49,6 +51,12 @@ export interface Schedule {
    */
   number: number;
   name: string;
+  /**
+   * The hue a list draws this Schedule's badge in. Named per value, as
+   * `DOC_TYPES.accent` and the industries are, because a hash puts neighbours
+   * on neighbouring hues (`lib/accent.ts`). Distinct across the four.
+   */
+  accent: Accent;
   /** The italic statement under the schedule's cover heading. */
   preamble: string;
   clauses: ScheduleClause[];
@@ -64,6 +72,7 @@ const TRANSCRIBED: Schedule[] = [
     key: 'build',
     number: 2,
     name: 'Build',
+    accent: 'violet',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client, and governs work delivered as a defined project for a one-time fee.',
     clauses: [
@@ -167,6 +176,7 @@ const TRANSCRIBED: Schedule[] = [
     key: 'retainer',
     number: 3,
     name: 'Retainer',
+    accent: 'green',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs all work delivered on a recurring monthly basis for a recurring fee.',
     clauses: [
@@ -286,6 +296,7 @@ const TRANSCRIBED: Schedule[] = [
     key: 'setup',
     number: 1,
     name: 'Setup',
+    accent: 'cyan',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs configuration of accounts, domains and infrastructure that are set up once and then operated by the Client.',
     clauses: [
@@ -392,6 +403,7 @@ const TRANSCRIBED: Schedule[] = [
     key: 'audit',
     number: 4,
     name: 'Audit',
+    accent: 'orange',
     preamble:
       'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs engagements where the deliverable is analysis, recommendation or strategy rather than implementation.',
     clauses: [

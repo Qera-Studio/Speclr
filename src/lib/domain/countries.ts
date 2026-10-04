@@ -330,3 +330,30 @@ export const COUNTRIES_BY_CONTINENT: Array<{ continent: Continent; countries: Co
     continent,
     countries: COUNTRY_SEED.filter((c) => c.continent === continent),
   })).filter((g) => g.countries.length > 0);
+
+/**
+ * The grouped list, narrowed to a search.
+ *
+ * Matches on the name anywhere in it and on the code exactly: somebody who
+ * knows a client is 'AE' should not have to remember whether the list files
+ * them under "United Arab Emirates" or "UAE". A continent nothing matched is
+ * dropped, so a search never returns a page of empty headings, and a blank
+ * query is the whole list, by identity, so a caller can tell the two apart.
+ *
+ * Here rather than in the chooser because two screens search the same list
+ * (the chooser before step 1 and the row above the step tracker after it),
+ * and two copies of one filter is how they come to disagree on what "ae"
+ * finds (`PRINCIPLES.md` rule 1).
+ */
+export function searchCountries(
+  query: string,
+): Array<{ continent: Continent; countries: CountrySeed[] }> {
+  const q = query.trim().toLowerCase();
+  if (!q) return COUNTRIES_BY_CONTINENT;
+  return COUNTRIES_BY_CONTINENT.map((g) => ({
+    continent: g.continent,
+    countries: g.countries.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.iso2.toLowerCase() === q,
+    ),
+  })).filter((g) => g.countries.length > 0);
+}

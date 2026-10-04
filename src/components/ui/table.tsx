@@ -4,9 +4,26 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  containerClassName,
+  ...props
+}: React.ComponentProps<"table"> & {
+  /**
+   * For the container, not the table.
+   *
+   * It exists for one thing: a table wide enough to need sideways scrolling
+   * puts `overflow-x-auto` here. **That trades away the sticky header**, for the
+   * reason `TableHeader` records below, so it is a deliberate choice at a call
+   * site rather than anything a table gets by default.
+   */
+  containerClassName?: string;
+}) {
   return (
-    <div data-slot="table-container" className="relative w-full">
+    <div
+      data-slot="table-container"
+      className={cn("relative w-full", containerClassName)}
+    >
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-xs", className)}
@@ -75,7 +92,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "h-9 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
+        "h-11 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
         className,
       )}
       {...props}
@@ -107,13 +124,18 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        // 6px vertical padding against `h-9` on the row: a 36px row. Denser
-        // than the 44px touch floor, deliberately — this is a desktop-only
-        // internal tool and a list of documents is scanned, not tapped.
+        // 10px vertical padding against `h-11` on the row: a 44px row.
         // `leading-none` because a cell holds a value, not prose: prose leading
         // makes rows of different content types sit at different heights in the
         // same table.
-        "px-2 py-1.5 leading-none align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        //
+        // 44 rather than the 36 this was, in two steps and on request. It is
+        // also the WCAG 2.5.5 target size, which this table had always been
+        // under deliberately (a desktop-only internal tool, scanned rather than
+        // tapped) and now clears for free. `RowActions`' own note already sized
+        // its hit targets against a 44px row, so the two agree now instead of
+        // one of them being written against a height that was not there.
+        "px-2 py-2.5 leading-none align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}

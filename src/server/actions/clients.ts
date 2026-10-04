@@ -7,11 +7,15 @@ import { codeSchema } from '@/lib/domain/text';
 import { clientInputSchema } from '@/lib/domain/registry';
 import {
   CLIENT_SECTION_SCHEMAS,
+  SPREAD_SECTIONS,
   clientTaxCrossErrors,
   isClientSection,
   type ClientTax,
+  type ClientTeam,
 } from '@/lib/domain/client';
 import { ENTITY_TYPE_VALUES } from '@/lib/domain/entityType';
+import { COUNTRY_SEED } from '@/lib/domain/countries';
+import { emptyAddressParts } from '@/lib/domain/address';
 import type { ActionResult, ClientRecord } from '@/lib/domain/types';
 import { authorized } from './authGate';
 import { del } from '@vercel/blob';
@@ -19,6 +23,7 @@ import {
   clientHasDocuments,
   deleteClient,
   getClient,
+  listEmployees,
   saveClient,
   setClientArchived,
 } from '@/db/store';
@@ -124,6 +129,58 @@ export async function setClientEntityType(id: unknown, entityType: unknown): Pro
 }
 
 /**
+ * Change where a saved client is based, and nothing else.
+ *
+ * The country is the most load-bearing fact on the record: it decides place
+ * of supply, which registrations and legal forms are offered, what a postcode
+ * is called and which documents are requested. Before the first save it rides
+ * in the URL; after it, `addressParts.country` is the one place it lives
+ * (`PRINCIPLES.md` rule 3), and this is that field's editor, reached from the
+ * row above the step tracker on every step. The `setClientEntityType` shape:
+ * one field, read-merge-write, so the rest of the row survives untouched.
+ *
+ * The composed `address` is rebuilt here by `withComposedAddress`, never taken
+ * from the browser, so the printable line cannot disagree with its parts. A
+ * legacy row with no parts keeps its hand-typed address, which is that
+ * helper's rule and the right one: there is nothing to recompose from.
+ *
+ * Validated against the seed, never trusted: this is a two-letter string from
+ * a client, and an unknown code would freeze onto every document as a country
+ * that does not exist.
+ */
+export async function setClientCountry(id: unknown, iso2: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  if (typeof id !== 'string' || id.length === 0) {
+    return { success: false, error: 'Invalid input.' };
+  }
+  const code = typeof iso2 === 'string' ? iso2.trim().toUpperCase() : '';
+  if (!COUNTRY_SEED.some((c) => c.iso2 === code)) {
+    return { success: false, error: 'Invalid input.' };
+  }
+
+  const existing = await getClient(id);
+  if (!existing) return { success: false, error: 'Client not found.' };
+
+  const next = withComposedAddress({
+    ...existing,
+    addressParts: { ...emptyAddressParts, ...existing.addressParts, country: code },
+    updatedAt: Date.now(),
+  });
+
+  try {
+    await saveClient(next);
+  } catch (err) {
+    logger.error({ action: 'setClientCountry', event: 'save_failed', error: err });
+    return { success: false, error: 'Failed to save client.' };
+  }
+
+  revalidatePath('/client/clients');
+  revalidatePath(`/client/clients/${id}`);
+  return { success: true, id };
+}
+
+/**
  * Save one section of a client — the onboarding wizard's write path.
  *
  * One action rather than five, because the five differ only in which schema
@@ -177,8 +234,51 @@ export async function saveClientSection(
     if (first) return { success: false, error: first };
   }
 
+  /*
+    The ids have to name real people, and only the server can say so.
+
+    `clientTeamSchema` deliberately does not check this (`CONTEXT.md` §5f: a
+    field's own rule stays in the field, and a cross-record check goes where the
+    whole record is in hand). Here the employee list is one call away, and this
+    is a value the browser sent: an id that names nothing would sit on the row
+    for ever, resolving to a blank card nobody could explain.
+
+    The lead is refused outright. A silently dropped team member is the worse
+    failure of the two, so an unknown id there is refused too rather than
+    filtered: "saved" and "saved four of five" must not look the same.
+  */
+  if (section === 'team') {
+    const team = parsed.data as ClientTeam;
+    const named = [team.leadEmployeeId, ...(team.teamEmployeeIds ?? [])].filter(
+      (id): id is string => Boolean(id),
+    );
+    if (named.length > 0) {
+      const known = new Set((await listEmployees()).map((e) => e.id));
+      const missing = named.find((id) => !known.has(id));
+      if (missing) return { success: false, error: 'That person is no longer in the studio.' };
+    }
+  }
+
+  /*
+    Five of the six sections are one JSONB group and nest under their own key;
+    `team` is two real columns and spreads (`SPREAD_SECTIONS`).
+
+    A spread section names **every** field it owns, present or not, which is
+    what makes clearing one work. Zod drops an absent optional, so a payload
+    that unset the lead would spread to `{}` and leave the old id in place: the
+    field would look uneditable once set, and only in the clearing direction.
+    Writing `undefined` explicitly is what `clientToRow` turns into a null.
+  */
+  const patch = SPREAD_SECTIONS.includes(section)
+    ? {
+        leadEmployeeId: undefined,
+        teamEmployeeIds: undefined,
+        ...(parsed.data as Record<string, unknown>),
+      }
+    : { [section]: parsed.data };
+
   try {
-    await saveClient({ ...existing, [section]: parsed.data, updatedAt: Date.now() });
+    await saveClient({ ...existing, ...patch, updatedAt: Date.now() });
   } catch (err) {
     logger.error({ action: 'saveClientSection', event: 'save_failed', section, error: err });
     return { success: false, error: 'Failed to save client.' };

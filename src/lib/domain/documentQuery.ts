@@ -5,7 +5,9 @@ import {
   sortByKey,
   type FilterRow as FilterRowOf,
 } from './filters';
+import { contractTotalPaise } from './contract/listing';
 import { computeTotals, rupeesToPaise, slipTotals } from './money';
+import { computeQuotationTotals } from './quotation';
 import { partyName } from './party';
 import { DOC_TYPES, DOC_TYPE_LIST, isHrDocType } from './registry';
 import type { FieldSpec } from './filters';
@@ -227,17 +229,32 @@ function newestAt(docs: AdminDocument[]): number {
   return docs.reduce((newest, doc) => Math.max(newest, doc.createdAt), 0);
 }
 
-/** Letters and contracts carry no line items, so they have no total to compare. */
-export function hasTotal(doc: AdminDocument): boolean {
-  return DOC_TYPES[doc.type].kind !== 'hr-letter' && doc.type !== 'CON';
-}
-
+/**
+ * A document's one figure, or null where it has none.
+ *
+ * The single answer to "what is this document worth", for every list, sort,
+ * filter and the `total_paise` column, so a type cannot show one figure in the
+ * table and store another. It did: `computeTotals` reads `lineItems`, and a
+ * quotation keeps its lines under `services`, so the list printed ₹0.00 for
+ * every quotation while `toRow` stored the real one. Each type answers with
+ * what its own sheet prints: a pay slip the net paid after deductions, a
+ * quotation its section-grouped arithmetic, a contract the fees its Parts
+ * state (`contract/listing.ts`), and a letter nothing.
+ */
 export function totalPaiseOf(doc: AdminDocument): number | null {
-  if (!hasTotal(doc)) return null;
-  // A pay slip's total is the net paid, after deductions — matching what the
-  // slip itself prints and what `toRow` stores in `total_paise`.
-  if (doc.type === 'PAY') return slipTotals(doc.lineItems, doc.deductions).netPaise;
-  return computeTotals(doc.lineItems, doc.gstRatePercent, doc).totalPaise;
+  switch (doc.type) {
+    case 'PAY':
+      return slipTotals(doc.lineItems ?? [], doc.deductions).netPaise;
+    case 'SQ':
+      // Tolerant of a quotation with neither list, as `toRow` is of missing
+      // line items: a list fixture is allowed to be that thin.
+      return computeQuotationTotals(doc.services ?? [], doc.recurring ?? []).totalPaise;
+    case 'CON':
+      return contractTotalPaise(doc.contract);
+    default:
+      if (DOC_TYPES[doc.type].kind === 'hr-letter') return null;
+      return computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc).totalPaise;
+  }
 }
 
 function matchesRow(doc: AdminDocument, row: FilterRow): boolean {
@@ -258,7 +275,8 @@ function matchesRow(doc: AdminDocument, row: FilterRow): boolean {
       const paise = rupeesToPaise(row.value[0]);
       if (paise === null) return true;
       const total = totalPaiseOf(doc);
-      // A contract has no total, so it can't satisfy a total filter.
+      // A document with no figure (a letter, a contract with no fee filled in
+      // yet) can't satisfy a total filter.
       if (total === null) return false;
       return row.operator === 'atMost' ? total <= paise : total >= paise;
     }

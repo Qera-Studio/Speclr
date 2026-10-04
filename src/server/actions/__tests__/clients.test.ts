@@ -31,7 +31,13 @@ jest.mock('@/db/store', () => ({
 jest.mock('@vercel/blob', () => ({ del: (...a: unknown[]) => del(...(a as [])) }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
-import { createClient, deleteClientAction, saveClientSection, updateClient } from '../clients';
+import {
+  createClient,
+  deleteClientAction,
+  saveClientSection,
+  setClientCountry,
+  updateClient,
+} from '../clients';
 
 const identity = {
   name: 'Clayora',
@@ -102,6 +108,55 @@ describe('createClient', () => {
     const result = await createClient({ ...identity, entityType: 'sole_proprietor_llc' });
     expect(result).toEqual({ success: false, error: 'Invalid input.' });
     expect(saveClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('setClientCountry', () => {
+  it('refuses the caller before it looks anything up', async () => {
+    authorized.mockResolvedValue(null);
+    expect(await setClientCountry('client-1', 'AE')).toEqual({
+      success: false,
+      error: 'Unauthorized.',
+    });
+    expect(getClient).not.toHaveBeenCalled();
+    expect(saveClient).not.toHaveBeenCalled();
+  });
+
+  it('refuses a code that is not in the seed', async () => {
+    expect(await setClientCountry('client-1', 'XX')).toEqual({
+      success: false,
+      error: 'Invalid input.',
+    });
+    expect(await setClientCountry('client-1', 42)).toEqual({
+      success: false,
+      error: 'Invalid input.',
+    });
+    expect(saveClient).not.toHaveBeenCalled();
+  });
+
+  it('writes the country onto the parts and recomposes the printed address', async () => {
+    const result = await setClientCountry('client-1', 'ae');
+    expect(result).toEqual({ success: true, id: 'client-1' });
+
+    const saved = saveClient.mock.calls[0][0];
+    expect(saved.addressParts?.country).toBe('AE');
+    // Rebuilt server-side from the parts, never taken from the caller.
+    expect(saved.address).toMatch(/United Arab Emirates/);
+    expect(saved.address).not.toMatch(/India/);
+    // Everything else on the row survives: this changes one fact.
+    expect(saved.name).toBe('Clayora');
+    expect(saved.entityType).toBe('pvt_ltd');
+    expect(saved.contacts).toEqual({ billing: { email: 'ap@clayora.example' } });
+    expect(saved.createdAt).toBe(1_000);
+    expect(saved.updatedAt).not.toBe(1_000);
+  });
+
+  it('says so when the client does not exist', async () => {
+    getClient.mockResolvedValue(null);
+    expect(await setClientCountry('missing', 'AE')).toEqual({
+      success: false,
+      error: 'Client not found.',
+    });
   });
 });
 

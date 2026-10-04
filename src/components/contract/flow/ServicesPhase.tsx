@@ -111,6 +111,15 @@ export default function ServicesPhase({
               const Icon = SCHEDULE_ICONS[schedule.key];
               const count = services.filter((s) => s.scheduleKey === schedule.key).length;
               const open = browsing === schedule.key;
+              // Whether anything under this Schedule is on the contract, so the
+              // four tiles say what has been chosen without being opened. A
+              // closed tile was identical whether it held nothing or held
+              // everything, which is the one question this screen exists to
+              // answer, and the counts underneath are the catalogue's size
+              // rather than the contract's.
+              const chosen = services.some(
+                (s) => s.scheduleKey === schedule.key && added.has(s.code),
+              );
               return (
                 <li key={schedule.key}>
                   {/*
@@ -126,21 +135,32 @@ export default function ServicesPhase({
                     onClick={() => setBrowsing(open ? null : schedule.key)}
                     className={cn(
                       'group flex h-full w-full flex-col items-center gap-2 rounded-lg border px-3 py-5 text-center transition-colors focus-visible:border-ring focus-visible:outline-none',
+                      // Three states, and they are on two different axes, which
+                      // is why `chosen` colours the border and `open` fills the
+                      // tile rather than both competing for the background. A
+                      // Schedule can be both: chosen and currently browsed.
+                      //
                       // The open tile is what the list below belongs to, so it
                       // holds the accent rather than merely having been
                       // clicked. Without it the rows read as belonging to all
                       // four.
-                      open
-                        ? 'border-ring/60 bg-accent'
-                        : 'bg-card hover:border-ring/60',
+                      open && 'bg-accent',
+                      chosen
+                        ? 'border-primary'
+                        : open
+                          ? 'border-ring/60'
+                          : 'hover:border-ring/60',
+                      !open && 'bg-card',
                     )}
                   >
                     <Icon
                       className={cn(
                         'size-5 transition-colors',
-                        open
-                          ? 'text-foreground'
-                          : 'text-muted-foreground group-hover:text-foreground',
+                        chosen
+                          ? 'text-primary'
+                          : open
+                            ? 'text-foreground'
+                            : 'text-muted-foreground group-hover:text-foreground',
                       )}
                       aria-hidden
                     />
@@ -148,6 +168,15 @@ export default function ServicesPhase({
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {count} service{count === 1 ? '' : 's'}
                     </span>
+                    {/*
+                      Colour is never the only signal (`docs/design.md`, and the
+                      same rule the chosen *rows* below already follow with
+                      their tick). A sighted reader gets the blue border and
+                      icon; a screen reader gets this.
+                    */}
+                    {chosen ? (
+                      <span className="sr-only">(on this contract)</span>
+                    ) : null}
                   </button>
                 </li>
               );

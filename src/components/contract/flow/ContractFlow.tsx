@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Trash2 } from 'lucide-react';
@@ -49,8 +49,18 @@ const EMPTY_CONTRACT: ContractData = { parts: [], blanks: {}, library: {} };
 
 interface ContractFlowProps {
   clients: ClientRecord[];
-  /** The live services library — the source a Part is copied from. */
+  /** The live services library — what the picker offers and a contract sells. */
   services: ContractService[];
+  /**
+   * Every service row including the archived, so a sold Service can resolve the
+   * legal frames it names through `partCodes`.
+   *
+   * The two lists are deliberately different: the 22 Parts carry the fee blanks,
+   * scope, limits, completion criteria and handover, and seeding the 16 sales
+   * Services archived all of them (`CONTEXT.md` §5h). Archived means "not sold",
+   * never "not law". `frameOf` in `contract/copy.ts` is the only reader.
+   */
+  frames?: ContractService[];
   exclusions: LibraryLine[];
   clientInputs: LibraryLine[];
   /**
@@ -90,6 +100,7 @@ interface ContractFlowProps {
 export default function ContractFlow({
   clients,
   services,
+  frames = [],
   exclusions,
   clientInputs,
   clauseLibrary,
@@ -181,12 +192,51 @@ export default function ContractFlow({
    * phase would move out from under somebody the moment their typing completed
    * the phase they were standing on. `useState`'s initialiser runs on the first
    * render only, which is exactly the life this answer should have.
+   *
+   * **A resume happens on arrival or not at all**, which is the other half of
+   * that and was missing. Reported 21 September 2026: picking a client on a new
+   * contract jumped to Scope, skipping the dates, the term and the whole
+   * Services phase. Freezing the *value* was not enough, because `active` still
+   * read it on every render — so the frozen answer, computed before there was a
+   * document, was `FIRST_PHASE`, and the moment the save gave the flow a
+   * `docId` the URL became `/docs/<id>` with no `?phase=` (`useDraftAutosave`
+   * keeps `window.location.search`, and on `/docs/new/contract` that is empty).
+   * From then on every render resolved the phase against a draft the seed had
+   * already filled three phases of.
+   *
+   * So the resume is consumed once, into state the reader then owns. Selecting
+   * a client is an answer to the phase you are standing on, never a request to
+   * leave it.
    */
-  const [resumed] = useState(() => (doc ? resumeStep(CONTRACT_PHASES, draft) : FIRST_PHASE));
   const requested = searchParams.get('phase');
-  const active = stepIndex(CONTRACT_PHASES, requested ?? resumed);
+  const [landed] = useState(() =>
+    requested ?? (doc ? resumeStep(CONTRACT_PHASES, draft) : FIRST_PHASE),
+  );
+  const active = stepIndex(CONTRACT_PHASES, requested ?? landed);
   const phase = CONTRACT_PHASES[active];
   const [forward, setForward] = useState(true);
+
+  /**
+   * Put the phase in the URL once the draft has an id.
+   *
+   * A new contract starts at `/docs/new/contract` with no query string, and the
+   * save rewrites the path to `/docs/<id>` keeping `window.location.search` —
+   * which is empty. So the address bar ended up naming a document that exists
+   * while saying nothing about where in it the reader was standing, and a
+   * refresh resolved that silence through the resume: on a seeded contract,
+   * three phases in.
+   *
+   * `replaceState` rather than the router, for the same reason
+   * `useDraftAutosave` uses it: a navigation here would remount the flow and
+   * take the half-typed document with it. This only ever *adds* the phase the
+   * reader is already on, so it is not a move and leaves no history entry.
+   */
+  useEffect(() => {
+    if (!docId || requested) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('phase', phase.key);
+    window.history.replaceState(null, '', url);
+  }, [docId, requested, phase.key]);
 
   const client = clients.find((c) => c.id === draft.clientId);
 
@@ -227,7 +277,7 @@ export default function ContractFlow({
       patch(patchValues);
       return;
     }
-    const seeded = seedFromClient(picked, services, exclusions, clientInputs);
+    const seeded = seedFromClient(picked, services, exclusions, clientInputs, frames);
     setDraft((prev) => ({
       ...prev,
       ...patchValues,
@@ -235,6 +285,11 @@ export default function ContractFlow({
         ...prev.contract,
         parts: seeded.parts,
         library: seeded.library,
+        // The fee the client record already agreed, written into each Part's
+        // first fee blank. Under the typed blanks, not over them: `seedable`
+        // has already refused to seed a contract with any, so there is nothing
+        // to overwrite, and the order says which would win if that changed.
+        blanks: { ...seeded.blanks, ...prev.contract.blanks },
         termMonths: seeded.termMonths ?? prev.contract.termMonths,
         effectiveDate: seeded.effectiveDate ?? prev.contract.effectiveDate,
       },
@@ -242,7 +297,9 @@ export default function ContractFlow({
   };
 
   const onAddService = (service: ContractService) => {
-    const { part, library } = copyPart(service, exclusions, clientInputs);
+    // No `agreed`: adding by hand is choosing the Service, and the scope phase
+    // is where its items get narrowed. `frames` resolves its legal text.
+    const { part, library } = copyPart(service, exclusions, clientInputs, undefined, frames);
     patchContract(withPart(draft.contract, part, library));
     setOpenCode(service.code);
   };
@@ -268,7 +325,11 @@ export default function ContractFlow({
    * `onClose` themselves.
    */
   const onCommitPart = (part: ContractService, partBlanks: BlankValues) => {
-    const { library } = copyPart(part, exclusions, clientInputs);
+    // Only `library` is taken: `part` arrives from the sheet already resolved
+    // and possibly edited, so re-deriving it here would discard those edits.
+    // `frames` still goes in, or a Part whose exclusion ids came from its frame
+    // would resolve against an empty map and lose its "not included" text.
+    const { library } = copyPart(part, exclusions, clientInputs, undefined, frames);
     const next = withPart(draft.contract, part, library, partBlanks);
     patchContract({
       ...next,

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { listDocumentsByProfile } from '@/db/store';
+import { listDocumentsByProfile, listServices } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
 import NewDocumentButton from '@/components/admin/NewDocumentButton';
 import { PageBody, PageHeader } from '@/components/admin/Page';
@@ -23,7 +23,12 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
     redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
-  const documents = await listDocumentsByProfile(profile);
+  // The catalogue is for the Services column: a line names the Service it
+  // bills by code, and the list needs the code's Schedule.
+  const [documents, catalogue] = await Promise.all([
+    listDocumentsByProfile(profile),
+    listServices(),
+  ]);
 
   return (
     // `h-full` for the board view, which fills the page and scrolls inside its
@@ -42,7 +47,7 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
           the strip offered another, and the heading agreed with neither once a
           tab was picked. It is a rail row and a route of its own now
           (`/client/dashboard`), so both sides' homes are the same shape. */}
-      <DocumentsBrowser documents={documents} />
+      <DocumentsBrowser documents={documents} catalogue={catalogue} />
     </PageBody>
   );
 }

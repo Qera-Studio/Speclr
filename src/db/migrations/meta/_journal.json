@@ -120,6 +120,13 @@
       "when": 1789600000000,
       "tag": "0016_clause_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789862400000,
+      "tag": "0017_client_industry_and_team",
+      "breakpoints": true
     }
   ]
 }

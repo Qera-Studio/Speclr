@@ -45,7 +45,7 @@ import {
   FILTER_FIELDS,
   GROUP_BY_LIST,
   groupDocuments,
-  hasTotal,
+  totalPaiseOf,
   matchesFilters,
   partyFieldLabel,
   sortDocuments,
@@ -59,6 +59,7 @@ import {
 import { partyName } from "@/lib/domain/party";
 import { profileOfDocType } from "@/lib/profile";
 import { DOC_TYPE_LIST, DOC_TYPES } from "@/lib/domain/registry";
+import type { ContractService } from "@/lib/domain/service";
 import type { AdminDocument } from "@/lib/domain/types";
 
 /**
@@ -134,11 +135,14 @@ export default function DocumentsBrowser({
   emptyDescription,
   /** Hidden on a per-type list, where every row is already the same type. */
   hideTypeFilter = false,
+  catalogue,
 }: {
   documents: AdminDocument[];
   emptyTitle?: string;
   emptyDescription?: string;
   hideTypeFilter?: boolean;
+  /** For the table's Services column; see `DocumentsTable`. */
+  catalogue?: ContractService[];
 }) {
   const [rows, setRows] = useState<FilterRow[]>([]);
   const [sort, setSort] = useState<SortState | null>(null);
@@ -348,9 +352,9 @@ export default function DocumentsBrowser({
     const hidden: FilterField[] = [];
     if (hideTypeFilter) hidden.push("type");
     if (options.party.length === 0) hidden.push("party");
-    // Letters and contracts have no line items; offering a total filter here
-    // would only ever empty the list.
-    if (!documents.some(hasTotal)) hidden.push("total");
+    // Nothing here has a figure (letters, or contracts with no fee filled in
+    // yet); offering a total filter would only ever empty the list.
+    if (!documents.some((doc) => totalPaiseOf(doc) !== null)) hidden.push("total");
     return hidden;
   }, [hideTypeFilter, options.party.length, documents]);
 
@@ -434,6 +438,7 @@ export default function DocumentsBrowser({
     return (
       <DocumentsTable
         documents={documents}
+        catalogue={catalogue}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
       />
@@ -543,6 +548,7 @@ export default function DocumentsBrowser({
           ) : (
             <DocumentsTable
               documents={pageRows}
+              catalogue={catalogue}
               selection={selection}
               sort={sort}
               // Omitted while the toggle is off — the headers then render as plain

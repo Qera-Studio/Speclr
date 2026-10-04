@@ -102,6 +102,48 @@ export const clients = pgTable("clients", {
    */
   entityType: text("entity_type"),
   /**
+   * What this client does, from the fixed list in `lib/domain/industry.ts`.
+   *
+   * A real column and not part of a group, for the same reason `entityType` is:
+   * it is a fact about who the client is (`PRINCIPLES.md` rule 2), and unlike
+   * the JSONB groups it is something the list *queries* — filtering and
+   * grouping clients by trade is the entire point of recording it, and a
+   * JSONB key cannot be indexed usefully for that.
+   *
+   * Free text was refused: see that file on why five spellings of 'SaaS' is a
+   * field with no value. Nullable, like every column added after the first
+   * invoice, and **never snapshotted**, because no sheet prints it.
+   */
+  industry: text("industry"),
+  /**
+   * Who at Qera brought this client in, and who works with them.
+   *
+   * **Employee ids, never names.** A name copied onto a client goes stale the
+   * first time somebody is renamed, which is the rule `CONTEXT.md` §5d-i
+   * already applies to `contacts.primary`. Resolved on read.
+   *
+   * These are facts about *Qera*, not about the client, which is what makes
+   * them the one place the two profiles genuinely have to meet: `employees`
+   * belongs to the admin profile and this row belongs to the client profile.
+   * Every read of them crosses through `lib/profile.ts`, which is the
+   * documented backdoor, rather than a client-side component importing the
+   * admin store directly.
+   *
+   * `set null` on delete rather than cascade: losing the employee must not
+   * take the client with it, and an unassigned client is a true statement
+   * where a deleted one is not. The team array carries no FK for the same
+   * reason `attachments` carries none, so `teamEmployeeIds` is filtered
+   * against the live employee list on read and a departed member simply stops
+   * resolving.
+   *
+   * **Never snapshotted** (rule 4): who owns a relationship is not a fact about
+   * an issued invoice, and no sheet prints either one.
+   */
+  leadEmployeeId: text("lead_employee_id").references(() => employees.id, {
+    onDelete: "set null",
+  }),
+  teamEmployeeIds: jsonb("team_employee_ids").$type<string[]>(),
+  /**
    * The four groups onboarding added, and the reason they are groups rather
    * than thirty columns: nothing queries them, and a group keeps the next field
    * migration-free. The same call `bank` and `payroll` make on `employees`.

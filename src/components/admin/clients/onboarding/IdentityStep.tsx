@@ -11,7 +11,7 @@ import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
-import AddressFields, { COUNTRY_GROUPS } from '@/components/form/AddressFields';
+import AddressFields from '@/components/form/AddressFields';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import { EmailField } from '@/components/form/fields';
 import { clientInputSchema } from '@/lib/domain/registry';
@@ -25,6 +25,7 @@ import {
   type ClientKind,
 } from '@/lib/domain/entityType';
 import { emailSchema, phoneSchema } from '@/lib/domain/fields';
+import { INDUSTRIES, INDUSTRY_KEYS } from '@/lib/domain/industry';
 import { personNameSchema, textSchema } from '@/lib/domain/text';
 import type { ClientContacts } from '@/lib/domain/client';
 import { createClient, saveClientSection, updateClient } from '@/server/actions/clients';
@@ -46,6 +47,16 @@ import { pruneEmpty, StepForm, type StepProps } from './stepKit';
  * (`PRINCIPLES.md` rule 3). `clientContact` derives them on read.
  */
 const identityFormSchema = clientInputSchema.extend({
+  /*
+    Re-stated without the transform `clientInputSchema` puts on it.
+
+    That transform turns `''` into `undefined`, which is right for the action
+    and wrong for a form: react-hook-form types a field by the schema's *input*,
+    and a transform makes input and output differ, so the resolver stops
+    matching the field a `Combobox` actually holds. The empty string is
+    normalised on the way to the server, where the shared schema runs again.
+  */
+  industry: z.union([z.enum(INDUSTRY_KEYS), z.literal('')]).optional(),
   designation: textSchema(200).optional(),
   billingContact: z
     .object({
@@ -206,6 +217,7 @@ export default function IdentityStep({
           email: client.email,
           phone: client.phone,
           entityType: client.entityType ?? '',
+          industry: client.industry ?? '',
           designation: client.contacts?.primary?.designation ?? '',
           billingContact: client.contacts?.roles?.billing ? undefined : client.contacts?.billing,
         }
@@ -224,6 +236,7 @@ export default function IdentityStep({
           email: '',
           phone: '',
           entityType: '',
+          industry: '',
           designation: '',
           billingContact: undefined,
         },
@@ -233,6 +246,17 @@ export default function IdentityStep({
   // address rather than a field of its own — one place to say where a client is.
   const country = useWatch({ control, name: 'addressParts.country' });
   const entityType = useController({ control, name: 'entityType' });
+  const industry = useController({ control, name: 'industry' });
+
+  /**
+   * The fifty, as options. Built once: the list is a module constant, so
+   * rebuilding it per render would allocate fifty objects on every keystroke in
+   * any field on this step.
+   */
+  const industryOptions = useMemo(
+    () => INDUSTRIES.map((i) => ({ value: i.key, label: i.label })),
+    [],
+  );
   // The whole second address is one value, present or absent, so the checkbox
   // is the field rather than a piece of state beside it. Nothing to keep in
   // step, and a draft restored from sessionStorage comes back ticked.
@@ -250,15 +274,41 @@ export default function IdentityStep({
    *
    * The country filter still applies in both cases: a person is a person
    * anywhere, but they are not a form from another country's register.
+   *
+   * **Except while the kind is being crossed from the row above.** The row
+   * above the step tracker offers the other kind on a saved record too. The
+   * kind is derived from the entity type, so "make this a company" can only
+   * mean "pick a company form", and the shell brings the choice here as a
+   * `kind` that disagrees with the record. While it does, the list is the
+   * chosen kind's forms alone and the saved form is not kept: it is the
+   * wrong kind by definition, and keeping it would be keeping the mistake.
+   * The record catches up on save, which is when the shell stops carrying
+   * the override.
    */
+  const crossing = Boolean(client) && kind !== clientKindOf(savedEntityType);
   const entityOptions = useMemo(
     () =>
-      (client
+      (client && !crossing
         ? entityTypesForCountry(country, savedEntityType)
-        : entityTypesForClient(country, kind, savedEntityType)
+        : entityTypesForClient(country, kind, crossing ? undefined : savedEntityType)
       ).map((e) => ({ value: e.value, label: e.label })),
-    [client, country, kind, savedEntityType],
+    [client, country, crossing, kind, savedEntityType],
   );
+
+  /**
+   * A form the list no longer offers is emptied, not left holding a value the
+   * reader cannot see. The list narrows when the kind or the country changes
+   * in the row above, and the old answer would otherwise sit invisibly on the
+   * form until the resolver refused the save. A blank field says what it
+   * needs; a full field that looks blank does not.
+   */
+  const chosenEntityType = entityType.field.value;
+  const clearEntityType = entityType.field.onChange;
+  useEffect(() => {
+    if (chosenEntityType && !entityOptions.some((e) => e.value === chosenEntityType)) {
+      clearEntityType('');
+    }
+  }, [chosenEntityType, clearEntityType, entityOptions]);
 
   /**
    * One option is filled in, but the field still shows.
@@ -274,7 +324,6 @@ export default function IdentityStep({
    * whole point of the field is that the record states its own legal form.
    */
   const onlyOption = entityOptions.length === 1 ? entityOptions[0].value : null;
-  const chosenEntityType = entityType.field.value;
   useEffect(() => {
     if (onlyOption && chosenEntityType !== onlyOption) {
       setValue('entityType', onlyOption, { shouldValidate: true });
@@ -298,8 +347,9 @@ export default function IdentityStep({
 
   /** A proprietorship bills under a business name; a plain individual does not. */
   const tradesUnderName = entityTypeSpec(String(chosenEntityType ?? ''))?.tradingName === true;
+  // Name, optionally the legal/trading name, entity type, industry.
   const showSecondName = !individual || tradesUnderName;
-  const nameColumns = (2 + (showSecondName ? 1 : 0)) as 2 | 3;
+  const nameColumns = (3 + (showSecondName ? 1 : 0)) as 3 | 4;
 
   // Restores what was typed but not saved, so a refresh or a hop to the other
   // profile comes back to the same half-filled form. Cleared on save.
@@ -309,6 +359,24 @@ export default function IdentityStep({
   // interrupted step still has a row to fall back on, and this one does not.
   const key = draftKey(client?.id, 'identity');
   useFormDraft(key, watch, reset);
+
+  /**
+   * The country is answered in the row above the step tracker, and this form
+   * follows it rather than asking again. Before the first save it arrives as
+   * the `country` prop (the URL); after it, as `addressParts.country` on the
+   * record, which `setClientCountry` writes. Either way it lands on the field
+   * that has always held it, so nothing downstream learned a new shape.
+   *
+   * Declared after the draft restore on purpose: effects run in order, and a
+   * draft that remembers the old country must lose to the row, which is the
+   * one place the answer is given.
+   */
+  const recordCountry = client?.addressParts?.country;
+  const hasRecord = Boolean(client);
+  useEffect(() => {
+    const next = hasRecord ? recordCountry : chosenCountry;
+    if (next) setValue('addressParts.country', next);
+  }, [chosenCountry, hasRecord, recordCountry, setValue]);
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
@@ -372,57 +440,20 @@ export default function IdentityStep({
         and a word that belongs beside the names it qualifies. A dropdown of
         fourteen is a dropdown; a grid of fourteen is a wall.
 
-        **Country leads the row**, lifted out of the address block below. It is
-        what decides which legal forms the entity type three cells along is
-        allowed to offer, and while it sat at the bottom of the page that filter
-        only worked for someone who already knew to scroll down and set it
-        first. A control whose effect appears above it is a control nobody finds.
+        **The country is not on this page.** It decides which legal forms the
+        entity type is allowed to offer, so it once led this row, and before
+        that it sat at the foot of the address block where the filter above it
+        only worked for somebody who already knew to scroll down and set it
+        first. It now lives in the row above the step tracker (`ClientAxes`),
+        beside the kind, which is the other answer this page is filled in
+        under: in view on every step, and the one editor for both. This form
+        only *follows* it, in the effect after the draft restore.
 
         An individual drops the columns that do not apply rather than blanking
         them: no legal entity name (they are the entity), and no entity type
         where the country offers only one form. The row narrows to match, so
         two fields are two fields and not two fields and a gap.
       */}
-      {/*
-        **Only when there is a record to correct.** `CountryChooser` asks this
-        on its own page before step 1, so on the create path the field would be
-        the same question twice, pre-answered, one screen apart.
-        `addressParts.country` is still where the value lives and the chooser
-        still only seeds it.
-
-        It cannot go altogether. An existing client never sees the chooser, and
-        this is the only editor for a fact that decides place of supply, which
-        registrations are offered, which legal forms exist, what a postcode is
-        called and which documents are requested. Removing it would make a
-        client entered in the wrong country impossible to fix.
-
-        **Its own line, above the row, and narrow.** Making it a fourth column
-        squeezed all four to a width where a legal entity name could not be
-        read. It is not a fourth identity fact anyway: it is the setting the
-        rest of the page is answered under.
-      */}
-      {client ? (
-        <Field className="max-w-xs">
-          <FieldInfo
-            htmlFor="client-country"
-            label="Country"
-            info="Where the client is registered. Everything on this record follows from it: which legal forms the entity type offers, which tax registration the next step asks for, what a postal code is called, which documents are worth requesting, and what their invoices are billed in."
-            infoLabel="What does the country decide?"
-          />
-          <Combobox
-            id="client-country"
-            size="form"
-            groups={COUNTRY_GROUPS}
-            value={String(country ?? '')}
-            onValueChange={(value) =>
-              setValue('addressParts.country', value, { shouldValidate: true })
-            }
-            placeholder="Select…"
-          />
-          <FieldError errors={[errors.addressParts?.country]} />
-        </Field>
-      ) : null}
-
       <FieldRow columns={nameColumns}>
         <Field>
           <FieldInfo
@@ -477,6 +508,18 @@ export default function IdentityStep({
               info="The legal form, which decides what identifiers apply: an Indian entity's PAN encodes its own kind, so this is what turns a shape check into a real one. The list follows the country chosen at the start of this row."
               infoLabel="Why does the entity type matter?"
             />
+            {/*
+              `aria-invalid` so the control is marked, not merely described.
+
+              A combobox is picked with a click and never blurs the way an
+              input does, so "Choose the entity type." can only ever arrive at
+              submit, in a pile with whatever else was untouched. Without this
+              the message printed underneath while the control itself looked
+              untouched: no red border, and nothing for `focusFirstInvalid` in
+              `flow/stepKit` to find when it goes looking for the first thing
+              to fix. The error was already computed; only the marking was
+              missing.
+            */}
             <Combobox
               id="client-entity-type"
               size="form"
@@ -484,8 +527,39 @@ export default function IdentityStep({
               value={String(entityType.field.value ?? '')}
               onValueChange={entityType.field.onChange}
               placeholder="Select…"
+              aria-invalid={Boolean(errors.entityType)}
             />
             <FieldError errors={[errors.entityType]} />
+        </Field>
+
+        {/*
+          What they do. Beside the entity type because the two are the same kind
+          of question, asked in the same breath: what sort of thing is this, and
+          what trade is it in.
+
+          A `Combobox` rather than a select, because fifty options is a list
+          somebody types at rather than scrolls. Optional, and the only field in
+          this row that is: a client whose trade is nobody's business is a real
+          client, where one with no name or no legal form is an unfinished
+          record.
+        */}
+        <Field>
+          <FieldInfo
+            htmlFor="client-industry"
+            label="Industry"
+            info="What they do, from a fixed list rather than free text. It is what lets the clients list group and filter by trade; five spellings of the same industry would make that impossible. Nothing about it reaches a document."
+            infoLabel="What is the industry used for?"
+            optional
+          />
+          <Combobox
+            id="client-industry"
+            size="form"
+            options={industryOptions}
+            value={String(industry.field.value ?? '')}
+            onValueChange={industry.field.onChange}
+            placeholder="Select…"
+          />
+          <FieldError errors={[errors.industry]} />
         </Field>
       </FieldRow>
 
