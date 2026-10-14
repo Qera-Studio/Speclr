@@ -119,7 +119,13 @@ describe('the pointers stay true', () => {
       .map((file) => readFileSync(join(dir, file), 'utf8'))
       .join('\n');
 
-    for (const entry of CATALOGUE) {
+    /*
+      One exemption: an entry whose source is inside the library folder is an
+      experiment, a fork taken on purpose so a design can change without the
+      app moving with it (`library/drawer/`). It is not a primitive the page
+      could import instead, and it is deleted when the experiment ends.
+    */
+    for (const entry of CATALOGUE.filter((e) => !e.source.startsWith('src/components/library/'))) {
       const module = entry.source.replace(/^src\//, '@/').replace(/\.tsx?$/, '');
       // Either quote: a formatter rewriting `'` to `"` is not a component
       // going missing, and a guard that goes red for it teaches people to

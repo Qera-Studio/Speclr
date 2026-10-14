@@ -7,6 +7,9 @@ import { Archive, Download, Trash2 } from "lucide-react";
 import { ButtonSpecimens } from "./ButtonSpecimens";
 import { IconSpecimens } from "./IconSpecimens";
 import { TableSpecimens } from "./TableSpecimens";
+import { ItemDrawerSpecimens } from "./drawer/ItemDrawerSpecimens";
+import { TabsSpecimens } from "./tabs/TabsSpecimens";
+import { ClauseDrawerSpecimens } from "./drawer/ClauseDrawerSpecimens";
 import { DrawerTrigger, LivePager, Specimen } from "./Specimen";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
@@ -148,6 +151,13 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         {entry.slug === "icons" ? <IconSpecimens entry={entry} /> : null}
         {entry.slug === "table" ? <TableSpecimens entry={entry} /> : null}
         {entry.slug === "drawer" ? <DrawerSpecimens entry={entry} /> : null}
+        {entry.slug === "segmented-tabs" ? <TabsSpecimens entry={entry} /> : null}
+        {entry.slug === "item-drawer" ? (
+          <ItemDrawerSpecimens entry={entry} />
+        ) : null}
+        {entry.slug === "clause-drawer" ? (
+          <ClauseDrawerSpecimens entry={entry} />
+        ) : null}
       </div>
     </article>
   );

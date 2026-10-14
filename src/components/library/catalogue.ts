@@ -156,7 +156,7 @@ export const CATALOGUE: LibraryEntry[] = [
     variants: [
       {
         name: 'Every column',
-        note: 'One of each of the eleven kinds, and the package that makes that many readable: fixed layout, sideways scroll inside the card, a frozen name and actions column, dividers, and every cell truncating. It buys reachability at any scroll position and gives up the sticky header, which is not recoverable. Drag a column edge to resize it, or a heading to move it: the frozen Name column is pinned and the checkbox and actions columns bound the range by not being columns. The absences are here too, on the row with no amount, owner, team or note.',
+        note: 'One of each of the eleven kinds, and the package that makes that many readable: fixed layout, sideways scroll inside the card, a frozen name and actions column, dividers, and every cell truncating. It buys reachability at any scroll position and gives up the sticky header, which is not recoverable. Drag a heading to move a column (columns do not resize): the frozen Name column is pinned and the checkbox and actions columns bound the range by not being columns. The absences are here too, on the row with no amount, owner, team or note.',
       },
       {
         name: 'Empty',
@@ -175,6 +175,56 @@ export const CATALOGUE: LibraryEntry[] = [
       {
         name: 'The drawer',
         note: 'One frame, opened over the page it would really cover. The toolbar walks the list without closing the panel and expands it to nine tenths of the card; the body is the only part that scrolls; the footer is a row of controls or a quiet status line, and the switch below shows both on the same frame rather than as two drawers.',
+      },
+    ],
+  },
+  {
+    slug: 'segmented-tabs',
+    name: 'Segmented tabs (experiment)',
+    blurb:
+      'Tabs as a soft grey trough with a white pill under the chosen one, every tab the same width, after a reference design with the app’s own corners. Built on ui/tabs, so the keys, the slide and the drag are the house ones.',
+    source: 'src/components/library/tabs/SegmentedTabs.tsx',
+    rule: '§2.7',
+    variants: [
+      {
+        name: 'Two choices',
+        note: 'The smallest strip: a setting with two answers, where the pill is the answer.',
+      },
+      {
+        name: 'Icons, with more',
+        note: 'Four views with icons, and "All" opening the rest. The menu sits outside the tablist, because a menu button inside role="tablist" would be announced as a tab.',
+      },
+      {
+        name: 'Words only',
+        note: 'Four sections of a settings panel. Equal widths, so "Publishing" does not make its tab the biggest target.',
+      },
+    ],
+  },
+  {
+    slug: 'item-drawer',
+    name: 'Item drawer (experiment)',
+    blurb:
+      'A copy of the service catalogue’s item drawer, for trying a new design on. Nothing in the app imports it: a design that wins goes back into the real drawer, and this is deleted either way.',
+    source: 'src/components/library/drawer/ExperimentDrawer.tsx',
+    rule: '§2.11',
+    variants: [
+      {
+        name: 'The item drawer',
+        note: 'The Custom Website items, all 52, with the same table, toolbar and form as the services page. Open a row to edit it. Saving, archiving and removing a group change this page only, until it is reloaded.',
+      },
+    ],
+  },
+  {
+    slug: 'clause-drawer',
+    name: 'Clause drawer (experiment)',
+    blurb:
+      'A copy of the clause library’s drawer, on the same forked frame as the item drawer. Nothing in the app imports it, and nothing it saves reaches the clauses table.',
+    source: 'src/components/library/drawer/ClauseDrawerSpecimens.tsx',
+    rule: '§2.11',
+    variants: [
+      {
+        name: 'The clause drawer',
+        note: 'The 31 seeded clauses with the real drawer: paging, expand, download, archive and delete in the toolbar, the row-by-row body editor, and the debounced save with its quiet status line. Everything changes this page only, until it is reloaded.',
       },
     ],
   },
