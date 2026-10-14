@@ -28,19 +28,24 @@ const tabsListVariants = cva(
   // The grab cursor only where there is a pill to grab: a `line` strip is an
   // underline with nothing to pick up, and a vertical one goes nowhere
   // sideways. Neither should claim otherwise.
-  "group/tabs-list relative inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none group-data-horizontal/tabs:data-[variant=default]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
+  "group/tabs-list relative inline-flex w-fit items-center justify-center text-tab-label group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none group-data-horizontal/tabs:data-[variant=default]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
   {
     variants: {
       variant: {
-        // Border only on the trough that actually holds a pill — a `line`
-        // strip is an underline sitting on nothing, so a container stroke
-        // around it would frame empty air.
-        default: "border border-border bg-muted",
+        // The segmented trough (`segmentTrough`): a soft fill and no stroke.
+        // The pill's own shadow is what lifts the choice off it.
+        default: "bg-muted",
         line: "gap-1 bg-transparent",
+      },
+      size: {
+        default: "rounded-lg p-1 group-data-horizontal/tabs:h-10",
+        // For a toolbar row, where every button is 28px tall.
+        sm: "rounded-lg p-0.5 group-data-horizontal/tabs:h-7",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
     },
   },
 );
@@ -233,6 +238,7 @@ export function useTabDrag() {
 function TabsList({
   className,
   variant = "default",
+  size = "default",
   ...props
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
   const { style, ...drag } = useTabDrag();
@@ -240,7 +246,8 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
+      data-size={size}
+      className={cn(tabsListVariants({ variant, size }), className)}
       {...props}
       // After `props`, so a caller cannot drop the gesture by passing a pointer
       // handler of its own. Its `style` is merged rather than replaced: the
@@ -252,46 +259,43 @@ function TabsList({
 }
 
 /**
- * The raised surface behind the active tab.
+ * The segmented look, in three parts, so every strip in the app draws the same
+ * one (`docs/design.md` §2.7). It came from a reference design adopted on
+ * 10 October 2026: a soft grey trough, a white pill under the choice with a
+ * shadow and no stroke, and muted labels that go to full ink when chosen.
  *
- * Exported because four things draw it — this file's `TabsIndicator` and
- * `TabsTrigger`, plus the hand-rolled pills (`ProfileSwitcher`,
- * `SpecDetailsTabs`'s Motion one, and the list/card toggle in
- * `DocumentsBrowser`) — and they had already drifted apart.
+ * **The pill is white in light mode and one step up the ramp in dark**, which
+ * is "nearer" in both themes: lighter is what raised means under a light
+ * source, and that does not invert with the theme. `--background` cannot be
+ * the dark value because it is darker than the trough there.
  *
- * **Fill, shadow and a light stroke, in both themes.** Light mode raises the
- * pill by making it lighter than the trough (white on `--muted`) and adds a
- * shadow; dark mode does the same thing in the same direction, because lighter
- * is what "nearer" means under a light source and that does not invert with the
- * theme. What dark mode cannot do is inherit light's *values*: `--background`
- * there is darker than `--muted`, so painting the pill `bg-background` would
- * push it into the trough. Hence a white overlay instead. The border is what
- * `ProfileSwitcher` carried on its own before this was generalised to it: a
- * pill that is only a fill difference reads as one thing on a busy background,
- * and the stroke is what lets an eye find its edge without the shadow alone
- * carrying it. It is fill *and* shadow *and* stroke together that make the
- * surface, not the stroke instead of the other two — the same fill-does-not-
- * read problem this comment used to describe would return if the border were
- * asked to carry the elevation on its own.
+ * Used by `TabsIndicator`, `TabsTrigger`, and the strips Base UI does not build
+ * (`ProfileSwitcher`, the documents view toggle, `ThemeToggle`,
+ * `SpecDetailsTabs`'s Motion pill). Change it here and they all follow.
  */
+const segmentTrough = "rounded-lg bg-muted";
 const tabPillSurface =
-  "border border-border bg-raised shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+  "rounded-sm bg-background shadow-[0_1px_2px_oklch(0_0_0/0.08),0_1px_1px_oklch(0_0_0/0.04)] dark:bg-[var(--gray-700)] dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+/** A segment's label: muted at rest, full ink once chosen or under the pointer. */
+const segmentLabel = "font-medium text-tab-label transition-colors hover:text-foreground";
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-[calc(--spacing(1.25))] hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "relative inline-flex h-full flex-1 items-center justify-center gap-2 rounded-sm px-4 text-sm whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        segmentLabel,
+        // The compact strip, for a toolbar row.
+        "group-data-[size=sm]/tabs-list:gap-1.5 group-data-[size=sm]/tabs-list:px-3 group-data-[size=sm]/tabs-list:text-xs group-data-[size=sm]/tabs-list:[&_svg:not([class*='size-'])]:size-3.5",
         // `line` is an underline, not a pill — its active trigger keeps no
         // fill and no border in either theme. Unprefixed rather than `dark:`
         // only, so it also overrides the new `data-active:border-border`
         // below in light mode.
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:shadow-none",
         // Same surface as `tabPillSurface`, spelled with `data-active:` since
-        // it paints on the trigger itself. Keep the two in step. The base
-        // class already carries `border`; only the colour needs to switch.
-        "data-active:border-border data-active:bg-raised data-active:shadow-sm data-active:text-foreground dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
+        // it paints on the trigger itself. Keep the two in step.
+        "data-active:bg-background data-active:text-foreground data-active:shadow-[0_1px_2px_oklch(0_0_0/0.08),0_1px_1px_oklch(0_0_0/0.04)] dark:data-active:bg-[var(--gray-700)] dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -315,7 +319,7 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
       className={cn(
         // `--tab-drag` is set on the list by `useTabDrag` and inherits down. It
         // is 0 at rest, so the resting position is exactly what it always was.
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] rounded-md transition-[translate,width] duration-200 ease-standard",
+        "absolute top-1/2 left-0 z-0 h-8 w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] transition-[translate,width] duration-200 ease-standard group-data-[size=sm]/tabs-list:h-6",
         // Untransitioned under the hand: the offset is already per-frame, and a
         // transition on top of it lags the pointer.
         "group-data-dragging/tabs-list:transition-none",
@@ -390,4 +394,6 @@ export {
   TabsContent,
   tabsListVariants,
   tabPillSurface,
+  segmentTrough,
+  segmentLabel,
 };

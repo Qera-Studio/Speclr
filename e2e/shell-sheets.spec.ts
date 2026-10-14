@@ -195,10 +195,9 @@ test('a table pager carries the go-to-page box', async ({ page }) => {
  * resolves no stylesheet, so a class name is all a unit test can check and a
  * class name is not a colour.
  *
- * The box is **one shade** off the band it sits on (`docs/design.md` §2.10).
- * The pager's container has had no fill since 18 September 2026, so the band is
- * the footer itself: the box is a step down from slate-50 in light and a step
- * up from slate-950 in dark, the ramp's floor. Both themes are checked, because
+ * The box is **one shade** off the trough it sits in (`docs/design.md` §2.10).
+ * Since 11 October 2026 that is the tab strip's trough, and the box is a
+ * `--hover` well a step below it in both themes. Both themes are checked, because
  * writing only the light one is how a token gets nudged in one theme with
  * nobody looking at the other.
  *
@@ -216,11 +215,12 @@ for (const theme of ['light', 'dark'] as const) {
 
     const { boxL, bandL, inside, padRight, padLeft } = await box.evaluate((el) => {
       const footer = el.closest('div[class*="min-h-11"]') as HTMLElement;
+      const trough = el.closest('[data-slot="page-runs"]') as HTMLElement;
       const lightness = (c: string) => Number(/lab\(([-\d.]+)/.exec(c)?.[1] ?? NaN);
       const footerStyle = getComputedStyle(footer);
       return {
         boxL: lightness(getComputedStyle(el).backgroundColor),
-        bandL: lightness(footerStyle.backgroundColor),
+        bandL: lightness(getComputedStyle(trough).backgroundColor),
         inside: el.closest('[data-slot="page-runs"]') !== null,
         padRight: footerStyle.paddingRight,
         padLeft: footerStyle.paddingLeft,
@@ -235,11 +235,12 @@ for (const theme of ['light', 'dark'] as const) {
     // control and moves with it.
     expect(inside).toBe(true);
 
-    // One shade, not none and not two: measured at 2.6 in light and 3.1 in
-    // dark, where two shades is about 7.
+    // One shade, not none and not two. The steps are wider down here than at
+    // the ramp's white end: one is 5.6 in light (gray-100 to 200) and 7.4 in
+    // dark (gray-800 to 900); two, which dark's `--hover` was, measured 12.5.
     const step = Math.abs(boxL - bandL);
     expect(step).toBeGreaterThan(1);
-    expect(step).toBeLessThan(5);
+    expect(step).toBeLessThan(9);
 
     // And the footer's own asymmetry, measured rather than read off a class.
     expect(padRight).toBe('8px');
@@ -257,15 +258,13 @@ for (const theme of ['light', 'dark'] as const) {
  * which page you were on. jsdom resolves no stylesheet, so nothing short of a
  * browser could have caught it.
  *
- * The container it sits in has had no fill since 18 September 2026 (the fill
- * only ever existed in light), so the pill is measured against the band behind
- * that container, and the container is asserted to be clear so this test
- * notices if a fill comes back and the comparison stops being the right one.
+ * Since 11 October 2026 the container is the tab strip's trough and the pill
+ * is the tabs' white one, so the pill is measured against that trough, and the
+ * trough is asserted to be filled so this notices if it goes clear again.
  *
- * **Fill *or* stroke**, not a lightness floor: in light the pill shares its fill
- * with the go-to box and is told apart by its border, which §2.10 records as
- * accepted. What must never happen is the active page having *neither*: same
- * fill as the band and no stroke is the invisible pill this test exists for.
+ * **Fill *or* stroke**: what must never happen is the active page having
+ * *neither*. Same fill as its ground and no stroke is the invisible pill this
+ * test exists for.
  */
 for (const theme of ['light', 'dark'] as const) {
   test(`the pager's pill reads as raised in ${theme}`, async ({ page }) => {
@@ -286,16 +285,10 @@ for (const theme of ['light', 'dark'] as const) {
         borderWidth: parseFloat(style.borderTopWidth),
       };
     });
-    const band = lightness(
-      await page.locator('[data-slot="pagination"]').evaluate((el) => {
-        const footer = el.closest('div[class*="min-h-11"]') as HTMLElement;
-        return getComputedStyle(footer).backgroundColor;
-      }),
-    );
+    const band = lightness(container);
 
+    // The trough is filled, so it is what the pill is seen against.
     expect(Number.isNaN(band)).toBe(false);
-    // The container is clear, so the band is what the pill is seen against.
-    expect(container).toBe('rgba(0, 0, 0, 0)');
 
     // The active page is separated from the band by its fill, its stroke, or
     // both. A stroke counts only while it is actually painted: a

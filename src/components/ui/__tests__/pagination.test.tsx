@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { PAGE_SIZE, Pagination, usePagedRows } from '@/components/ui/pagination';
 import { SIMPLE_MAX } from '@/components/ui/pageGroups';
+import { segmentTrough, tabPillSurface } from '@/components/ui/tabs';
 
 /** A minimal host so the hook and the control can be exercised together. */
 function Paged({ rows }: { rows: string[] }) {
@@ -280,18 +281,14 @@ describe('the go-to-page box', () => {
    * made the one control here you can *type* into look like the counter printed
    * beside it.
    *
-   * **The rule is the step, not the token** (`docs/design.md` §1.1), and the
-   * token has now moved twice under that one rule while the step never changed.
-   * It sat on the `--sidebar` band and was `--sidebar-field`; it moved inside
-   * the pager's filled container and became `--hover`, one step darker than
-   * that; and when the container lost its fill (18 September 2026) the box
-   * landed on the card, where `--hover` was suddenly a two-step drop and
-   * `--sidebar-field` is the one step again.
+   * It is `--hover`, one step below the tab trough it sits in (11 October
+   * 2026). The rule is the step, not the token: the token has moved four
+   * times under it.
    */
   it('fills the box one shade off its surroundings', () => {
     render(<Paged rows={pages(9)} />);
 
-    expect(box()).toHaveClass('bg-sidebar-field');
+    expect(box()).toHaveClass('bg-hover');
     expect(box()).not.toHaveClass('bg-transparent');
   });
 });
@@ -331,61 +328,31 @@ describe('the pager as one control', () => {
    *
    * It was outside on the reasoning that a field you type into is a different
    * kind of thing from a page you can be on. That is true of the control and
-   * false of the layout: it is part of the pager, it moves with it, and a box
-   * floating beside the container reads as a second widget that happens to be
-   * adjacent.
-   *
-   * Every other filled thing here is *lighter* than the container (the active
-   * page, a hovered one), which is what "raised" means under a light source.
-   * The box is the one thing you type into rather than press, so it goes the
-   * other way: a well rather than a pill. `--hover` is the token for exactly
-   * that step and it inverts with the theme on its own (slate-200 in light,
-   * slate-950 in dark), which a literal "darker" cannot do near the ramp's
-   * floor.
+   * false of the layout: it is part of the pager and moves with it. Every
+   * other filled thing here is lighter than the trough; the box is the one
+   * thing you type into rather than press, so it is a well rather than a pill.
    */
-  /**
-   * The box sits one step below the page, and that step got shallower.
-   *
-   * It was `--hover` (slate-200) when it was a well inside a slate-100
-   * container, which is one ramp step. With the container unfilled the box
-   * lands on the card instead (slate-50), so the same token became a *two*
-   * step drop and read as a hard dark chip on a light surface. `--sidebar-field`
-   * is slate-100, which restores the one-step well the design asked for
-   * (18 September 2026).
-   *
-   * That token is free precisely because the container stopped using it, so
-   * this is a re-point rather than a new role. `--hover` was deliberately not
-   * edited: `DocumentsCards` uses it for a hovered card, and moving a shared
-   * role to fix one caller is how a token stops meaning anything.
-   */
-  it('puts the go-to box in the container, one step darker than the page', () => {
+  it('puts the go-to box in the container, one step darker than the trough', () => {
     render(<Paged rows={pages(23)} />);
 
     const box = screen.getByRole('textbox', { name: 'Go to page of rows' });
     expect(group()).toContainElement(box);
-    expect(box).toHaveClass('bg-sidebar-field');
-    expect(box).not.toHaveClass('bg-hover');
+    expect(box).toHaveClass('bg-hover');
   });
 
   /**
-   * The container is unfilled, and the border is what groups it.
+   * The container is the tab strip's trough, and has no stroke.
    *
-   * It carried `bg-sidebar-field`, which was slate-100 in light and slate-900
-   * in dark — and `--background` is *also* slate-900 in dark, so the fill was
-   * only ever visible in one theme. One surface that appears in light and
-   * vanishes in dark is not a decision the ramp made, it is two different
-   * pagers, and the light one was the odd one out (18 September 2026).
-   *
-   * The stroke already says where the control ends, which is what the
-   * one-border rule below is about. Losing the fill costs nothing that the
-   * border was not already doing.
+   * It had a border and no fill from 18 September to 11 October 2026, which
+   * left the white pill nothing to read against on a white card. It now takes
+   * `segmentTrough` from `ui/tabs.tsx`, so the pager and every tab group are
+   * one surface spelled once.
    */
-  it('draws no fill on the container', () => {
+  it('sits on the tab strip trough', () => {
     render(<Paged rows={pages(23)} />);
 
-    expect(group().className).not.toMatch(/(^|\s)bg-/);
-    // The stroke stays: it is the only thing left saying where the pager ends.
-    expect(group()).toHaveClass('border-border');
+    for (const cls of segmentTrough.split(' ')) expect(group()).toHaveClass(cls);
+    expect(group()).not.toHaveClass('border-border');
   });
 
   /**
@@ -406,23 +373,18 @@ describe('the pager as one control', () => {
   });
 
   /**
-   * The active page carries its own surface, and it keeps its stroke.
+   * The active page is the tab strip's white pill.
    *
-   * It used to be the step *above* the container, which only made sense while
-   * the container had a fill to be above. With the container unfilled the pill
-   * sits on the card, so light goes the other way: slate-200, a step **down**,
-   * which is what a marker on a plain surface has to do to be found
-   * (18 September 2026). Dark is untouched and still steps up, because there
-   * the pill sits on slate-900 with nothing below it worth using.
-   *
-   * The token still resolves per theme rather than the component naming two
-   * values, which is the rule the test below this one exists to hold.
+   * Taken from `tabPillSurface` rather than restated, so the pager's current
+   * page and the chosen tab cannot drift apart. It replaced a bordered
+   * `--page-active` pill of its own (11 October 2026).
    */
-  it('raises the active page onto the step above the container', () => {
+  it('raises the active page as the tab pill', () => {
     render(<Paged rows={pages(23)} />);
 
     const active = screen.getByRole('button', { name: 'Page 1 of rows' });
-    expect(active).toHaveClass('bg-page-active', 'border-border');
+    for (const cls of tabPillSurface.split(' ')) expect(active).toHaveClass(cls);
+    expect(active).not.toHaveClass('border-border');
   });
 
   /**
@@ -434,11 +396,8 @@ describe('the pager as one control', () => {
    * already on and only the border said otherwise. The fill is the part a
    * reader actually sees.
    *
-   * The two are kept apart by the pill taking the **smaller** step, which is
-   * this control inverting the usual order: the pill is one rung off the page
-   * (slate-100) because it is a resting state carrying a border and a shadow
-   * as well, and hover goes past it to slate-200. Hovering is transient and
-   * reads as a press; only the pill has a stroke.
+   * Since 11 October 2026 they go opposite ways from the trough: the pill is
+   * the tabs' white, a step up, and hover is `--hover`, a step down.
    *
    * So the assertion is not "hover is lighter" but "hover is not the pill's
    * own token". That is the invariant, and it survives either of them moving
@@ -453,35 +412,10 @@ describe('the pager as one control', () => {
     const inactive = screen.getByRole('button', { name: 'Page 2 of rows' });
 
     expect(inactive.className).toContain('hover:bg-hover');
-    expect(inactive.className).not.toContain('hover:bg-page-active');
+    expect(inactive.className).not.toContain('hover:bg-background');
     // One value for the hover, not a per-theme pair: `--hover` inverts on its
     // own (slate-200 light, slate-950 dark), which is the whole point of it.
     expect(inactive.className).not.toMatch(/dark:hover:bg-/);
-  });
-
-  /**
-   * One token, lighter than the container in **both** themes.
-   *
-   * It is its own token because no existing role does that on both sides, which
-   * is a fact about the ramp rather than an oversight. `--card` is right in
-   * light (slate-50, the step above the container) and is the container's *own*
-   * value in dark, so the fill separated by 0.000 there and only the border drew
-   * the active page. `--raised`, which every other active pill in the app uses,
-   * is the mirror problem: it fixes dark and is a step *down* in light, where it
-   * is slate-200, making the pill a well.
-   *
-   * This replaced a `bg-card` plus `dark:bg-raised` pair. Two tokens describing
-   * one surface is a surface with no name, and the next reader has to work out
-   * which half is the rule.
-   *
-   * The colours themselves are measured in `e2e/shell-sheets.spec.ts`: jsdom
-   * resolves no stylesheet, so a class name here is a string.
-   */
-  it('names the active page one surface rather than a pair of overrides', () => {
-    render(<Paged rows={pages(23)} />);
-
-    const active = screen.getByRole('button', { name: 'Page 1 of rows' });
-    expect(active.className).not.toMatch(/dark:bg-/);
   });
 
   /**

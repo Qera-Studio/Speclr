@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { segmentLabel, segmentTrough, tabPillSurface } from "@/components/ui/tabs";
 import { PROFILES, type Profile } from "@/lib/profile";
 import { useProfileEntries } from "@/lib/useProfile";
 import { NAV_BY_PROFILE } from "./nav";
@@ -281,10 +282,11 @@ export default function ProfileSwitcher({
         event.preventDefault();
       }}
       className={cn(
-        // No border, no fill, no shadow. The active pill is the whole of the
-        // control's visible state, and an outline around it was a second edge
-        // saying what the fill already says on a header that is one flat band.
-        "relative flex items-center group-data-[collapsible=icon]:hidden",
+        // The segmented trough every strip shares (`segmentTrough` in
+        // `ui/tabs.tsx`). Padded by 4px, which the pill's offsets below
+        // account for.
+        "relative flex h-10 items-center p-1 group-data-[collapsible=icon]:hidden",
+        segmentTrough,
         drag ? "cursor-grabbing select-none" : "cursor-grab",
         className,
       )}
@@ -294,21 +296,17 @@ export default function ProfileSwitcher({
         painted on whichever link is active — which is what lets the drag move
         it per frame.
 
-        No shadow, no border and no container around it: the fill is the whole
-        of the state now, which is why `--raised` is a step *down* the slate
-        ramp rather than white. `bg-card` and `bg-background` were both tried
-        and are the same slate 50 as the header, so the pill came out identical
-        to the ground behind it and only a hairline said anything.
-
-        `bg-raised` is the token written for this exact surface: "the pill that
-        sits on a track, the active tab, the active profile". Both its values
-        are measured by the contrast suite, which a `bg-white` written here
-        would have slipped straight past.
+        It is the shared pill (`tabPillSurface`): white with a soft shadow on
+        the grey trough, one step up the ramp in dark mode. Every strip in the
+        app draws this one surface, so a change to it is made once.
       */}
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-y-0 left-0 z-0 w-1/2 rounded-md bg-raised",
+          // Inset by the trough's 4px, and half of what is left: so one
+          // `translateX(100%)` lands it exactly on the second half.
+          "pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)]",
+          tabPillSurface,
           // Untransitioned while dragging — the offset is already per-frame, and
           // a transition on top of it lags the fingers. Everything else,
           // including the committed hold that outlasts the gesture, animates.
@@ -339,7 +337,8 @@ export default function ProfileSwitcher({
               // between the labels is the links' own padding: widening it is
               // what separates them without introducing a gap the pill would
               // then have to be short of.
-              "relative z-10 flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors",
+              "relative z-10 flex h-8 flex-1 items-center justify-center gap-2 rounded-sm px-4 text-sm",
+              segmentLabel,
               // Exactly the rail's own two weights. A nav row below never
               // changes colour to say it is active — `sidebarMenuButtonVariants`
               // moves the *background* and leaves the label on
@@ -348,12 +347,10 @@ export default function ProfileSwitcher({
               // `--foreground` (0.145) and `--sidebar-accent-foreground` (0.205)
               // both read as ink beside it; they are hover and press colours
               // here, not resting ones.
-              active
-                ? "text-sidebar-foreground"
-                : "text-muted-foreground hover:text-sidebar-foreground",
+              active && "text-foreground",
             )}
           >
-            <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+            <Icon className="size-4 shrink-0" aria-hidden="true" />
             <span>{nav.label}</span>
           </Link>
         );

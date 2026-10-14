@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes';
 import { motion } from 'motion/react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { segmentTrough, tabPillSurface } from '@/components/ui/tabs';
 import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -94,7 +95,7 @@ export default function ThemeToggle() {
       <div
         role="radiogroup"
         aria-label="Theme"
-        className="flex items-center gap-1 rounded-md bg-muted p-1 group-data-[collapsible=icon]:hidden"
+        className={cn('flex items-center gap-1 p-1 group-data-[collapsible=icon]:hidden', segmentTrough)}
       >
         {OPTIONS.map(({ value, label, Icon }) => {
           const active = current === value;
@@ -108,13 +109,13 @@ export default function ThemeToggle() {
               onClick={() => setTheme(value)}
               className={cn(
                 'relative flex flex-1 items-center justify-center rounded-sm py-1.5 transition-colors',
-                active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                active ? 'text-foreground' : 'text-tab-label hover:text-foreground',
               )}
             >
               {active && (
                 <motion.span
                   layoutId={`${layoutId}-theme-pill`}
-                  className="absolute inset-0 rounded-sm bg-background shadow-sm dark:bg-input/40"
+                  className={cn('absolute inset-0', tabPillSurface)}
                   transition={{ type: 'spring', stiffness: 380, damping: 34 }}
                 />
               )}

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useTabDrag } from "@/components/ui/tabs";
+import { segmentLabel, segmentTrough, tabPillSurface, useTabDrag } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyContent,
@@ -197,21 +197,19 @@ export default function DocumentsBrowser({
   // measure. The grid columns, the pill's width and the translate all read off
   // `VIEW_TABS`, so a fourth view is a row in that table and nothing else.
   const viewToggle = (
+    // The shared trough, in its compact size: 28px, the height of every other
+    // control on this row, with a 2px inset. The drag is on the strip inside
+    // it, so the pill's travel is measured against the segments, not the
+    // padding.
+    <div className={cn("h-7 w-fit shrink-0 p-0.5", segmentTrough)}>
     <div
       role="group"
       aria-label="View"
       {...viewDrag}
       className={cn(
-        // Deliberately *not* `tabsListVariants()` any more. This matches
-        // `ProfileSwitcher`: no trough, no border, no padding. The pill is the
-        // whole of the visible state, and a container stroke was a second edge
-        // saying what the fill already says.
-        //
-        // `h-7` is not a taste: it is `Button`'s own default size, which every
-        // other control on this row is. A hand-written control that sets its
-        // own height is how one row comes to have two, and the difference is
-        // small enough to look like a rendering artefact rather than a bug.
-        "group/tabs-list relative grid h-7 w-fit shrink-0 cursor-grab items-center data-dragging:cursor-grabbing data-dragging:select-none",
+        // Matches `ProfileSwitcher` and every other strip: the segmented look
+        // from `ui/tabs.tsx`, here at the compact size.
+        "group/tabs-list relative grid h-full w-fit cursor-grab items-center data-dragging:cursor-grabbing data-dragging:select-none",
       )}
       // An arbitrary class can't be composed from a value, and `grid-cols-3`
       // written out is a second place to count the tabs.
@@ -228,10 +226,10 @@ export default function DocumentsBrowser({
           transform: `translateX(calc(${VIEW_TABS.findIndex((tab) => tab.value === view) * 100}% + var(--tab-drag, 0px)))`,
         }}
         className={cn(
-          // Flat `bg-raised`, no border and no shadow: with the trough gone
-          // the fill is the whole of the state, and the offsets re-zero with
-          // the padding that used to inset them.
-          "pointer-events-none absolute inset-y-0 left-0 z-0 rounded-md bg-raised",
+          // The shared pill. The trough's padding is outside this strip, so
+          // the offsets stay at zero.
+          "pointer-events-none absolute inset-y-0 left-0 z-0",
+          tabPillSurface,
           "transition-transform duration-200 ease-standard motion-reduce:transition-none",
           // Untransitioned under the hand; the offset is already per-frame.
           "group-data-dragging/tabs-list:transition-none",
@@ -248,17 +246,18 @@ export default function DocumentsBrowser({
             // `px-3` and the switcher's own two weights. The pill is exactly
             // one segment and the segments are adjacent by construction, so
             // the air between the labels is the segments' own padding.
-            "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-md px-3",
-            "text-xs font-medium whitespace-nowrap transition-colors",
-            "text-muted-foreground hover:text-sidebar-foreground",
+            "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-sm px-3",
+            "text-xs whitespace-nowrap",
+            segmentLabel,
             "focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
-            "aria-pressed:text-sidebar-foreground",
+            "aria-pressed:text-foreground",
           )}
         >
           <Icon className="size-3.5" aria-hidden="true" />
           {label}
         </button>
       ))}
+    </div>
     </div>
   );
 
