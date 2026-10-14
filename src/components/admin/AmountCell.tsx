@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { RaisedChip } from './LocationCell';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { convertMinor, currencyByCode, type CurrencyCode } from '@/lib/domain/currency';
@@ -78,11 +78,23 @@ export function AmountCell({
   minor,
   currency,
   local,
+  chipClassName,
+  suffix,
+  below,
 }: {
   /** Integer minor units (paise, pence, cents), as all money here is. */
   minor: number;
   currency: CurrencyCode;
   local?: LocalCurrency;
+  /** Resizes the symbol chip, for a two-line cell whose other marks are larger. */
+  chipClassName?: string;
+  /** Muted, right after the figure: '/mo'. */
+  suffix?: ReactNode;
+  /**
+   * A second line under the figure, not under the chip: the chip stands for
+   * both lines, so the text column starts after it on each.
+   */
+  below?: ReactNode;
 }) {
   // Opens in the client's currency, which is what the row is for; the chip is
   // the way back to the figure as stored.
@@ -118,7 +130,7 @@ export function AmountCell({
               />
             }
           >
-            <RaisedChip>{symbol}</RaisedChip>
+            <RaisedChip className={chipClassName}>{symbol}</RaisedChip>
           </TooltipTrigger>
           <TooltipContent>
             1 {currency} = {Number(other.rate.toPrecision(4))} {other.currency} on{' '}
@@ -126,12 +138,21 @@ export function AmountCell({
           </TooltipContent>
         </Tooltip>
       ) : (
-        <RaisedChip>{symbol}</RaisedChip>
+        <RaisedChip className={chipClassName}>{symbol}</RaisedChip>
       )}
-      {/* The currency's own name, so the figure is spoken as money rather than
-          as a bare number: "Pound Sterling 492.90" is awkward but unambiguous. */}
-      <span className="sr-only">{nameOf(shown.currency)} </span>
-      <span className="truncate">{digits}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 items-baseline gap-1">
+          {/* The currency's own name, so the figure is spoken as money rather
+              than as a bare number: "Pound Sterling 492.90" is awkward but
+              unambiguous. */}
+          <span className="sr-only">{nameOf(shown.currency)} </span>
+          <span className="truncate">{digits}</span>
+          {suffix ? <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span> : null}
+        </span>
+        {below ? (
+          <span className="truncate text-xs/4 text-muted-foreground">{below}</span>
+        ) : null}
+      </span>
     </span>
   );
 }

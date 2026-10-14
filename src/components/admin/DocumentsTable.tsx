@@ -146,7 +146,7 @@ export default function DocumentsTable({
       paging={paging}
       selection={selection}
       dividers
-      resizable
+      fixed
       // Press a heading and move to drag the column; the order persists per
       // table. The library's template table has it, so this one does.
       reorderable

@@ -279,25 +279,36 @@ export interface RecordTableProps<T> {
    */
   dividers?: boolean;
   /**
-   * Columns can be dragged wider or narrower by their right edge.
-   *
-   * This switches the table to `table-layout: fixed`, which is a real change in
-   * behaviour and not just a handle: under `auto` a column's width is advisory
-   * and the browser re-solves the whole table from its content, so a width
-   * dragged to 200px snaps back the moment a cell disagrees. Under `fixed`
-   * every column needs a `size`, and content that does not fit is clipped
-   * rather than widening its column, which is why `trunc` matters more here.
-   *
-   * A column that asks for `fit` is the exception: it is widened to its widest
-   * value and cannot be dragged under it. Truncation stays as the backstop
-   * everywhere, `fit` columns included, for what a measurement cannot see and
-   * for any browser where it comes back empty.
-   *
-   * Widths are component state and deliberately not persisted. A width is a
-   * momentary reading aid, and a remembered one is a layout the next reader
-   * inherits without having chosen it.
+   * The checkboxes and the row menu shown at rest, not only on hover (see
+   * `useBulkSelect` and `RowActions`), for a table that asks for it.
    */
-  resizable?: boolean;
+  controlsVisible?: boolean;
+  /**
+   * `table-layout: fixed` without resizing, for a table that must fit its card
+   * and never scroll sideways.
+   *
+   * Under `auto` the browser treats every width as advisory, so columns given
+   * percentages that add up to the whole card squeeze the checkbox and menu
+   * columns to whatever is left (29px for a 40px checkbox, measured). Under
+   * `fixed` the two px columns hold, each `width` share is a share of the
+   * card, and a column with no `width` takes the remainder. So give every
+   * column a percentage but one, and that one absorbs the difference.
+   * Content that does not fit is clipped, which is why cells truncate.
+   *
+   * Columns that state a `size` get it in pixels, exactly as on a resizable
+   * table, minus the handles: the widths are set by the call site and nobody
+   * can drag them. `fit` and `minSize` still raise a column to its floor. A
+   * table whose sizes add up past its card scrolls sideways, as a resizable
+   * one does.
+   */
+  fixed?: boolean;
+  /**
+   * Under `fixed`: a column found cutting a value on the rows shown is widened
+   * to show it; every other column keeps its `size`. Nothing here is
+   * draggable: column resizing was removed from every table on 9 October 2026,
+   * on request, because a handle let a column be dragged down to nothing.
+   */
+  fitTruncated?: boolean;
   /**
    * The actions column freezes against the **right** edge.
    *
@@ -518,16 +529,10 @@ function useColumnWidths<T>(
   enabled: boolean,
   /** The rows actually on the screen, so paging re-measures what it shows. */
   rows: T[],
+  /** Widen a column that cuts a value until it shows it (`fitTruncated`). */
+  autoFit = false,
 ) {
   const [widths, setWidths] = useState<Record<string, number>>({});
-  // The width a drag started from, so the delta is measured against the edge
-  // the pointer grabbed rather than accumulated frame by frame. Accumulating
-  // drifts, because a clamped frame still reports its full delta next time.
-  //
-  // `floor` rides along because it is measured once, when the pointer goes
-  // down: the content cannot change mid-drag, and re-reading `scrollWidth`
-  // every frame would be a forced synchronous layout per pointer move.
-  const drag = useRef<{ key: string; from: number; at: number; floor: number } | null>(null);
   // The table element, so a floor can be measured off the cells already drawn.
   const table = useRef<HTMLTableElement | null>(null);
 
@@ -608,58 +613,64 @@ function useColumnWidths<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, enabled, floored, rows]);
 
+  /*
+    A column that cuts a value is widened by exactly what it cut; a column
+    that fits is left alone.
+
+    Measured as overflow rather than as text width (`widestIn`), because what
+    clips is not always the cell: a badge or a copy control truncates inside
+    its own padding, and the cell's overflow alone would miss it. So every
+    element in the column is asked how much wider its content is than its box,
+    and the largest answer is the shortfall. It runs again after it widens,
+    since a nested box can need a second pass, and stops once nothing
+    overflows. jsdom measures everything as zero, so it never fires there.
+  */
+  // Passes since the rows last changed. Bounded so that a box whose overflow
+  // does not shrink as its column widens can cost a few pixels, never a render
+  // loop. ponytail: three passes, enough for one nested box; raise if a cell
+  // nests deeper.
+  const fitPasses = useRef({ rows: null as T[] | null, count: 0 });
+  useLayoutEffect(() => {
+    if (!enabled || !autoFit || !table.current) return;
+    if (fitPasses.current.rows !== rows) fitPasses.current = { rows, count: 0 };
+    if (fitPasses.current.count >= 3) return;
+    fitPasses.current.count += 1;
+    const grow: Record<string, number> = {};
+    for (const column of columns) {
+      let short = 0;
+      for (const cell of table.current.querySelectorAll<HTMLElement>(
+        `[data-col="${CSS.escape(column.key)}"]`,
+      )) {
+        // A heading's own box is skipped: it positions things against itself
+        // (a sort affordance, a drag mark), so the `<th>` can report overflow
+        // that widening never removes. The label inside it is still measured.
+        const boxes = cell.tagName === 'TH' ? [] : [cell];
+        for (const el of [...boxes, ...cell.querySelectorAll<HTMLElement>('*')]) {
+          const position = getComputedStyle(el).position;
+          if (position === 'absolute' || position === 'fixed') continue;
+          const over = el.scrollWidth - el.clientWidth;
+          if (over > short) short = over;
+        }
+      }
+      // A pixel of rounding is not a cut value.
+      if (short > 1) grow[column.key] = Math.ceil(short);
+    }
+    const keys = Object.keys(grow);
+    if (keys.length === 0) return;
+    setWidths((prev) => {
+      const next = { ...prev };
+      for (const column of columns) {
+        if (grow[column.key] === undefined) continue;
+        next[column.key] = (prev[column.key] ?? column.size ?? MIN_COLUMN_WIDTH) + grow[column.key];
+      }
+      return next;
+    });
+  }, [columns, enabled, autoFit, rows, widths]);
+
   const width = (column: RecordColumn<T>) => widths[column.key] ?? column.size;
 
-  const onPointerDown = (column: RecordColumn<T>) => (event: React.PointerEvent) => {
-    // Left button only, and never a drag that also opens the row: the handle
-    // sits inside a heading that may be a sort button.
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const start = width(column) ?? MIN_COLUMN_WIDTH;
-    drag.current = {
-      key: column.key,
-      from: start,
-      at: event.clientX,
-      floor: floorFor(column),
-    };
-    const target = event.currentTarget as HTMLElement;
-    target.setPointerCapture(event.pointerId);
-  };
 
-  const onPointerMove = (event: React.PointerEvent) => {
-    const current = drag.current;
-    if (!current) return;
-    const next = Math.max(current.floor, current.from + (event.clientX - current.at));
-    setWidths((prev) => (prev[current.key] === next ? prev : { ...prev, [current.key]: next }));
-  };
-
-  const onPointerUp = (event: React.PointerEvent) => {
-    drag.current = null;
-    const target = event.currentTarget as HTMLElement;
-    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
-  };
-
-  /**
-   * The keyboard's way to do the same thing, because a drag handle is a control
-   * and a control that only answers a pointer is a control half the people
-   * using this app cannot reach (WCAG 2.1.1). Arrows move by 16px, which is
-   * coarse enough to cross a column in a few presses.
-   */
-  const onKeyDown = (column: RecordColumn<T>) => (event: React.KeyboardEvent) => {
-    const step = event.key === 'ArrowLeft' ? -16 : event.key === 'ArrowRight' ? 16 : 0;
-    if (step === 0) return;
-    event.preventDefault();
-    const start = width(column) ?? MIN_COLUMN_WIDTH;
-    // Measured per press rather than held: there is no drag to hang it on, and
-    // one `scrollWidth` read per keystroke is not a cost worth caching.
-    setWidths((prev) => ({
-      ...prev,
-      [column.key]: Math.max(floorFor(column), start + step),
-    }));
-  };
-
-  return { width, onPointerDown, onPointerMove, onPointerUp, onKeyDown, table };
+  return { width, table };
 }
 
 /**
@@ -959,7 +970,9 @@ export default function RecordTable<T>({
   onSortChange: controlledSortChange,
   externalSort,
   dividers,
-  resizable,
+  controlsVisible,
+  fixed,
+  fitTruncated,
   actionsSticky,
   reorderable,
   paging,
@@ -1023,12 +1036,19 @@ export default function RecordTable<T>({
     ? { ...paging, visible: sorted, setPage: paging.onPageChange }
     : { ...owned, total: rows.length };
 
-  const ownSelection = useBulkSelect({ rows: visible, id, deletable });
+  const ownSelection = useBulkSelect({
+    rows: visible,
+    id,
+    deletable,
+    alwaysVisible: controlsVisible,
+  });
   const selection = controlledSelection ?? ownSelection;
 
   // `visible`, not `rows`: the measurement can only see the cells on the
   // screen, so the page turning is exactly when it has to run again.
-  const resize = useColumnWidths(columns, resizable ?? false, visible);
+  // Pixel widths from `size`, with or without the handles to change them.
+  const sized = Boolean(fixed);
+  const resize = useColumnWidths(columns, sized, visible, fitTruncated);
 
   /**
    * Where each frozen column sits, measured from the left edge.
@@ -1172,7 +1192,7 @@ export default function RecordTable<T>({
           // itself rather than on the container `<div>` around it, which is
           // what `data-col` is queried within.
           ref={resize.table}
-          className={cn(resizable && 'table-fixed')}
+          className={cn(fixed && 'table-fixed')}
           // The sideways scrollport, and it only exists where a table is
           // actually wider than its card. `TableHeader` is `sticky top-0`
           // against the page's own scroll area (`AdminShell`), and an ancestor
@@ -1183,7 +1203,7 @@ export default function RecordTable<T>({
           // removing exactly this, and the reason it is opt-in rather than
           // standing: a table that needs sideways scroll trades a sticky header
           // for it, knowingly, at one call site.
-          containerClassName={cn(resizable && 'overflow-x-auto')}
+          containerClassName={cn(sized && 'overflow-x-auto')}
         >
           <TableCaption className="sr-only">{caption}</TableCaption>
           <TableHeader>
@@ -1219,7 +1239,7 @@ export default function RecordTable<T>({
               )}
               {columns.map((column) => {
                 const style = {
-                  width: resizable ? resize.width(column) : undefined,
+                  width: sized ? resize.width(column) : undefined,
                   left: column.sticky ? stickyLeft[column.key] : undefined,
                 };
                 /*
@@ -1309,7 +1329,6 @@ export default function RecordTable<T>({
                     {...dragProps}
                   >
                     <span className="sr-only">{column.label}</span>
-                    {resizable ? <ResizeHandle column={column} resize={resize} /> : null}
                   </TableHead>
                 ) : (
                   <SortableHead
@@ -1328,10 +1347,16 @@ export default function RecordTable<T>({
                     onSortChange={column.sortable === false ? undefined : onSortChange}
                     {...dragProps}
                   >
-                    {resizable ? <ResizeHandle column={column} resize={resize} /> : null}
                   </SortableHead>
                 );
               })}
+              {/* The spare width, under `fixed`: a blank column with no width
+                  of its own, so when the columns add up to less than the card
+                  this takes the rest and every real column keeps its stated
+                  size. Without it the browser stretches all of them in
+                  proportion, the 40px checkbox included. When they add up to
+                  more, it collapses to nothing and the table scrolls. */}
+              {fixed ? <TableHead aria-hidden="true" className="p-0" /> : null}
               {/* Reserved whether or not a row has actions: a column that comes
                   and goes changes every other column's width as you page.
 
@@ -1401,7 +1426,7 @@ export default function RecordTable<T>({
                   {columns.map((column, index) => {
                     const raw = column.cell(row);
                     const style = {
-                      width: resizable ? resize.width(column) : undefined,
+                      width: sized ? resize.width(column) : undefined,
                       left: column.sticky ? stickyLeft[column.key] : undefined,
                     };
                     const extra = cn(
@@ -1415,11 +1440,11 @@ export default function RecordTable<T>({
                       // cell truncates under resizing, not only the ones that
                       // asked to: the alternative is a value sliced mid-glyph
                       // with no ellipsis to say it was.
-                      resizable && 'truncate',
-                      // The hover scope a `CopyValue` reveals its icon against.
-                      // On the cell rather than the row, so a row under the
-                      // cursor does not sprout a copy icon in every column at
-                      // once, which is `CopyCell`'s own rule.
+                      sized && 'truncate',
+                      // The hover scope an `iconOnly` `CopyValue` reveals
+                      // against. Not safe for the click-to-copy form: the cell
+                      // at `openerAt` holds the row's overlay, so it is
+                      // "hovered" from anywhere on the row.
                       'group/cell',
                     );
                     /*
@@ -1507,9 +1532,9 @@ export default function RecordTable<T>({
                         (`CopyValue`, `DateValue`), which is the fix at the call
                         site.
                       */
-                      if (process.env.NODE_ENV !== 'production' && resizable) {
+                      if (process.env.NODE_ENV !== 'production' && sized) {
                         console.error(
-                          `RecordTable: column "${column.key}" is ownCell on a resizable table, so it has no width and will paint over the column beside it. Use the value-only form (CopyValue, DateValue) in a plain cell instead.`,
+                          `RecordTable: column "${column.key}" is ownCell on a fixed-width table, so it has no width and will paint over the column beside it. Use the value-only form (CopyValue, DateValue) in a plain cell instead.`,
                         );
                       }
                       return (
@@ -1559,6 +1584,7 @@ export default function RecordTable<T>({
                       positioned value and establishes the same containing
                       block, which is why `frozenCell` replaces it rather than
                       being added to it. */}
+                  {fixed ? <TableCell aria-hidden="true" className="p-0" /> : null}
                   <TableCell
                     className={cn(
                       'py-0 text-right',
@@ -1569,7 +1595,7 @@ export default function RecordTable<T>({
                     )}
                     style={{ ...(actionsSticky ? { right: 0 } : {}), width: ACTIONS_WIDTH }}
                   >
-                    {actions ? <RowActions>{actions(row)}</RowActions> : null}
+                    {actions ? <RowActions alwaysVisible={controlsVisible}>{actions(row)}</RowActions> : null}
                   </TableCell>
                 </TableRow>
               );
@@ -1662,47 +1688,6 @@ function RowOpener({
 function isLastSticky<T>(columns: RecordColumn<T>[], column: RecordColumn<T>): boolean {
   const sticky = columns.filter((c) => c.sticky);
   return sticky[sticky.length - 1]?.key === column.key;
-}
-
-/**
- * The grab handle on a column's right edge.
- *
- * A `<button>` rather than a bare `<div>`, because it is a control: it has to be
- * focusable, it has to announce what it does, and it has to answer the arrow
- * keys (WCAG 2.1.1, and `useColumnWidths` holds the key handler). `aria-label`
- * names the column, since "Resize" repeated eight times down a header tells a
- * screen reader user nothing about which one they are on.
- *
- * Absolutely positioned and 9px wide against a 1px visible line: a 1px target
- * is a target nobody hits, and the extra 8px costs no layout because the handle
- * is out of flow. It straddles the edge (`-right-1`) rather than sitting inside
- * it, so the pointer finds it from either column.
- *
- * `touch-none` matters and is easy to miss: without it the browser claims the
- * gesture for scrolling and the drag never gets a `pointermove`.
- */
-function ResizeHandle<T>({
-  column,
-  resize,
-}: {
-  column: RecordColumn<T>;
-  resize: ReturnType<typeof useColumnWidths<T>>;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={`Resize ${column.label} column`}
-      onPointerDown={resize.onPointerDown(column)}
-      onPointerMove={resize.onPointerMove}
-      onPointerUp={resize.onPointerUp}
-      onKeyDown={resize.onKeyDown(column)}
-      // `select-none` on the whole document during a drag would be the usual
-      // fix for text selecting as you pull; pointer capture plus
-      // `preventDefault` on the down already covers it, and a global class is a
-      // side effect that outlives the component if anything throws.
-      className="absolute -right-1 top-0 z-10 h-full w-2 cursor-col-resize touch-none select-none before:absolute before:inset-y-1.5 before:left-1/2 before:w-px before:bg-transparent before:transition-colors hover:before:bg-border focus-visible:before:bg-ring focus-visible:outline-none"
-    />
-  );
 }
 
 /**

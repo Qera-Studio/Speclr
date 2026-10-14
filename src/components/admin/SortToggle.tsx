@@ -89,12 +89,13 @@ export default function SortToggle({
           />
         }
       >
-        Sort
+        {/* Icon first, as every other toolbar button here leads with one. */}
         {showSort ? (
           <Eye className="size-3.5" aria-hidden="true" />
         ) : (
           <EyeOff className="size-3.5" aria-hidden="true" />
         )}
+        Sort
       </TooltipTrigger>
       <TooltipContent>
         {showSort ? "Hide sorting" : "Show sorting"}

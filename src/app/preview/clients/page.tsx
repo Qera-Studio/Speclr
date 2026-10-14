@@ -1,7 +1,9 @@
 'use client';
 
 import { notFound } from 'next/navigation';
-import ClientsTable from '@/components/admin/clients/ClientsTable';
+import { use } from 'react';
+import ClientsTable, { CLIENT_COLUMNS } from '@/components/admin/clients/ClientsTable';
+import { SERVICES } from '@/lib/domain/seed/services';
 import { PageBody, PageHeader } from '@/components/admin/Page';
 import type { ClientRecord } from '@/lib/domain/types';
 
@@ -35,6 +37,10 @@ const CLIENTS: ClientRecord[] = [
       country: 'IN',
     },
     email: 'accounts@clayora.test',
+    // A priced engagement, so the Amount cell draws its real figure, chip and
+    // screen-reader label. That label is a 1px box holding a sentence, and the
+    // cut-value check once read it as cut and widened Amount to 420px.
+    commercial: { services: [{ code: SERVICES[0]!.code, ratePaise: 12000000 }] },
     phone: '+919876543210',
     createdAt: new Date(2026, 5, 10).getTime(),
     updatedAt: new Date(2026, 5, 10).getTime(),
@@ -55,7 +61,10 @@ const CLIENTS: ClientRecord[] = [
       pincode: 'EC1V 9BX',
       country: 'GB',
     },
-    email: 'hello@northbank.test',
+    // Longer than the Email column's 210px on purpose: the one value on this
+    // page that is cut, so the table has a column to widen and hand a resize
+    // handle to, and every other column has neither.
+    email: 'accounts.receivable.department@northbank.test',
     phone: '+442079460958',
     createdAt: new Date(2026, 4, 2).getTime(),
     updatedAt: new Date(2026, 4, 2).getTime(),
@@ -125,8 +134,21 @@ const CLIENTS: ClientRecord[] = [
   },
 ] as ClientRecord[];
 
-export default function ClientsPreview() {
+export default function ClientsPreview({
+  searchParams,
+}: {
+  searchParams: Promise<{ few?: string }>;
+}) {
   if (process.env.NODE_ENV === 'production') notFound();
+  /*
+    `?few=1`: Name, Phone and Amount only, so the columns add up to less than
+    the card. The case the blank spare column exists for, which the full set
+    of 21 never reaches because the card is capped narrower than they are.
+  */
+  const { few } = use(searchParams);
+  const hidden = few
+    ? CLIENT_COLUMNS.map((c) => c.key).filter((key) => !['name', 'phone', 'amount'].includes(key))
+    : undefined;
 
   const noop = () => undefined;
 
@@ -137,7 +159,13 @@ export default function ClientsPreview() {
           `ClientManager` on the real page. This fixture is for looking at the
           layout, so it renders the headings in their unsortable form rather
           than offering arrows with no way to turn them off. */}
-      <ClientsTable clients={CLIENTS} onDelete={noop} onArchive={noop} />
+      <ClientsTable
+        clients={CLIENTS}
+        catalogue={SERVICES}
+        onDelete={noop}
+        onArchive={noop}
+        hidden={hidden}
+      />
     </PageBody>
   );
 }

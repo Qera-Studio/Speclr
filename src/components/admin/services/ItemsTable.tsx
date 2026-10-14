@@ -73,7 +73,7 @@ export default function ItemsTable({
         table has a `FilterBar` above it and this one does not.
       */
       dividers
-      resizable
+      fixed
       actionsSticky
       empty={{
         title: 'No items yet',

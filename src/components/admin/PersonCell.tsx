@@ -38,12 +38,36 @@ function initialsOf(name: string): string {
     .join('');
 }
 
-function PersonAvatar({ name, className }: { name: string; className?: string }) {
+/** Disc sizes: 20px by default, 16px and 14px for a stack under a line of text. */
+type DiscSize = 'default' | 'sm' | 'xs';
+
+const DISC: Record<DiscSize, string> = { default: 'size-5', sm: 'size-4', xs: 'size-3.5' };
+
+// The avatar's own `sm` text size is a group variant and outranks a plain
+// class, so a smaller size has to be stated at that rank. At 14px the initials
+// are a texture rather than something read: the names are in the tooltip and
+// the accessible label, which is where a reader gets them.
+const DISC_TEXT: Record<DiscSize, string | undefined> = {
+  default: undefined,
+  sm: 'group-data-[size=sm]/avatar:text-[0.4375rem]',
+  xs: 'group-data-[size=sm]/avatar:text-[0.375rem]',
+};
+
+function PersonAvatar({
+  name,
+  size = 'default',
+  className,
+}: {
+  name: string;
+  size?: DiscSize;
+  className?: string;
+}) {
   return (
-    <Avatar size="sm" className={cn('size-5', className)}>
+    <Avatar size="sm" className={cn(DISC[size], className)}>
       <AvatarFallback
         className={cn(
           'text-[0.5625rem] font-medium',
+          DISC_TEXT[size],
           ACCENT_TINTS[accentFor(name)],
         )}
       >
@@ -81,7 +105,14 @@ export function PersonCell({ name }: { name?: string }) {
  * the frozen cells use `bg-inherit`: this has to survive the hover and selected
  * tints, and a ring in the wrong grey is more visible than no ring at all.
  */
-export function PeopleCell({ names }: { names: string[] }) {
+export function PeopleCell({
+  names,
+  size = 'default',
+}: {
+  names: string[];
+  /** Smaller discs and a tighter overlap, for a stack under another line. */
+  size?: DiscSize;
+}) {
   if (names.length === 0) return <span className="text-muted-foreground">{NIL}</span>;
 
   const shown = names.slice(0, 3);
@@ -105,10 +136,16 @@ export function PeopleCell({ names }: { names: string[] }) {
               <PersonAvatar
                 key={name}
                 name={name}
+                size={size}
                 // `-ml-1.5` on all but the first, via the sibling selector, so
                 // the overlap is a property of the stack rather than something
                 // each disc has to know its position to apply.
-                className="ring-2 ring-background [&:not(:first-child)]:-ml-1.5"
+                className={cn(
+                  'ring-2 ring-background',
+                  size === 'default'
+                    ? '[&:not(:first-child)]:-ml-1.5'
+                    : '[&:not(:first-child)]:-ml-1',
+                )}
               />
             ))}
             {rest > 0 ? (

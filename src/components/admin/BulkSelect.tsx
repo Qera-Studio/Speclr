@@ -65,12 +65,18 @@ export function useBulkSelect<T>({
   rows,
   id,
   deletable = () => true,
+  alwaysVisible = false,
 }: {
   /** The rows currently on screen. Select-all means these, not every row. */
   rows: T[];
   id: (row: T) => string;
   /** Whether this row may be deleted at all. Default: all of them. */
   deletable?: (row: T) => boolean;
+  /**
+   * Show every checkbox at rest rather than on approach. For a table where
+   * selecting is the expected first move, not an occasional one.
+   */
+  alwaysVisible?: boolean;
 }): BulkSelection<T> {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -122,7 +128,7 @@ export function useBulkSelect<T>({
             // Same rule as a row: quiet until approached, and lit for as long
             // as a selection is under way, since at that point the column is
             // the thing being read and select-all is the next likely move.
-            someTicked || allTicked
+            alwaysVisible || someTicked || allTicked
               ? 'align-middle'
               : 'align-middle opacity-0 transition-opacity group-hover/head:opacity-100 focus-visible:opacity-100'
           }
@@ -154,7 +160,7 @@ export function useBulkSelect<T>({
           className={
             // Quiet until approached, lit once ticked or once a selection is
             // under way — at that point the column is the thing being read.
-            ticked || selected.size > 0
+            alwaysVisible || ticked || selected.size > 0
               ? 'align-middle'
               : 'align-middle opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100'
           }

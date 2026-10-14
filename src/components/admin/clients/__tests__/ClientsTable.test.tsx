@@ -67,6 +67,12 @@ async function openMenu(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('ClientsTable', () => {
+  it('has fixed column widths and no resize handles', () => {
+    renderTable();
+    expect(screen.queryByRole('button', { name: /^Resize / })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /email/i })).toHaveStyle({ width: '210px' });
+  });
+
   it('renders a row per client', () => {
     renderTable();
     expect(screen.getByText('Acme Co.')).toBeInTheDocument();

@@ -73,7 +73,7 @@ import { TEMPLATE_ROWS, type TemplateRow } from './rows';
  * | Which columns | `columns` | What a row is read for. Six is the budget. |
  * | Whether it sorts | `sortable` | Only with a `SortToggle` in the same folder. |
  * | Who sorts | `sort` / `onSortChange` | This table, or the caller's own domain function. |
- * | Whether it scrolls sideways | `resizable` | See the trade below. |
+ * | Whether it scrolls sideways | `fixed` | See the trade below. |
  * | Whether columns can be moved | `reorderable` | Drag a heading. The order persists per table. |
  * | What is frozen | `sticky` / `actionsSticky` | Only worth it on a table that scrolls. |
  * | Column rules | `dividers` | Only worth it on a table that scrolls. |
@@ -81,7 +81,7 @@ import { TEMPLATE_ROWS, type TemplateRow } from './rows';
  * | Bulk actions | `onBulkDelete` / `bulkActions` | What the bar offers. |
  * | Page size | `pageSize` | Ten unless there is a reason. |
  *
- * **The one real trade, stated once.** `resizable` switches the table to
+ * **The one real trade, stated once.** `fixed` switches the table to
  * `table-layout: fixed` and puts an `overflow-x: auto` container around it.
  * Three things follow and they are a package, not a menu:
  *
@@ -113,7 +113,7 @@ export default function TemplateTable({
   columns?: RecordColumn<TemplateRow>[];
   rows?: TemplateRow[];
   /** The wide package: fixed layout, sideways scroll, frozen edges, rules. */
-  resizable?: boolean;
+  fixed?: boolean;
   dividers?: boolean;
   actionsSticky?: boolean;
   sortable?: boolean;

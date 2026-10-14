@@ -2,6 +2,7 @@
 
 import { Archive, ArchiveRestore, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -26,9 +27,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
  * the row above. WCAG 2.1 AA sets no target size at all (2.5.5 is AAA); 2.2's
  * AA floor is 24px, which this clears with room.
  */
-export function RowActions({ children }: { children: React.ReactNode }) {
+export function RowActions({
+  children,
+  alwaysVisible = false,
+}: {
+  children: React.ReactNode;
+  /** Lit at rest, for a table that asks for it (`controlsVisible`). */
+  alwaysVisible?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100 [&_button]:relative [&_button]:before:absolute [&_button]:before:inset-x-0 [&_button]:before:-inset-y-1.5 [&_button]:before:content-['']">
+    <div
+      className={cn(
+        'flex items-center justify-end gap-0.5',
+        !alwaysVisible &&
+          'opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100',
+        "[&_button]:relative [&_button]:before:absolute [&_button]:before:inset-x-0 [&_button]:before:-inset-y-1.5 [&_button]:before:content-['']",
+      )}
+    >
       {children}
     </div>
   );

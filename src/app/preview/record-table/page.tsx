@@ -181,7 +181,7 @@ export default async function RecordTablePreview({
           caption="Preview plain wide records"
           open={(row) => ({ href: `/preview/record-table?plainwide=1&opened=${row.id}` })}
           dividers
-          resizable
+          fixed
           columns={[
             { key: 'name', label: 'Name', size: 180, cell: (row) => row.name },
             { key: 'city', label: 'City', size: 140, cell: (row) => row.city },
@@ -206,7 +206,7 @@ export default async function RecordTablePreview({
           caption="Preview wide records"
           open={(row) => ({ href: `/preview/record-table?wide=1&opened=${row.id}` })}
           dividers
-          resizable
+          fixed
           actionsSticky
           columns={[
             {

@@ -112,6 +112,11 @@ export function RaisedChip({
   );
 }
 
+/** A country's flag emoji, by ISO code. Blank reads as India, as everywhere. */
+export function flagOf(country?: string): string | undefined {
+  return FLAGS[(country || 'IN').toUpperCase()];
+}
+
 export function LocationCell({
   city,
   country,

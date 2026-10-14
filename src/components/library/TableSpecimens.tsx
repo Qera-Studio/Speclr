@@ -88,7 +88,7 @@ export function TableSpecimens({ entry }: { entry: LibraryEntry }) {
 
       <Specimen name={wide.name} note={wide.note} fill>
         {/*
-          The wide package, taken whole: all eleven columns, `resizable`
+          The wide package, taken whole: all eleven columns, `fixed`
           (`table-layout: fixed`, sideways scroll, every cell truncating),
           `sticky` on Name and `actionsSticky` on the menu so the row can be
           identified and acted on at any scroll position, and `dividers`,
@@ -97,12 +97,12 @@ export function TableSpecimens({ entry }: { entry: LibraryEntry }) {
           What it gives up is the sticky header, and that is not recoverable:
           the scrolling container is the scrollport for both axes.
 
-          Drag a column edge to resize, or a column *heading* to move it. The
+          Drag a column *heading* to move it (columns are not resizable). The
           frozen Name column is pinned and nothing drops before it; the checkbox
           and actions columns bound the range at both ends by not being columns
           at all. Ctrl/alt with an arrow does the same from the keyboard.
         */}
-        <TemplateTable resizable dividers actionsSticky reorderable sortable={showSort} />
+        <TemplateTable fixed dividers actionsSticky reorderable sortable={showSort} />
       </Specimen>
 
       <Specimen name={empty.name} note={empty.note} fill>

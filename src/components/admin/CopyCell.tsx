@@ -95,9 +95,8 @@ export function CopyCell({
  * The clients table wanted both a copyable email and a resizable one, and that
  * is the rule-1 second consumer, so the control moved out.
  *
- * Whoever renders the cell owns `group/cell`, because that is the hover scope
- * the icon reveals against. Getting it wrong is visible immediately: the icon
- * either never appears or appears on every column at once.
+ * The click-to-copy form reveals against its own button, which covers the cell.
+ * Only `iconOnly` still needs `group/cell` on whoever renders the cell.
  */
 export function CopyValue({
   value,
@@ -146,11 +145,27 @@ export function CopyValue({
       fills its column used to push the truncation point left, so the value
       re-ellipsised under the cursor.
     */
+    /*
+      The reveal keys on this button's own hover, not the cell's, and the
+      button is grown to the cell's edges so the whole cell is still the hover
+      and click target. Sideways it takes over `TableCell`'s `px-2` with a
+      negative margin, on its own box: a pseudo-element hanging off the sides
+      reads as overflow to `RecordTable`'s `fitTruncated`, which then widens
+      the column. Vertically the `before:` box covers half of what the 44px
+      row (`h-11`) leaves around the button, since `100%` on an inset is the
+      button's own height. Exact, so it never reaches into the next row.
+
+      `group-hover/cell` was the bug. When the first column is frozen,
+      `RecordTable` puts the row's stretched overlay *inside the next cell*, so
+      hovering anywhere on the row hovers a descendant of that cell, and the
+      icon lit up on every hover of the row. The pseudo-element sits on the
+      button's `z-10`, above the overlay, so the cell's own geometry wins.
+    */
     <button
       type="button"
       onClick={copy}
       aria-label={copied ? 'Copied' : label}
-      className="group/copy relative z-10 flex w-full cursor-pointer items-center gap-1 rounded-md text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group/copy relative z-10 -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1 rounded-md px-2 text-left before:absolute before:inset-x-0 before:-inset-y-[calc((2.75rem-100%)/2)] before:content-[''] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
       <span className="truncate" style={width ? { maxWidth: width } : undefined}>
         {display ?? value}
@@ -164,7 +179,7 @@ export function CopyValue({
           'ml-auto size-3.5 shrink-0 transition-opacity',
           copied
             ? 'text-primary opacity-100'
-            : 'text-muted-foreground opacity-0 group-hover/cell:opacity-100 group-focus-visible/copy:opacity-100',
+            : 'text-muted-foreground opacity-0 group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100',
         )}
       />
     </button>

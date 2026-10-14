@@ -19,7 +19,8 @@ import { usePagedRows } from '@/components/ui/pagination';
 import { AddLink } from '@/components/ui/add-button';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import ClientsTable from './ClientsTable';
+import ClientsTable, { CLIENT_COLUMNS, DEFAULT_CLIENT_COLUMNS } from './ClientsTable';
+import ColumnsMenu, { useStoredKeys } from '../ColumnsMenu';
 import { BulkBar, useBulkSelect } from '../BulkSelect';
 import FilterBar from '../FilterBar';
 import SortToggle, { useShowSort } from '../SortToggle';
@@ -91,6 +92,17 @@ export default function ClientManager({
   const [filters, setFilters] = useState<ClientFilterRow[]>([]);
   const [sort, setSort] = useState<ClientSortState | null>(null);
   const [showSort, toggleShowSort] = useShowSort();
+  /*
+    Stored as the columns *shown*, not hidden, so a column added later arrives
+    switched off for everybody rather than switched on for whoever had once
+    hidden something. Never chosen means the defaults.
+  */
+  const [shownColumns, setShownColumns] = useStoredKeys('speclr:client-columns-shown');
+  const [columnOrder, setColumnOrder] = useStoredKeys('speclr:client-column-order');
+  const shownKeys = shownColumns ?? DEFAULT_CLIENT_COLUMNS;
+  const hiddenColumns = CLIENT_COLUMNS.map((c) => c.key).filter((key) => !shownKeys.includes(key));
+  const setHiddenColumns = (hidden: string[]) =>
+    setShownColumns(CLIENT_COLUMNS.map((c) => c.key).filter((key) => !hidden.includes(key)));
 
   /**
    * The list as it will be once the write lands, shown at once.
@@ -275,62 +287,81 @@ export default function ClientManager({
     <div className="flex flex-col gap-4">
       <PageHeader title="Clients" />
 
-      {/* Nothing to filter yet — the table's own empty state says what to do
-          instead, and a filter bar over no rows is a control with no subject.
-          The actions stay put either way. */}
-      {listed.length > 0 ? (
-        <FilterBar<ClientFilterField>
-          rows={filters}
-          onChange={onFiltersChange}
-          fields={CLIENT_FILTER_FIELDS}
-          icons={FIELD_ICONS}
-          options={options}
-          leading={<SortToggle showSort={showSort} onToggle={toggleShowSort} />}
-          trailing={actions}
-        />
-      ) : (
-        <div className="flex justify-end">{actions}</div>
-      )}
+      {/* The controls sit 8px over the table they act on, closer than the
+          title's 16px, so they read as the table's own toolbar. */}
+      <div className="flex flex-col gap-2">
+        {/* Nothing to filter yet — the table's own empty state says what to do
+            instead, and a filter bar over no rows is a control with no subject.
+            The actions stay put either way. */}
+        {listed.length > 0 ? (
+          <FilterBar<ClientFilterField>
+            rows={filters}
+            onChange={onFiltersChange}
+            fields={CLIENT_FILTER_FIELDS}
+            icons={FIELD_ICONS}
+            options={options}
+            leading={
+              <>
+                {/* What the table shows, then how it is ordered: both are
+                    about the view, so they sit together at the left. */}
+                <ColumnsMenu
+                  columns={CLIENT_COLUMNS}
+                  hidden={hiddenColumns}
+                  order={columnOrder ?? []}
+                  onHiddenChange={setHiddenColumns}
+                  onOrderChange={setColumnOrder}
+                />
+                <SortToggle showSort={showSort} onToggle={toggleShowSort} />
+              </>
+            }
+            trailing={actions}
+          />
+        ) : (
+          <div className="flex justify-end">{actions}</div>
+        )}
 
-      <p className="sr-only" role="status">
-        {shown.length} of {listed.length} clients shown
-      </p>
+        <p className="sr-only" role="status">
+          {shown.length} of {listed.length} clients shown
+        </p>
 
-      {listed.length > 0 && shown.length === 0 ? (
-        <Empty className="border py-10">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FilterX />
-            </EmptyMedia>
-            <EmptyTitle>No clients match these filters</EmptyTitle>
-            <EmptyDescription>
-              {listed.length} client{listed.length === 1 ? ' is' : 's are'} hidden by the
-              current filters.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button type="button" variant="outline" onClick={() => onFiltersChange([])}>
-              Clear filters
-            </Button>
-          </EmptyContent>
-        </Empty>
-      ) : (
-        <ClientsTable
-          clients={visible}
-          people={people}
-          catalogue={catalogue}
-          rates={rates}
-          onBulkDelete={onBulkDelete}
-          onDelete={onDelete}
-          onArchive={onArchive}
-          archived={showArchived}
-          sort={sort}
-          // Omitted while the toggle is off: the headings then render as plain
-          // text, which is `ClientsTable`'s existing unsortable mode.
-          onSortChange={showSort ? onSortChange : undefined}
-          paging={{ page, pageCount, onPageChange: setPage, start, total: shown.length }}
-        />
-      )}
+        {listed.length > 0 && shown.length === 0 ? (
+          <Empty className="border py-10">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FilterX />
+              </EmptyMedia>
+              <EmptyTitle>No clients match these filters</EmptyTitle>
+              <EmptyDescription>
+                {listed.length} client{listed.length === 1 ? ' is' : 's are'} hidden by the
+                current filters.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button type="button" variant="outline" onClick={() => onFiltersChange([])}>
+                Clear filters
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <ClientsTable
+            clients={visible}
+            people={people}
+            catalogue={catalogue}
+            rates={rates}
+            onBulkDelete={onBulkDelete}
+            onDelete={onDelete}
+            onArchive={onArchive}
+            archived={showArchived}
+            sort={sort}
+            // Omitted while the toggle is off: the headings then render as plain
+            // text, which is `ClientsTable`'s existing unsortable mode.
+            onSortChange={showSort ? onSortChange : undefined}
+            paging={{ page, pageCount, onPageChange: setPage, start, total: shown.length }}
+            hidden={hiddenColumns}
+            order={columnOrder ?? []}
+          />
+        )}
+      </div>
     </div>
   );
 }
