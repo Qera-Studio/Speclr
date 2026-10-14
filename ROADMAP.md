@@ -399,6 +399,25 @@ if one of these gets picked up, the reasoning is what to re-examine first.
 
 ## Pending work (in flight)
 
+**Founder's list, 13 October 2026.** Recorded as given; each wants its scope
+confirmed before work starts.
+
+- [x] Implement the change for the documents page.
+- [ ] Fix the tabs.
+- [ ] Turn the process pages into tabs.
+- [ ] Remove the Magic Mouse effect.
+- [ ] Implement the changes already in the prompt.
+- [ ] Improve the drag animation in the table columns.
+- [ ] Archive the custom cursors (all of them).
+- [ ] The contract process for the service quotation.
+- [ ] Connect the quotation to onboarding.
+- [ ] Add a leads form.
+- [ ] Add a leads page.
+- [ ] Connect leads to the service quotation.
+- [ ] Take the service section icons from the contract and add them to the
+      edit dropdown.
+- [ ] Clicking a client's row should not open the onboarding process.
+
 - **Make the invoice honour the billing block.** Onboarding now collects two
   things the sheets do not yet read, deliberately: a **separate billing address**
   (`clients.billing_address_parts`, page 1) and a **named billing contact**

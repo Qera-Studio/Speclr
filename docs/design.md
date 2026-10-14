@@ -49,39 +49,37 @@ it (`--warning` is the model: amber-500 fails AA on our background, so it is a
 token).
 
 **The neutrals are one ramp, and a role never holds a colour of its own.**
-`--slate-0` … `--slate-950` are declared once in `:root` and are the only
+`--gray-0` … `--gray-950` are declared once in `:root` and are the only
 place a neutral value is written. Every neutral role is an *alias* onto a step,
 chosen per theme:
 
 ```css
---muted-foreground: var(--slate-600);   /* :root  */
---muted-foreground: var(--slate-400);   /* .dark  */
+--muted-foreground: var(--gray-600);   /* :root  */
+--muted-foreground: var(--gray-400);   /* .dark  */
 ```
 
 So a surface is described by **where it sits on the ramp** rather than by a
 lightness solved for in isolation, and "two steps darker" is a thing you can
 say. **Enforced:** a raw `oklch()` on a semantic token fails
-`design-tokens.test.ts`, as does a near-neutral outside slate's hue band.
+`design-tokens.test.ts`, as does a near-neutral carrying any chroma.
 
-The values are Tailwind's published slate, verbatim, hue drift along the ramp
-included (247.858 → 265.755). **`--slate-0` is the one step that is not
-Tailwind's**: plain white, chroma 0, added when the shell became an inset. The
-card had to sit above its ground and the page and the rails were both on
-slate-50, so there was no step left above them. Achromatic rather than the
-ramp's hue, because a document preview renders on this surface and white with
-a hint of blue in it is a tint. This replaced a warm taupe at hue 40 whose tokens
-were each an independent literal, with a chroma curve documented for humans to
-interpolate from; that curve is gone, because it existed as a substitute for
-having a ramp.
+The values are Tailwind's neutral, verbatim: chroma 0 at every step, so the
+shell is white, black and grey and only the signals (`--primary` and the rest)
+carry a hue. It replaced Tailwind's slate on 4 October 2026, on request: slate's
+blue sat on every surface and hairline at once and read as tinted. **`--gray-0`
+is the one step that is not Tailwind's**: plain white, added when the shell
+became an inset, because the card had to sit above its ground and the page and
+the rails were both on gray-50. Before slate there was a warm taupe at hue 40
+whose tokens were each an independent literal; the ramp replaced that.
 
 **The ramp is deliberately not exposed as utility classes.** There is no
-`bg-slate-300`; `design-tokens.test.ts` bans exactly that name. Roles are the
+`bg-gray-300`; `design-tokens.test.ts` bans exactly that name. Roles are the
 interface, which is what lets a surface be restated in `globals.css` without
 touching a component.
 
 **One row is not a free choice: `--ring`.** WCAG 1.4.11 wants 3:1 against the
-surface behind it, and slate 400 (the step that *looks* right) is 2.51:1 on
-slate 50. It is 500 in light and 400 in dark for that reason alone. A focus
+surface behind it, and gray 400 (the step that *looks* right) is 2.51:1 on
+gray 50. It is 500 in light and 400 in dark for that reason alone. A focus
 ring is the one piece of UI a keyboard user has no fallback for.
 
 The chromatic tokens keep their own hues, and the dark mode's `--border` /
@@ -97,6 +95,7 @@ active profile use a token rather than `bg-input/85`.
 | A raised surface (card, popover, dialog) | `bg-card`, `bg-popover` |
 | A pill sitting on a track (active tab, active profile) | `bg-raised` |
 | Anything quieter than body text | `text-muted-foreground` |
+| Placeholder text in a field (set by the primitives, never by hand) | `placeholder:text-placeholder` |
 | A resting fill (selected, chip) | `bg-muted` / `bg-accent` |
 | A card or a row under the pointer | `hover:bg-hover` |
 | The action colour | `primary` |
@@ -109,8 +108,8 @@ active profile use a token rather than `bg-input/85`.
 hover reaches for `--muted` or `--accent` by habit, and on a board a card sits
 *inside* a `bg-muted` column, so that hover paints the card the colour of the
 well behind it. `--hover` moves a step away from the well instead, which means
-down the ramp in light (slate 200) and down to the page's own step in dark
-(slate 950). The symmetrical dark answer, slate 700, fails: muted text lands on
+down the ramp in light (gray 200) and down to the page's own step in dark
+(gray 950). The symmetrical dark answer, gray 700, fails: muted text lands on
 it at 3.94:1, and most of what a card prints is muted.
 
 **Never mix a token with a palette class to get an in-between shade.** Use
@@ -209,7 +208,10 @@ typography, and Rule 46 wants several of those headings verbatim.
 
 **One optical correction, at the top of the scale.** The page title takes
 `tracking-[-0.01em]`; a 12px meta label that has to hold its own beside a value
-takes `tracking-[0.01em]`. Nothing between the two gets tracking at all. Type
+takes `tracking-[0.01em]`, and so does the 11px industry badge on the clients
+list. (That badge is also borderless and set in the hue's quieter ink,
+`accentBadge(..., true)`: same lightness at 0.55 chroma, because opacity would
+have dropped light mode under 4.5:1.) Nothing between the two gets tracking at all. Type
 set for body text reads loose at 24px and tight at 12px, and this is the whole
 of the correction, not the start of a system.
 
@@ -499,7 +501,7 @@ rail adds the one constraint the popups do not have, and it is the reason the
 active fill is left alone:
 
 - **Hover and active are two fills, and only hover moves.** They are one step
-  apart on the slate ramp deliberately (`globals.css`), because the active one
+  apart on the gray ramp deliberately (`globals.css`), because the active one
   says which page you are on. A highlight that travelled in the active colour,
   or that dragged the active row's own fill with it, would take "you are here"
   away the moment the pointer rested anywhere else. Both halves are pinned, and
@@ -514,7 +516,7 @@ active fill is left alone:
   links with a focus ring of their own, and a fill chasing focus would compete
   with the active fill rather than add to it.
 - **Hovering changes the fill and nothing else.** The primitive also darkens a
-  hovered row's text to `--sidebar-accent-foreground`, slate-600 to slate-900
+  hovered row's text to `--sidebar-accent-foreground`, gray-600 to gray-900
   in light mode: a measured drop from L 33.7 to L 5.0, near enough to black.
   That reads as pressed rather than pointed at, and it restates what the fill
   already says, so it is suppressed on this list. Worth knowing before
@@ -621,18 +623,18 @@ dropping for the single frame a select has no row marked.
 ### 1.9 Cursors — **house**
 
 The platform cursors are black with a white outline whatever the theme, and on
-a slate shell they sat like strangers. Five are drawn in-house, as inline SVG
+a gray shell they sat like strangers. Five are drawn in-house, as inline SVG
 data URIs on custom properties in `globals.css`, each with the platform cursor
 as its fallback. The I-beam is the one native cursor kept: a field is where
 text is typed, and nothing about that glyph is a colour choice.
 
 | Cursor | Glyph | Light | Dark | Applied by |
 |---|---|---|---|---|
-| `--cursor-default` | Lucide `mouse-pointer-2`, filled | slate-800 | slate-200 | `body`, inherited; the `cursor-default` utility |
-| `--cursor-pointer` | A filled hand, index raised, hotspot at the fingertip | slate-800 | slate-200 | `a[href]`; the `cursor-pointer` utility |
-| `--cursor-grab` | The same hand, open, hotspot at the palm | slate-800 | slate-200 | the `cursor-grab` utility |
-| `--cursor-grabbing` | The same hand, closed | slate-800 | slate-200 | the `cursor-grabbing` utility |
-| `--cursor-col-resize` | A spine with a head each way | slate-700 | slate-300 | the nav resize handle, and `body[data-resizing]` |
+| `--cursor-default` | Lucide `mouse-pointer-2`, filled | gray-800 | gray-200 | `body`, inherited; the `cursor-default` utility |
+| `--cursor-pointer` | A filled hand, index raised, hotspot at the fingertip | gray-800 | gray-200 | `a[href]`; the `cursor-pointer` utility |
+| `--cursor-grab` | The same hand, open, hotspot at the palm | gray-800 | gray-200 | the `cursor-grab` utility |
+| `--cursor-grabbing` | The same hand, closed | gray-800 | gray-200 | the `cursor-grabbing` utility |
+| `--cursor-col-resize` | A spine with a head each way | gray-700 | gray-300 | the nav resize handle, and `body[data-resizing]` |
 
 - **The four utilities are redefined at the foot of `globals.css`**, so an
   existing `cursor-pointer` resolves to the themed hand without the call site
@@ -640,14 +642,14 @@ text is typed, and nothing about that glyph is a colour choice.
   a row here.
 - **An SVG data URI cannot read a custom property**, so each fill is the
   token's oklch value written out. The comment beside each says which token
-  it must equal; a slate token that changes changes these too.
+  it must equal; a gray token that changes changes these too.
 - **The hand is one silhouette in three poses.** The pointer, the open hand
   and the fist share a palm and a thumb, so a drag reads as the same hand
   closing rather than as three icons from three sets. Outlined and heavier
   versions were tried and rejected: at 20px an outline fills in, and a bulkier
   fill reads as a glove.
-- **The col-resize glyph is one step lighter** than the hands (slate-700, not
-  800). Slate-900 was tried first and read as too heavy against the shell.
+- **The col-resize glyph is one step lighter** than the hands (gray-700, not
+  800). Gray-900 was tried first and read as too heavy against the shell.
 
 ---
 
@@ -1025,7 +1027,7 @@ Three rules follow it:
   held inside the chrome rather than as a box whose first row happens to be
   bold. Before it, the header and the rows were the same fill and a hairline
   carried the whole distinction, which in dark mode is close to carrying
-  nothing. Subtle in light (slate-50 on white) and strong in dark (slate-950
+  nothing. Subtle in light (gray-50 on white) and strong in dark (gray-950
   against the card), which is the right way round. Opaque either way, because
   `sticky` means rows scroll under it.
 - **The footer's padding is asymmetric: 36px left, 8px right.** The left holds
@@ -1130,8 +1132,8 @@ dropping where it is released. Under that it is still a click, so a sortable
 heading still sorts. Ctrl/alt with an arrow does the same from the keyboard, and
 that path is not optional (WCAG 2.1.1): a `<th>` takes no focus by default, so
 a reorderable heading is given `tabIndex={-1}`, which keeps it reachable without
-adding a third tab stop per column to a header that already has a sort button
-and a resize handle.
+adding a second tab stop per column to a header that already has a sort
+button.
 
 Both bounds hold without anyone remembering them. The **checkbox and actions**
 columns are furniture `RecordTable` draws itself and are not in `columns`, so
@@ -1146,10 +1148,9 @@ the edge the dragged column would land on. A *fill* there would read as a second
 selection; this is an insertion point.
 
 **The order persists, per table, keyed on `caption`**, and that is the one place
-this departs from `resizable`, whose widths deliberately do not. The two differ
-in kind: a width is a momentary reading aid tied to the value in front of you,
-while an order says which columns matter to you, which does not change between
-visits. A stored order is always reconciled against the current spec, so a
+this departs from column widths, which are set by the call site and are not
+the reader's. An order says which columns matter to you, which does not change
+between visits. A stored order is always reconciled against the current spec, so a
 column added later appears rather than vanishing and a column removed does not
 strand the rest.
 
@@ -1161,7 +1162,7 @@ because pointer capture retargets it. Capture is therefore taken *when the drag
 starts*, not on pointer-down. Taking it early stole the click that sorts, which
 is one of the two bugs `e2e/record-table.spec.ts` now pins.
 
-**The wide package is one decision, not five.** `resizable` switches the table
+**The wide package is one decision, not five.** `fixed` switches the table
 to `table-layout: fixed` and wraps it in a horizontal scrollport. Three things
 follow and they arrive together: every column must state a `size` and content is
 **clipped** rather than widening (so every cell truncates); frozen columns become
@@ -1169,6 +1170,14 @@ possible, because freezing needs known widths; and **the sticky header is lost**
 because a horizontally scrolling container is the scrollport for both axes.
 `dividers` and `sticky` earn their place only here, where a row is no longer one
 glance. A table narrow enough to read at once takes none of it.
+
+**Columns do not resize.** The drag handles were removed from every table on
+9 October 2026, on request: a handle let a column be dragged down to almost
+nothing, and widths are a decision for the call site, not a control. Two
+things stand in for it. `fitTruncated` widens a column that cuts a value on
+the rows shown, by exactly what it cut; and when the columns add up to less
+than the card, a blank column takes the rest so every real column keeps its
+stated `size` instead of being stretched in proportion.
 
 ### 2.4 Cards and page layout
 
@@ -1219,10 +1228,22 @@ claim tab roles) spreads the hook onto its container and marks its parts:
 `data-drag-pill` on the sliding surface, `data-drag-segment` on each choice. The
 pill's transform then adds `var(--tab-drag, 0px)`, which is 0 at rest.
 
-Container and pill both carry `border border-border` — the same light stroke,
-never one without the other. `tabPillSurface` (the pill's fill + shadow +
-border) is the one export every pill draws from, hand-rolled ones included, so
-none of them can drift back apart the way they had before it existed.
+**The look is one set of three exports** in `ui/tabs.tsx`, adopted for every
+strip on 10 October 2026 from a reference design (`library/tabs`):
+`segmentTrough` (a `--muted` fill, `--radius` corners, **no stroke**),
+`tabPillSurface` (white with a soft shadow, one ramp step up in dark mode,
+`rounded-sm` so it stays concentric inside the trough's padding, **no
+stroke**), and `segmentLabel` (`--tab-label` at rest, full ink when
+chosen or hovered). Every strip draws from them, hand-rolled ones included:
+`TabsList`, `ProfileSwitcher`, the documents view toggle, `ThemeToggle` and
+`SpecDetailsTabs`'s Motion pill, and the pager (§2.10). `--tab-label` is a
+shade quieter than muted text and as light as AA allows on the trough
+(4.64:1 light, 4.58:1 dark, asserted in `contrast.test.ts`); the reference's
+paler grey fails 4.5:1 there.
+
+**Two sizes.** The default is a 40px trough holding a 32px pill at 14px;
+`size="sm"` is 28px with a 24px pill at 12px, for a toolbar row where every
+button is 28px tall (the documents view toggle).
 
 Six rules, each of which is a thing that broke while it was being built:
 
@@ -1417,31 +1438,28 @@ that appears twice, applied to a control.
 - **The box is filled one shade off whatever it sits on, never transparent.** It
   was transparent until hovered once, which made the one control you can *type*
   into look like the counter printed beside it; a field that takes input should
-  say so before it is touched. It is `--sidebar-field` on the `--sidebar` band:
-  a step down in light (slate-100 on slate-50) and a step up in dark
-  (slate-900 on slate-950, the ramp's floor, which has nothing below it). The
-  rule is the step, not the direction. It stays borderless: the fill identifies
+  say so before it is touched. It is a well one step below the trough it sits
+  in: `--hover` in light (gray-200 on gray-100) and `--background` in dark
+  (gray-900 on gray-800), because dark's `--hover` is the ramp's floor and two
+  steps down. The rule is the step, not the token. It stays borderless: the fill identifies
   it, and a stroke as well would make a form field of it. **Enforced in a
   browser** (`e2e/shell-sheets.spec.ts`, both themes, bounded above as well as
   below), because a computed colour is what jsdom cannot see, and because this
   started at two shades and was brought down: a test asking only "different
   from its surroundings" would pass against the value that was too strong.
-- **The container has no fill; its stroke is what groups it** (18 September
-  2026). It carried `--sidebar-field`, which in dark is also `--background`, so
-  the fill existed in one theme only: two different pagers rather than the ramp
-  doing its job. The border already says where the control ends and the rules
-  between runs say numbers are missing, so the fill was a third thing saying
-  what those two say. Everything inside is therefore measured against the band,
-  and the spec asserts the container is clear so it notices a fill coming back.
-- **The active page is `--page-active`, with a border and a shadow.** Against
-  the band it is a step down in light (it shares `--sidebar-field`'s value with
-  the go-to box) and slate-700 in dark, two steps up for contrast (9.71:1 for
-  its `--foreground` text, asserted in `contrast.test.ts`). **In light the
-  border is what separates it from the box**, which share one fill; that is
-  accepted, since shape and position keep them apart and the box holds no
-  number until you type one. What the spec rules out is the active page having
-  neither a fill step nor a painted stroke against the band, which is the
-  invisible pill described below.
+- **The container is the tab strip's trough** (11 October 2026):
+  `segmentTrough` from `ui/tabs.tsx`, grey and borderless. From 18 September
+  it had a stroke and no fill, which left a white pill nothing to read against
+  on a white card. The pager now is the tab group it always behaved as, spelled
+  in one place, and the spec asserts the trough is filled.
+- **The active page is the tabs' white pill** (`tabPillSurface`), white with
+  the tab shadow in light and gray-700 in dark, no stroke. It replaced a
+  bordered `--page-active` pill, and `--page-active` and `--sidebar-field` were
+  deleted with it. What the spec rules out is the active page having neither a
+  fill step nor a painted stroke against the trough, which is the invisible
+  pill described below.
+- **Inactive numbers are `--tab-label`**, the inactive tab colour, and step
+  down to `--hover` under the pointer, so a hovered page never looks chosen.
 - **An inactive page is bare until hovered.** A resting fill on every number
   would rebuild the per-page box the container replaced, and leave the active
   one nothing to be raised from.
@@ -1758,6 +1776,10 @@ In order:
 Append a line when a rule here changes. Keep it to one line and name the
 `ui-elevation.md` id where there is one.
 
+- **11 October 2026**: The pager takes the tab strip's look (§2.10): the
+  trough, the white pill and `--tab-label` for inactive numbers. Its bordered
+  container and `--page-active` / `--sidebar-field` tokens are gone. Inactive
+  tab labels move to the new, lighter `--tab-label` (§2.7).
 - **4 October 2026**: §2.10 catches up with the pager that ships. The
   container lost its fill on 18 September (it existed in light only), and the
   rules still measured the box and the active page against it. Both are now
@@ -2115,7 +2137,7 @@ Append a line when a rule here changes. Keep it to one line and name the
   `e2e/sidebar-float.spec.ts` were rewritten around the new shape and confirmed
   red on the one-line revert to `h-fit`.
 - **15 September 2026** — **§1.9 added.** The arrow, hand, open hand, fist and
-  col-resize cursors are drawn in slate rather than the platform's black on
+  col-resize cursors are drawn in gray rather than the platform's black on
   white, one variable per theme in `globals.css` and the four Tailwind
   utilities redefined to resolve to them. The section records the arrow and
   hand built earlier this month, which had no row until now.
@@ -2238,8 +2260,8 @@ Append a line when a rule here changes. Keep it to one line and name the
   too strong on the footer. `--sidebar-field` is a new token rather than a
   reused role, because "one step off `--sidebar`" is not a value any existing
   role holds in both themes: `--muted` is one step in light and three in dark.
-  slate-100 in light, slate-900 in dark, stepping up rather than down because
-  slate-950 is the ramp's floor. The browser check gained an upper bound with
+  gray-100 in light, gray-900 in dark, stepping up rather than down because
+  gray-950 is the ramp's floor. The browser check gained an upper bound with
   it, since the rule it now guards is a value that was already once too dark.
 - **16 September 2026** — **Sorting became opt-in, and the clause library lost
   it.** The clause library showed sort arrows on hover with no eye anywhere on
@@ -2417,7 +2439,7 @@ Append a line when a rule here changes. Keep it to one line and name the
   Both arrows, both anchors and the window now sit in a single container, and
   nothing inside it carries a stroke: it was three troughs with the arrows loose
   outside them, five separate objects saying one thing. The active page moved to
-  `--card` (slate-50 in light, as specified) with its border kept, an inactive
+  `--card` (gray-50 in light, as specified) with its border kept, an inactive
   one is bare until hovered, and the pill is rounded tighter than the box so the
   nesting reads. **One thing fell out of it and needed its own fix:** the 8px
   gap between runs stopped meaning anything. It worked while each run had a
@@ -2439,17 +2461,17 @@ Append a line when a rule here changes. Keep it to one line and name the
   pill. The active page was `--card` in both themes, and `--card` is the
   container's own value in dark, so its fill separated by **0.000** and the
   border alone was drawing it; `dark:bg-raised` restores +0.91 while light keeps
-  slate-50 as specified. And the run separator moved off `--border` (white at
+  gray-50 as specified. And the run separator moved off `--border` (white at
   10% in dark, fainter than the frame around it) onto the text ramp at 40%,
   then came *down* from 18px to 12px: weight and height are separate knobs and
   only weight should have been doing the work, since a full-height rule read as
   a structural divider cutting the control into sections.
 - **17 September 2026** — **The pager's active page got its own token, and dark
-  went two steps up.** `--page-active` (slate-50 / slate-700) replaces the
+  went two steps up.** `--page-active` (gray-50 / gray-700) replaces the
   `bg-card` plus `dark:bg-raised` pair that was describing one surface with two
-  names. Dark is slate-700 rather than the symmetrical slate-800, on request:
-  3.04 against the container where slate-800 gave 0.91, and 0.000 before that
-  when both were `--card`. The note in `globals.css` refusing slate-700 for
+  names. Dark is gray-700 rather than the symmetrical gray-800, on request:
+  3.04 against the container where gray-800 gave 0.91, and 0.000 before that
+  when both were `--card`. The note in `globals.css` refusing gray-700 for
   `--hover` was checked rather than assumed to apply: it is about
   `--muted-foreground` at 3.94:1 on a hovered card, and this pill prints
   `--foreground` at 9.71:1. Added to `contrast.test.ts` and seen red against a
