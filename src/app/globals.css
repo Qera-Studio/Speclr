@@ -11,8 +11,6 @@
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --font-heading:
     "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --color-sidebar-field: var(--sidebar-field);
-  --color-page-active: var(--page-active);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -34,6 +32,14 @@
   --color-accent-orange: var(--accent-orange);
   --color-accent-rose: var(--accent-rose);
   --color-accent-magenta: var(--accent-magenta);
+  --color-accent-violet-ink: var(--accent-violet-ink);
+  --color-accent-cyan-ink: var(--accent-cyan-ink);
+  --color-accent-teal-ink: var(--accent-teal-ink);
+  --color-accent-green-ink: var(--accent-green-ink);
+  --color-accent-amber-ink: var(--accent-amber-ink);
+  --color-accent-orange-ink: var(--accent-orange-ink);
+  --color-accent-rose-ink: var(--accent-rose-ink);
+  --color-accent-magenta-ink: var(--accent-magenta-ink);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -48,6 +54,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
+  --color-tab-label: var(--tab-label);
+  --color-placeholder: var(--placeholder);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -97,9 +105,9 @@
   The neutrals are one ramp, and a semantic token never holds a colour of its
   own. That is the one thing to know before editing anything here.
 
-  `--slate-50` … `--slate-950` below are the only place a neutral value is
+  `--gray-50` … `--gray-950` below are the only place a neutral value is
   written. Every neutral role (`--background`, `--muted-foreground`, every
-  sidebar fill) is an *alias*: `var(--slate-N)`, chosen per theme. So a surface
+  sidebar fill) is an *alias*: `var(--gray-N)`, chosen per theme. So a surface
   is described by where it sits on the ramp rather than by a lightness somebody
   solved for in isolation, and "two steps darker" is a thing you can say.
 
@@ -108,37 +116,21 @@
   humans to interpolate from. The curve is gone: it existed as a substitute for
   having a ramp, and there is a ramp now.
 
-  The hues are Tailwind's slate, including the drift along the ramp (247.858 at
-  the top → 264.695 at the bottom), which is deliberately not renormalised: the
-  drift is what keeps the dark end from reading flat. The lightnesses and
-  chromas are ours, for two reasons.
+  The values are Tailwind's neutral, verbatim: white, black and grey, chroma 0
+  at every step. It replaced Tailwind's slate on 4 October 2026, on request.
+  Slate carried a blue hue the whole way down, and in dark mode that hue sat on
+  the page, the card, the rail and every hairline at once. Only `--primary` and
+  the other signals carry a hue now, which is what makes them read as signals.
 
-  **Chroma is damped as the ramp darkens.** Slate is Tailwind's most saturated
-  neutral and it holds chroma all the way down — published slate-950 is 0.042,
-  *more* than slate-200 carries. Above L≈0.7 that is invisible; below it, it is
-  not, and in dark mode it appears not once but on the page, the card, the rail
-  and every alpha hairline at the same hue, with nothing to cancel it. It read
-  as blue rather than as a cool grey. Chroma now peaks at 0.036 in the middle
-  and tapers toward both ends, which is where a near-white or near-black holds a
-  hue badly anyway.
-
-  **The ramp is monotonic and its gaps form an arc**, and both of those are
-  load-bearing rather than tidy. Monotonic because the whole value of naming a
-  step is that 500 is darker than 300; a ramp that reverses makes every
-  conversation about it mean the opposite of what it looks like. The arc — ΔL
-  around 0.02 at the ends, 0.15 in the middle — is because the eye resolves
-  lightness differences far better near white and near black, so even steps
-  there would look like a jump in the middle and like nothing at the ends.
-
-    50 .984  100 .962  200 .922  300 .855  400 .700  500 .560
-    600 .430  700 .330  800 .245  900 .178  950 .129
+    50 .985  100 .970  200 .922  300 .870  400 .708  500 .556
+    600 .439  700 .371  800 .269  900 .205  950 .145
 
   Before changing a lightness, check the two steps either side of it. A step
   moved on its own to fix one surface is what produces a cliff somewhere else,
   and the mid-range is where borders, disabled controls and secondary labels all
   have to fit.
 
-  The ramp is deliberately **not** exposed as `bg-slate-300` utility classes.
+  The ramp is deliberately **not** exposed as `bg-gray-300` utility classes.
   `design-tokens.test.ts` bans exactly that. Components consume roles, so a
   surface can be restated here without touching a component.
 
@@ -173,36 +165,34 @@
      colours; the theme is which end of them each role points at. */
   /* The top of the ramp, and it is plain white. Added when the shell became an
      inset: the card had to sit *above* its ground, and with the page and the
-     rails both on slate-50 there was no step left above them to put it on.
-     Chroma 0 rather than the ramp's hue, because white with a hint of blue in
-     it is a tint, and the one surface a document preview renders on should not
-     be tinted. */
-  --slate-0: oklch(1 0 0);
-  --slate-50: oklch(0.984 0.003 247.858);
-  --slate-100: oklch(0.962 0.006 247.896);
-  --slate-200: oklch(0.922 0.011 255.508);
-  --slate-300: oklch(0.855 0.017 252.894);
-  --slate-400: oklch(0.7 0.032 256.788);
-  --slate-500: oklch(0.56 0.036 257.417);
-  --slate-600: oklch(0.43 0.036 257.281);
-  --slate-700: oklch(0.33 0.03 257.287);
-  --slate-800: oklch(0.245 0.023 260.031);
-  --slate-900: oklch(0.178 0.016 264.695);
-  --slate-950: oklch(0.129 0.008 264.695);
+     rails both on gray-50 there was no step left above them to put it on.
+     Every step is chroma 0 now, so this is simply the step above 50. */
+  --gray-0: oklch(1 0 0);
+  --gray-50: oklch(0.985 0 0);
+  --gray-100: oklch(0.97 0 0);
+  --gray-200: oklch(0.922 0 0);
+  --gray-300: oklch(0.87 0 0);
+  --gray-400: oklch(0.708 0 0);
+  --gray-500: oklch(0.556 0 0);
+  --gray-600: oklch(0.439 0 0);
+  --gray-700: oklch(0.371 0 0);
+  --gray-800: oklch(0.269 0 0);
+  --gray-900: oklch(0.205 0 0);
+  --gray-950: oklch(0.145 0 0);
 
   /* White, and that is the inset card rather than the page. The shell's own
-     ground is `--sidebar` (slate-50): the nav, the header band and the margin
+     ground is `--sidebar` (gray-50): the nav, the header band and the margin
      the card floats in are all that value, and this is the one step above it.
 
-     It was slate-50 too, shared with the rails, back when separation here was
+     It was gray-50 too, shared with the rails, back when separation here was
      drawn with a hairline and never with a fill. The inset is a fill: a card
      inset from a ground it matches exactly is a card with no inside, so the
      ring was doing all of the work and the corners none. */
-  --background: var(--slate-0);
-  --foreground: var(--slate-900);
+  --background: var(--gray-0);
+  --foreground: var(--gray-900);
   /* The pill that sits *on* a track: the active tab, the active profile.
 
-     Slate 200 in light mode, two steps down from the 50 the page and the
+     Gray 200 in light mode, two steps down from the 50 the page and the
      header are. Pure white was tried first and is the wrong direction: the
      ramp already ends at 0.984, so a white pill is separated from its ground
      by the last 1.6% of lightness and reads as a smudge rather than as a
@@ -222,7 +212,7 @@
 
      Both values are measured by `src/__tests__/contrast.test.ts`, which is why
      this is a token rather than a `bg-white` written onto the pill. */
-  --raised: var(--slate-200);
+  --raised: var(--gray-200);
   /* The fill a card or a row takes under the pointer.
 
      Not `--muted` and not `--accent`, which is what a hover reaches for by
@@ -237,24 +227,39 @@
      `--raised` goes *up* in dark, to the column's exact value. Both are
      measured by `src/__tests__/contrast.test.ts`, muted text included, since
      that is what a card is mostly made of. */
-  --hover: var(--slate-200);
-  --card: var(--slate-50);
-  --card-foreground: var(--slate-900);
-  --popover: var(--slate-50);
-  --popover-foreground: var(--slate-900);
+  --hover: var(--gray-200);
+  --card: var(--gray-50);
+  --card-foreground: var(--gray-900);
+  --popover: var(--gray-50);
+  --popover-foreground: var(--gray-900);
   --primary: oklch(0.488 0.243 264.376);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: var(--slate-100);
-  --secondary-foreground: var(--slate-900);
-  --muted: var(--slate-100);
+  --secondary: var(--gray-100);
+  --secondary-foreground: var(--gray-900);
+  --muted: var(--gray-100);
   /* The darkest surface this token lands on sets its floor, and that is
      `--raised` (a pill mid-drag passes under the inactive profile label), not
      `--muted`. 600 clears it at 6.14:1 and is 6.90:1 on --muted. The old
      value was solved for by hand and moved twice as `--raised` stepped down
      the ramp; picking a step instead is what stopped that. */
-  --muted-foreground: var(--slate-600);
-  --accent: var(--slate-100);
-  --accent-foreground: var(--slate-900);
+  --muted-foreground: var(--gray-600);
+  /* Placeholder text, one step lighter than muted text so a hint never reads
+     as a value somebody typed. Its own token rather than `muted-foreground`
+     because that one is every quiet label, date and icon in the app, and
+     lightening it to lighten placeholders would fade all of them.
+
+     500 is as far as this can go: placeholder text is text, held to 4.5:1,
+     and it lands on `--background` (every input is filled with it). 500 is
+     4.74:1 there; 400 would be 2.52:1. */
+  --placeholder: var(--gray-500);
+  /* An inactive tab's label and icon, a shade quieter than muted text so the
+     chosen tab stands further out. Between two ramp steps on purpose: gray-500
+     on the `--muted` trough is 4.34:1, under AA, and an inactive tab is still
+     text somebody reads to choose it. 0.54 is 4.64:1 there, as light as it
+     goes with a margin left over. */
+  --tab-label: oklch(0.54 0 0);
+  --accent: var(--gray-100);
+  --accent-foreground: var(--gray-900);
   --destructive: oklch(0.577 0.245 27.325);
   /* What sits *on* a solid destructive fill: the confirm button inside a
      destructive dialog, and the offline bar. White is 4.76:1 on the light
@@ -267,15 +272,15 @@
      is only 2.15:1 here, which is why this is a token and not a palette
      class. Same hue (70) in both modes so the state doesn't shift colour. */
   --warning: oklch(0.555 0.14 70);
-  --border: var(--slate-200);
-  --input: var(--slate-200);
+  --border: var(--gray-200);
+  --input: var(--gray-200);
   /* The focus indicator, and the one token that has to clear 3:1 against the
      surface behind it (WCAG 1.4.11). This is the row where the ramp does not
-     get to choose freely: slate 400 is the shade that *looks* right here and
-     it measures 2.51:1 on slate 50, under the floor. 500 is 4.55:1. A focus
+     get to choose freely: gray 400 is the shade that *looks* right here and
+     it measures 2.51:1 on gray 50, under the floor. 500 is 4.55:1. A focus
      ring is the one piece of UI a keyboard user has no fallback for, so it
      takes the darker step. */
-  --ring: var(--slate-500);
+  --ring: var(--gray-500);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -322,10 +327,22 @@
   --accent-orange: oklch(0.5 0.18 40);
   --accent-rose: oklch(0.5 0.21 12);
   --accent-magenta: oklch(0.5 0.23 335);
+  /* The ink: each hue at the same lightness and hue with a little over half
+     its chroma, for badge text that should read quieter than the hue itself
+     (the industry badge). Same lightness is what keeps it AA on the wash;
+     opacity would have cost the contrast, and was measured and refused. */
+  --accent-violet-ink: oklch(0.5 0.121 295);
+  --accent-cyan-ink: oklch(0.5 0.066 220);
+  --accent-teal-ink: oklch(0.5 0.061 182);
+  --accent-green-ink: oklch(0.5 0.077 148);
+  --accent-amber-ink: oklch(0.5 0.072 68);
+  --accent-orange-ink: oklch(0.5 0.099 40);
+  --accent-rose-ink: oklch(0.5 0.116 12);
+  --accent-magenta-ink: oklch(0.5 0.127 335);
 
   --radius: 0.375rem;
   /* The page's own ground, deliberately, matching dark mode where the rail and
-     the page have always shared --slate-950. The rail was a step down the ramp
+     the page have always shared --gray-950. The rail was a step down the ramp
      while it was a full-height panel welded to the window edge, where a seam
      was what told you the two were different surfaces. It floats now: a rounded
      pill with a ring and a shadow under it is already unmistakably a separate
@@ -340,109 +357,74 @@
      what it means: every token here resolves one alias deep, which is what
      `contrast.test.ts` reads them through, and a token pointing at another
      token is a value that test cannot measure. */
-  --sidebar: var(--slate-50);
-  /* One shade darker than `--sidebar`, for a control sitting *on* that band:
-     today the pager's go-to-page box. It is its own token because "one step
-     darker than the band" is not a value any existing role holds in both
-     themes (`--muted` is slate-100 here and slate-800 in dark, which is three),
-     and because the ramp runs opposite ways: slate-950 is the floor, so the
-     dark answer steps up. Written as the ramp step rather than pointing at
-     another token, like `--sidebar` above and for the same reason. */
-  --sidebar-field: var(--slate-100);
-  /* The page you are on in the pager, which now sits on the *card*.
-
-     Its own token rather than `--raised`, because the two themes need opposite
-     directions and no single existing role does both.
-
-     **Light steps down, dark steps up**, and that asymmetry is the ramp rather
-     than an oversight. The pager's container lost its fill (18 September 2026),
-     so in light the pill sits on slate-50 with the whole ramp below it and
-     nothing useful above: slate-100 is the marker, one step down from the page.
-     In dark it sits on slate-900 near the floor, where the only way to be found
-     is up, so it stays slate-700.
-
-     **One step, not two or three.** This was tried at slate-300 and slate-200
-     on the way here and both read as a block rather than a marker: the pill
-     also carries a border and a shadow, so the fill is the third thing saying
-     "you are here" and does not have to shout. A resting state that is mostly
-     just *present* wants the smallest step the ramp has.
-
-     That puts it on the same value as `--hover`, which is deliberate and is
-     why the pager's hover goes *past* it to slate-200: hovering is transient
-     and reads as a press, while the pill is the only one of the two with a
-     stroke. See `pagination.tsx`.
-
-     Written as the ramp step rather than pointing at another token, like
-     `--sidebar` above and for the same reason: `contrast.test.ts` reads these
-     through and cannot measure a token that points at a token. */
-  --page-active: var(--slate-100);
+  --sidebar: var(--gray-50);
   /* The rail is scenery, not content: muted so the *current* page (which keeps
      --sidebar-accent-foreground) is the one thing that reads loud. 7.74:1 on
      --sidebar, so it still clears AA as body text. */
-  --sidebar-foreground: var(--slate-600);
+  --sidebar-foreground: var(--gray-600);
   --sidebar-primary: oklch(0.546 0.245 262.881);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: var(--slate-200);
-  --sidebar-accent-foreground: var(--slate-900);
+  --sidebar-accent: var(--gray-200);
+  --sidebar-accent-foreground: var(--gray-900);
   /* Hover and active must not be the same fill, or "you are here" is invisible
      the moment the cursor rests on any other row. Active is the darker of the
      two in both modes, and on the ramp that is simply the next step.
 
      Both stepped down one on 31 August 2026, once --sidebar became the page's
-     own ground: against slate-50 the old slate-300 active read as a hard block
+     own ground: against gray-50 the old gray-300 active read as a hard block
      rather than a marked row. They move as a pair, or the gap between them
      closes and one of the two stops saying anything. */
-  --sidebar-hover: var(--slate-100);
-  --sidebar-active: var(--slate-200);
-  --sidebar-border: var(--slate-200);
-  /* The hand: a solid slate-800 silhouette, hotspot at the fingertip. It is
+  --sidebar-hover: var(--gray-100);
+  --sidebar-active: var(--gray-200);
+  --sidebar-border: var(--gray-200);
+  /* The hand: a solid gray-800 silhouette, hotspot at the fingertip. It is
      Lucide's `pointer` geometry drawn as one closed shape rather than the
      stroked outline, so it matches the arrow below. Links take it from
      `@layer base` and the `cursor-pointer` utility is redefined at the foot of
-     this file. Keep the fill equal to `--slate-800`. */
+     this file. Keep the fill equal to `--gray-800`. */
   --cursor-pointer:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.269 0 0)' stroke='oklch(0.269 0 0)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
       8 3,
     pointer;
   /* The arrow. The platform's is black with a white outline whatever the
-     theme; this is Lucide's `mouse-pointer-2` filled in slate-800, hotspot at
+     theme; this is Lucide's `mouse-pointer-2` filled in gray-800, hotspot at
      the tip. Applied on `body` and inherited from there, with the two
      corrections `@layer base` makes below: the browser gives buttons an arrow
      of their own that would sit beside this one, and text fields keep the
      I-beam. The `cursor-default` utility is redefined at the foot of this file
      so every existing use of it resolves here too. Keep the fill equal to
-     `--slate-800`; the platform arrow is the fallback. */
+     `--gray-800`; the platform arrow is the fallback. */
   --cursor-default:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.269 0 0)' stroke='oklch(0.269 0 0)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
       3 4,
     default;
-  /* The two drag cursors, the same slate-800 silhouette as the hand: an open
+  /* The two drag cursors, the same gray-800 silhouette as the hand: an open
      hand over anything that can be dragged (the tab strips, the profile
      switcher) and a fist while it is. Hotspot at the centre of the palm, which
      is where the platform's own grab cursors put it. The `cursor-grab` and
      `cursor-grabbing` utilities are redefined at the foot of this file. Keep
-     the fill equal to `--slate-800`. */
+     the fill equal to `--gray-800`. */
   --cursor-grab:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.269 0 0)' stroke='oklch(0.269 0 0)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
       10 11,
     grab;
   --cursor-grabbing:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.245 0.023 260.031)' stroke='oklch(0.245 0.023 260.031)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.269 0 0)' stroke='oklch(0.269 0 0)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
       10 11,
     grabbing;
   /* The nav resize handle's cursor: the platform's col-resize glyph is black
      with a white outline whatever the theme, and it sat on the shell like a
      stranger. This is the same glyph (a bar with a head each way, Lucide's
-     `move-horizontal` with a spine) drawn in slate-700, hotspot at its centre.
-     Slate-900 was tried first and read as too heavy against the shell. An SVG
+     `move-horizontal` with a spine) drawn in gray-700, hotspot at its centre.
+     Gray-900 was tried first and read as too heavy against the shell. An SVG
      data URI cannot read a custom property, so the stroke is the token's own
-     oklch value written out: keep it equal to `--slate-700`. The platform
+     oklch value written out: keep it equal to `--gray-700`. The platform
      cursor stays as the fallback for a browser that refuses the image. */
   --cursor-col-resize:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.33 0.03 257.287)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.371 0 0)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
       12 12,
     col-resize;
-  --sidebar-ring: var(--slate-500);
+  --sidebar-ring: var(--gray-500);
 }
 
 /*
@@ -477,7 +459,7 @@
 */
 .dark {
   color-scheme: dark;
-  /* Slate 950 for the page, 800 for the raised tier, 900 for the panels
+  /* Gray 950 for the page, 800 for the raised tier, 900 for the panels
      between them. The order is what matters and it is preserved throughout:
      page < card/popover < muted/secondary/raised.
 
@@ -489,14 +471,14 @@
      stayed where it was and the shell came apart into a bright frame around a
      dark hole.
 
-     Text is slate 200, not 50. Pure white on a near-black page haloes: the
+     Text is gray 200, not 50. Pure white on a near-black page haloes: the
      glyph blooms into its own background and long labels get harder to read
      the longer you look. 200 is 14.49:1 on the card, three times what AA asks,
      and it is what stops a dense table reading as glare. Every foreground
      moves together or none of them do, or the same sentence sits brighter on a
      popover than on the page behind it. */
-  /* Slate 900, a step above the rails, which is the mirror of light's white
-     card on a slate-50 shell. The inset asked the question the note below
+  /* Gray 900, a step above the rails, which is the mirror of light's white
+     card on a gray-50 shell. The inset asked the question the note below
      `--sidebar` had already answered the other way: at 950 the page and the
      rail were one field with the border drawing the division, and the nav's
      border is gone. Two identical fills with no seam between them is a card
@@ -508,33 +490,39 @@
      same in both themes (content above chrome) and the step buys the one thing
      an edge cannot, which is an inside. `--card` is 900 too, so a card on the
      inset is now flush with it; that is the same trade light has made since
-     `--card` and `--background` were both slate-50, and it is why `--raised`
+     `--card` and `--background` were both gray-50, and it is why `--raised`
      exists for anything that has to lift off the page. */
-  --background: var(--slate-900);
-  --foreground: var(--slate-200);
-  --raised: var(--slate-800);
-  /* See the light block. `--slate-700` would be the symmetrical answer and it
+  --background: var(--gray-900);
+  --foreground: var(--gray-200);
+  --raised: var(--gray-800);
+  /* See the light block. `--gray-700` would be the symmetrical answer and it
      fails: `--muted-foreground` lands on it at 3.94:1, and half of what a card
      prints is muted. */
-  --hover: var(--slate-950);
-  --card: var(--slate-900);
-  --card-foreground: var(--slate-200);
-  --popover: var(--slate-900);
-  --popover-foreground: var(--slate-200);
+  --hover: var(--gray-950);
+  --card: var(--gray-900);
+  --card-foreground: var(--gray-200);
+  --popover: var(--gray-900);
+  --popover-foreground: var(--gray-200);
   --primary: oklch(0.424 0.199 265.638);
   --primary-foreground: oklch(0.97 0.014 254.604);
-  --secondary: var(--slate-800);
-  --secondary-foreground: var(--slate-100);
-  --muted: var(--slate-800);
+  --secondary: var(--gray-800);
+  --secondary-foreground: var(--gray-100);
+  --muted: var(--gray-800);
   /* 5.58:1 on --muted and on --raised, which are the darkest surfaces this
      lands on. The quiet tier stays quiet; it does not move with the
      foregrounds above. */
-  --muted-foreground: var(--slate-400);
-  --accent: var(--slate-800);
-  --accent-foreground: var(--slate-100);
+  --muted-foreground: var(--gray-400);
+  /* Unchanged from muted text in dark. "Lighter" here means less contrast, and
+     one step down (500) on the dark input fill falls under 4.5:1. */
+  --placeholder: var(--gray-400);
+  /* Quieter means darker here. 0.645 is 4.58:1 on the gray-800 trough, the
+     floor with a sliver to spare; gray-500 would be 3.6:1. */
+  --tab-label: oklch(0.645 0 0);
+  --accent: var(--gray-800);
+  --accent-foreground: var(--gray-100);
   --destructive: oklch(0.704 0.191 22.216);
   /* Near-black, not white: 6.85:1 on this fill against white's 2.89:1. */
-  --destructive-foreground: var(--slate-950);
+  --destructive-foreground: var(--gray-950);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
   /* See the note above the block for why these are a pure white overlay.
@@ -573,9 +561,9 @@
      which read as a missing border rather than a faint one. */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 10%);
-  /* Same 3:1 rule as light mode, measured the other way: slate 600 is 2.36:1
+  /* Same 3:1 rule as light mode, measured the other way: gray 600 is 2.36:1
      on the card and fails. 400 is 6.79:1. */
-  --ring: var(--slate-400);
+  --ring: var(--gray-400);
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
@@ -586,7 +574,7 @@
      relative chroma as light mode: a category must not change colour between
      themes, only brightness. Chroma comes down a little across the board
      because a saturated light colour on near-black is where haloing starts,
-     the same reason `--foreground` is slate 200 rather than white. */
+     the same reason `--foreground` is gray 200 rather than white. */
   --accent-violet: oklch(0.8 0.15 295);
   --accent-cyan: oklch(0.8 0.11 220);
   --accent-teal: oklch(0.8 0.11 182);
@@ -595,6 +583,15 @@
   --accent-orange: oklch(0.8 0.14 40);
   --accent-rose: oklch(0.8 0.14 12);
   --accent-magenta: oklch(0.8 0.15 335);
+  /* The ink, as in light mode: same lightness and hue, chroma x 0.55. */
+  --accent-violet-ink: oklch(0.8 0.083 295);
+  --accent-cyan-ink: oklch(0.8 0.061 220);
+  --accent-teal-ink: oklch(0.8 0.061 182);
+  --accent-green-ink: oklch(0.8 0.077 148);
+  --accent-amber-ink: oklch(0.8 0.072 68);
+  --accent-orange-ink: oklch(0.8 0.077 40);
+  --accent-rose-ink: oklch(0.8 0.077 12);
+  --accent-magenta-ink: oklch(0.8 0.083 335);
 
   /* The rail shares the page's step, and the seam is what separates them.
 
@@ -612,32 +609,13 @@
      was wrong; it was caught in the browser, which is the only place it shows.
      So this line and the 10% below it are a pair. Do not lower one without
      looking at the other. */
-  --sidebar: var(--slate-950);
-  /* The pair of `--sidebar-field` above. Up the ramp, not down: slate-950 is
-     the floor and has nothing below it, so one shade *off* the band is
-     slate-900, which is also what the card sits on. */
-  --sidebar-field: var(--slate-900);
-  /* The pair of `--page-active` above, and **two** steps up rather than one.
-
-     Unchanged when light went the other way and dropped to slate-300: here the
-     pill sits near the ramp's floor, where up is the only direction there is.
-
-     `--raised` (slate-800) is the symmetrical answer and it separates from the
-     slate-900 surface by only 0.91, which is what this was before. Slate-700
-     gives 3.04, a little over three times as much, and the active page is the
-     one thing in this control that has to be found at a glance.
-
-     The reason slate-700 is refused for `--hover` a few lines up does not apply
-     here: that rejection is about `--muted-foreground` landing on it at 3.94:1,
-     and half of what a hovered *card* prints is muted. The pager's pill prints
-     `--foreground` at full strength, which is 11.67:1 on this value. */
-  --page-active: var(--slate-700);
+  --sidebar: var(--gray-950);
   /* 7.68:1 on --sidebar. */
-  --sidebar-foreground: var(--slate-400);
+  --sidebar-foreground: var(--gray-400);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.97 0.014 254.604);
-  --sidebar-accent: var(--slate-800);
-  --sidebar-accent-foreground: var(--slate-100);
+  --sidebar-accent: var(--gray-800);
+  --sidebar-accent-foreground: var(--gray-100);
   /* Hover and active keep a real step between them, or "you are here"
      disappears the moment the cursor rests on another row. These two fills are
      the only feedback a nav row gives.
@@ -649,37 +627,37 @@
      to have something to sink below. Hover sits between the rail and the
      active row, so the cursor moves toward the selected state rather than past
      it. */
-  --sidebar-hover: var(--slate-900);
-  --sidebar-active: var(--slate-800);
-  /* Paired with `--sidebar: var(--slate-950)` above: this hairline is the only
+  --sidebar-hover: var(--gray-900);
+  --sidebar-active: var(--gray-800);
+  /* Paired with `--sidebar: var(--gray-950)` above: this hairline is the only
      thing dividing the rail from the page now. */
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: var(--slate-400);
-  /* The hand, mirrored in slate-200. Keep the fill equal to `--slate-200`. */
+  --sidebar-ring: var(--gray-400);
+  /* The hand, mirrored in gray-200. Keep the fill equal to `--gray-200`. */
   --cursor-pointer:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0 0)' stroke='oklch(0.922 0 0)' stroke-width='.6' stroke-linejoin='round'><path d='M8.8 5.2a1.2 1.2 0 0 1 2.4 0v5.3a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v.6a1.3 1.3 0 0 1 2.6 0v3.3a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
       8 3,
     pointer;
-  /* Slate-200, the mirror of the light theme's slate-800. Keep the fill equal
-     to `--slate-200`. */
+  /* Gray-200, the mirror of the light theme's gray-800. Keep the fill equal
+     to `--gray-200`. */
   --cursor-default:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0 0)' stroke='oklch(0.922 0 0)' stroke-width='1.5' stroke-linejoin='round'><path d='M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z'/></svg>")
       3 4,
     default;
-  /* The two drag cursors in slate-200. Keep the fill equal to `--slate-200`. */
+  /* The two drag cursors in gray-200. Keep the fill equal to `--gray-200`. */
   --cursor-grab:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0 0)' stroke='oklch(0.922 0 0)' stroke-width='.3' stroke-linejoin='round'><path d='M8.8 5.5a1 1 0 0 1 2 0v5.1a.5.5 0 0 0 1 0V3.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V4.5a1 1 0 0 1 2 0v7.1a.5.5 0 0 0 1 0V7.5a1 1 0 0 1 2 0V15a6 6 0 0 1-6 6h-1.6c-1.9 0-3.1-.6-4.2-1.7l-2.8-3.6a1.2 1.2 0 0 1 1.9-1.5L8.8 13.6z'/></svg>")
       10 11,
     grab;
   --cursor-grabbing:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0.011 255.508)' stroke='oklch(0.922 0.011 255.508)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='oklch(0.922 0 0)' stroke='oklch(0.922 0 0)' stroke-width='.3' stroke-linejoin='round'><path d='M6.8 15v-4.7a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0v.9a.2.2 0 0 0 .4 0v-.9a1.4 1.4 0 0 1 2.8 0V15a5.5 5.5 0 0 1-5.5 5.5h-2.2c-1.9 0-3.1-.6-4.2-1.7l-2.2-2.4a1.2 1.2 0 0 1 1.9-1.5z'/></svg>")
       10 11,
     grabbing;
-  /* Slate-300, the mirror of the light theme's slate-700: a dark glyph on a
+  /* Gray-300, the mirror of the light theme's gray-700: a dark glyph on a
      near-black page is a cursor that has gone missing. Same drawing, same
-     hotspot; keep the stroke equal to `--slate-300`. */
+     hotspot; keep the stroke equal to `--gray-300`. */
   --cursor-col-resize:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.855 0.017 252.894)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='oklch(0.87 0 0)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 5v14M8 9l-3 3 3 3M16 9l3 3-3 3'/></svg>")
       12 12,
     col-resize;
 }
@@ -701,10 +679,11 @@
   goes up here, in both themes, so `contrast.test.ts`'s floors still hold.
 */
 [data-editor-rail] {
-  --border: var(--slate-300);
-  --sidebar-border: var(--slate-300);
-  --muted-foreground: var(--slate-700);
-  --sidebar-foreground: var(--slate-700);
+  --border: var(--gray-300);
+  --sidebar-border: var(--gray-300);
+  --muted-foreground: var(--gray-700);
+  --placeholder: var(--gray-600);
+  --sidebar-foreground: var(--gray-700);
 }
 
 .dark [data-editor-rail] {
@@ -713,8 +692,9 @@
      rather than becoming the one surface with bright edges. */
   --border: oklch(1 0 0 / 10%);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --muted-foreground: var(--slate-300);
-  --sidebar-foreground: var(--slate-300);
+  --muted-foreground: var(--gray-300);
+  --placeholder: var(--gray-300);
+  --sidebar-foreground: var(--gray-300);
 }
 
 @layer base {

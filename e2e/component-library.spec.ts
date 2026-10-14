@@ -98,7 +98,7 @@ for (const theme of ['light', 'dark'] as const) {
      *
      * **Was left red on 18 September 2026 and resolved on 4 October.** The
      * library's stage had moved to `--background`, so the pager was signed off
-     * on white in light and on slate-900 in dark, where the real footer is
+     * on white in light and on gray-900 in dark, where the real footer is
      * `--sidebar`. Of the three ways out (stage the specimen on `--sidebar`,
      * assert pill-vs-container only, or restyle the pager), the first was
      * chosen: `Specimen` takes `stage="sidebar"` and the pager specimens pass
@@ -140,10 +140,7 @@ for (const theme of ['light', 'dark'] as const) {
      * *signed off* on. A library that showed an invisible pill would sign off
      * an invisible pill.
      *
-     * Fill **or** stroke, for the reason §2.10 records: `--card` and
-     * `--sidebar-field` are the same step in dark, so there the border carries
-     * the state alone and a lightness floor would fail correct code. What is
-     * ruled out is having neither.
+     * Fill **or** stroke: what is ruled out is having neither.
      */
     test('distinguishes the active page from its container', async ({ page }) => {
       await page.goto('/preview/library');

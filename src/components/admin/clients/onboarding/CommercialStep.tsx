@@ -17,6 +17,7 @@ import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import {
   ENGAGEMENT_TYPES,
+  ENGAGEMENT_TYPE_INFO,
   clientCommercialSchema,
   type ClientCommercial,
 } from '@/lib/domain/client';
@@ -27,11 +28,6 @@ import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } f
 /** Only the fields this step owns; the term and services belong to the next one. */
 type FormValues = Omit<ClientCommercial, 'services' | 'startDate' | 'termMonths' | 'autoRenew' | 'noticeDays'>;
 
-const ENGAGEMENT_CARDS = {
-  retainer: { title: 'Retainer', hint: 'Ongoing, billed on a cycle' },
-  project: { title: 'Project', hint: 'A defined scope, billed against it' },
-  hourly: { title: 'Hourly', hint: 'Billed against time' },
-} as const;
 
 /**
  * The cycles anyone actually names, as intervals. `custom` is not a stored
@@ -281,9 +277,9 @@ export default function CommercialStep({
                     onChange={() => field.onChange(type)}
                     onBlur={field.onBlur}
                   />
-                  <span className="text-sm font-medium">{ENGAGEMENT_CARDS[type].title}</span>
+                  <span className="text-sm font-medium">{ENGAGEMENT_TYPE_INFO[type].title}</span>
                   <span className="text-xs text-muted-foreground">
-                    {ENGAGEMENT_CARDS[type].hint}
+                    {ENGAGEMENT_TYPE_INFO[type].hint}
                   </span>
                 </label>
               ))}
@@ -501,8 +497,8 @@ function DayOfMonthPicker({
       <PopoverTrigger
         id={id}
         onBlur={onBlur}
-        data-empty={value == null}
-        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-muted-foreground"
+        data-empty={value == null ? '' : undefined}
+        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-placeholder"
       >
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />

@@ -537,7 +537,27 @@ const POPUP_FLOOR_LOWERED = /\bmin-w-(max|fit|min|auto)\b/g;
 const HAND_WRITTEN_OPTIONAL =
   /(label|title)=["'][^"']*\(optional\)["']|placeholder=["']Optional["']/gi;
 
+
+/**
+ * A data attribute handed a boolean.
+ *
+ * React writes `data-empty={false}` as `data-empty="false"`, and Tailwind's
+ * `data-empty:` variant matches the attribute's **presence**, not its value. So
+ * the style applies in both states. That is how every filled DatePicker in the
+ * app came to print its date in the placeholder colour: the trigger carried
+ * `data-empty={!selected}`, which never once removed the attribute. It went
+ * unseen while the empty colour was the darker muted grey and surfaced the day
+ * the placeholder was lightened.
+ *
+ * Write the attribute as present-or-absent: `cond ? '' : undefined`.
+ */
+const BOOLEAN_DATA_ATTR = /data-[a-z-]+=\{(?![^}]*(?:\?|undefined))(?:!|[^}]*[=!]==?)[^}]*\}/g;
+
 describe('design system', () => {
+  it('writes a boolean data attribute as present or absent, never as "false"', () => {
+    expect(violations(BOOLEAN_DATA_ATTR)).toEqual([]);
+  });
+
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
   });

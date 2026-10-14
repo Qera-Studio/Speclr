@@ -57,9 +57,11 @@ function DatePicker({
         disabled={disabled}
         data-slot="date-picker-trigger"
         data-size={size}
-        data-empty={!selected}
+        // Present or absent, never "false": the `data-empty:` variant matches
+        // presence, so `{!selected}` greyed every filled date.
+        data-empty={selected ? undefined : ''}
         className={cn(
-          "flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-muted-foreground data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed data-[size=md]:h-9 data-[size=md]:px-3 data-[size=md]:text-sm group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
+          "flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-placeholder data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed data-[size=md]:h-9 data-[size=md]:px-3 data-[size=md]:text-sm group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9.5 data-[size=form]:px-3 data-[size=form]:text-sm",
           // The calendar's width, not the column's. See `CALENDAR_FIELD_WIDTH`:
           // the grid cannot stretch to the field, so the field matches the grid
           // and the two edges line up. A cap rather than a width, because

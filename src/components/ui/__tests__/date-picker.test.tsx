@@ -25,6 +25,20 @@ describe('DatePicker', () => {
     expect(screen.getByRole('button', { name: /pick a date/i })).toBeInTheDocument();
   });
 
+  /*
+    The placeholder colour is `data-empty:`, which matches the attribute's
+    presence. A filled picker must therefore carry no `data-empty` at all:
+    `data-empty="false"` still matched, and printed every filled date grey.
+  */
+  it('marks itself empty only while it has no date', () => {
+    const { unmount } = render(<Harness />);
+    expect(screen.getByRole('button', { name: /pick a date/i })).toHaveAttribute('data-empty');
+    unmount();
+
+    render(<Harness initial="2026-07-21" />);
+    expect(screen.getByRole('button', { name: '21 Jul 2026' })).not.toHaveAttribute('data-empty');
+  });
+
   it('displays an existing date in the app ordinal-free display format', () => {
     render(<Harness initial="2026-07-21" />);
     expect(screen.getByRole('button', { name: '21 Jul 2026' })).toBeInTheDocument();

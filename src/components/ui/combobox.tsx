@@ -300,7 +300,7 @@ function Combobox({
           id={id}
           placeholder={placeholder}
           className={cn(
-            "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground",
+            "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-placeholder",
             size === "form" || size === "md"
               ? "px-3 text-sm"
               : "px-2 text-xs/relaxed group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm",

@@ -289,7 +289,7 @@ test.describe('the nav rail follows the pointer', () => {
   /**
    * And the two fills are different colours, which is the other half of the
    * same rule. `--sidebar-hover` and `--sidebar-active` are one step apart on
-   * the slate ramp deliberately (`globals.css` says so, and says they move as
+   * the gray ramp deliberately (`globals.css` says so, and says they move as
    * a pair): if the travelling fill were painted in the active colour, every
    * row it passed over would claim to be the current page. The previous test
    * does not catch that on its own, because the active row's own fill really
@@ -401,8 +401,8 @@ test.describe('the nav rail follows the pointer', () => {
    * Hovering a row moves the fill and changes nothing else.
    *
    * The primitive darkens a hovered row's text from `--sidebar-foreground` to
-   * `--sidebar-accent-foreground`, which in light mode is slate-600 to
-   * slate-900: a measured drop from L 33.7 to L 5.0, near enough to black.
+   * `--sidebar-accent-foreground`, which in light mode is gray-600 to
+   * gray-900: a measured drop from L 33.7 to L 5.0, near enough to black.
    * That reads as pressed rather than pointed at, and it says a second time
    * what the fill already says.
    *

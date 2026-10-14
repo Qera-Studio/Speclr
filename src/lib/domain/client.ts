@@ -386,6 +386,13 @@ export const clientContactsSchema = z.object({
 
 export const ENGAGEMENT_TYPES = ['retainer', 'project', 'hourly'] as const;
 
+/** Each engagement type's name and one-line meaning: the onboarding cards and the clients list. */
+export const ENGAGEMENT_TYPE_INFO = {
+  retainer: { title: 'Retainer', hint: 'Ongoing, billed on a cycle' },
+  project: { title: 'Project', hint: 'A defined scope, billed against it' },
+  hourly: { title: 'Hourly', hint: 'Billed against time' },
+} as const satisfies Record<(typeof ENGAGEMENT_TYPES)[number], { title: string; hint: string }>;
+
 /**
  * One item this client agreed to, under a Service they are engaged on.
  *

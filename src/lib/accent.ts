@@ -48,7 +48,7 @@ export type Accent = (typeof ACCENTS)[number];
  * `--primary`), and adding eight hue variants to it would put the palette in a
  * primitive that has no business knowing about industries.
  */
-export function accentBadge(accent: Accent, className?: string) {
+export function accentBadge(accent: Accent, className?: string, quiet = false) {
   return cn(
     'inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-sm border px-1.5',
     // `font-normal`, down from `font-medium`. A coloured word on a wash of its
@@ -58,9 +58,25 @@ export function accentBadge(accent: Accent, className?: string) {
     // actually matters.
     'text-[0.6875rem] font-normal whitespace-nowrap',
     ACCENT_CLASSES[accent],
+    // The ink: the same hue, desaturated at the same lightness, on a lighter
+    // wash, so it reads quieter without giving up contrast. A lighter wash
+    // only moves the ground away from the text, so the measured case in
+    // `contrast.test.ts` (10%/12%) stays the worst one.
+    quiet && ACCENT_INK[accent],
     className,
   );
 }
+
+const ACCENT_INK: Record<Accent, string> = {
+  violet: 'text-accent-violet-ink bg-accent-violet/8 dark:bg-accent-violet/10',
+  cyan: 'text-accent-cyan-ink bg-accent-cyan/8 dark:bg-accent-cyan/10',
+  teal: 'text-accent-teal-ink bg-accent-teal/8 dark:bg-accent-teal/10',
+  green: 'text-accent-green-ink bg-accent-green/8 dark:bg-accent-green/10',
+  amber: 'text-accent-amber-ink bg-accent-amber/8 dark:bg-accent-amber/10',
+  orange: 'text-accent-orange-ink bg-accent-orange/8 dark:bg-accent-orange/10',
+  rose: 'text-accent-rose-ink bg-accent-rose/8 dark:bg-accent-rose/10',
+  magenta: 'text-accent-magenta-ink bg-accent-magenta/8 dark:bg-accent-magenta/10',
+};
 
 /**
  * Written out per hue rather than interpolated into a template string, because
