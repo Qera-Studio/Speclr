@@ -69,8 +69,8 @@ export function Specimen({
       role="group"
       aria-label={name}
       className={cn(
-        "flex flex-col rounded-md border border-border",
-        trial ? "bg-muted" : "bg-sidebar",
+        "flex flex-col rounded-md border",
+        trial ? "border-border/50 bg-muted" : "border-border bg-sidebar",
       )}
     >
       {/*
@@ -84,7 +84,7 @@ export function Specimen({
         Bring it back by rendering `note` here.
       */}
       <div className={trial ? "px-1.5 py-3" : "px-1 pt-2 pb-2"}>
-        <h3 className="text-body font-medium">{name}</h3>
+        <h3 className={cn("text-body font-medium", trial && "text-muted-foreground")}>{name}</h3>
       </div>
       {/*
         `min-h-14` so a short control still gets a stage to stand in, and
