@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import AdminShell from '@/components/shell/AdminShell';
-import ComponentLibrary from '@/components/library/ComponentLibrary';
+import DesignPage from '@/components/design/DesignPage';
 
 /**
- * `/preview/library` — the component library with no session and no database.
+ * `/preview/design` — the design system with no session and no database.
  *
- * The real page at `/client/library` is behind Clerk, so a browser pointed at
+ * The real page at `/design` is behind Clerk, so a browser pointed at
  * it measures the sign-in form and reports a healthy 200 while proving nothing.
  * That is the same reason every other fixture here exists.
  *
@@ -20,11 +20,11 @@ import ComponentLibrary from '@/components/library/ComponentLibrary';
  * **It does not exist in production**, like its siblings.
  */
 export const metadata = {
-  title: 'Component library preview',
+  title: 'Design system preview',
   robots: { index: false, follow: false },
 };
 
-export default function LibraryPreviewPage() {
+export default function DesignPreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
   return (
     <Suspense fallback={<div className="h-full w-full" />}>
@@ -40,7 +40,7 @@ export default function LibraryPreviewPage() {
         is what ships.
       */}
       <AdminShell user={{ name: 'Preview', email: 'preview@qera.studio' }}>
-        <ComponentLibrary />
+        <DesignPage />
       </AdminShell>
     </Suspense>
   );

@@ -959,7 +959,7 @@ Everything above is a rule; `library/table/` is that rule made into something
 you can copy. It is one `RecordTable` call site (`TemplateTable.tsx`) over a
 column spec holding **one of every kind of column this app has**
 (`columns.tsx`), over rows built to exercise each (`rows.ts`), shown live under
-`/client/library?component=table`. Build a new table by taking the column
+`/design?section=patterns&item=table`. Build a new table by taking the column
 definitions it needs and deleting the rest.
 
 It is a **reference, not a second component.** There is exactly one table
@@ -1531,55 +1531,44 @@ them. Only the middle band scrolls.
 `components/patterns/flow/` fails the build. It is the attribute that marks which step of
 a sequence you are on, so a file carrying one has built its own row.
 
-### 2.13 The component library
+### 2.13 The design page
 
-**`/client/library` is where a component is decided.** Every component the app
-uses, every variant of it, live and drivable, with a rail of components on the
-left and one component's specimens on the right. A change to a primitive is
-made, looked at and tried here first.
+**`/design` is where a component is decided**, and it is the catalogue this
+document describes: every token, atom, pattern, template and state, live and
+drivable, with the decisions behind them. Profile-neutral, like settings; both
+rails link to it. A change to a primitive is made, looked at and tried here
+first.
 
-**There is no second step where it ships**, and that is the point rather than a
-convenience. The page imports the real primitive from `src/components/ui/`, so
-this page and every caller are one import of one file. A library holding its own
-copies would be a place for the app to disagree with its own documentation,
-which is §5e's argument one layer up: the failure would be the library looking
-right while the app did not.
+**There is no second step where it ships.** The page imports the real
+primitive from `ui/` or `patterns/`, so this page and every caller are one
+import of one file. The tokens are read back from the stylesheet at runtime,
+so the page cannot show a value the app lacks.
 
-- **A component is addressable.** `?component=` carries which one is showing, so
-  a variant can be linked to in a review. `replace`, not `push`: moving between
-  components changes what the page shows rather than navigating away from it,
-  and one history entry per component looked at is a back button nobody can use.
-- **Every variant is named and explained**, not merely shown. A gallery of
-  unlabelled specimens is a picture of the component; the note is what says
-  which rule each one is demonstrating and when it appears.
-- **The specimens are wired to real state.** This is the difference from a
-  screenshot and the reason behaviour can be finalised here: the pager's batch
-  turn, its runs merging at either end and its box committing on blur are all
-  behaviours, and a static render proves none of them.
+Eight sections, in the rail's order: overview (the five properties, the
+ladder, how to add something), foundations (colour, type, spacing, radius,
+elevation, motion, icons), atoms, patterns, shell, states, writing, decisions.
+`?section=` and `?item=` carry what is showing, validated against the
+catalogue; an unknown item falls back to its section, an unknown section to
+the overview. `replace`, not `push`.
+
+- **Every variant is named and explained**, and the specimens are wired to
+  real state: the pager pages, the drawer opens, the dialog asks.
 - **A specimen is drawn on the band the component actually lives on**, never a
-  neutral backdrop chosen to flatter it. The pager's trough is one step off
-  `--sidebar`, and that step is precisely what a reviewer is here to judge; on
-  `--card` it would separate cleanly here and vanish in the table footer it
-  ships into. In light mode the two surfaces are indistinguishable, so this is
-  a mistake only dark mode can show.
-- **An absence is labelled.** Some variants are the component declining to
-  render (a pager at one page). An empty stage among full ones reads as
-  something that broke rather than as the rule being demonstrated.
-- **A variant opens where it is actually interesting.** The pager's trailing
-  merge is a specimen of its own opening on the *last* page, because every long
-  list shows the leading merge on open and a specimen of that would be
-  demonstrating the shape the reader already knows.
+  neutral backdrop chosen to flatter it.
+- **A decision is a record, not a paragraph.** `DECISIONS` in `catalogue.ts`
+  holds each one with what was rejected and the test that holds it; the
+  decisions section renders them newest first. §6 below is the same history
+  as prose.
+- **Experiments do not live in the product.** The three that did (a segmented
+  tab, an item drawer, a clause drawer) and the archived rich table were
+  deleted with `/admin/kit` and `/client/library` on 16 October 2026.
 
-It supersedes `/admin/kit`, a flat scroll of static examples with no way to
-drive any of them, which stays until its six sections have been re-homed here
-one at a time.
-
-**Enforced** (`library/__tests__/catalogue.test.ts`): every entry's `source`
-must name a file that exists, its `rule` must name a heading that is actually in
-this document, and `Specimen.tsx` must import each catalogued primitive rather
-than reproduce it. All three are one-line edits somebody makes without opening
-that folder, and none of them look broken on the page afterwards.
-**`e2e/component-library.spec.ts`** owns the half only a browser can see: that a
+**Enforced** (`design/__tests__/catalogue.test.ts`): every entry sits in a
+listed section and every section has an entry; every `source` exists; every
+`rule` names a heading in this document; every atom and pattern file is
+imported by the page or sits on `KNOWN_GAPS`, which only shrinks; every
+decision names an `it(…)` that exists in the enforcement tests.
+**`e2e/design.spec.ts`** owns the half only a browser can see: that a
 specimen's surfaces match the real table footer's, byte for byte, in both
 themes.
 
@@ -1635,9 +1624,9 @@ when a house rule gets broken twice.
 | No sheet names its own width; it takes a size (§2.11) | `src/__tests__/design-system.test.ts` |
 | Each size resolves to its share of the card (§2.11) | `src/components/ui/__tests__/sheet.test.tsx`, `e2e/shell-sheets.spec.ts` |
 | Every multi-step flow is built on `FlowShell` (§2.12) | `src/__tests__/design-system.test.ts` |
-| Every catalogued component points at a real file and a real section (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
-| The library imports each primitive, never copies it (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
-| A specimen's surfaces match the real footer's, both themes (§2.13) | `e2e/component-library.spec.ts` |
+| Every catalogued component points at a real file and a real section; every atom and pattern is on the page; every decision names a real test (§2.13) | `src/components/design/__tests__/catalogue.test.ts` |
+| The page imports each primitive, never copies it (§2.13) | `src/components/design/__tests__/catalogue.test.ts` |
+| A specimen's surfaces match the real footer's, both themes (§2.13) | `e2e/design.spec.ts` |
 | No phone printed in its stored form (§2.3) | `src/__tests__/design-system.test.ts` |
 | Optional is marked by `OptionalMark`, never by hand (§3) | `src/__tests__/design-system.test.ts` |
 | Labels are sentence case, never `uppercase` (§1.4) | `src/__tests__/design-system.test.ts` |
@@ -1688,6 +1677,12 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, `/design`.** The component library grew into the design
+  system's own page: eight sections, the tokens read from the stylesheet, a
+  specimen for every foundation, the atoms and patterns, the states, the
+  writing rules, and the decisions as records. `/admin/kit`, `/client/library`,
+  the three experiments and the archived rich table were deleted.
 
 - **16 October 2026, the states, the row, and the last raw buttons.**
   `EmptyState` with four presets replaces the two copied "no matches"

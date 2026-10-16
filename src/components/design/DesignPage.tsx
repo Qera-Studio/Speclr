@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Mono } from '@/components/patterns/Mono';
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CATALOGUE, entryOf, type LibraryEntry } from "./catalogue";
+import { SECTIONS, entriesIn, entryOf, type LibraryEntry } from "./catalogue";
 import { Archive, Download, Trash2 } from "lucide-react";
 import { ButtonSpecimens } from "./ButtonSpecimens";
 import { IconSpecimens } from "./IconSpecimens";
 import { TableSpecimens } from "./TableSpecimens";
-import { ItemDrawerSpecimens } from "./drawer/ItemDrawerSpecimens";
-import { TabsSpecimens } from "./tabs/TabsSpecimens";
-import { ClauseDrawerSpecimens } from "./drawer/ClauseDrawerSpecimens";
+import { FoundationSpecimens } from "./FoundationSpecimens";
+import { AtomSpecimens } from "./AtomSpecimens";
+import { PatternSpecimens } from "./PatternSpecimens";
+import { PageSpecimens } from "./PageSpecimens";
 import { DrawerTrigger, LivePager, Specimen } from "./Specimen";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
@@ -45,11 +46,11 @@ import { cn } from "@/lib/utils";
  * `docs/design.md`, which is the law, and at its source file. A page that
  * paraphrased the rule would be a second copy to fall out of step with it.
  */
-export default function ComponentLibrary() {
+export default function DesignPage() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const entry = entryOf(params.get("component") ?? undefined);
+  const entry = entryOf(params.get("item") ?? undefined, params.get("section") ?? undefined);
 
   /*
     `replace`, not `push`, and `scroll: false`. Moving between components is
@@ -57,8 +58,8 @@ export default function ComponentLibrary() {
     should not fill the back button with one entry per component looked at. Same
     call the onboarding flow makes for its step.
   */
-  const select = (slug: string) =>
-    router.replace(`${pathname}?component=${slug}`, { scroll: false });
+  const select = (item: LibraryEntry) =>
+    router.replace(`${pathname}?section=${item.section}&item=${item.slug}`, { scroll: false });
 
   return (
     <div className="flex h-full min-h-0 w-full">
@@ -69,42 +70,39 @@ export default function ComponentLibrary() {
         room.
       */}
       <nav
-        aria-label="Components"
-        className="flex w-52 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-sidebar p-2"
+        aria-label="Design system"
+        className="flex w-52 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-sidebar p-2"
       >
-        {/* Sentence case at 12px muted, not small caps. The hierarchy is
-            carried by colour, which is how every other group heading in the app
-            says "this is a name, not a value" (§1.4, enforced). */}
-        <h2 className="px-2 pt-1 pb-2 text-meta font-medium text-muted-foreground">
-          Components
-        </h2>
-        {CATALOGUE.map((item) => {
-          const current = item.slug === entry.slug;
-          return (
-            <button
-              key={item.slug}
-              type="button"
-              onClick={() => select(item.slug)}
-              /*
-                `aria-current="true"`, not `"page"`. Nothing here is a page: the
-                rail switches what the one page shows, and the URL it writes is
-                a parameter rather than a route. `"page"` would tell a screen
-                reader this is the document they are on, which the pager's own
-                numbers in the pane below already say about something else.
-              */
-              aria-current={current || undefined}
-              className={cn(
-                "rounded-md px-2 py-1.5 text-left text-meta transition-colors",
-                "focus-ring focus-visible:outline-none",
-                current
-                  ? "bg-sidebar-active font-medium text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
-              )}
-            >
-              {item.name}
-            </button>
-          );
-        })}
+        {SECTIONS.map((section) => (
+          <div key={section.key} className="flex flex-col gap-0.5">
+            {/* Sentence case at 12px muted, not small caps: the hierarchy is
+                carried by colour (§1.4, enforced). */}
+            <h2 className="px-2 pt-1 pb-1 text-meta font-medium text-muted-foreground">
+              {section.name}
+            </h2>
+            {entriesIn(section.key).map((item) => {
+              const current = item.slug === entry.slug;
+              return (
+                <button
+                  key={item.slug}
+                  type="button"
+                  onClick={() => select(item)}
+                  /* `aria-current="true"`, not `"page"`: the rail switches
+                     what the one page shows. */
+                  aria-current={current || undefined}
+                  className={cn(
+                    "rounded-md px-2 py-1.5 text-left text-meta transition-colors focus-ring",
+                    current
+                      ? "bg-sidebar-active font-medium text-sidebar-accent-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  {item.name}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* The only thing that scrolls. `min-h-0` or the flex child is floored at
@@ -132,6 +130,10 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         */}
         <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-meta text-muted-foreground">
           <div className="flex items-center gap-1.5">
+            <dt>Level</dt>
+            <dd>{entry.level}</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
             <dt className="sr-only">Source</dt>
             <dd><Mono>{entry.source}</Mono></dd>
           </div>
@@ -152,12 +154,17 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         {entry.slug === "icons" ? <IconSpecimens entry={entry} /> : null}
         {entry.slug === "table" ? <TableSpecimens entry={entry} /> : null}
         {entry.slug === "drawer" ? <DrawerSpecimens entry={entry} /> : null}
-        {entry.slug === "segmented-tabs" ? <TabsSpecimens entry={entry} /> : null}
-        {entry.slug === "item-drawer" ? (
-          <ItemDrawerSpecimens entry={entry} />
+        {entry.section === "foundations" && entry.slug !== "icons" ? (
+          <FoundationSpecimens entry={entry} />
         ) : null}
-        {entry.slug === "clause-drawer" ? (
-          <ClauseDrawerSpecimens entry={entry} />
+        {["field", "badge", "overlays", "tabs"].includes(entry.slug) ? (
+          <AtomSpecimens entry={entry} />
+        ) : null}
+        {["actions", "cells", "flow", "empty"].includes(entry.slug) ? (
+          <PatternSpecimens entry={entry} />
+        ) : null}
+        {["overview", "page", "shell", "writing", "decisions"].includes(entry.slug) ? (
+          <PageSpecimens entry={entry} />
         ) : null}
       </div>
     </article>

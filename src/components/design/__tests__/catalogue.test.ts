@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CATALOGUE, entryOf, FIRST_ENTRY } from '../catalogue';
+import { CATALOGUE, DECISIONS, entryOf, FIRST_ENTRY, SECTIONS } from '../catalogue';
 
 /**
  * The library's index: which components it holds and how a URL names one.
@@ -31,7 +31,7 @@ describe('the catalogue', () => {
    */
   it('points every component at its file and its rule', () => {
     for (const entry of CATALOGUE) {
-      expect(entry.source).toMatch(/^src\/.+\.tsx?$/);
+      expect(entry.source).toMatch(/^(?:src\/.+\.(?:tsx?|css)|docs\/design\.md)$/);
       expect(entry.rule).toMatch(/^§\d/);
     }
   });
@@ -75,7 +75,7 @@ describe('the pointers stay true', () => {
     for (const entry of CATALOGUE) {
       // The heading itself, e.g. '### 2.10 Pagination'. Matching the bare
       // number would pass against any cross-reference in the prose.
-      expect(design).toMatch(new RegExp(`^#{2,3} ${entry.rule.slice(1)}\\s`, 'm'));
+      expect(design).toMatch(new RegExp(`^#{2,3} ${entry.rule.slice(1)}[.\\s]`, 'm'));
     }
   });
 
@@ -125,7 +125,7 @@ describe('the pointers stay true', () => {
       app moving with it (`library/drawer/`). It is not a primitive the page
       could import instead, and it is deleted when the experiment ends.
     */
-    for (const entry of CATALOGUE.filter((e) => !e.source.startsWith('src/components/library/'))) {
+    for (const entry of CATALOGUE.filter((e) => /^src\/components\/.+\.tsx?$/.test(e.source) && !e.source.startsWith('src/components/design/'))) {
       const module = entry.source.replace(/^src\//, '@/').replace(/\.tsx?$/, '');
       // Either quote: a formatter rewriting `'` to `"` is not a component
       // going missing, and a guard that goes red for it teaches people to

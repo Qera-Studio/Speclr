@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { policedFiles, violations } from './policedSource';
-import { PALETTE_ESCAPE_MIGRATED_LATER } from './migratedLater';
 
 /**
  * The design system's enforcement layer.
@@ -74,7 +73,7 @@ describe('design tokens', () => {
   });
 
   it('never reaches the ramp, a raw oklch() or an rgba() through an arbitrary value', () => {
-    expect(violations(PALETTE_ESCAPE, PALETTE_ESCAPE_MIGRATED_LATER, /\.tsx?$/)).toEqual([]);
+    expect(violations(PALETTE_ESCAPE, [], /\.tsx?$/)).toEqual([]);
   });
 
   it('defines every token the system is built on', () => {

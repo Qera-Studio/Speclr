@@ -142,7 +142,7 @@ describe('AdminSidebar', () => {
         'Service catalogue',
         'Clause library',
         'Checklist',
-        'Components',
+        'Design system',
       ]);
     });
 

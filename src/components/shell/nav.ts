@@ -147,7 +147,7 @@ const ADMIN_TOOLS: NavLink[] = [
   { href: '/admin/tools/ctc', label: 'CTC calculator', icon: Calculator },
   { href: '/admin/tools/sitemap', label: 'Sitemap chart', icon: Network },
   { href: '/admin/spec', label: 'Icon spec', icon: Image },
-  { href: '/admin/kit', label: 'UI Kit', icon: SwatchBook },
+  { href: '/design', label: 'Design system', icon: SwatchBook },
 ];
 
 const ADMIN_RECORDS: NavLink[] = [{ href: '/admin/employees', label: 'Employees', icon: IdCard, jump: 'E' }];
@@ -206,12 +206,10 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
           // has to hand over before a record can be filled in, so it sits with
           // the other source material a client engagement starts from.
           { href: '/client/checklist', label: 'Checklist', icon: ListChecks, jump: 'K' },
-          // The odd one out in this group, placed here on request. It is source
-          // material for the *app* rather than for a client engagement: every
-          // component, every variant, live, and the place a component is decided
-          // before it ships to its callers. It supersedes `/admin/kit`, which is
-          // why it carries that page's icon.
-          { href: '/client/library', label: 'Components', icon: SwatchBook, jump: 'U' },
+          // The odd one out in this group. It is source material for the *app*
+          // rather than for a client engagement: every token, component and
+          // decision, live. Profile-neutral, so the admin rail lists it too.
+          { href: '/design', label: 'Design system', icon: SwatchBook, jump: 'U' },
         ],
       },
     ],

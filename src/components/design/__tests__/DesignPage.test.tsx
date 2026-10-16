@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ComponentLibrary from '../ComponentLibrary';
+import DesignPage from '../DesignPage';
 import { CATALOGUE } from '../catalogue';
 
 /**
@@ -23,7 +23,7 @@ let search = new URLSearchParams();
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace, push: jest.fn() }),
-  usePathname: () => '/client/library',
+  usePathname: () => '/design',
   useSearchParams: () => search,
 }));
 
@@ -34,29 +34,29 @@ beforeEach(() => {
 
 /** The rail's own link for a component, scoped so the heading cannot match. */
 const railLink = (name: string) =>
-  within(screen.getByRole('navigation', { name: 'Components' })).getByRole('button', {
+  within(screen.getByRole('navigation', { name: 'Design system' })).getByRole('button', {
     name,
   });
 
 describe('the rail', () => {
   it('lists every component in the catalogue', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     for (const entry of CATALOGUE) {
       expect(railLink(entry.name)).toBeInTheDocument();
     }
   });
 
-  it('opens on the first component when the URL names none', () => {
-    render(<ComponentLibrary />);
+  it('opens on the overview when the URL names nothing', () => {
+    render(<DesignPage />);
 
-    expect(railLink('Pagination')).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('heading', { name: 'Pagination', level: 1 })).toBeInTheDocument();
+    expect(railLink('How this is built')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByRole('heading', { name: 'How this is built', level: 1 })).toBeInTheDocument();
   });
 
   it('opens on the component the URL names', () => {
-    search = new URLSearchParams('component=pagination');
-    render(<ComponentLibrary />);
+    search = new URLSearchParams('section=atoms&item=pagination');
+    render(<DesignPage />);
 
     expect(railLink('Pagination')).toHaveAttribute('aria-current', 'true');
   });
@@ -65,28 +65,31 @@ describe('the rail', () => {
    * A slug naming nothing is a stale bookmark, not a reason to show an empty
    * pane. It reads as "nothing chosen".
    */
-  it('falls back to the first component for an unknown slug', () => {
-    search = new URLSearchParams('component=nonesuch');
-    render(<ComponentLibrary />);
-
-    expect(screen.getByRole('heading', { name: 'Pagination', level: 1 })).toBeInTheDocument();
+  it('falls back to the section for an unknown item, and to the overview for an unknown section', () => {
+    search = new URLSearchParams('section=atoms&item=nonesuch');
+    render(<DesignPage />);
+    expect(screen.getByRole('heading', { name: 'Button', level: 1 })).toBeInTheDocument();
   });
 
   it('writes the component to the URL so a link can name one', async () => {
     const user = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     await user.click(railLink('Pagination'));
 
-    expect(replace).toHaveBeenCalledWith('/client/library?component=pagination', {
+    expect(replace).toHaveBeenCalledWith('/design?section=atoms&item=pagination', {
       scroll: false,
     });
   });
 });
 
 describe('the component being shown', () => {
+  beforeEach(() => {
+    search = new URLSearchParams('section=atoms&item=pagination');
+  });
+
   it('says where the component lives and which rule governs it', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     expect(screen.getByText('src/components/ui/pagination.tsx')).toBeInTheDocument();
     expect(screen.getByText(/§2\.10/)).toBeInTheDocument();
@@ -101,9 +104,9 @@ describe('the component being shown', () => {
    * matters here is that no variant goes missing from the page.
    */
   it('shows every variant, each named', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
-    for (const variant of CATALOGUE[0].variants) {
+    for (const variant of CATALOGUE.find((e) => e.slug === 'pagination')!.variants) {
       expect(screen.getByRole('heading', { name: variant.name })).toBeInTheDocument();
     }
   });
@@ -117,9 +120,13 @@ describe('the component being shown', () => {
  * is what ships, driven the way a caller drives it.
  */
 describe('the pagination specimens', () => {
+  beforeEach(() => {
+    search = new URLSearchParams('section=atoms&item=pagination');
+  });
+
   it('pages when a number in a specimen is clicked', async () => {
     const user = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Windowed' });
     const pager = within(specimen).getByRole('navigation');
@@ -146,7 +153,7 @@ describe('the pagination specimens', () => {
    */
   it('turns the window a batch at a time from the arrow', async () => {
     const user = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Windowed' });
     const pager = within(specimen).getByRole('navigation');
@@ -164,7 +171,7 @@ describe('the pagination specimens', () => {
   });
 
   it('renders nothing for a single page, which is the variant', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Single page' });
     expect(within(specimen).queryByRole('navigation')).not.toBeInTheDocument();
@@ -180,7 +187,7 @@ describe('the pagination specimens', () => {
    * obvious edit is to give every specimen the same frame back.
    */
   it('gives the empty variant no stage to look broken in', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Single page' });
     // The caption is all there is: the heading, the note, and nothing under it.
@@ -196,7 +203,7 @@ describe('the pagination specimens', () => {
    * reader already knows.
    */
   it('shows the trailing merge, which is the half nobody reaches by accident', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Merged at the ends' });
     const pager = within(specimen).getByRole('navigation');
@@ -211,7 +218,7 @@ describe('the pagination specimens', () => {
 
   /** Up to six pages the arrows and the box are absent, not disabled. */
   it('gives a short list no arrows and no box', () => {
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     const specimen = screen.getByRole('group', { name: 'Short list' });
     const pager = within(specimen).getByRole('navigation');
@@ -232,8 +239,9 @@ describe('the pagination specimens', () => {
  */
 describe('the drawer specimen', () => {
   beforeEach(() => {
-    search = new URLSearchParams('component=drawer');
+    search = new URLSearchParams('section=patterns&item=drawer');
   });
+
 
   const openDrawer = async (u: ReturnType<typeof userEvent.setup>) => {
     await u.click(screen.getByRole('button', { name: 'Open the drawer' }));
@@ -242,7 +250,7 @@ describe('the drawer specimen', () => {
 
   it('opens the real drawer, with the whole toolbar on it', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     const drawer = await openDrawer(u);
@@ -262,7 +270,7 @@ describe('the drawer specimen', () => {
    */
   it('pages through records with the drawer still open', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
     const drawer = await openDrawer(u);
 
     await u.click(within(drawer).getByRole('button', { name: 'Next' }));
@@ -276,7 +284,7 @@ describe('the drawer specimen', () => {
   /** One control, not two: whichever icon is not the state is the action. */
   it('expands and collapses on the one control', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
     const drawer = await openDrawer(u);
 
     await u.click(within(drawer).getByRole('button', { name: /Expand/ }));
@@ -291,7 +299,7 @@ describe('the drawer specimen', () => {
    */
   it('drops the sheet’s own close button, because the toolbar has one', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
     const drawer = await openDrawer(u);
 
     expect(within(drawer).queryByRole('button', { name: /^close$/i })).not.toBeInTheDocument();
@@ -299,7 +307,7 @@ describe('the drawer specimen', () => {
 
   it('enables Save only once something has changed', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
     const drawer = await openDrawer(u);
 
     expect(within(drawer).getByRole('button', { name: 'Save' })).toBeDisabled();
@@ -314,7 +322,7 @@ describe('the drawer specimen', () => {
    */
   it('swaps the footer on the same frame rather than opening a second drawer', async () => {
     const u = userEvent.setup();
-    render(<ComponentLibrary />);
+    render(<DesignPage />);
 
     await u.click(screen.getByLabelText('Saved as you type'));
     const drawer = await openDrawer(u);

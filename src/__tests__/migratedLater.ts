@@ -16,7 +16,6 @@
 export const SPACING_MIGRATED_LATER = [
   'src/components/admin/clients/onboarding/CommercialStep.tsx',
   'src/components/ui/sidebar.tsx',
-  'src/app/(app)/admin/kit/page.tsx',
   'src/components/shell/AdminShell.tsx',
   'src/components/shell/AdminSidebar.tsx',
   'src/components/patterns/CopyCell.tsx',
@@ -50,9 +49,7 @@ export const SPACING_MIGRATED_LATER = [
   'src/components/docs/usePagination.ts',
   'src/components/patterns/flow/FlowShell.tsx',
   'src/components/form/AddressFields.tsx',
-  'src/components/library/Specimen.tsx',
-  'src/components/library/drawer/ExperimentDrawer.tsx',
-  'src/components/library/drawer/ExperimentItemForm.tsx',
+  'src/components/design/Specimen.tsx',
   'src/components/tools/ClientRequestChecklist.tsx',
   'src/components/tools/CtcCalculator.tsx',
   'src/components/ui/alert-dialog.tsx',
@@ -92,7 +89,7 @@ export const RESPONSIVE_MIGRATED_LATER = [
   'src/components/contract/flow/SummaryRail.tsx',
   'src/components/docs/DocumentPreview.tsx',
   'src/components/docs/PrintPages.tsx',
-  'src/components/library/ButtonSpecimens.tsx',
+  'src/components/design/ButtonSpecimens.tsx',
   'src/components/spec/ClientDetailsFields.tsx',
   'src/components/spec/IconSpecTool.tsx',
   'src/components/tools/ClientRequestChecklist.tsx',
@@ -105,15 +102,6 @@ export const RESPONSIVE_MIGRATED_LATER = [
   'src/components/ui/input.tsx',
   'src/components/ui/sheet.tsx',
   'src/components/ui/tabs.tsx',
-];
-
-export const PALETTE_ESCAPE_MIGRATED_LATER = [
-  'src/components/library/drawer/ClauseDrawerSpecimens.tsx',
-  'src/components/library/drawer/ExperimentClauseBodyEditor.tsx',
-];
-
-export const MONO_MIGRATED_LATER = [
-  'src/app/(app)/admin/kit/page.tsx',
 ];
 
 export const RAW_BUTTON_MIGRATED_LATER = [
@@ -138,10 +126,8 @@ export const RAW_BUTTON_MIGRATED_LATER = [
   'src/components/docs/editors/EditorSection.tsx',
   'src/components/docs/editors/LineItemsEditor.tsx',
   'src/components/docs/editors/WordingDrawer.tsx',
-  'src/components/library/ComponentLibrary.tsx',
-  'src/components/library/drawer/ExperimentClauseBodyEditor.tsx',
-  'src/components/library/drawer/ItemDrawerSpecimens.tsx',
-  'src/components/library/table/TemplateTable.tsx',
+  'src/components/design/DesignPage.tsx',
+  'src/components/design/table/TemplateTable.tsx',
   'src/components/shell/AdminSidebar.tsx',
   'src/components/shell/Clock.tsx',
   'src/components/shell/NewDocumentCommand.tsx',

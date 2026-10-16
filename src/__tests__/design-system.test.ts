@@ -7,7 +7,6 @@ import {
   UI_PRIMITIVES,
 } from './policedSource';
 import {
-  MONO_MIGRATED_LATER,
   RAW_BUTTON_MIGRATED_LATER,
   RESPONSIVE_MIGRATED_LATER,
   SPACING_MIGRATED_LATER,
@@ -452,7 +451,7 @@ const SORTS_UNDER_A_PARENTS_TOGGLE = [
     that owns the eye; this row exists only because the table and its bar sit
     one directory apart, which is the case the note above anticipates.
   */
-  'src/components/library/table/TemplateTable.tsx',
+  'src/components/design/table/TemplateTable.tsx',
 ];
 
 /**
@@ -739,7 +738,7 @@ const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['TYPE', [], [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
   ['PENDING', [], [DISABLED_NOT_PENDING], []],
   ['RAW_ALERT', [], [RAW_ALERT], []],
-  ['MONO', MONO_MIGRATED_LATER, [OWN_MONO], MONO_PRIMITIVE],
+  ['MONO', [], [OWN_MONO], MONO_PRIMITIVE],
   ['RAW_BUTTON', RAW_BUTTON_MIGRATED_LATER, [RAW_BUTTON], UI_PRIMITIVES],
   ['WEIGHT', [], [HEAVY_WEIGHT], []],
   ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],

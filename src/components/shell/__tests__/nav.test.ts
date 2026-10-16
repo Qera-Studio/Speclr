@@ -68,7 +68,7 @@ describe('nav model', () => {
       // The component library, placed in this group on request. It is source
       // material for the app rather than for a client engagement, which is the
       // one row here that does not fit the group's own description above.
-      '/client/library',
+      '/design',
     ]);
 
     expect(NAV_BY_PROFILE.admin.groups).toHaveLength(1);
@@ -77,7 +77,7 @@ describe('nav model', () => {
       '/admin/tools/ctc',
       '/admin/tools/sitemap',
       '/admin/spec',
-      '/admin/kit',
+      '/design',
     ]);
   });
 
