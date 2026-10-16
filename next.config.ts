@@ -22,7 +22,10 @@ const LEGACY_REDIRECTS = [
   { source: "/employees", destination: "/admin/employees" },
   { source: "/settings", destination: "/admin/settings" },
   { source: "/spec", destination: "/admin/spec" },
-  { source: "/kit", destination: "/admin/kit" },
+  // The design system had three homes before `/design` (16 October 2026).
+  { source: "/kit", destination: "/design" },
+  { source: "/admin/kit", destination: "/design" },
+  { source: "/client/library", destination: "/design" },
   { source: "/tools/ctc", destination: "/admin/tools/ctc" },
   { source: "/tools/sitemap", destination: "/admin/tools/sitemap" },
   // `/services` pointed at the contract list only because the catalogue lived
