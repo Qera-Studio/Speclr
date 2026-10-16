@@ -83,17 +83,32 @@ test.describe('the tab pill is draggable', () => {
     await page.mouse.up();
   });
 
-  /** The pill stays in its trough however far the hand goes past the end. */
+  /**
+   * The pill stays inside its trough's inset however far the hand goes past
+   * either end, and the label under it is the one in full ink.
+   *
+   * Inside the inset, not inside the outer edge: the limit used to be the
+   * outer edge, so the pill slid 2px into the padding and out past the corner.
+   * Seen red against that limit on 16 October 2026.
+   */
   test('does not leave the strip', async ({ page }) => {
     const list = await boxOf(page.locator('[data-slot="tabs-list"]'));
     const pill = page.locator('[data-slot="tabs-indicator"]');
+    const rest = await boxOf(pill);
+    const inset = rest.x - list.x;
     const from = await centreOf(pill);
 
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(from.x + 900, from.y, { steps: 12 });
-    const held = await boxOf(pill);
-    expect(held.x + held.width).toBeLessThanOrEqual(list.x + list.width + 1);
+    const right = await boxOf(pill);
+    expect(Math.round(list.x + list.width - (right.x + right.width))).toBe(Math.round(inset));
+    const last = page.locator('[data-slot="tabs-trigger"]').last();
+    expect(await last.getAttribute('data-drag-over')).toBe('');
+
+    await page.mouse.move(from.x - 900, from.y, { steps: 24 });
+    const left = await boxOf(pill);
+    expect(Math.round(left.x - list.x)).toBe(Math.round(inset));
     await page.mouse.up();
   });
 

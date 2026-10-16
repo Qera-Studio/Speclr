@@ -34,7 +34,9 @@ const tabsListVariants = cva(
       variant: {
         // The segmented trough (`segmentTrough`): a soft fill and no stroke.
         // The pill's own shadow is what lifts the choice off it.
-        default: "bg-muted",
+        // Equal segments, as a segmented control has: the pill is one width
+        // wherever it is dragged, so it never covers half of a neighbour.
+        default: "bg-muted group-data-horizontal/tabs:inline-grid group-data-horizontal/tabs:auto-cols-fr group-data-horizontal/tabs:grid-flow-col",
         line: "gap-1 bg-transparent",
       },
       // The button heights (`docs/design.md` §2.1), so a strip beside a
@@ -131,9 +133,16 @@ export function useTabDrag() {
 
     const box = indicator.getBoundingClientRect();
     const trough = list.getBoundingClientRect();
+    // The inside of the trough, not its outer edge: the pill sits 2px in at
+    // rest and must stay 2px in while it is held, or it slides into the
+    // padding and out past the corner.
+    const css = getComputedStyle(list);
+    const inset = (side: "left" | "right") =>
+      parseFloat(css.getPropertyValue(`padding-${side}`)) +
+      parseFloat(css.getPropertyValue(`border-${side}-width`));
     const startX = event.clientX;
-    const min = trough.left - box.left;
-    const max = trough.right - box.right;
+    const min = trough.left + inset("left") - box.left;
+    const max = trough.right - inset("right") - box.right;
     moved.current = false;
     // A release that never produced a click (let go outside the strip) would
     // otherwise leave this armed and eat the next real one.
@@ -163,10 +172,30 @@ export function useTabDrag() {
      * down) never arises. A plain, no-movement tap on a trigger still
      * reaches the trigger's own `onClick` untouched.
      */
+    const segments = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
+    const centreOf = (el: Element) => {
+      const rect = el.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    };
+    /**
+     * The segment the pill would land on, marked `data-drag-over` so its label
+     * goes to full ink and the others go quiet. Set on the DOM rather than in
+     * state: it changes on every move and nothing else reads it.
+     */
+    const markOver = (dx: number) => {
+      const centre = box.left + box.width / 2 + dx;
+      const over = segments.reduce((best, el) =>
+        Math.abs(centreOf(el) - centre) < Math.abs(centreOf(best) - centre) ? el : best,
+      segments[0]);
+      for (const el of segments) el.toggleAttribute("data-drag-over", el === over);
+    };
+    const unmark = () => segments.forEach((el) => el.removeAttribute("data-drag-over"));
+
     const handleMove = (moveEvent: PointerEvent) => {
       const dx = Math.max(min, Math.min(max, moveEvent.clientX - startX));
       if (Math.abs(moveEvent.clientX - startX) > DRAG_SLOP)
         moved.current = true;
+      markOver(dx);
       setDrag((current) => (current ? { ...current, dx } : current));
     };
 
@@ -175,6 +204,7 @@ export function useTabDrag() {
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleCancel);
       cleanup.current = null;
+      unmark();
       const dragged = moved.current;
       setDrag(null);
       if (!commit || !dragged) return;
@@ -215,6 +245,7 @@ export function useTabDrag() {
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleCancel);
     cleanup.current = () => {
+      unmark();
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleCancel);
@@ -311,7 +342,10 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         // below in light mode.
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:shadow-none",
         // The pill paints the chosen surface; the trigger only goes to full ink.
-        "data-active:text-foreground",
+        // While the pill is held, ink follows the pill rather than the choice,
+        // so the label under it is the one that reads as chosen. `!` because
+        // two variants of one property have no order Tailwind promises.
+        "data-active:text-foreground group-data-dragging/tabs-list:text-tab-label! group-data-dragging/tabs-list:data-drag-over:text-foreground!",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
