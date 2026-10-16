@@ -115,7 +115,7 @@ for (const theme of ['light', 'dark'] as const) {
         pill: '[aria-current="page"]',
       });
 
-      await page.goto('/preview/design');
+      await page.goto('/preview/design?section=atoms&item=pagination');
       const specimen = page.locator('[role="group"][aria-label="Windowed"]');
       await expect(specimen.locator('[data-slot="pagination"]')).toBeVisible();
       const shown = await surfaces(page, {
@@ -143,7 +143,7 @@ for (const theme of ['light', 'dark'] as const) {
      * Fill **or** stroke: what is ruled out is having neither.
      */
     test('distinguishes the active page from its container', async ({ page }) => {
-      await page.goto('/preview/design');
+      await page.goto('/preview/design?section=atoms&item=pagination');
       const shown = await surfaces(page, {
         trough: '[aria-label="Windowed"] [data-slot="page-runs"]',
         pill: '[aria-label="Windowed"] [aria-current="page"]',
@@ -175,7 +175,7 @@ for (const theme of ['light', 'dark'] as const) {
  * at the *end* because the leading merge is what every long list shows on open.
  */
 test('shows each shape of the pager exactly once', async ({ page }) => {
-  await page.goto('/preview/design');
+  await page.goto('/preview/design?section=atoms&item=pagination');
 
   const runsOf = async (name: string) =>
     page.locator(`[role="group"][aria-label="${name}"] [data-slot="page-run"]`).allTextContents();
@@ -199,7 +199,7 @@ test('shows each shape of the pager exactly once', async ({ page }) => {
  * are adjacent.
  */
 test('separates the runs with a visible rule', async ({ page }) => {
-  await page.goto('/preview/design');
+  await page.goto('/preview/design?section=atoms&item=pagination');
   const runs = page.locator('[aria-label="Windowed"] [data-slot="page-run"]');
   const gaps = page.locator('[aria-label="Windowed"] [data-slot="page-gap"]');
 
@@ -229,7 +229,7 @@ test('separates the runs with a visible rule', async ({ page }) => {
  * which is the same lie in reverse.
  */
 test('draws no rule where two runs are merged', async ({ page }) => {
-  await page.goto('/preview/design');
+  await page.goto('/preview/design?section=atoms&item=pagination');
   const merged = page.locator('[aria-label="Merged at the ends"]');
 
   await expect(merged.locator('[data-slot="page-run"]')).toHaveCount(2);
