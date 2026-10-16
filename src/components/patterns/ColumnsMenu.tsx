@@ -191,7 +191,7 @@ export default function ColumnsMenu({
                     else return;
                     event.preventDefault();
                   }}
-                  className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-[var(--gray-400)] outline-none hover:text-foreground focus-visible:text-foreground dark:text-[var(--gray-600)] dark:hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                  className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-placeholder outline-none hover:text-foreground focus-visible:text-foreground dark:hover:text-foreground focus-ring active:cursor-grabbing"
                 >
                   <GripVertical className="size-3.5" aria-hidden />
                 </button>
@@ -206,7 +206,7 @@ export default function ColumnsMenu({
                   checked={locked || !hidden.includes(key)}
                   disabled={locked}
                   onCheckedChange={(on) => toggle(key, on)}
-                  className="size-3.5 rounded-[3px] [&_svg]:size-3!"
+                  className="size-3.5 rounded-sm [&_svg]:size-3!"
                 />
               </label>
             </li>

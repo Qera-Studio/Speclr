@@ -300,8 +300,8 @@ export default function ServiceEditDialog({
             <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" disabled={pending}>
-              {pending ? 'Saving…' : service ? 'Save' : 'Add service'}
+            <Button variant="primary" type="submit" pending={pending}>
+              {service ? 'Save service' : 'Add service'}
             </Button>
           </DialogFooter>
         </form>

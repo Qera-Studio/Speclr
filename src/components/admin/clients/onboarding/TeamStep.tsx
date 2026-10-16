@@ -207,7 +207,7 @@ function PersonCard({
       role={role}
       aria-checked={selected}
       onClick={onClick}
-      className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-left transition-colors focus-ring ${
         selected ? 'border-primary bg-accent' : 'border-border hover:bg-accent/50'
       }`}
     >

@@ -61,7 +61,7 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
     <SheetPrimitive.Backdrop
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-xs",
+        "fixed inset-0 z-(--z-modal) bg-black/80 transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       {...props}
@@ -133,7 +133,7 @@ const SIZES = {
  * one step smaller than its parent and never equal, because two boxes at one
  * radius read as a single shape rather than one resting on the other.
  *
- * `shadow-lg` comes from the base string and is what separates the panel from
+ * `shadow-modal` comes from the base string and is what separates the panel from
  * the page in the light theme; the ring is what does it in dark, where a drop
  * shadow on a near-black surface separates nothing (§2.6). Both, so the edge
  * is there in either.
@@ -230,7 +230,7 @@ function SheetContent({
         data-side={side}
         data-float={floating ? "" : undefined}
         className={cn(
-          "fixed z-50 flex flex-col bg-popover bg-clip-padding text-body text-popover-foreground shadow-modal transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=bottom]:data-ending-style:translate-y-[2.5rem] data-[side=bottom]:data-starting-style:translate-y-[2.5rem] data-[side=left]:data-ending-style:translate-x-[-2.5rem] data-[side=left]:data-starting-style:translate-x-[-2.5rem] data-[side=right]:data-ending-style:translate-x-[2.5rem] data-[side=right]:data-starting-style:translate-x-[2.5rem] data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=top]:data-ending-style:translate-y-[-2.5rem] data-[side=top]:data-starting-style:translate-y-[-2.5rem]",
+          "fixed z-(--z-modal) flex flex-col bg-popover bg-clip-padding text-body text-popover-foreground shadow-modal transition duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=bottom]:data-ending-style:translate-y-[2.5rem] data-[side=bottom]:data-starting-style:translate-y-[2.5rem] data-[side=left]:data-ending-style:translate-x-[-2.5rem] data-[side=left]:data-starting-style:translate-x-[-2.5rem] data-[side=right]:data-ending-style:translate-x-[2.5rem] data-[side=right]:data-starting-style:translate-x-[2.5rem] data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=top]:data-ending-style:translate-y-[-2.5rem] data-[side=top]:data-starting-style:translate-y-[-2.5rem]",
           /*
             The flush placement, which used to live in the base string as
             `data-[side=right]:inset-y-0 … h-full … border-l`. It had to come

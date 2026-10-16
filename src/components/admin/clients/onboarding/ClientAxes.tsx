@@ -162,4 +162,4 @@ const KIND_LABEL: Record<ClientKind, string> = {
  * one being used is the one that reads at full strength.
  */
 const TRIGGER =
-  "inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-popup-open:text-foreground";
+  "inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:text-foreground focus-visible:text-foreground focus-ring data-popup-open:text-foreground";

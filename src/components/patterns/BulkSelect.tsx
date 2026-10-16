@@ -240,7 +240,7 @@ export function BulkBar({
       {onDelete ? (
         <ConfirmDialog
           trigger={
-            <Button type="button" variant="destructive" size="sm" disabled={busy}>
+            <Button type="button" variant="destructive" size="sm" pending={busy}>
               <Trash2 aria-hidden="true" className="size-4" />
               Delete
             </Button>

@@ -397,14 +397,14 @@ export default function TaxStep({
         */
         <>
           {/*
-            `gap-x-10` rather than the row's default 12px. These two columns are
+            `gap-x-8` rather than the row's default 12px. These two columns are
             separate sections with their own headings and their own switch, not
             two fields of one thing, and at 12px the GSTIN and the TDS section
             read as one four-field row. Column gap only: stacked on a narrow
             screen they are consecutive sections and the vertical rhythm should
             not change.
           */}
-          <FieldRow className="gap-x-10">
+          <FieldRow className="gap-x-8">
             <FieldSet>
               <LegendInfo
                 info="An unregistered client is billed without GST. A registered one's GSTIN is where the place of supply on every invoice comes from."

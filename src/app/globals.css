@@ -1174,6 +1174,25 @@
   @apply outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30;
 }
 
+/* The ring held on, for the one grid that draws its keyboard cursor itself
+   (the ⌘D palette) and a card selected by a hidden radio. Same geometry as
+   `focus-ring`, without the `:focus-visible` gate. */
+@utility ring-forced {
+  @apply border-ring ring-2 ring-ring/30;
+}
+
+/* A one-pixel edge drawn as a shadow, for where a border would take layout:
+   a frozen table column's seam, and the selected row's left bar. */
+@utility edge-r {
+  box-shadow: 1px 0 0 0 var(--border);
+}
+@utility edge-l {
+  box-shadow: -1px 0 0 0 var(--border);
+}
+@utility edge-selected {
+  box-shadow: inset 2px 0 0 0 var(--primary);
+}
+
 /* The same ring on a box that *contains* the focused control (the combobox,
    an attachment card), where the input inside is unstyled. */
 @utility focus-ring-within {

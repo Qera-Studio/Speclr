@@ -401,7 +401,7 @@ export default function PrintPages({
           onClick={scrollToTop}
           aria-label="Scroll to top"
           className={[
-            'pointer-events-auto rounded-full bg-background/80 shadow-sm backdrop-blur transition-opacity',
+            'pointer-events-auto rounded-full bg-background/80 shadow-raised backdrop-blur transition-opacity',
             atTop ? 'pointer-events-none opacity-0' : 'opacity-100',
           ].join(' ')}
         >

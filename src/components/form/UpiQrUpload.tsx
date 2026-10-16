@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FieldError } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import UploadDropzone from './UploadDropzone';
 import {
@@ -77,9 +78,7 @@ export default function UpiQrUpload({ id, value, onValueChange }: UpiQrUploadPro
       />
 
       {error ? (
-        <p role="alert" className="text-body text-destructive">
-          {error}
-        </p>
+        <FieldError>{error}</FieldError>
       ) : null}
     </div>
   );

@@ -276,7 +276,7 @@ export default function CtcCalculator() {
               the distance between them.
             */}
             <Card>
-              <CardContent className="grid gap-6 py-5 sm:grid-cols-2">
+              <CardContent className="grid gap-6 py-4 sm:grid-cols-2">
                 {/* The annual figure here is the one that was quoted, not the
                     monthly one multiplied back up — twelfths do not divide
                     cleanly, and a headline reading ₹8,49,999.96 against a
@@ -392,7 +392,7 @@ export default function CtcCalculator() {
           </>
         ) : (
           <Card>
-            <CardContent className="py-10 text-center text-body text-muted-foreground">
+            <CardContent className="py-8 text-center text-body text-muted-foreground">
               Enter an annual CTC to see the structure it implies.
             </CardContent>
           </Card>

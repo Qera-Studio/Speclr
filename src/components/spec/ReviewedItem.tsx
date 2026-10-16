@@ -39,7 +39,7 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
         )}
       >
         <CollapsibleTrigger
-          className="flex w-full items-center gap-3 p-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="flex w-full items-center gap-3 p-2 text-left focus-ring"
           aria-label="Reviewed — show checks"
         >
           <BlueCheck

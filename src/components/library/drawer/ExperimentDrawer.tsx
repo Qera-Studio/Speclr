@@ -81,7 +81,7 @@ export function ExperimentDrawer({
         {toolbar}
 
         <SheetHeader
-          className={cn('gap-1 p-4', closeButton && 'pr-14', headerBorder && 'border-b', headerClassName)}
+          className={cn('gap-1 p-4', closeButton && 'pr-16', headerBorder && 'border-b', headerClassName)}
         >
           {titleAside ? (
             <div className="flex items-start justify-between gap-3">

@@ -319,7 +319,7 @@ function NewDocumentCommand({
                   // drew a keyboard ring. See `movedBy`.
                   position === active &&
                     movedBy === 'keyboard' &&
-                    'ring-2 ring-ring',
+                    'ring-forced',
                 )}
               >
                 {sample ? (

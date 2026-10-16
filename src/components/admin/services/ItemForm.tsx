@@ -384,8 +384,8 @@ export default function ItemForm({
         <Button type="button" variant="secondary" onClick={onDone} disabled={pending}>
           Cancel
         </Button>
-        <Button variant="primary" type="submit" disabled={pending}>
-          {pending ? 'Saving…' : item ? 'Save item' : 'Create item'}
+        <Button variant="primary" type="submit" pending={pending}>
+          {item ? 'Save item' : 'Create item'}
         </Button>
       </div>
     </form>

@@ -45,7 +45,7 @@ export default function PopupGallery() {
   const [date, setDate] = React.useState('2026-08-24');
 
   return (
-    <main className="flex min-h-screen flex-col gap-16 bg-background p-16">
+    <main className="flex min-h-screen flex-col gap-8 bg-background p-8">
       <div data-probe="combobox" className="w-96">
         <Combobox
           options={CLIENTS}

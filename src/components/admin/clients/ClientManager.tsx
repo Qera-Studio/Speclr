@@ -3,15 +3,8 @@
 import { startTransition, useCallback, useMemo, useOptimistic, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Archive, Calendar, CircleDashed, Globe, FilterX, Users } from 'lucide-react';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { Archive, Calendar, CircleDashed, Globe, Users } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty';
 // Only the hook: this list hands its paging down to `RecordTable` through
 // `ClientsTable`, and that is what renders the pager. `Pagination` and
 // `rowCountLabel` were imported here and never used.
@@ -325,23 +318,17 @@ export default function ClientManager({
         </p>
 
         {listed.length > 0 && shown.length === 0 ? (
-          <Empty className="border py-10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FilterX />
-              </EmptyMedia>
-              <EmptyTitle>No clients match these filters</EmptyTitle>
-              <EmptyDescription>
-                {listed.length} client{listed.length === 1 ? ' is' : 's are'} hidden by the
-                current filters.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
+          <EmptyState
+            preset="no-matches"
+            noun="client"
+            className="border py-8"
+            description={`${listed.length} client${listed.length === 1 ? ' is' : 's are'} hidden by the current filters.`}
+            action={
               <Button type="button" variant="secondary" onClick={() => onFiltersChange([])}>
                 Clear filters
               </Button>
-            </EmptyContent>
-          </Empty>
+            }
+          />
         ) : (
           <ClientsTable
             clients={visible}

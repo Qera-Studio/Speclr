@@ -116,7 +116,7 @@ export default async function KitPage() {
   }
 
   return (
-    <PageBody className="max-w-4xl gap-10">
+    <PageBody className="max-w-4xl gap-8">
       <PageHeader
         title="UI Kit"
         description="Everything the UI is allowed to use. Small on purpose: a short menu is what keeps screens consistent without anyone policing them. Toggle the theme to check both modes."

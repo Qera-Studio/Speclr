@@ -172,7 +172,7 @@ export default function ClauseBodyEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div ref={list} className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <div ref={list} className="min-h-0 flex-1 flex flex-col gap-2 overflow-y-auto">
         {parts.map((part, index) => (
           <Row
             // Index as the key, deliberately. These rows have no id of their

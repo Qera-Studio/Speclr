@@ -135,7 +135,7 @@ export default function UploadDropzone({
       }}
       className={cn(
         "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-body transition-colors",
-        "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "hover:bg-accent hover:text-accent-foreground focus-ring",
         // A wash of the same blue the border turns, not the neutral hover
         // grey: the box being armed to receive the file is a different state
         // from the pointer merely resting on it, and it should not look like it.

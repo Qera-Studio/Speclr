@@ -60,7 +60,7 @@ function FieldGroup({
       data-slot="field-group"
       data-size={size}
       className={cn(
-        "group/field-group @container/field-group flex w-full flex-col gap-5 data-[slot=checkbox-group]:gap-5 data-[size=form]:gap-5 *:data-[slot=field-group]:gap-5",
+        "group/field-group @container/field-group flex w-full flex-col gap-4 data-[slot=checkbox-group]:gap-4 data-[size=form]:gap-4 *:data-[slot=field-group]:gap-4",
         className,
       )}
       {...props}

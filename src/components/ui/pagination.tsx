@@ -135,7 +135,7 @@ function PageRuns({
         against on a white card; the trough is what makes the pill visible,
         and it makes the pager look like the tab group it already behaved as.
       */
-      className={cn('flex items-center gap-2 p-[3px]', segmentTrough)}
+      className={cn('flex items-center gap-2 p-1', segmentTrough)}
     >
       {children?.('before')}
       {pageRuns(page, pageCount).map((run, position) => (

@@ -168,8 +168,8 @@ export default function ScopePhase({
                   aria-hidden
                   className={
                     done
-                      ? "flex size-3 shrink-0 items-center justify-center rounded-[3px] bg-primary text-primary-foreground"
-                      : "flex size-3 shrink-0 items-center justify-center rounded-[3px] bg-muted text-muted-foreground"
+                      ? "flex size-3 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground"
+                      : "flex size-3 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground"
                   }
                 >
                   {/* `stroke-[3]` because the glyph is now 10px: at the default

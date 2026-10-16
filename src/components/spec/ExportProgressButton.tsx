@@ -46,7 +46,7 @@ export default function ExportProgressButton({ clientName, onExport }: ExportPro
       type="button"
       variant="secondary"
       onClick={handleExport}
-      className="h-10 gap-2 px-5 text-body [&_svg:not([class*='size-'])]:size-4"
+      className="h-10 gap-2 px-4 text-body [&_svg:not([class*='size-'])]:size-4"
     >
       <Download aria-hidden="true" />
       Export progress

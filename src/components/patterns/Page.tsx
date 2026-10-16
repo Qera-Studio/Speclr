@@ -99,7 +99,7 @@ export function TableCard({
     >
       {children}
       {/*
-        `pl-9 pr-2`, and the asymmetry is the rule rather than an oversight.
+        `pl-10 pr-2`, and the asymmetry is the rule rather than an oversight.
         The left holds the row count, which is prose and lines up with the
         first column's text. The right holds the pager, whose ghost icon
         buttons carry their own padding inside the hit target: the glyph sits
@@ -107,7 +107,7 @@ export function TableCard({
         the card's corner. Padding to a control is not padding to a letterform.
       */}
       {count || pagination ? (
-        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-9 pr-2 text-meta text-muted-foreground">
+        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-10 pr-2 text-meta text-muted-foreground">
           <span>{count}</span>
           {pagination}
         </div>

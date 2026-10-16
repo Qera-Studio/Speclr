@@ -284,7 +284,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-full flex-1 items-center justify-center gap-2 rounded-sm px-4 text-body whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative inline-flex h-full flex-1 items-center justify-center gap-2 rounded-sm px-4 text-body whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         segmentLabel,
         // The compact strip, for a toolbar row.
         "group-data-[size=sm]/tabs-list:gap-1.5 group-data-[size=sm]/tabs-list:px-3 group-data-[size=sm]/tabs-list:text-control group-data-[size=sm]/tabs-list:[&_svg:not([class*='size-'])]:size-3.5",

@@ -136,7 +136,7 @@ export const ACCENT_TINTS: Record<Accent, string> = {
 export function accentSwatch(accent: Accent, className?: string) {
   return cn(
     'inline-block size-3 shrink-0 rounded-xs ring-1 ring-foreground/15 ring-inset',
-    'shadow-[0_1px_1px_-0.5px_var(--border)]',
+    'shadow-raised',
     ACCENT_FILLS[accent],
     className,
   );

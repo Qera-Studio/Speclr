@@ -126,7 +126,7 @@ export function AmountCell({
                 // `relative z-10` for the reason `CopyValue` carries it: the
                 // row is one stretched link, and a control under the overlay
                 // is a control the overlay gets the click for.
-                className="relative z-10 cursor-pointer rounded-[4px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="relative z-10 cursor-pointer rounded-sm focus-ring focus-visible:outline-none"
               />
             }
           >

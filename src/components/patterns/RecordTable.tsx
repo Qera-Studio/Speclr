@@ -1270,7 +1270,7 @@ export default function RecordTable<T>({
                   // says "there is more, that way", and it is drawn only on the
                   // last frozen column because two of them side by side would
                   // read as two seams.
-                  column.sticky && isLastSticky(columns, column) && 'shadow-[1px_0_0_0_var(--border)]',
+                  column.sticky && isLastSticky(columns, column) && 'edge-r',
                   // `grab`, not `move`: the heading is picked up, and `move`
                   // is the four-way arrow, which promises a vertical axis this
                   // has none of.
@@ -1279,7 +1279,7 @@ export default function RecordTable<T>({
                   // trap `ResizeHandle` records having fallen into.
                   moving && 'cursor-grab touch-none select-none',
                   isDragged && 'opacity-50',
-                  isOver && 'shadow-[inset_2px_0_0_0_var(--primary)]',
+                  isOver && 'edge-selected',
                 );
                 /*
                   The drag lives on the `<th>` rather than on the sort button
@@ -1373,7 +1373,7 @@ export default function RecordTable<T>({
                   'text-right',
                   divider,
                   actionsSticky && frozenHead,
-                  actionsSticky && 'shadow-[-1px_0_0_0_var(--border)]',
+                  actionsSticky && 'edge-l',
                 )}
                 style={{ ...(actionsSticky ? { right: 0 } : {}), width: ACTIONS_WIDTH }}
               >
@@ -1434,7 +1434,7 @@ export default function RecordTable<T>({
                       column.sticky && frozenCell,
                       column.sticky &&
                         isLastSticky(columns, column) &&
-                        'shadow-[1px_0_0_0_var(--border)]',
+                        'edge-r',
                       // `table-fixed` clips rather than widening, so a value
                       // longer than its column needs somewhere to stop. Every
                       // cell truncates under resizing, not only the ones that
@@ -1590,7 +1590,7 @@ export default function RecordTable<T>({
                       'py-0 text-right',
                       divider,
                       actionsSticky
-                        ? cn(frozenCell, 'shadow-[-1px_0_0_0_var(--border)]')
+                        ? cn(frozenCell, 'edge-l')
                         : 'relative',
                     )}
                     style={{ ...(actionsSticky ? { right: 0 } : {}), width: ACTIONS_WIDTH }}

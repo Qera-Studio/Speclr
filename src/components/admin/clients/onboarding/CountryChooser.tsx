@@ -68,7 +68,7 @@ export default function CountryChooser({
   // `m-auto` rather than `justify-center` on the parent: the shell owns that
   // column and every other step fills it from the top.
   return (
-    <div className="m-auto flex w-full min-h-0 max-w-4xl flex-col gap-5">
+    <div className="m-auto flex w-full min-h-0 max-w-4xl flex-col gap-4">
       <div className="shrink-0 text-center">
         <h2 className="mb-1 text-section font-medium">Who are you adding?</h2>
         <p className="text-body text-muted-foreground">
@@ -130,7 +130,7 @@ export default function CountryChooser({
           type="search"
           autoFocus
           size="form"
-          className="pl-9"
+          className="pl-10"
           placeholder="Search countries"
           aria-label="Search countries"
           value={query}
@@ -162,7 +162,7 @@ export default function CountryChooser({
       */}
       <div className="h-[197px] overflow-y-auto pr-1">
         {groups.length === 0 ? (
-          <p className="py-10 text-center text-body text-muted-foreground">
+          <p className="py-8 text-center text-body text-muted-foreground">
             No country matches “{query.trim()}”.
           </p>
         ) : (
@@ -280,7 +280,7 @@ function KindCard({
       // and the card would read as a paragraph with a bullet. `gap-4` so the
       // glyph and the words are two things beside each other rather than one
       // crowded block.
-      className={`flex w-full cursor-pointer items-center gap-4 rounded-lg border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`flex w-full cursor-pointer items-center gap-4 rounded-lg border p-3.5 text-left transition-colors focus-ring ${
         selected
           ? "border-primary bg-accent"
           : "border-border hover:bg-accent/50"

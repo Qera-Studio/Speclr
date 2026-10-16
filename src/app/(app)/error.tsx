@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Mono } from '@/components/patterns/Mono';
 import { TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -59,7 +60,7 @@ export default function AppError({
             {error.digest ? (
               <>
                 {' '}
-                Reference <code className="font-mono">{error.digest}</code>.
+                Reference <Mono>{error.digest}</Mono>.
               </>
             ) : null}
           </EmptyDescription>

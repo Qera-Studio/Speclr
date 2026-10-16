@@ -118,7 +118,7 @@ export default function ItemsManager({ service }: { service: ContractService }) 
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
-            className="text-body text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+            className="text-body text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground focus-ring focus-visible:outline-none"
           >
             {showArchived ? 'hide' : 'show'} {archivedCount} archived
           </button>

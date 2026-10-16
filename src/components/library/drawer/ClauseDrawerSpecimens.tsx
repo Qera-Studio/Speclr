@@ -251,7 +251,7 @@ function ClauseDrawer({
         because its buttons carry their own inset, which puts the glyphs on the
         same line.
       */
-      headerClassName="gap-0.5 px-5 pt-3 pb-4 [&_[data-slot=sheet-title]]:text-section [&_[data-slot=sheet-title]]:font-medium"
+      headerClassName="gap-0.5 px-4 pt-3 pb-4 [&_[data-slot=sheet-title]]:text-section [&_[data-slot=sheet-title]]:font-medium"
       /*
         The save state sits beside the title it is about, as a badge: amber
         while there are changes not yet written, quiet grey while saving and
@@ -353,7 +353,7 @@ function ClauseDrawer({
         one rhythm, no exceptions. Labels are 12px at weight 400, set by slot
         so FieldInfo and LegendInfo are not forked.
       */}
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden rounded-md bg-background px-4 pt-5 pb-4 [&_[data-slot=field-label]]:font-normal [&_[data-slot=field-legend]]:font-normal">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden rounded-md bg-background px-4 pt-4 pb-4 [&_[data-slot=field-label]]:font-normal [&_[data-slot=field-legend]]:font-normal">
       <Field>
         <FieldLabel htmlFor="clause-heading">Heading</FieldLabel>
         <Input

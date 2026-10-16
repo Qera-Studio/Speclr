@@ -94,7 +94,7 @@ export default function ServiceCards({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <Heading />
 
       {/* Full height only where all four columns are side by side. Stacked, a

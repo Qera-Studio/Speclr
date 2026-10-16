@@ -7,16 +7,9 @@ import {
   UI_PRIMITIVES,
 } from './policedSource';
 import {
-  INLINE_TRANSITION_MIGRATED_LATER,
   MONO_MIGRATED_LATER,
-  PENDING_MIGRATED_LATER,
-  RAW_ALERT_MIGRATED_LATER,
-  RADIUS_MIGRATED_LATER,
   RESPONSIVE_MIGRATED_LATER,
-  RING_MIGRATED_LATER,
-  SHADOW_MIGRATED_LATER,
   SPACING_MIGRATED_LATER,
-  Z_MIGRATED_LATER,
 } from './migratedLater';
 
 /**
@@ -613,12 +606,17 @@ const BOOLEAN_DATA_ATTR = /data-[a-z-]+=\{(?![^}]*(?:\?|undefined))(?:!|[^}]*[=!
  * a `disabled={pending}` that spun nothing. Each rule here points at the one.
  */
 const OWN_ALERT_DIALOG = /<AlertDialog\b/g;
-const DISABLED_NOT_PENDING = /<Button\b[^>]*?disabled=\{(?:is)?(?:pending|saving|submitting|busy)\}/g;
+// The *working* button: a submit, a primary or a destructive, disabled by a
+// pending flag and showing nothing for it. A secondary sibling disabled while
+// its neighbour works is right as it is.
+const DISABLED_NOT_PENDING =
+  /<Button\b(?![^>]*\bpending=)(?=[^>]*(?:type="submit"|variant="(?:primary|destructive)"))[^>]*?disabled=\{(?:is)?(?:pending|saving|submitting|busy)\}[^>]*>/g;
 const RAW_ALERT = /<p\b[^>]*role=["']alert["']/g;
 const OWN_MONO = /\bfont-mono\b/g;
 const MONO_PRIMITIVE = ['src/components/patterns/Mono.tsx'];
 const OWN_SPINNER = /\bLoader2\b/g;
 const SPINNER_PRIMITIVE = ['src/components/ui/spinner.tsx'];
+const COPY_PASTED_EMPTY = /No \w+ match these filters/g;
 const QUESTION_TITLE = /<ConfirmDialog\b[^>]*?title=["'][^"']*\?["']/g;
 
 /**
@@ -659,9 +657,9 @@ const HEAVY_WEIGHT = /\bfont-(?:semibold|bold|extrabold|black)\b/g;
  * decision about its neighbours into every place it is reused. §1.2.
  */
 const OFF_SCALE_SPACING =
-  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8)\b)[0-9.]+\b/g;
+  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8|10|12|16)\b)[0-9.]+\b/g;
 const MARGIN = /(?<![\w-])-?m[trblxy]?-(?!auto\b)(?:[0-9.]+|px)\b/g;
-const SPACE_BETWEEN = /\bspace-[xy]-[\w.]+/g;
+const SPACE_BETWEEN = /(?<!-)\bspace-[xy]-[\w.]+/g;
 const ARBITRARY_SPACE = /\b(?:gap|p|m)[xytrbl]?-\[[^\]]*\]/g;
 
 /**
@@ -686,7 +684,7 @@ const ARBITRARY_SHADOW = /\bshadow-(?:\[[^\]]*\]|2?xs\b|sm\b|md\b|lg\b|xl\b|2xl\
  * indicator; the audit found rings at 30%, 40%, 50% and solid, and one
  * control (`InfoTip`) with none. §1.8.
  */
-const OWN_FOCUS_RING = /focus-visible:ring-[\w/[\]]+|\bring-ring\b/g;
+const OWN_FOCUS_RING = /focus-visible:ring-(?!destructive|0\b)[\w/[\]]+|\bring-ring\b/g;
 
 /**
  * Motion outside the three tiers, in the places the duration rule could not
@@ -696,13 +694,15 @@ const OWN_FOCUS_RING = /focus-visible:ring-[\w/[\]]+|\bring-ring\b/g;
 const OWN_EASING = /\bease-(?!standard\b)[a-z[][\w.,()[\]-]*/g;
 // A CSS duration inside a JS string: `"transform 300ms ease-out"` in a
 // `style` prop is a transition the class-based rules never see.
-const INLINE_TRANSITION = /["'][\w-]+ \d+m?s\b[^"']*["']/g;
+const INLINE_TRANSITION = /\btransition\s*:\s*["'][^"']*\d+m?s\b/g;
 
 /**
  * A bare z-index. `--z-sticky` … `--z-toast` in `globals.css` name the five
  * layers; `z-(--z-overlay)` says what a thing is above, `z-50` does not.
  */
-const RAW_Z = /\bz-(?:\[[^\]]*\]|[0-9]+)\b/g;
+// Only the page-level layers are named: z-0 to z-30 inside an `isolate`
+// ancestor is local stacking and says nothing about the page.
+const RAW_Z = /\bz-(?:\[[^\]]*\]|[4-9]\d|\d{3,})\b/g;
 
 /**
  * A breakpoint outside the shell. The app is desktop-first and the shell is
@@ -725,17 +725,17 @@ const SHELL = [
  */
 const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['TYPE', [], [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
-  ['PENDING', PENDING_MIGRATED_LATER, [DISABLED_NOT_PENDING], []],
-  ['RAW_ALERT', RAW_ALERT_MIGRATED_LATER, [RAW_ALERT], []],
+  ['PENDING', [], [DISABLED_NOT_PENDING], []],
+  ['RAW_ALERT', [], [RAW_ALERT], []],
   ['MONO', MONO_MIGRATED_LATER, [OWN_MONO], MONO_PRIMITIVE],
   ['WEIGHT', [], [HEAVY_WEIGHT], []],
   ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
-  ['RADIUS', RADIUS_MIGRATED_LATER, [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
-  ['SHADOW', SHADOW_MIGRATED_LATER, [ARBITRARY_SHADOW], []],
-  ['RING', RING_MIGRATED_LATER, [OWN_FOCUS_RING], []],
+  ['RADIUS', [], [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
+  ['SHADOW', [], [ARBITRARY_SHADOW], []],
+  ['RING', [], [OWN_FOCUS_RING], []],
   ['EASING', [], [OWN_EASING], []],
-  ['INLINE_TRANSITION', INLINE_TRANSITION_MIGRATED_LATER, [INLINE_TRANSITION], []],
-  ['Z', Z_MIGRATED_LATER, [RAW_Z], []],
+  ['INLINE_TRANSITION', [], [INLINE_TRANSITION], []],
+  ['Z', [], [RAW_Z], []],
   ['RESPONSIVE', RESPONSIVE_MIGRATED_LATER, [RESPONSIVE], SHELL],
 ];
 
@@ -994,6 +994,10 @@ describe('design system', () => {
   it('shows a spinner on every working button, and takes it from Spinner', () => {
     expect(outstanding('PENDING')).toEqual([]);
     expect(violations(OWN_SPINNER, SPINNER_PRIMITIVE)).toEqual([]);
+  });
+
+  it('draws every empty state from EmptyState, never a copy of its copy', () => {
+    expect(violations(COPY_PASTED_EMPTY, ['src/components/ui/empty.tsx'])).toEqual([]);
   });
 
   it('reports a field error through FieldError, never a raw alert paragraph', () => {

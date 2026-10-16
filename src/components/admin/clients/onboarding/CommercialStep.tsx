@@ -266,7 +266,7 @@ export default function CommercialStep({
               {ENGAGEMENT_TYPES.map((type) => (
                 <label
                   key={type}
-                  className="flex cursor-pointer flex-col gap-0.5 rounded-md border border-input bg-background p-3 transition-colors hover:bg-accent/40 has-[:checked]:border-ring has-[:checked]:bg-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/30"
+                  className="flex cursor-pointer flex-col gap-0.5 rounded-md border border-input bg-background p-3 transition-colors hover:bg-accent/40 has-[:checked]:border-ring has-[:checked]:bg-accent has-[:focus-visible]:ring-forced"
                 >
                   <input
                     type="radio"
@@ -498,7 +498,7 @@ function DayOfMonthPicker({
         id={id}
         onBlur={onBlur}
         data-empty={value == null ? '' : undefined}
-        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-body whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-placeholder"
+        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-body whitespace-nowrap transition-colors focus-ring data-empty:text-placeholder"
       >
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
@@ -523,7 +523,7 @@ function DayOfMonthPicker({
                 setOpen(false);
               }}
               className={cn(
-                'size-8 rounded-md text-body tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none',
+                'size-8 rounded-md text-body tabular-nums transition-colors hover:bg-accent focus-ring focus-visible:outline-none',
                 day === value && 'bg-primary text-primary-foreground hover:bg-primary',
               )}
             >

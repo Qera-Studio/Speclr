@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Mono } from '@/components/patterns/Mono';
 import {
   Banknote,
   Building2,
@@ -110,17 +111,18 @@ export const TEMPLATE_COLUMNS: RecordColumn<TemplateRow>[] = [
       around one that already exists paints a native `title` tooltip above every
       layer on the page, frozen columns included.
 
-      `font-mono` because this is an identifier, and a proportional font makes
+      `Mono` because this is an identifier, and a proportional font makes
       two references of the same shape look different lengths (§2.3).
     */
     key: 'reference',
     label: 'Reference',
     icon: Hash,
     size: 180,
-    className: 'font-mono',
     sortValue: (row) => row.reference,
     cell: (row) => (
-      <CopyValue value={row.reference} label={`Copy reference for ${row.name}`} />
+      <Mono>
+        <CopyValue value={row.reference} label={`Copy reference for ${row.name}`} />
+      </Mono>
     ),
   },
   {

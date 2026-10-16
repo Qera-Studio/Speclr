@@ -209,7 +209,7 @@ export default function ClientRequestChecklist() {
           a hole beside the longer one. `break-inside-avoid` keeps a group whole
           rather than splitting its heading from its lines. The box scrolls on
           its own so the page header stays put. */}
-      <div className="max-h-[65vh] overflow-y-auto pr-2 md:columns-2 md:gap-x-10">
+      <div className="max-h-[65vh] overflow-y-auto pr-2 md:columns-2 md:gap-x-8">
         {CHECKLIST.map((group) => (
           <fieldset
             key={group.heading}

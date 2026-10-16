@@ -68,7 +68,7 @@ const SIZES = Object.keys(SIZE_USE) as ButtonSize[];
  * difference it is there to show.
  */
 function Row({ children }: { children: ReactNode }) {
-  return <div className="flex w-full flex-wrap items-end gap-x-5 gap-y-4">{children}</div>;
+  return <div className="flex w-full flex-wrap items-end gap-x-4 gap-y-4">{children}</div>;
 }
 
 /** One example and the words under it. */

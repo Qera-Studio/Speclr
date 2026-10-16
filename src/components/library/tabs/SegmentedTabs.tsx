@@ -32,7 +32,7 @@ export interface SegmentedTab {
  * **This is now the house look**, adopted for every strip in the app on
  * 10 October 2026, so the surface comes from `ui/tabs.tsx` (`segmentTrough`,
  * `tabPillSurface`, `segmentLabel`) rather than being spelled here. What this
- * component adds is equal widths, `px-5`, and the overflow menu.
+ * component adds is equal widths, `px-4`, and the overflow menu.
  *
  * **Inactive labels are `--tab-label`, as light as AA allows, not the reference's paler
  * grey.** That grey on the trough measures well under 4.5:1, and an inactive
@@ -78,7 +78,7 @@ export default function SegmentedTabs({
               key={tab}
               value={tab}
               className={cn(
-                'z-10 px-5',
+                'z-10 px-4',
                 // The indicator is the pill, so the trigger paints none of its
                 // own: an instant fill would land before the slide finishes.
                 'data-active:border-transparent data-active:bg-transparent data-active:text-foreground data-active:shadow-none',
@@ -94,7 +94,7 @@ export default function SegmentedTabs({
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                'flex h-8 items-center gap-1.5 rounded-sm px-5 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'flex h-8 items-center gap-1.5 rounded-sm px-4 text-body focus-ring',
                 segmentLabel,
               )}
             >

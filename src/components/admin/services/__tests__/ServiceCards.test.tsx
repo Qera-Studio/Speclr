@@ -55,7 +55,7 @@ describe('ServiceCards', () => {
     await user.clear(sac);
     await user.type(sac, '998314');
     await user.type(screen.getByLabelText('Rate'), '45000.50');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save service' }));
 
     expect(updateServiceDetails).toHaveBeenCalledWith(
       expect.objectContaining({

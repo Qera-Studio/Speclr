@@ -150,7 +150,7 @@ export default function ClientPhase({
  * The row below is two calendar-wide date fields (240px each, see
  * `CALENDAR_WIDTH`), two 16px gaps, and a term field wide enough for a label
  * reading "Term in months optional", which comes to 708. This is 788, because
- * it caps the **panel** and the panel carries `p-10`: 40px of padding on each
+ * it caps the **panel** and the panel carries `p-8`: 40px of padding on each
  * side that the form inside does not get. Capping at the row's own width left
  * it 80px short and squeezed the very fields this exists to fit.
  *

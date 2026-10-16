@@ -158,7 +158,7 @@ export default function Clock() {
   // and one button cannot have two actions. The visual pair is the wrapper's
   // `gap-2`; the reader gets two named controls, tabbable in order.
   const half =
-    "cursor-pointer rounded-md transition-colors hover:text-sidebar-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none";
+    "cursor-pointer rounded-md transition-colors hover:text-sidebar-foreground focus-ring focus-visible:outline-none";
 
   return (
     // Controlled `open`, driven by hover rather than by the trigger's own

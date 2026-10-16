@@ -64,7 +64,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['FileSignature', 1],
   ['FileStack', 1],
   ['FileText', 7],
-  ['FilterX', 3],
+  ['FilterX', 1],
   ['Globe', 1],
   ['GripVertical', 3],
   ['Hammer', 1],

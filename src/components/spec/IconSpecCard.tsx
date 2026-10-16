@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Mono } from '@/components/patterns/Mono';
+import { FieldError } from '@/components/ui/field';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -199,7 +201,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
 
   return (
     <Card aria-labelledby={`${spec.id}-heading`} className="flex h-full flex-col">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex flex-col gap-0">
         <h3 id={`${spec.id}-heading`} className="text-section font-medium text-foreground">
           {spec.name}
         </h3>
@@ -229,9 +231,9 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
           <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
             <dt className="text-body text-muted-foreground">Filename</dt>
             <dd className="flex items-center justify-between gap-1.5">
-              <span className="truncate font-mono text-body text-foreground" title={spec.filename}>
+              <Mono className="truncate text-body text-foreground" title={spec.filename}>
                 {spec.filename}
-              </span>
+              </Mono>
               <CopyButton
                 value={spec.filename}
                 label="Copy file name"
@@ -307,9 +309,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
           />
 
           {error && (
-            <p role="alert" className="text-body text-destructive">
-              {error}
-            </p>
+            <FieldError>{error}</FieldError>
           )}
 
           {result && (

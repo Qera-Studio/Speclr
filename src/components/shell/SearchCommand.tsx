@@ -179,7 +179,7 @@ export default function SearchCommand() {
           showList && hits[active] ? `${listId}-${active}` : undefined
         }
         autoComplete="off"
-        className="pl-8 pr-14"
+        className="pl-8 pr-16"
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -216,7 +216,7 @@ export default function SearchCommand() {
           than the field, both measured past the focus ring the input is always
           wearing while this list is up. */}
       {showList ? (
-        <div className="absolute top-full -right-0.5 z-50 mt-1.5 w-[calc(100%+4px)] min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+        <div className="absolute top-full -right-0.5 z-(--z-overlay) mt-1.5 w-[calc(100%+4px)] min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-overlay ring-1 ring-foreground/10">
           {hits.length === 0 ? (
             <p
               className="px-3 py-2 text-meta text-muted-foreground"

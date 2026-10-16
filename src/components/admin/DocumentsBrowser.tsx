@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  FilterX,
-  Columns3,
+    Columns3,
   LayoutGrid,
   Rows3,
   Calendar,
@@ -18,14 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { segmentLabel, segmentTrough, tabPillSurface, useTabDrag } from "@/components/ui/tabs";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { EmptyState } from '@/components/ui/empty';
 import {
   Pagination,
   rowCountLabel,
@@ -246,7 +238,7 @@ export default function DocumentsBrowser({
             "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-sm px-3",
             "text-meta whitespace-nowrap",
             segmentLabel,
-            "focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+            "focus-ring focus-visible:outline-none",
             "aria-pressed:text-foreground",
           )}
         >
@@ -498,28 +490,17 @@ export default function DocumentsBrowser({
       </p>
 
       {visible.length === 0 ? (
-        <Empty className="border py-10">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FilterX />
-            </EmptyMedia>
-            <EmptyTitle>No documents match these filters</EmptyTitle>
-            <EmptyDescription>
-              {documents.length} document
-              {documents.length === 1 ? " is" : "s are"} hidden by the current
-              filters.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onFiltersChange([])}
-            >
+        <EmptyState
+          preset="no-matches"
+          noun="document"
+          className="border py-8"
+          description={`${documents.length} document${documents.length === 1 ? " is" : "s are"} hidden by the current filters.`}
+          action={
+            <Button type="button" variant="secondary" onClick={() => onFiltersChange([])}>
               Clear filters
             </Button>
-          </EmptyContent>
-        </Empty>
+          }
+        />
       ) : (
         <>
           {view === "board" ? (

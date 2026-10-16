@@ -270,12 +270,12 @@ export default function FilterBar<F extends string>({
 
         The mask is a plain CSS fade over the last 40px, always on: with few
         enough pills it sits over empty space and is invisible, so there is no
-        scroll listener to keep in sync. `scroll-p-10` is what stops a
+        scroll listener to keep in sync. `scroll-p-8` is what stops a
         keyboard-focused pill from parking underneath that fade.
       */}
       <div
         className={cn(
-          'flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain scroll-p-10',
+          'flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain scroll-p-8',
           '[mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]',
           '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         )}

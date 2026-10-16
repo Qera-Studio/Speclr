@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Mono } from '@/components/patterns/Mono';
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CATALOGUE, entryOf, type LibraryEntry } from "./catalogue";
 import { Archive, Download, Trash2 } from "lucide-react";
@@ -94,7 +95,7 @@ export default function ComponentLibrary() {
               aria-current={current || undefined}
               className={cn(
                 "rounded-md px-2 py-1.5 text-left text-meta transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                "focus-ring focus-visible:outline-none",
                 current
                   ? "bg-sidebar-active font-medium text-sidebar-accent-foreground"
                   : "text-muted-foreground hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
@@ -132,12 +133,12 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-meta text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <dt className="sr-only">Source</dt>
-            <dd className="font-mono">{entry.source}</dd>
+            <dd><Mono>{entry.source}</Mono></dd>
           </div>
           <div className="flex items-center gap-1.5">
             <dt>Rule</dt>
             <dd>
-              <code className="font-mono">docs/design.md {entry.rule}</code>
+              <Mono>docs/design.md {entry.rule}</Mono>
             </dd>
           </div>
         </dl>

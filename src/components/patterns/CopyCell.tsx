@@ -166,7 +166,7 @@ export function CopyValue({
       type="button"
       onClick={copy}
       aria-label={copied ? 'Copied' : label}
-      className="group/copy relative z-10 -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1 rounded-md px-2 text-left before:absolute before:inset-x-0 before:-inset-y-[calc((2.75rem-100%)/2)] before:content-[''] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group/copy relative z-10 -mx-2 flex w-[calc(100%+1rem)] cursor-pointer items-center gap-1 rounded-md px-2 text-left before:absolute before:inset-x-0 before:-inset-y-[calc((2.75rem-100%)/2)] before:content-[''] focus-ring focus-visible:outline-none"
     >
       <span className="truncate" style={width ? { maxWidth: width } : undefined}>
         {display ?? value}

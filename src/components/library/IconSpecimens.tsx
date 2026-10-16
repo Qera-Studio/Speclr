@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ComponentType } from 'react';
+import { Mono } from '@/components/patterns/Mono';
 import * as Lucide from 'lucide-react';
 import { BlueCheck } from '@/components/ui/blue-check';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,7 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
                   className="flex flex-col items-center gap-1.5 border-r border-b border-border bg-background px-2 py-3 text-center"
                 >
                   {Glyph ? <Glyph className="size-5" /> : null}
-                  <span className="font-mono text-caption break-all">{name}</span>
+                  <Mono className="text-caption break-all">{name}</Mono>
                   {/*
                     How many files import it, which is the one fact that tells a
                     reader whether an icon is the house answer for something or
@@ -102,7 +103,7 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
         container that takes a Lucide glyph.
       */}
       <Specimen name="Not from Lucide" note="The one exception to §1.5, and why it is one." fill>
-        <div className="flex w-full flex-wrap gap-x-6 gap-y-5">
+        <div className="flex w-full flex-wrap gap-x-6 gap-y-4">
           <div className="flex w-44 flex-col items-start gap-1.5">
             <span className="inline-flex size-9 items-center justify-center">
               <BlueCheck aria-label="Passed" />

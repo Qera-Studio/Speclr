@@ -270,7 +270,7 @@ export default function LineItemsEditor<T extends FieldValues>({
                         ? `Lock ${itemLabel} ${index + 1}`
                         : `Unlock ${itemLabel} ${index + 1}`
                     }
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-ring focus-visible:outline-none"
                   >
                     {open ? (
                       <LockOpen aria-hidden="true" className="size-3.5" />

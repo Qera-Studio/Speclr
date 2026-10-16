@@ -49,7 +49,7 @@ export default async function ClientPage({
   return (
     // Full height, so the flow can pin its step row and its button to the top
     // and bottom of the card and scroll only the fields between them.
-    <div className="flex h-full flex-col px-12">
+    <div className="flex h-full flex-col px-8">
       <ClientOnboarding
         client={client}
         services={services}

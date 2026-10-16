@@ -178,8 +178,8 @@ export default function WordingForm({ service }: { service: ContractService }) {
       ) : null}
 
       <div className="flex justify-end">
-        <Button variant="primary" type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save wording'}
+        <Button variant="primary" type="submit" pending={pending}>
+          Save wording
         </Button>
       </div>
     </form>

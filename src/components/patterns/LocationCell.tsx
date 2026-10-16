@@ -99,8 +99,8 @@ export function RaisedChip({
         // is unchanged, because `min-width` still floors it at the old 20px and
         // its content never reaches that; only a longer string grows the box,
         // and `px-1` is what keeps that string off the border.
-        'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-card px-1',
-        'shadow-[0_1px_1px_-0.5px_var(--border),inset_0_1px_0_0_var(--background)]',
+        'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm border border-border bg-card px-1',
+        'shadow-raised',
         // `` because a glyph's line box carries descender space that
         // would push it off centre in a box this small.
         'text-caption ',

@@ -173,7 +173,7 @@ export default function ItemsTable({
           cell: (item) => {
             if (item.ratePaise === undefined) {
               return (
-                <span className="rounded-[4px] bg-muted px-1.5 py-0.5 text-meta text-muted-foreground">
+                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-meta text-muted-foreground">
                   Quoted
                 </span>
               );

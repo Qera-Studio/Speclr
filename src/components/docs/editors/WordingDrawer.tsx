@@ -59,7 +59,7 @@ export default function WordingDrawer({
         type="button"
         onClick={() => (host ? panel?.setDrawer(label) : setInline(!inline))}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+        className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-ring focus-visible:outline-none"
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body font-medium">{label}</span>

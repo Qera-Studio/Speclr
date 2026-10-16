@@ -110,7 +110,7 @@ export default function AttachmentTypeDialog({
             size="form"
             aria-label="Search document types"
             placeholder="Search document types…"
-            className="pl-9"
+            className="pl-10"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -122,7 +122,7 @@ export default function AttachmentTypeDialog({
               <button
                 type="button"
                 onClick={() => choose(kind)}
-                className="group/card flex w-full cursor-pointer flex-col gap-2 rounded-md p-1 text-center transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group/card flex w-full cursor-pointer flex-col gap-2 rounded-md p-1 text-center transition-colors hover:bg-accent focus-ring"
               >
                 <KindName kind={kind} />
                 <span className="px-1 pb-1 text-meta text-balance text-muted-foreground">

@@ -181,7 +181,7 @@ export default function AdminShell({
           */}
           <a
             href="#main-content"
-            className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-2 focus-visible:left-2 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-popover focus-visible:px-3 focus-visible:py-2 focus-visible:text-meta focus-visible:font-medium focus-visible:text-popover-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:top-2 focus-visible:left-2 focus-visible:z-(--z-toast) focus-visible:rounded-md focus-visible:bg-popover focus-visible:px-3 focus-visible:py-2 focus-visible:text-meta focus-visible:font-medium focus-visible:text-popover-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             Skip to content
           </a>
@@ -236,7 +236,7 @@ export default function AdminShell({
                 corner. A frame this large reads its radius as a *hint* of one:
                 at `rounded-lg` the card looked like a widget floated on the
                 page, and the shell is meant to read as one surface with a seam
-                in it. Named rather than `rounded-[4px]`, per `docs/design.md`
+                in it. Named rather than `rounded-sm`, per `docs/design.md`
                 §1.3, which is also where the shell-frame row was corrected.
               */}
               {/*
@@ -249,7 +249,7 @@ export default function AdminShell({
                 part of the card rather than a pane laid over the window.
               */}
               {/*
-                `shadow-2xs`, the smallest step Tailwind names: one pixel of
+                `shadow-raised`, the smallest step Tailwind names: one pixel of
                 5% black under the bottom edge. The ring is still the edge; the
                 shadow only says the card sits a hair above the shell rather
                 than flush with it. Asked for as the faintest possible lift,
@@ -280,7 +280,7 @@ export default function AdminShell({
                   // card's left edge, not the rail's, is the edge a popover
                   // opening rightwards has to clear.
                   data-slot="shell-inset"
-                  className="group/inset relative flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md shadow-2xs ring-1 ring-sidebar-border"
+                  className="group/inset relative flex min-h-0 min-w-0 flex-1 overflow-clip rounded-md shadow-raised ring-1 ring-sidebar-border"
                 >
                 <SidebarInset
                   // `overflow-clip` for the same reason as the shell above: this

@@ -134,7 +134,7 @@ export default function ServicesPhase({
                     aria-controls={open ? 'schedule-services' : undefined}
                     onClick={() => setBrowsing(open ? null : schedule.key)}
                     className={cn(
-                      'group flex h-full w-full flex-col items-center gap-2 rounded-lg border px-3 py-5 text-center transition-colors focus-visible:border-ring focus-visible:outline-none',
+                      'group flex h-full w-full flex-col items-center gap-2 rounded-lg border px-3 py-4 text-center transition-colors focus-visible:border-ring focus-visible:outline-none',
                       // Three states, and they are on two different axes, which
                       // is why `chosen` colours the border and `open` fills the
                       // tile rather than both competing for the background. A

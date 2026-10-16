@@ -331,13 +331,13 @@ function Combobox({
         */}
         <ComboboxPrimitive.Positioner
           sideOffset={RINGED_POPUP_GAP}
-          className={cn("isolate z-50", RINGED_POPUP_WIDTH)}
+          className={cn("isolate z-(--z-overlay)", RINGED_POPUP_WIDTH)}
         >
           <ComboboxPrimitive.Popup
             
             data-slot="combobox-content"
             data-size={size}
-            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 print:hidden"
+            className="group/combobox-content relative isolate z-(--z-overlay) max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-overlay ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 print:hidden"
           >
             {/* Suppressed under `freeText`: there, a list matching nothing
                 means the typed value is new, which is allowed, so "No matches."

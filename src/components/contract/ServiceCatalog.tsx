@@ -55,7 +55,7 @@ export default function ServiceCatalog({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search services — Shopify, brand, maintenance…"
-          className="h-12 rounded-xl pl-11 text-lead"
+          className="h-12 rounded-lg pl-12 text-lead"
         />
       </div>
 

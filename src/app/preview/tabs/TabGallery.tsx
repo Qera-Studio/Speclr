@@ -18,7 +18,7 @@ const TABS = [
 /** One ordinary strip, indicator and all, at four hundred-odd pixels wide. */
 export default function TabGallery() {
   return (
-    <main className="p-10">
+    <main className="p-8">
       <Tabs defaultValue="summary" className="w-[440px]">
         <TabsList className="w-full">
           <TabsIndicator />

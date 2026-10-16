@@ -372,7 +372,7 @@ function Sidebar({
           // pill inside the viewport. This height *is* the viewport less its
           // two gutters, so a profile with more rows than fit scrolls inside
           // `SidebarContent` exactly as the docked rail's does.
-          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-lg group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
+          "group-data-float:top-[calc(var(--top-panel-height,0px)+--spacing(2))] group-data-float:bottom-auto group-data-float:z-20 group-data-float:h-[calc(100svh-var(--top-panel-height,0px)---spacing(4))] group-data-float:rounded-lg group-data-float:border-0! group-data-float:shadow-modal group-data-float:ring-1 group-data-float:ring-sidebar-border group-data-float:data-[side=left]:left-2",
           // Docked, the height is stated as a length rather than left to the
           // two anchors. `interpolate-size` can tween a length to `fit-content`
           // (that is what it is for) but it cannot tween "stretched between
@@ -410,7 +410,7 @@ function Sidebar({
           // parent that is sized *by* that child is circular. The float states
           // its own height as a length now, so the circularity is gone and the
           // column fills it like the docked one does.
-          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:rounded-lg"
+          className="flex size-full touch-pan-y flex-col overflow-hidden overscroll-x-none bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-raised group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border group-data-float:rounded-lg"
         >
           {children}
         </div>
@@ -493,9 +493,9 @@ function SidebarInset({
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full min-w-0 flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-md md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "relative flex w-full min-w-0 flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-md md:peer-data-[variant=inset]:shadow-raised md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         // Not peer-gated: the sidebar this pairs with is a *following* sibling.
-        insetRight && "md:m-2 md:mr-0 md:rounded-md md:shadow-sm",
+        insetRight && "md:m-2 md:mr-0 md:rounded-md md:shadow-raised",
         className,
       )}
       {...props}
@@ -597,7 +597,7 @@ function SidebarGroupLabel({
     props: mergeProps<"div">(
       {
         className: cn(
-          "flex h-8 shrink-0 items-center rounded-md px-2 text-control text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-standard group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+          "flex h-8 shrink-0 items-center rounded-md px-2 text-control text-sidebar-foreground/70 outline-hidden transition-[margin,opacity] duration-200 ease-standard group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-ring [&>svg]:size-4 [&>svg]:shrink-0",
           className,
         ),
       },
@@ -621,7 +621,7 @@ function SidebarGroupAction({
     props: mergeProps<"button">(
       {
         className: cn(
-          "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
+          "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-hidden group-data-[collapsible=icon]:hidden after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
           className,
         ),
       },
@@ -654,7 +654,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
     <ul
       data-slot="sidebar-menu"
       data-sidebar="menu"
-      className={cn("flex w-full min-w-0 flex-col gap-[8px]", className)}
+      className={cn("flex w-full min-w-0 flex-col gap-2", className)}
       {...props}
     />
   );
@@ -672,13 +672,13 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] p-2 text-left text-control ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-hover data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-active [&_svg]:size-4 [&_svg]:shrink-0 [&>span]:truncate",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-control outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-ring active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-hover data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-active [&_svg]:size-4 [&_svg]:shrink-0 [&>span]:truncate",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-hover hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-hover hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-hover)]",
+          "bg-background ring-1 ring-sidebar-border hover:bg-sidebar-hover hover:text-sidebar-accent-foreground hover:ring-1 ring-sidebar-hover",
       },
       size: {
         default: "h-8 text-control",
@@ -765,7 +765,7 @@ function SidebarMenuAction({
     props: mergeProps<"button">(
       {
         className: cn(
-          "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-[calc(var(--radius-sm)-2px)] p-0 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
+          "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-sm p-0 text-sidebar-foreground outline-hidden group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 after:absolute after:-inset-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring md:after:hidden [&>svg]:size-4 [&>svg]:shrink-0",
           showOnHover &&
             "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-active/menu-button:text-sidebar-accent-foreground aria-expanded:opacity-100 md:opacity-0",
           className,
@@ -790,7 +790,7 @@ function SidebarMenuBadge({
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-[calc(var(--radius-sm)-2px)] px-1 text-control font-medium text-sidebar-foreground tabular-nums select-none group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 peer-data-active/menu-button:text-sidebar-accent-foreground",
+        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-sm px-1 text-control font-medium text-sidebar-foreground tabular-nums select-none group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 peer-data-active/menu-button:text-sidebar-accent-foreground",
         className,
       )}
       {...props}
@@ -902,7 +902,7 @@ function SidebarMenuSubButton({
           // ends at 22px, the row at 24px (`ml-6`), the label still at 32px
           // (`pl-2`). Widening back to `w-full` puts the hover fill over the
           // tree again — that is the bug this shape fixes.
-          "group/menu-button flex h-7 w-[calc(100%-1.5rem)] min-w-0 items-center gap-2 overflow-hidden rounded-[calc(var(--radius-sm)+2px)] py-2 pr-2 pl-2 ml-6 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-control data-[size=sm]:text-control data-active:bg-sidebar-active data-active:font-medium data-active:text-sidebar-accent-foreground [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+          "group/menu-button flex h-7 w-[calc(100%-1.5rem)] min-w-0 items-center gap-2 overflow-hidden rounded-md py-2 pr-2 pl-2 ml-6 text-sidebar-foreground outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-hover hover:text-sidebar-accent-foreground focus-ring active:bg-sidebar-active active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-control data-[size=sm]:text-control data-active:bg-sidebar-active data-active:font-medium data-active:text-sidebar-accent-foreground [&>span]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
           className,
         ),
       },

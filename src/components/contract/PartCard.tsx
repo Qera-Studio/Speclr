@@ -83,7 +83,7 @@ export default function PartCard({
    */
   const row =
     'group/part flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2.5 text-left';
-  const focus = 'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
+  const focus = 'focus-ring focus-visible:outline-none';
   const shell = cn(
     'rounded-lg border',
     interactive ? 'bg-card' : 'border-dashed bg-muted/40',

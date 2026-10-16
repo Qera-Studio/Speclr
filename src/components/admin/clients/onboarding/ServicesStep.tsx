@@ -338,7 +338,7 @@ export default function ServicesStep({
                           // A tone off the foreground rather than a surface token:
                           // `background` and `card` are both white in light mode, so
                           // a tray painted with either disappears behind its own card.
-                          "flex w-44 flex-col gap-1 rounded-xl bg-foreground/15 p-1 transition-colors",
+                          "flex w-44 flex-col gap-1 rounded-lg bg-foreground/15 p-1 transition-colors",
                           isOn && "bg-foreground/15",
                         )}
                       >
@@ -451,7 +451,7 @@ export default function ServicesStep({
                             onClick={() =>
                               setOpenItems(open ? null : service.code)
                             }
-                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-meta text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-meta text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring focus-visible:outline-none"
                           >
                             <ChevronDown
                               aria-hidden
@@ -488,7 +488,7 @@ export default function ServicesStep({
                           type="button"
                           aria-label={`Remove ${service.name}`}
                           onClick={() => toggle(service.code)}
-                          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring focus-visible:outline-none"
                         >
                           <X className="size-3.5" />
                         </button>

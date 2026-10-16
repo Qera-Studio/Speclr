@@ -183,7 +183,7 @@ export default function FlowShell<R>({
       <header
         className={cn(
           "mx-auto w-full shrink-0",
-          chrome && "max-w-5xl px-20 py-8",
+          chrome && "max-w-5xl px-16 py-8",
         )}
       >
         <h1 className="sr-only">{title}</h1>
@@ -275,7 +275,7 @@ export default function FlowShell<R>({
               fill
                 ? "flex min-h-0 w-full flex-1 flex-col"
                 : cn(
-                    "mx-auto w-full shrink-0 rounded-lg bg-card p-10",
+                    "mx-auto w-full shrink-0 rounded-lg bg-card p-8",
                     // `my-auto` centres a short step in the band, which is
                     // right for a form that does not change height. A step
                     // that grows as it is used must not: see `anchor`.
@@ -420,7 +420,7 @@ function StepNav<R>({
                 aria-current={current ? "step" : undefined}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-2 py-1 text-body transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "focus-ring",
                   current && "font-medium text-primary/80",
                   !current && complete && "text-foreground",
                   !current && !complete && "text-muted-foreground",
@@ -493,7 +493,7 @@ export function FinishPanel({
   return (
     <div
       role="status"
-      className="flex flex-col items-center gap-3 py-16 text-center"
+      className="flex flex-col items-center gap-3 py-12 text-center"
     >
       <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <Check className="size-6" aria-hidden />
