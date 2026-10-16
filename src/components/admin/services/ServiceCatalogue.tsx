@@ -154,7 +154,15 @@ export default function ServiceCatalogue({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-[980px] flex-col gap-9 pt-12 pb-16">
+    <div
+      className={cn(
+        "mx-auto flex w-full max-w-[980px] flex-col gap-9 pt-12",
+        // The board is held to the inset's height, so the page never scrolls
+        // and each lane scrolls its own cards. The cards view is a long page
+        // and scrolls like one.
+        view === "board" ? "h-full min-h-0 pb-8" : "pb-16",
+      )}
+    >
       <div className="flex flex-col gap-9">
         <header className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2">
@@ -306,17 +314,18 @@ export default function ServiceCatalogue({
           })}
         </div>
       ) : (
-        <div
-          className="grid items-start gap-6"
-          style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
-        >
+        // Lanes 28% of the column wide: three in view and the start of the
+        // fourth, which is what says the row scrolls. One row the height of
+        // what is left of the inset, so a long lane stops at the inset's foot
+        // and scrolls inside rather than taking the page with it.
+        <div className="grid min-h-0 flex-1 auto-cols-[28%] grid-flow-col grid-rows-[minmax(0,1fr)] items-start gap-3 overflow-x-auto overflow-y-hidden">
           {columns.map((schedule) => {
             const mine = shown.filter((s) => s.scheduleKey === schedule.key);
             return (
               <section
                 key={schedule.key}
                 aria-label={schedule.name}
-                className={cn("flex min-w-0 flex-col gap-4 rounded-lg p-3", COLUMN_WASH[schedule.accent])}
+                className={cn("flex max-h-full min-h-0 min-w-0 flex-col gap-4 rounded-lg p-3", COLUMN_WASH[schedule.accent])}
               >
                 <div className="px-1 pt-1">
                   <SectionHead
@@ -326,7 +335,7 @@ export default function ServiceCatalogue({
                   />
                 </div>
                 {mine.length ? (
-                  <ul className="flex flex-col gap-3">
+                  <ul className="scrollbar-none flex min-h-0 flex-col gap-3 overflow-y-auto">
                     {mine.map((service) => (
                       <li key={service.code}>
                         <ServiceCard
@@ -367,8 +376,8 @@ export default function ServiceCatalogue({
 }
 
 /**
- * A section's heading, in both views: the Schedule's icon and name, its count,
- * and an add square that files the new Service under it.
+ * A section's heading, in both views: the Schedule's name, its count, and an
+ * add square that files the new Service under it. No icon: the cards carry it.
  */
 function SectionHead({
   schedule,
@@ -379,10 +388,8 @@ function SectionHead({
   count: number;
   onAdd?: () => void;
 }) {
-  const Icon = SCHEDULE_ICONS[schedule.key];
   return (
     <div className="flex h-6 items-center gap-2">
-      <Icon aria-hidden className="size-3.5 text-muted-foreground" />
       <h2 className="text-lead font-normal text-muted-foreground">{schedule.name}</h2>
       <span className="text-meta text-tab-label tabular-nums">{count}</span>
       {onAdd ? (
@@ -458,7 +465,10 @@ function ServiceCard({
       </div>
       <div className="flex items-center justify-between gap-2 text-meta tabular-nums">
         {/* The Schedule's accent, quiet: the hue groups, the text names it. */}
-        <span className={accentBadge(schedule.accent, undefined, true)}>{service.code}</span>
+        {/* Shorter and tighter than the shared badge (16px, 4px in), so the
+            code is a label on the card rather than a second heading. The text
+            stays at the 11px floor. */}
+        <span className={accentBadge(schedule.accent, "h-4 px-1", true)}>{service.code}</span>
         <span className={service.ratePaise === undefined ? "text-tab-label" : "text-muted-foreground"}>
           {priceOf(service)}
         </span>
@@ -541,7 +551,9 @@ function CardMenu({
               Restore
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+            // Not `destructive`: archiving is reversible from the Archived tab,
+            // and red is for what cannot be taken back.
+            <DropdownMenuItem onClick={() => setConfirming(true)}>
               <Archive aria-hidden />
               Archive
             </DropdownMenuItem>
@@ -555,7 +567,6 @@ function CardMenu({
         title="Archive service"
         consequence="It leaves the catalogue and stops being offered on new contracts. Contracts already holding it keep their own copy, and it can be restored from the Archived tab."
         confirmLabel="Archive service"
-        destructive
         pending={pending}
         onConfirm={() => run(removeService)}
       />
