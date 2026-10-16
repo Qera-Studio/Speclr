@@ -1,6 +1,24 @@
 "use client";
 
-import { Filter, ArrowUpDown, Plus, Search, Box, CloudDownload } from "lucide-react";
+import { useState } from "react";
+import {
+  ArrowUpDown,
+  Box,
+  CloudDownload,
+  Columns3,
+  Filter,
+  LayoutGrid,
+  Plus,
+  Rows3,
+  Search,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +49,19 @@ import { formatINR } from "@/lib/domain/money";
  * strength instead. The trial's answer to "a grey wash says nothing".
  */
 const QUIET =
-  "border-border/50 text-muted-foreground hover:border-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
+  "border-border/50 text-muted-foreground hover:border-muted-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
+
+/** The ways the catalogue can be laid out. Only cards renders in the trial. */
+const VIEWS = [
+  { key: "cards", label: "Cards", icon: LayoutGrid },
+  { key: "table", label: "Table", icon: Rows3 },
+  { key: "board", label: "Board", icon: Columns3 },
+] as const;
+type View = (typeof VIEWS)[number]["key"];
 
 export function ServiceCatalogueTrial({ services }: { services: ContractService[] }) {
+  const [view, setView] = useState<View>("cards");
+  const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
   return (
     <div className="mx-auto flex w-full max-w-[980px] flex-col gap-9 pt-12 pb-16">
       <div className="flex flex-col gap-9">
@@ -63,7 +91,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
           <div className="flex items-center gap-3">
             <div className="relative w-56">
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search" className="h-7 border-border/50 pl-8 hover:border-foreground" />
+              <Input placeholder="Search" className="h-7 border-border/50 pl-8 hover:border-muted-foreground" />
             </div>
             <Button size="sm" className={QUIET}>
               <Filter aria-hidden />
@@ -73,6 +101,22 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
               <ArrowUpDown aria-hidden />
               Sort
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button size="sm" className={QUIET} />}>
+                <current.icon aria-hidden />
+                {current.label}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-36">
+                <DropdownMenuRadioGroup value={view} onValueChange={(v) => setView(v as View)}>
+                  {VIEWS.map((v) => (
+                    <DropdownMenuRadioItem key={v.key} value={v.key}>
+                      <v.icon aria-hidden />
+                      {v.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -87,7 +131,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                 {mine.map((service) => (
                   <li
                     key={service.code}
-                    className="flex flex-col justify-between gap-6 rounded-lg border border-border/50 bg-background p-3"
+                    className="group/card relative flex flex-col justify-between gap-6 rounded-lg border border-border/50 bg-background p-3"
                   >
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between gap-3">
@@ -99,7 +143,10 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                           size="sm"
                           icon
                           aria-label={`Add ${service.name} to a contract`}
-                          className={`size-6 ${QUIET}`}
+                          // The whole card is the target: the button's
+                          // `after` box stretches over it, so the hit area is
+                          // the card while the name stays the button's own.
+                          className={`size-6 after:absolute after:inset-0 after:rounded-lg group-hover/card:border-muted-foreground group-hover/card:text-foreground ${QUIET}`}
                         >
                           <Plus aria-hidden />
                         </Button>
