@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { EditorPanelContent } from '@/components/admin/EditorPanel';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { EditorPanelContent } from '@/components/shell/EditorPanel';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import DocumentPreview, {
   type DocumentPreviewHandle,
   type PageChrome,

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { FieldSet } from '@/components/ui/field';
-import { LegendInfo } from '@/components/form/FieldInfo';
+import { LegendInfo } from '@/components/patterns/FieldInfo';
 import type { StudioMember } from '@/lib/profile';
 import { StepForm, type StepProps } from './stepKit';
 import { saveClientSection } from '@/server/actions/clients';

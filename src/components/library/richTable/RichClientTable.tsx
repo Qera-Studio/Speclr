@@ -2,10 +2,10 @@
 
 import type { ReactNode } from 'react';
 import { Banknote, Building2, MapPin, Tag, UserRound, Users } from 'lucide-react';
-import RecordTable, { type RecordColumn } from '@/components/admin/RecordTable';
-import { AmountCell } from '@/components/admin/AmountCell';
-import { flagOf, RaisedChip } from '@/components/admin/LocationCell';
-import { PeopleCell, PersonCell } from '@/components/admin/PersonCell';
+import RecordTable, { type RecordColumn } from '@/components/patterns/RecordTable';
+import { AmountCell } from '@/components/patterns/AmountCell';
+import { flagOf, RaisedChip } from '@/components/patterns/LocationCell';
+import { PeopleCell, PersonCell } from '@/components/patterns/PersonCell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
 import { ACCENT_TINTS, accentBadge, accentFor } from '@/lib/accent';

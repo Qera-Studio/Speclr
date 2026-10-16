@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
-import AdminShell from '@/components/admin/AdminShell';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import AdminShell from '@/components/shell/AdminShell';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 import { Button } from '@/components/ui/button';
-import { EditorPanelContent } from '@/components/admin/EditorPanel';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { EditorPanelContent } from '@/components/shell/EditorPanel';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import DocumentPager from '@/components/docs/DocumentPager';
 import DocumentsTable from '@/components/admin/DocumentsTable';
 import { Input } from '@/components/ui/input';

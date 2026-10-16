@@ -1,0 +1,254 @@
+import { breadcrumbForPath, isPrimaryPath, parentCrumb, parentHref } from '@/components/shell/breadcrumb';
+
+/**
+ * The breadcrumb is suppressed on any page the sidebar links to, so this is
+ * what decides whether the trail appears at all. It reads the same nav
+ * definition `breadcrumbForPath` does, which is the point: adding a link to the
+ * nav must take its breadcrumb away in the same commit.
+ */
+describe('isPrimaryPath', () => {
+  it.each([
+    ['/admin', 'a profile home'],
+    ['/client', 'the other profile home'],
+    ['/client/clients', 'a nav link'],
+    ['/admin/spec', 'a nav link in the other profile'],
+    ['/client/clients/', 'a nav link with a trailing slash'],
+    ['/admin/spec?zoom=2', 'a nav link with a query string'],
+    ['/admin/settings', 'settings, reached from the account menu'],
+    ['/', 'a path outside both profiles'],
+  ])('treats %s as primary (%s)', (path) => {
+    expect(isPrimaryPath(path)).toBe(true);
+  });
+
+  it.each([
+    ['/admin/docs/abc123', 'one document'],
+    ['/client/docs/new/invoice', 'a create form'],
+    ['/client/clients/new', 'the onboarding flow'],
+    ['/client/clients/2f1b-uuid', 'one client'],
+  ])('treats %s as secondary (%s)', (path) => {
+    expect(isPrimaryPath(path)).toBe(false);
+  });
+});
+
+/**
+ * Every trail is rooted at its *profile's* home rather than a global one: the
+ * app is two applications sharing a shell, and a crumb offering to navigate up
+ * past the profile would be offering somewhere the profile cannot reach.
+ *
+ * The profile itself is never a crumb — the switcher above the breadcrumb
+ * already says which side you are on.
+ */
+
+describe('parentHref', () => {
+  it('sends a create form back to its type list', () => {
+    expect(parentHref('/admin/docs/new/exit-letter')).toBe('/admin/docs/exit-letter');
+    expect(parentHref('/client/docs/new/invoice')).toBe('/client/docs/invoice');
+  });
+
+  it('sends a document list up to its own profile home', () => {
+    expect(parentHref('/client/docs/invoice')).toBe('/client');
+    expect(parentHref('/admin/docs/pay-slip')).toBe('/admin');
+  });
+
+  it('sends a single document up to its own profile home', () => {
+    expect(parentHref('/client/docs/2f9c1d84-0f2e-4a1b-9c3d-5e6f7a8b9c0d')).toBe('/client');
+  });
+
+  it('falls back to a home from a home itself', () => {
+    expect(parentHref('/client')).toBe('/client');
+    expect(parentHref('/admin')).toBe('/admin');
+  });
+
+  it('sends a record page up to its own profile home', () => {
+    expect(parentHref('/admin/employees')).toBe('/admin');
+    expect(parentHref('/client/clients')).toBe('/client');
+  });
+});
+
+/**
+ * Back names its destination, and the name comes from the same walk as the href.
+ *
+ * The header's back arrow lost its visible label, so the tooltip and the
+ * `aria-label` are what say where it goes — which matters because a document
+ * page carries *two* back controls: this one leaves for the list, and the
+ * editor's own steps through the flow.
+ *
+ * They are tested together because the failure this prevents is a label that
+ * disagrees with the click. Deriving them from one walk is what makes that
+ * impossible, and asserting the pair is what keeps them derived: a future
+ * hand-written label would pass an href-only test.
+ */
+describe('parentCrumb', () => {
+  it('names the destination it points at', () => {
+    expect(parentCrumb('/client/clients/abc')).toEqual({
+      label: 'Clients',
+      href: '/client/clients',
+    });
+    expect(parentCrumb('/client/docs/new/invoice')).toEqual({
+      label: 'Invoice',
+      href: '/client/docs/invoice',
+    });
+  });
+
+  /**
+   * **A grouping crumb is skipped, and the label follows it past.**
+   *
+   * The admin trail for a document is Dashboard / Documents / <id>, but that
+   * "Documents" has no page of its own, so back goes to the profile home and
+   * must *say* Dashboard. The client side's Documents is a real list and is
+   * named. This is the case a hand-written "Back to Documents" would get wrong
+   * on one side of the app while looking right on the other.
+   */
+  it('skips a crumb with no page, and says where it actually lands', () => {
+    expect(parentCrumb('/admin/docs/some-id')).toEqual({
+      label: 'Dashboard',
+      href: '/admin',
+    });
+    expect(parentCrumb('/client/docs/7505ad80')).toEqual({
+      label: 'Documents',
+      href: '/client',
+    });
+  });
+
+  it('agrees with parentHref, which is derived from it', () => {
+    for (const path of [
+      '/admin/docs/some-id',
+      '/client/docs/7505ad80',
+      '/client/clients/abc',
+      '/client/docs/new/invoice',
+      '/admin',
+    ]) {
+      expect(parentCrumb(path).href).toBe(parentHref(path));
+    }
+  });
+});
+
+describe('breadcrumbForPath', () => {
+  it('maps a profile home to a single home crumb', () => {
+    expect(breadcrumbForPath('/client')).toEqual([{ label: 'Documents', href: '/client' }]);
+    expect(breadcrumbForPath('/admin')).toEqual([{ label: 'Dashboard', href: '/admin' }]);
+  });
+
+  it('maps a record link to home > label', () => {
+    expect(breadcrumbForPath('/client/clients')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+    ]);
+  });
+
+  /**
+   * A client id is not a reference anyone quotes — unlike a document number —
+   * so humanizing the last segment printed thirty-six characters of hex across
+   * the top of the onboarding page. The trail cannot name the client (it has
+   * only the path; the record is in the database), so it says what kind of
+   * thing this is and keeps the list navigable.
+   */
+  it('names the kind rather than printing a client’s uuid', () => {
+    expect(breadcrumbForPath('/client/clients/95d22130-5aae-4944-893c-3e4029017cc3')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+      {
+        label: 'Client',
+        href: '/client/clients/95d22130-5aae-4944-893c-3e4029017cc3',
+      },
+    ]);
+  });
+
+  it('labels the create route as a new client', () => {
+    expect(breadcrumbForPath('/client/clients/new')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+      { label: 'New client', href: '/client/clients/new' },
+    ]);
+  });
+
+  it('maps the icon spec tool, which lives on the admin side', () => {
+    expect(breadcrumbForPath('/admin/spec')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Icon spec', href: '/admin/spec' },
+    ]);
+  });
+
+  /**
+   * The "Client" / "Admin" section crumb is gone: those two sections *are* the
+   * profiles now, and repeating the switcher's own word on every page was one
+   * crumb of pure noise.
+   */
+  it('maps a document list straight under its home, with no section crumb', () => {
+    expect(breadcrumbForPath('/client/docs/invoice')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Invoice', href: '/client/docs/invoice' },
+    ]);
+  });
+
+  it('trails a new-document route through its list, so the type stays navigable', () => {
+    expect(breadcrumbForPath('/client/docs/new/invoice')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Invoice', href: '/client/docs/invoice' },
+      { label: 'New', href: '/client/docs/new/invoice' },
+    ]);
+  });
+
+  it('trails an HR new-document route through the admin home', () => {
+    expect(breadcrumbForPath('/admin/docs/new/stipend')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Stipend', href: '/admin/docs/stipend' },
+      { label: 'New', href: '/admin/docs/new/stipend' },
+    ]);
+  });
+
+  it('shows an unknown document leaf verbatim (an existing document id)', () => {
+    expect(breadcrumbForPath('/admin/docs/abc123')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Documents', href: undefined },
+      { label: 'abc123', href: '/admin/docs/abc123' },
+    ]);
+  });
+
+  /**
+   * The bug this guards read **"Documents / Documents / 7505ad80-…"** on every
+   * open contract. The client profile's home is already "Documents", so the
+   * grouping crumb repeated it: the same word twice, one a link and one not,
+   * which reads as a rendering fault rather than as a hierarchy. It survives
+   * on the admin side (above), whose home is "Dashboard".
+   */
+  it('drops the grouping crumb when the home already carries its word', () => {
+    expect(breadcrumbForPath('/client/docs/abc123')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'abc123', href: '/client/docs/abc123' },
+    ]);
+  });
+
+  /**
+   * The document's *kind*, which the path cannot supply: the route is a uuid
+   * and only the database knows it is a contract, so the page publishes it
+   * upward (`DocumentCrumb.tsx`). Optional, and the trail above is correct
+   * without it.
+   */
+  it('names the document type when the page supplies one', () => {
+    expect(breadcrumbForPath('/client/docs/abc123', 'Contract')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Contract', href: undefined },
+      { label: 'abc123', href: '/client/docs/abc123' },
+    ]);
+  });
+
+  it('strips query strings and trailing slashes', () => {
+    expect(breadcrumbForPath('/client/clients/')).toEqual([
+      { label: 'Documents', href: '/client' },
+      { label: 'Clients', href: '/client/clients' },
+    ]);
+    expect(breadcrumbForPath('/admin/spec?zoom=2')).toEqual([
+      { label: 'Dashboard', href: '/admin' },
+      { label: 'Icon spec', href: '/admin/spec' },
+    ]);
+  });
+
+  /**
+   * `/` and the legacy redirect routes sit outside both profiles. They render
+   * nothing but a redirect, so this only has to not throw.
+   */
+  it('falls back to the client home for a path outside both profiles', () => {
+    expect(breadcrumbForPath('/')).toEqual([{ label: 'Documents', href: '/client' }]);
+  });
+});

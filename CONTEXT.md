@@ -507,7 +507,7 @@ broken:
 | a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
 | `register('pan' / 'gstin' / 'tan' / 'cin')` | the matching component in `form/fields.tsx` |
 | `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
-| `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
+| `formatDisplayDate` in a file with a `<TableCell>` | `DateValue` from `patterns/Page.tsx` |
 | a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
 | `status === 'finalized' ? …` as a label | `<Badge status={…}>` from `ui/badge.tsx` |
 | an `AlertDialog` written by hand, or a `ConfirmDialog` title ending in `?` | `ConfirmDialog` from `patterns/` (`docs/design.md` §2.6) |
@@ -1319,7 +1319,7 @@ form → Zod validate → Server Action → Drizzle → Postgres
 - **`src/db/`** — Drizzle schema + queries + migrations. Relational tables (`clients`, `employees`, `service_templates`, `documents`, `counters`) with JSONB for the doc-type-specific parts. Zod validates JSONB on write.
 - **`src/server/actions/`** — Server Actions (documents, clients, employees, services). Each verifies the Clerk session server-side.
 - **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Tailwind + `src/styles/print.css` for A4/print. Do not redesign.
-- **`src/components/`** — everything else, fresh shadcn (dashboard Table, forms, nav, editors, the Paginator).
+- **`src/components/`** — everything else, fresh shadcn, in layers: `ui/` atoms, `patterns/` molecules and organisms, `shell/` the frame, and the domain screens (`admin/`, `contract/`, `docs/`). `docs/design.md` §0 has the table and the test that holds the order.
 - **`src/app/(app)/{client,admin}/`** — the two profiles (see below). `_routes/` holds the route bodies both profiles share; the page files under each profile are thin wrappers that say which one they are.
 - **`src/lib/profile.ts`** — which side a thing belongs to, and the one documented seam between them.
 

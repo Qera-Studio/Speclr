@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { NAV_BY_PROFILE } from '@/components/admin/nav';
+import { NAV_BY_PROFILE } from '@/components/shell/nav';
 
 const requireAuthorizedUser = jest.fn();
 const redirect = jest.fn((url: string) => {

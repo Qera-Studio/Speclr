@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { currentUser } from '@clerk/nextjs/server';
-import AdminShell from '@/components/admin/AdminShell';
+import AdminShell from '@/components/shell/AdminShell';
 import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {

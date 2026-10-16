@@ -4,7 +4,7 @@ import { requireAuthorizedUser } from "@/lib/auth/session";
 import { listEmployees, listServices } from "@/db/store";
 import { studioMemberOf } from "@/lib/profile";
 import ClientOnboarding from "@/components/admin/clients/onboarding/ClientOnboarding";
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: "speclr",

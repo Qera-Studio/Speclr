@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { Archive, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import RecordTable, { type RecordColumn } from '@/components/admin/RecordTable';
+import RecordTable, { type RecordColumn } from '@/components/patterns/RecordTable';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

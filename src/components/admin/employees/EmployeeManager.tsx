@@ -3,13 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AddButton } from '@/components/patterns/AddAction';
-import RecordPanel from '../RecordPanel';
-import { useRecordPanel } from '../useRecordPanel';
+import RecordPanel from '@/components/shell/RecordPanel';
+import { useRecordPanel } from '@/components/shell/useRecordPanel';
 import EmployeeForm from './EmployeeForm';
 import EmployeesTable from './EmployeesTable';
 import { deleteEmployeeAction } from '@/server/actions/employees';
 import type { EmployeeRecord } from '@/lib/domain/employee';
-import { PageHeader } from '@/components/admin/Page';
+import { PageHeader } from '@/components/patterns/Page';
 
 export default function EmployeeManager({ employees }: { employees: EmployeeRecord[] }) {
   const router = useRouter();

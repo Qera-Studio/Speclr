@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import AddressFields from '@/components/form/AddressFields';
-import { InfoTip, LegendInfo } from '@/components/form/FieldInfo';
+import { InfoTip, LegendInfo } from '@/components/patterns/FieldInfo';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import IfscField from '@/components/form/IfscField';
 import UpiQrUpload from '@/components/form/UpiQrUpload';

@@ -15,7 +15,7 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';

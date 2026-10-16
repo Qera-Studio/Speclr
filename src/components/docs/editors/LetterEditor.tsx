@@ -17,7 +17,7 @@ import { pronounSet, type EmployeeRecord } from "@/lib/domain/employee";
 import { formatINR } from "@/lib/domain/money";
 import type { EmployeeSnapshot, LetterDocument } from "@/lib/domain/types";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";

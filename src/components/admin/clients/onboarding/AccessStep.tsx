@@ -13,7 +13,7 @@ import {
   FieldSet,
   FieldLegend,
 } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

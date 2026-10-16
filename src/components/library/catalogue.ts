@@ -143,7 +143,7 @@ export const CATALOGUE: LibraryEntry[] = [
     // The primitive, as every other row here points at one. The template that
     // is copied from is `library/table/columns.tsx` beside it, and the page
     // says so; this field names the component the library is showing.
-    source: 'src/components/admin/RecordTable.tsx',
+    source: 'src/components/patterns/RecordTable.tsx',
     rule: '§2.3',
     variants: [
       {

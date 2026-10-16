@@ -35,7 +35,7 @@ import { SCHEDULES, type ScheduleKey } from "@/lib/domain/contract/schedules";
 import { type ContractService } from "@/lib/domain/service";
 import { formatINR } from "@/lib/domain/money";
 import { NIL } from "@/lib/utils";
-import { PageHeader } from "@/components/admin/Page";
+import { PageHeader } from "@/components/patterns/Page";
 import ServiceEditDialog from "@/components/admin/services/ServiceEditDialog";
 
 const Heading = () => <PageHeader title="Services" />;

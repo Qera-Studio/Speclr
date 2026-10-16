@@ -5,11 +5,11 @@ import { Archive, ArchiveRestore, Download, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { IconAction } from '@/components/patterns/IconAction';
-import { EditButton } from '@/components/admin/RowActions';
-import RecordTable from '@/components/admin/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import RecordTable from '@/components/patterns/RecordTable';
 import { libraryMarkdown } from '@/lib/domain/contract/clauseMarkdown';
 import { parseBody, serialiseBody } from '@/lib/domain/contract/clauseBody';
 import {

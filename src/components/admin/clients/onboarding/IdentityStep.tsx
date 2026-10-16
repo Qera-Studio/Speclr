@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import AddressFields from '@/components/form/AddressFields';
 import PhoneField, { validatePhoneValue } from '@/components/form/PhoneField';
 import { EmailField } from '@/components/form/fields';

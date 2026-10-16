@@ -11,7 +11,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 /**
  * The third empty state: not "nothing here yet", not "nothing matches", but

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
-import { PageHeader } from '@/components/admin/Page';
+import { PageHeader } from '@/components/patterns/Page';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import { removeService } from '@/server/actions/services';

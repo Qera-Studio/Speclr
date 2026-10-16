@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { MSA_CLAUSES, MSA_CLAUSE_SUMMARIES } from '@/lib/domain/contract/msa';
 import ClauseLibrary from '@/components/admin/clauses/ClauseLibrary';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 /**
  * `/preview/clause-library` — the clause table and its drawer, with no session

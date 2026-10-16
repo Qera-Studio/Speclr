@@ -25,13 +25,13 @@ import {
   Users,
 } from 'lucide-react';
 import { completedSteps, onboardingStepsFor, resumeStep } from './onboarding/steps';
-import RecordTable, { type RecordColumn, type RecordTableProps } from '../RecordTable';
-import { arrangeColumns } from '../ColumnsMenu';
-import { DateValue } from '../Page';
-import { AmountCell } from '../AmountCell';
-import { CopyValue } from '../CopyCell';
-import { LocationCell } from '../LocationCell';
-import { PeopleCell, PersonCell } from '../PersonCell';
+import RecordTable, { type RecordColumn, type RecordTableProps } from '@/components/patterns/RecordTable';
+import { arrangeColumns } from '@/components/patterns/ColumnsMenu';
+import { DateValue } from '@/components/patterns/Page';
+import { AmountCell } from '@/components/patterns/AmountCell';
+import { CopyValue } from '@/components/patterns/CopyCell';
+import { LocationCell } from '@/components/patterns/LocationCell';
+import { PeopleCell, PersonCell } from '@/components/patterns/PersonCell';
 import { ClientRowMenu } from './ClientRowMenu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { accentBadge } from '@/lib/accent';

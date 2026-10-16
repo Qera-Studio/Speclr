@@ -13,7 +13,7 @@ import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RINGED_POPUP_GAP } from '@/components/ui/popup';
 import { cn } from '@/lib/utils';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import {
   ENGAGEMENT_TYPES,

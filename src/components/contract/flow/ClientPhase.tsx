@@ -2,7 +2,7 @@
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';

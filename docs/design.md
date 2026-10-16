@@ -13,6 +13,21 @@
 
 ## 0. How to use this file
 
+**The folders are the atomic ladder, and a test holds the order:**
+
+| Level | Folder | What lives there | May import |
+|---|---|---|---|
+| Tokens | `src/app/globals.css` | A named value. Never a component. | |
+| Atoms | `src/components/ui/` | One styled control: Button, Input, Badge, Tooltip, Sheet | `lib/`, other atoms |
+| Molecules and organisms | `src/components/patterns/` | Compositions of atoms with one job, domain-free: ConfirmDialog, IconAction, RecordTable, FilterBar, FlowShell, the cells | atoms, other patterns |
+| Shell | `src/components/shell/` | The frame every page sits in: AdminShell, the nav, the top panel, the editor rail, the palettes | atoms, patterns, `lib/` |
+| Screens | `src/components/admin/`, `contract/`, `docs/`, `form/`, `spec/`, `tools/` | A pattern filled with real data | anything |
+
+`design-system.test.ts` fails the build when `ui/` imports a pattern, a
+pattern imports the shell or a screen, or the shell imports a screen. A type
+import crosses no layer. The level is also declared in each pattern's
+docstring (`@level molecule`).
+
 **Building something new:** read §1 (foundations) and the §2 entry for the
 primitive you need. Compose from `src/components/ui/`. If nothing fits, §5 says
 what to do.
@@ -609,7 +624,7 @@ the floor.
   `text.ts`/`fields.ts`, no hand-written phone rule.
 - No date read out of a UTC slice. `domain/dates.ts`.
 - No `formatDisplayDate` in a file that renders `<TableCell>`. `DateCell` from
-  `admin/Page.tsx` owns the format *and* the weight, so the same fact cannot
+  `patterns/Page.tsx` owns the format *and* the weight, so the same fact cannot
   look like two different facts on two lists.
 - No quoted em or en dash as a nil glyph. `NIL` from `lib/utils.ts`, which is a
   hyphen. Same reason as the row above, and the house rule on dashes.
@@ -741,7 +756,7 @@ one stretched anchor, row actions and copy buttons reveal on `group-hover/row`
 and on `focus-within`, every figure is `tabular-nums`, money is right-aligned,
 a sort arrow is permanent on the sorted column and appears on hover elsewhere,
 and long values truncate with the full string on `title`. All of it lives in
-`ui/table.tsx` and `admin/Page.tsx`, so a new table inherits it by existing.
+`ui/table.tsx` and `patterns/Page.tsx`, so a new table inherits it by existing.
 
 **House rules on top:**
 
@@ -771,7 +786,7 @@ The primary surface of this app, and the one place where "every instance
 behaves the same" is not a preference but the product working.
 
 **The rule above all the others: a list of records is a `RecordTable`**
-(`components/admin/RecordTable.tsx`). Not a `<Table>` you assemble. You pass
+(`components/patterns/RecordTable.tsx`). Not a `<Table>` you assemble. You pass
 rows and a column spec; it brings paging, the caption, the actions column, row
 selection and the row that opens its record. **Enforced:
 `design-system.test.ts` fails a `TableBody` outside `ui/` and `RecordTable`.**
@@ -851,7 +866,7 @@ Three rules follow it:
 
 **Everything else, unchanged and still true:**
 
-- **Every table sits in a `TableCard`** (`components/admin/Page.tsx`):
+- **Every table sits in a `TableCard`** (`components/patterns/Page.tsx`):
   `rounded-md border bg-background`, `overflow-clip`. **Enforced.** The fill is
   `bg-background`, not `bg-card`: the two are the same white in light mode, so
   the card fill drew nothing there and drew a grey slab in dark mode, and one
@@ -1478,7 +1493,7 @@ each confirmed red against a panel with `float` removed.
 
 ### 2.12 Multi-step flows
 
-**Every multi-step flow is built on `FlowShell`** (`src/components/flow/`).
+**Every multi-step flow is built on `FlowShell`** (`src/components/patterns/flow/`).
 There were two coming (client onboarding, the contract builder), and a second
 hand-built step row is a second set of answers about what a locked step looks
 like, whether the current one is announced, and where the submit sits. None of
@@ -1508,7 +1523,7 @@ them. Only the middle band scrolls.
   preview beside a rail, a ledger of cards.
 
 **Enforced** (`design-system.test.ts`): `aria-current="step"` outside
-`components/flow/` fails the build. It is the attribute that marks which step of
+`components/patterns/flow/` fails the build. It is the attribute that marks which step of
 a sequence you are on, so a file carrying one has built its own row.
 
 ### 2.13 The component library
@@ -1668,6 +1683,12 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, the folders follow the ladder.** `shell/` (25 files
+  out of `admin/`: the frame, nav, rail, palettes, and the record panel that
+  renders into the rail) and `patterns/` (the page frame, the record table
+  and its toolbar and cells, the flow shell, the field info and check). Pure
+  moves; the layering rule above is the new test and was seen red.
 
 - **16 October 2026, the atoms and the molecules.** Button: five fills
   (`primary`, `secondary` as the default, `ghost`, `destructive`, `link`),

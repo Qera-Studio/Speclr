@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { IconAction } from '@/components/patterns/IconAction';
@@ -24,9 +24,9 @@ import type { ClauseInput } from '@/lib/domain/contract/msa';
 import { cn, NIL } from '@/lib/utils';
 import type { ActionResult } from '@/lib/domain/types';
 import { addClause, destroyClause, removeClause, updateClause } from '@/server/actions/clauses';
-import { EditButton } from '@/components/admin/RowActions';
-import { PageHeader } from '@/components/admin/Page';
-import RecordTable from '@/components/admin/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import { PageHeader } from '@/components/patterns/Page';
+import RecordTable from '@/components/patterns/RecordTable';
 
 /**
  * The Master Agreement's clause library: a table of every clause, and a drawer

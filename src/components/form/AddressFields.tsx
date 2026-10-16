@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { FieldSpinner } from "@/components/ui/spinner";
 import { useMinimumDuration } from "@/lib/useMinimumDuration";
-import FieldInfo, { OptionalMark } from "./FieldInfo";
+import FieldInfo, { OptionalMark } from "@/components/patterns/FieldInfo";
 import { formatPostcode, isLookupPostcode } from "@/lib/domain/address";
 import { COUNTRIES_BY_CONTINENT, COUNTRY_SEED } from "@/lib/domain/countries";
 

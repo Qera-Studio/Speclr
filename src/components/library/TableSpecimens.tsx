@@ -1,7 +1,7 @@
 'use client';
 
-import type { RecordColumn } from '@/components/admin/RecordTable';
-import SortToggle, { useShowSort } from '@/components/admin/SortToggle';
+import type { RecordColumn } from '@/components/patterns/RecordTable';
+import SortToggle, { useShowSort } from '@/components/patterns/SortToggle';
 import { Specimen } from './Specimen';
 import TemplateTable from './table/TemplateTable';
 import { TEMPLATE_COLUMNS } from './table/columns';

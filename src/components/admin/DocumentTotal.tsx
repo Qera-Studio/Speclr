@@ -1,4 +1,4 @@
-import { AmountCell } from './AmountCell';
+import { AmountCell } from '@/components/patterns/AmountCell';
 import { contractFees } from '@/lib/domain/contract/listing';
 import { totalPaiseOf } from '@/lib/domain/documentQuery';
 import type { AdminDocument } from '@/lib/domain/types';

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { getStudioSettings } from '@/db/store';
 import StudioForm from '@/components/admin/settings/StudioForm';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'Settings — speclr',

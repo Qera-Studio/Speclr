@@ -5,9 +5,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { shortcutForSlug } from "./nav";
+import { shortcutForSlug } from "@/components/shell/nav";
 import DocumentsBrowser from "./DocumentsBrowser";
-import { PageBody, PageHeader } from "./Page";
+import { PageBody, PageHeader } from "@/components/patterns/Page";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
 import type { DocTypeSpec } from "@/lib/domain/registry";
 import type { ContractService } from "@/lib/domain/service";

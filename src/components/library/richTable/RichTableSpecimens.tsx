@@ -1,7 +1,7 @@
 'use client';
 
 import { Archive, Pencil, Trash2 } from 'lucide-react';
-import { RowMenu } from '@/components/admin/RowMenu';
+import { RowMenu } from '@/components/patterns/RowMenu';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Specimen } from '../Specimen';
 import type { LibraryEntry } from '../catalogue';

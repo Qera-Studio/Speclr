@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { PageBody, PageHeader } from "@/components/admin/Page";
+import { PageBody, PageHeader } from "@/components/patterns/Page";
 
 export const metadata: Metadata = {
   title: "Kit — speclr",

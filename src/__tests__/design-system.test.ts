@@ -198,7 +198,7 @@ const HAND_ROLLED_PAGE_INSET = /className="[^"]*\bp-9\b[^"]*"/g;
 const HAND_ROLLED_PAGE_TITLE = /<h1[^>]*\btext-2xl\b/g;
 
 /** `PageBody` and `PageHeader` are the primitives these two rules point at. */
-const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
+const PAGE_PRIMITIVE = ['src/components/patterns/Page.tsx'];
 
 /**
  * A transition duration outside the three-tier scale.
@@ -239,7 +239,7 @@ const PANELS_THAT_SLIDE = [
   'src/components/ui/sheet.tsx',
   'src/components/ui/sidebar.tsx',
   'src/components/ui/switch.tsx',
-  'src/components/admin/AdminSidebar.tsx',
+  'src/components/shell/AdminSidebar.tsx',
 ];
 const FILL_FLASH = /animate-fill-flash/g;
 const ZOOMING_POPUP = /\bzoom-(?:in|out)-\d+/g;
@@ -278,11 +278,11 @@ const TABLE_TAG = /<Table>/;
 const TABLE_BODY_TAG = /<TableBody[\s/>]/;
 const RECORD_TABLE_PRIMITIVES = [
   ...UI_PRIMITIVES,
-  'src/components/admin/RecordTable.tsx',
+  'src/components/patterns/RecordTable.tsx',
   // The loading skeleton is a real TableCard holding real rows, on purpose:
   // its geometry has to match the table it stands in front of, or the page
   // jumps twice. See its note in Page.tsx.
-  'src/components/admin/Page.tsx',
+  'src/components/patterns/Page.tsx',
 ];
 const TABLE_CARD = /<TableCard[\s>]/;
 
@@ -421,7 +421,7 @@ const GROWN_LATER = [
  * button sits — none of which is visible as a bug in either flow alone.
  */
 const HAND_ROLLED_STEP_NAV = /aria-current=\{?["']step["']/;
-const FLOW_PRIMITIVE = ['src/components/flow/'];
+const FLOW_PRIMITIVE = ['src/components/patterns/flow/'];
 
 /**
  * A table that sorts, and the toggle that has to come with it.
@@ -712,11 +712,11 @@ const RAW_Z = /\bz-(?:\[[^\]]*\]|[0-9]+)\b/g;
  */
 const RESPONSIVE = /(?<![\w-])(?:sm|md|lg|xl|2xl):/g;
 const SHELL = [
-  'src/components/admin/AdminShell.tsx',
-  'src/components/admin/AdminSidebar.tsx',
-  'src/components/admin/TopPanel.tsx',
-  'src/components/admin/AdminHeader.tsx',
-  'src/components/admin/EditorSidebar.tsx',
+  'src/components/shell/AdminShell.tsx',
+  'src/components/shell/AdminSidebar.tsx',
+  'src/components/shell/TopPanel.tsx',
+  'src/components/shell/AdminHeader.tsx',
+  'src/components/shell/EditorSidebar.tsx',
 ];
 
 /**
@@ -748,7 +748,37 @@ function outstanding(name: string) {
   return patterns.flatMap((p) => violations(p, [...later, ...exempt], /\.tsx?$/));
 }
 
+/**
+ * The layers, as import rules (`docs/design.md` §0): `ui/` is atoms and
+ * imports nothing above it; `patterns/` is molecules and organisms and never
+ * imports the shell or a domain screen; `shell/` never imports a domain
+ * screen. A pattern that reaches into `admin/clients/` is a screen wearing a
+ * pattern's name.
+ */
+const LAYER_RULES: Array<[string, RegExp]> = [
+  ['src/components/ui/', /from ['"]@\/components\/(?:patterns|shell|admin|docs|contract|form|flow|spec|tools|library)\//],
+  ['src/components/patterns/', /from ['"]@\/components\/(?:shell|admin|docs|contract|spec|tools|library)\//],
+  ['src/components/shell/', /from ['"]@\/components\/admin\/(?:clients|employees|services|clauses|settings)\//],
+];
+
 describe('design system', () => {
+  it('keeps the layers in order: ui imports no pattern, patterns import no shell or screen', () => {
+    const root = join(__dirname, '..', '..');
+    const crossed: string[] = [];
+    for (const [layer, banned] of LAYER_RULES) {
+      for (const file of policedFiles([], /\.tsx?$/).filter((f) => f.startsWith(layer))) {
+        // A type crosses no layer: it is erased before anything runs.
+        const source = readFileSync(join(root, file), 'utf8')
+          .split('\n')
+          .filter((line) => !/^\s*import type\b/.test(line))
+          .join('\n');
+        const hit = banned.exec(source);
+        if (hit) crossed.push(`${file}: ${hit[0]}`);
+      }
+    }
+    expect(crossed).toEqual([]);
+  });
+
   it('writes a boolean data attribute as present or absent, never as "false"', () => {
     expect(violations(BOOLEAN_DATA_ATTR)).toEqual([]);
   });

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import FlowShell, {
   FinishPanel,
   useActionsSlot,
-} from "@/components/flow/FlowShell";
+} from "@/components/patterns/flow/FlowShell";
 import type { ContractService } from "@/lib/domain/service";
 import type { StudioMember } from "@/lib/profile";
 import { clientKindOf, type ClientKind } from "@/lib/domain/entityType";

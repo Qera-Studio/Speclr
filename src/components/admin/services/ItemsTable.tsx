@@ -1,10 +1,10 @@
 'use client';
 
 import { Coins, Layers, Tag, Type } from 'lucide-react';
-import RecordTable from '../RecordTable';
-import { EditButton } from '../RowActions';
-import { AmountCell } from '../AmountCell';
-import { RaisedChip } from '../LocationCell';
+import RecordTable from '@/components/patterns/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import { AmountCell } from '@/components/patterns/AmountCell';
+import { RaisedChip } from '@/components/patterns/LocationCell';
 import { NIL } from '@/lib/utils';
 import { accentBadge, accentFor } from '@/lib/accent';
 import type { ServiceItem } from '@/lib/domain/serviceItem';

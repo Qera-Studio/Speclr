@@ -9,7 +9,7 @@ import ImportProgressControls from './ImportProgressControls';
 import ExportProgressButton from './ExportProgressButton';
 import ResetProgressButton from './ResetProgressButton';
 import IconSpecCard from './IconSpecCard';
-import { PageBody, PageHeader } from "@/components/admin/Page";
+import { PageBody, PageHeader } from "@/components/patterns/Page";
 
 export default function IconSpecTool() {
   const {

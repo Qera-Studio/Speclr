@@ -24,7 +24,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import FieldInfo, { LegendInfo } from "@/components/form/FieldInfo";
+import FieldInfo, { LegendInfo } from "@/components/patterns/FieldInfo";
 import { numericField } from "@/components/form/inputFilters";
 import {
   clientCommercialSchema,

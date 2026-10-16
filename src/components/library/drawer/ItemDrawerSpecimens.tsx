@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AddButton } from '@/components/patterns/AddAction';
-import { ArchiveButton } from '@/components/admin/RowActions';
+import { ArchiveButton } from '@/components/patterns/RowActions';
 import ItemsTable from '@/components/admin/services/ItemsTable';
 import { SERVICES } from '@/lib/domain/seed/services';
 import { assignItemIds, type ServiceItem } from '@/lib/domain/serviceItem';

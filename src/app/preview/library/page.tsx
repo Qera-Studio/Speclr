@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import AdminShell from '@/components/admin/AdminShell';
+import AdminShell from '@/components/shell/AdminShell';
 import ComponentLibrary from '@/components/library/ComponentLibrary';
 
 /**

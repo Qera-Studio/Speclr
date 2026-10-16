@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { InfoTip } from '@/components/form/FieldInfo';
+import { InfoTip } from '@/components/patterns/FieldInfo';
 import { SacField } from '@/components/form/fields';
 import { numericField } from '@/components/form/inputFilters';
 import { sacSchema } from '@/lib/domain/fields';

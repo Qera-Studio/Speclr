@@ -5,7 +5,7 @@ import { listClients, listEmployees, listServices } from '@/db/store';
 import { studioMemberOf } from '@/lib/profile';
 import { inrRatesToday } from '@/server/rates';
 import { resumeStep } from '@/components/admin/clients/onboarding/steps';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 import RichClientsPreview from '@/components/library/richTable/RichClientsPreview';
 import { richRowOf } from '@/components/library/richTable/fromClient';
 

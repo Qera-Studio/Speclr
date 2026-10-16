@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import { useDownloadPdf } from '@/lib/useDownloadPdf';
 import FinalizedActions from './FinalizedActions';
 

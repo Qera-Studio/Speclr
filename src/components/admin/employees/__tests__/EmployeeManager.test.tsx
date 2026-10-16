@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditorPanelProvider, EditorPanelContent } from '../../EditorPanel';
+import { EditorPanelProvider, EditorPanelContent } from '@/components/shell/EditorPanel';
 import EmployeeManager from '../EmployeeManager';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 

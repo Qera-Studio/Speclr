@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import CtcCalculator from '@/components/tools/CtcCalculator';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'CTC calculator — speclr',

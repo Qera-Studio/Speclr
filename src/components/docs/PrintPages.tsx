@@ -7,7 +7,7 @@ import { usePagination } from './usePagination';
 import type { PageChrome } from './DocumentPreview';
 import PageColumns from './PageColumns';
 import PageThumbnails from './PageThumbnails';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import DocumentPager from './DocumentPager';
 import { PAGE_SAFETY_MARGIN, SHEET_HEIGHT } from './sheets/frame';
 

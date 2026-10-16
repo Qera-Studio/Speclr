@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { PageBody, TableSkeleton } from '@/components/admin/Page';
+import { PageBody, TableSkeleton } from '@/components/patterns/Page';
 
 /**
  * The app's one loading boundary — and it is load-bearing for how the whole

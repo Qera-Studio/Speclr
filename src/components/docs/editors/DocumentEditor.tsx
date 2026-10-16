@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
-import FieldInfo, { InfoTip } from "@/components/form/FieldInfo";
+import FieldInfo, { InfoTip } from "@/components/patterns/FieldInfo";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,

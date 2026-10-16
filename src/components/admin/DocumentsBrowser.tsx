@@ -32,12 +32,12 @@ import {
   usePagedRows,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
-import SortToggle, { useShowSort } from "./SortToggle";
-import FilterBar from "./FilterBar";
+import SortToggle, { useShowSort } from "@/components/patterns/SortToggle";
+import FilterBar from "@/components/patterns/FilterBar";
 import DocumentsCards from "./DocumentsCards";
 import DocumentsKanban from "./DocumentsKanban";
 import DocumentsTable from "./DocumentsTable";
-import { BulkBar, useBulkSelect } from "./BulkSelect";
+import { BulkBar, useBulkSelect } from "@/components/patterns/BulkSelect";
 import { DELETE_DRAFT_CONSEQUENCE } from "@/lib/domain/registry";
 import { DEV_UNLIMITED } from "@/lib/devMode";
 import { deleteDraftAction } from "@/server/actions/documents";

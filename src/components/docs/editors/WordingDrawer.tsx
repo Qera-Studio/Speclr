@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye } from "lucide-react";
-import { useEditorPanel } from "@/components/admin/EditorPanel";
+import { useEditorPanel } from "@/components/shell/EditorPanel";
 
 /**
  * Every printed *word* of a document, behind one row and an eye.

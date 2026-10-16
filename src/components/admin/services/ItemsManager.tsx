@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { AddButton } from '@/components/patterns/AddAction';
 import { DrawerSheet } from '@/components/ui/drawer-sheet';
 import { DrawerToolbar } from '@/components/patterns/DrawerToolbar';
-import { ArchiveButton } from '../RowActions';
+import { ArchiveButton } from '@/components/patterns/RowActions';
 import ItemForm from './ItemForm';
 import ItemsTable from './ItemsTable';
 import { archiveServiceItem } from '@/server/actions/services';

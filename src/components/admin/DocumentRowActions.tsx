@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarPlus, Copy, Download, Pencil, Printer, Trash2 } from 'lucide-react';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { RowMenu } from './RowMenu';
+import { RowMenu } from '@/components/patterns/RowMenu';
 import {
   copySlipForNextMonth,
   deleteDraftAction,

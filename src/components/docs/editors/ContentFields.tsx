@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import type { DocContent, ResolvedContent, TermItem } from '@/lib/domain/docContent';
 import type { MsaClause } from '@/lib/domain/contract/msa';
 import { Field, FieldLabel } from '@/components/ui/field';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';

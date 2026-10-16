@@ -19,8 +19,8 @@ import { FieldLabel } from "@/components/ui/field";
 import { DerivedNote } from "@/components/ui/derived-note";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import FieldInfo, { InfoTip, LegendInfo } from "@/components/form/FieldInfo";
-import FieldCheck from "@/components/form/FieldCheck";
+import FieldInfo, { InfoTip, LegendInfo } from "@/components/patterns/FieldInfo";
+import FieldCheck from "@/components/patterns/FieldCheck";
 import {
   CinField,
   GstinField,

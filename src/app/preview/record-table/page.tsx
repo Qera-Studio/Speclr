@@ -1,10 +1,10 @@
 'use client';
 
 import { notFound } from 'next/navigation';
-import RecordTable from '@/components/admin/RecordTable';
-import { EditButton } from '@/components/admin/RowActions';
-import { PageBody, PageHeader } from '@/components/admin/Page';
-import SortToggle, { useShowSort } from '@/components/admin/SortToggle';
+import RecordTable from '@/components/patterns/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
+import SortToggle, { useShowSort } from '@/components/patterns/SortToggle';
 
 /**
  * The eye for the reorderable fixture.

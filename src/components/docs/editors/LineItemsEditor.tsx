@@ -18,7 +18,7 @@ import {
   type CurrencyCode,
 } from "@/lib/domain/currency";
 import { Field, FieldLabel } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import {
   DropdownMenu,
   DropdownMenuContent,

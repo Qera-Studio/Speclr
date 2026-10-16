@@ -2,7 +2,7 @@
 
 import { notFound } from 'next/navigation';
 import ServiceCards from '@/components/admin/services/ServiceCards';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 import { SERVICES } from '@/lib/domain/seed/services';
 
 /**

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditorPanelProvider, useEditorPanel } from '@/components/admin/EditorPanel';
+import { EditorPanelProvider, useEditorPanel } from '@/components/shell/EditorPanel';
 import DocumentWorkspace from '../DocumentWorkspace';
 import { A4_PADDING } from '@/components/docs/sheets/frame';
 

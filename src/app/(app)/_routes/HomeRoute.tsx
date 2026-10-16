@@ -2,9 +2,9 @@ import { redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listDocumentsByProfile, listServices } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
-import NewDocumentButton from '@/components/admin/NewDocumentButton';
-import { PageBody, PageHeader } from '@/components/admin/Page';
-import { NAV_BY_PROFILE } from '@/components/admin/nav';
+import NewDocumentButton from '@/components/shell/NewDocumentButton';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
+import { NAV_BY_PROFILE } from '@/components/shell/nav';
 import type { Profile } from '@/lib/profile';
 
 /**

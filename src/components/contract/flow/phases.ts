@@ -25,7 +25,7 @@ import { isISODate } from '@/lib/domain/dates';
 import { FEE_SECTION, partsFilled, reviewedAll } from '@/lib/domain/contract/ledger';
 import { blanksOf, isUnfilled } from '@/lib/domain/contract/blanks';
 import { contractScopes } from '@/lib/domain/contract/completeness';
-import type { FlowStep } from '@/components/flow/steps';
+import type { FlowStep } from '@/components/patterns/flow/steps';
 import type { ContractData } from '@/lib/domain/types';
 import type { DocContent } from '@/lib/domain/docContent';
 

@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/field";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
-import { LegendInfo } from "@/components/form/FieldInfo";
+import { LegendInfo } from "@/components/patterns/FieldInfo";
 import PhoneField from "@/components/form/PhoneField";
 import {
   Select,

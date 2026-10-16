@@ -14,12 +14,12 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { AmountCell } from '@/components/admin/AmountCell';
-import { DateValue } from '@/components/admin/Page';
-import { CopyValue } from '@/components/admin/CopyCell';
-import { LocationCell } from '@/components/admin/LocationCell';
-import { PeopleCell, PersonCell } from '@/components/admin/PersonCell';
-import type { RecordColumn } from '@/components/admin/RecordTable';
+import { AmountCell } from '@/components/patterns/AmountCell';
+import { DateValue } from '@/components/patterns/Page';
+import { CopyValue } from '@/components/patterns/CopyCell';
+import { LocationCell } from '@/components/patterns/LocationCell';
+import { PeopleCell, PersonCell } from '@/components/patterns/PersonCell';
+import type { RecordColumn } from '@/components/patterns/RecordTable';
 import { accentBadge, accentFor } from '@/lib/accent';
 import { NIL } from '@/lib/utils';
 import type { TemplateRow } from './rows';

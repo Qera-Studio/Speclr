@@ -12,7 +12,7 @@ import { Field, FieldLabel, FieldGroup, FieldSet, FieldLegend } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { InfoTip } from '@/components/form/FieldInfo';
+import { InfoTip } from '@/components/patterns/FieldInfo';
 
 /**
  * Annual CTC in, a monthly salary structure out.

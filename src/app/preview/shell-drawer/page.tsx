@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
-import AdminShell from '@/components/admin/AdminShell';
+import AdminShell from '@/components/shell/AdminShell';
 import ClauseLibrary from '@/components/admin/clauses/ClauseLibrary';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
 
 /**

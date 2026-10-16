@@ -27,7 +27,7 @@ export {
   StepForm,
   asOptionalNumber,
   pruneEmpty,
-} from '@/components/flow/stepKit';
+} from '@/components/patterns/flow/stepKit';
 
 /**
  * What every onboarding step is handed, and what it hands back.

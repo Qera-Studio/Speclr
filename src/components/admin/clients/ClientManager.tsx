@@ -20,10 +20,10 @@ import { AddLink } from '@/components/patterns/AddAction';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ClientsTable, { CLIENT_COLUMNS, DEFAULT_CLIENT_COLUMNS } from './ClientsTable';
-import ColumnsMenu, { useStoredKeys } from '../ColumnsMenu';
-import { BulkBar, useBulkSelect } from '../BulkSelect';
-import FilterBar from '../FilterBar';
-import SortToggle, { useShowSort } from '../SortToggle';
+import ColumnsMenu, { useStoredKeys } from '@/components/patterns/ColumnsMenu';
+import { BulkBar, useBulkSelect } from '@/components/patterns/BulkSelect';
+import FilterBar from '@/components/patterns/FilterBar';
+import SortToggle, { useShowSort } from '@/components/patterns/SortToggle';
 import {
   CLIENT_FILTER_FIELDS,
   ONBOARDING_STATES,
@@ -41,7 +41,7 @@ import type { DayRates } from '@/lib/domain/currency';
 import type { ContractService } from '@/lib/domain/service';
 import type { ClientRecord } from '@/lib/domain/types';
 import type { StudioMember } from '@/lib/profile';
-import { PageHeader } from '@/components/admin/Page';
+import { PageHeader } from '@/components/patterns/Page';
 
 /**
  * The clients list.

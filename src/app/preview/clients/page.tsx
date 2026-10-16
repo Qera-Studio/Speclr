@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { use } from 'react';
 import ClientsTable, { CLIENT_COLUMNS } from '@/components/admin/clients/ClientsTable';
 import { SERVICES } from '@/lib/domain/seed/services';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 import type { ClientRecord } from '@/lib/domain/types';
 
 /**

@@ -5,7 +5,7 @@ import { listClients, listEmployees, listServices } from '@/db/store';
 import { studioMemberOf } from '@/lib/profile';
 import { inrRatesToday } from '@/server/rates';
 import ClientManager from '@/components/admin/clients/ClientManager';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',

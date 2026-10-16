@@ -5,7 +5,7 @@ import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { RowMenu } from '../RowMenu';
+import { RowMenu } from '@/components/patterns/RowMenu';
 import type { ClientRecord } from '@/lib/domain/types';
 import { resumeStep } from './onboarding/steps';
 

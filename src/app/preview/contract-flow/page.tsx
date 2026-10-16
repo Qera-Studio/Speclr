@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import AdminShell from '@/components/admin/AdminShell';
+import AdminShell from '@/components/shell/AdminShell';
 import ContractFlow from '@/components/contract/flow/ContractFlow';
 import { PARTS } from '@/lib/domain/seed/parts';
 import { SERVICES } from '@/lib/domain/seed/services';
