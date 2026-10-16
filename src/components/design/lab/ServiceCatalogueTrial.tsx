@@ -87,7 +87,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                 {mine.map((service) => (
                   <li
                     key={service.code}
-                    className="flex flex-col justify-between gap-4 rounded-lg border border-border/50 bg-background p-3"
+                    className="flex flex-col justify-between gap-6 rounded-lg border border-border/50 bg-background p-3"
                   >
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between gap-3">
