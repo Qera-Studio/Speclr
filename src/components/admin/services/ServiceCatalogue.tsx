@@ -61,8 +61,9 @@ import { cn } from "@/lib/utils";
  */
 const QUIET =
   // `tab-label`, two shades under muted text: as light as a label can go and
-  // still clear 4.5:1 (measured in `contrast.test.ts`).
-  "border-border/50 text-tab-label hover:border-muted-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
+  // still clear 4.5:1 (measured in `contrast.test.ts`). Hover is one step,
+  // to muted text and a label-grey hairline, never to full ink.
+  "border-border/50 text-tab-label hover:border-tab-label/50 hover:bg-transparent hover:text-muted-foreground dark:bg-transparent";
 
 /** The page's one filled action. Ink rather than the blue primary, on trial here. */
 const INK = "bg-foreground text-background hover:bg-foreground/85";
@@ -199,7 +200,7 @@ export default function ServiceCatalogue({
                 placeholder="Search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="h-7 border-border/50 pl-8 hover:border-muted-foreground"
+                className="h-7 border-border/50 pl-8 hover:border-tab-label/50"
               />
             </div>
 
@@ -525,7 +526,7 @@ function CardMenu({
               icon
               aria-label={`Actions for ${service.name}`}
               className={cn(
-                "relative z-10 size-6 shrink-0 group-hover/card:border-muted-foreground group-hover/card:text-foreground",
+                "relative z-10 size-6 shrink-0 group-hover/card:border-tab-label/50 group-hover/card:text-muted-foreground",
                 hidden &&
                   "opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100",
                 QUIET,
