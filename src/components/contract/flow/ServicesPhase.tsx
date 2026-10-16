@@ -17,7 +17,8 @@ import type { ClientRecord, ContractData } from '@/lib/domain/types';
  * it. Nothing here is decorative: these four are the only tiles on the screen,
  * so each one is carrying the distinction on its own.
  */
-const SCHEDULE_ICONS: Record<ScheduleKey, typeof Hammer> = {
+/** One icon per Schedule. The catalogue trial reads it too. */
+export const SCHEDULE_ICONS: Record<ScheduleKey, typeof Hammer> = {
   setup: Settings2,
   build: Hammer,
   retainer: RefreshCw,

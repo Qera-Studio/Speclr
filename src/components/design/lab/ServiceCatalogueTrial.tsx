@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ArrowUpDown,
-  Box,
   CloudDownload,
   Columns3,
   Filter,
@@ -19,7 +18,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+import { SCHEDULE_ICONS } from "@/components/contract/flow/ServicesPhase";
+import { accentBadge } from "@/lib/accent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -124,6 +124,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
       <div className="flex flex-col gap-12">
         {SCHEDULES.map((schedule) => {
           const mine = services.filter((s) => s.scheduleKey === schedule.key);
+          const Icon = SCHEDULE_ICONS[schedule.key];
           return (
             <section key={schedule.key} aria-label={schedule.name} className="flex flex-col gap-4">
               <h2 className="text-lead font-normal text-muted-foreground">{schedule.name}</h2>
@@ -136,7 +137,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <Box aria-hidden className="size-3.5 text-muted-foreground" />
+                          <Icon aria-hidden className="size-3.5 text-muted-foreground" />
                           <span className="text-lead">{service.name}</span>
                         </div>
                         <Button
@@ -158,10 +159,12 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2 text-meta tabular-nums">
-                      <Badge variant="secondary" className="rounded-sm text-muted-foreground">
+                      {/* The Schedule's own accent, quiet: the hue groups, the text
+                          still says which code. */}
+                      <span className={accentBadge(schedule.accent, undefined, true)}>
                         {service.code}
-                      </Badge>
-                      <span className={service.ratePaise === undefined ? "text-muted-foreground" : "text-foreground"}>
+                      </span>
+                      <span className={service.ratePaise === undefined ? "text-tab-label" : "text-muted-foreground"}>
                         {service.ratePaise === undefined
                           ? "Quoted"
                           : service.scheduleKey === "retainer"
