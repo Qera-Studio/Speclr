@@ -336,7 +336,7 @@ export default function ExperimentItemForm({
       </FieldGroup>
 
       <div className="mt-5 flex items-center justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onDone}>
+        <Button type="button" variant="secondary" onClick={onDone}>
           Cancel
         </Button>
         <Button type="submit">

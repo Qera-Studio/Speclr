@@ -265,7 +265,7 @@ function BackButton({
   const shared = {
     'aria-label': `Back to ${label}`,
     className: cn(
-      buttonVariants({ variant: 'ghost', size: 'icon' }),
+      buttonVariants({ variant: 'ghost', size: 'sm', icon: true }),
       'shrink-0 text-muted-foreground',
     ),
   };
@@ -286,7 +286,7 @@ function BackButton({
     <Button
       type="button"
       variant="ghost"
-      size="icon"
+      size="sm" icon
       aria-label={shared['aria-label']}
       className="shrink-0 text-muted-foreground"
       {...rest}

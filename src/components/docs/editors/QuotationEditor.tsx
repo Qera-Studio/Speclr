@@ -529,13 +529,13 @@ export default function QuotationEditor({
         confirmLabel="Finalize"
         onConfirm={onFinalize}
         disabled={isSubmitting}
-        variant="default"
+        variant="primary"
         className="h-9 flex-1"
       />
       <ConfirmActionButton
         label="Delete draft"
         icon={<Trash2 />}
-        size="icon"
+        size="sm"
         title="Delete this draft?"
         description={DELETE_DRAFT_CONSEQUENCE}
         confirmLabel="Delete"
@@ -668,7 +668,7 @@ export default function QuotationEditor({
           ))}
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="w-full"
             onClick={() => serviceRows.append(emptyService())}
           >
@@ -785,7 +785,7 @@ export default function QuotationEditor({
             ))}
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => recurringRows.append(emptyRecurring())}
             >
@@ -857,7 +857,7 @@ export default function QuotationEditor({
                 ))}
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   className="w-full"
                   onClick={() =>
                     phaseRows.replace(
@@ -929,7 +929,7 @@ export default function QuotationEditor({
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     className="flex-1"
                     onClick={() =>
                       phaseRows.append({ label: "", percent: "" })

@@ -158,8 +158,8 @@ function AlertDialogDescription({
  */
 function AlertDialogAction({
   className,
-  variant,
-  size = "default",
+  variant = "primary",
+  size = "md",
   ...props
 }: AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
@@ -194,8 +194,8 @@ function AlertDialogAction({
 
 function AlertDialogCancel({
   className,
-  variant = "outline",
-  size = "default",
+  variant = "ghost",
+  size = "md",
   ...props
 }: AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {

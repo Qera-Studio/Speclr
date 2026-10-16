@@ -778,13 +778,13 @@ export default function DocumentEditor({
            an outline button, so an outlined Finalize was the same weight as the
            thing beside it and the page's one irreversible action read as one
            more field. */
-        variant="default"
+        variant="primary"
         className="h-9 flex-1"
       />
       <ConfirmActionButton
         label="Delete draft"
         icon={<Trash2 />}
-        size="icon"
+        size="sm"
         title="Delete this draft?"
         description={DELETE_DRAFT_CONSEQUENCE}
         confirmLabel="Delete"

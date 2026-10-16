@@ -235,7 +235,7 @@ export function BulkBar({
       className="flex items-center justify-end gap-3 text-xs text-muted-foreground"
     >
       <span>{label}</span>
-      <Button type="button" variant="ghost" size="default" onClick={onClear}>
+      <Button type="button" variant="ghost" size="sm" onClick={onClear}>
         Clear
       </Button>
       {actions.map((action) => (
@@ -251,7 +251,7 @@ export function BulkBar({
       <AlertDialog>
         <AlertDialogTrigger
           render={
-            <Button type="button" variant="destructive" size="default" disabled={busy}>
+            <Button type="button" variant="destructive" size="sm" disabled={busy}>
               <Trash2 aria-hidden="true" className="size-4" />
               Delete
             </Button>
@@ -305,7 +305,7 @@ function BulkActionButton({
 
   if (!action.confirm) {
     return (
-      <Button type="button" variant="outline" size="default" disabled={busy} onClick={run}>
+      <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={run}>
         {action.label}
       </Button>
     );
@@ -315,7 +315,7 @@ function BulkActionButton({
     <AlertDialog>
       <AlertDialogTrigger
         render={
-          <Button type="button" variant="outline" size="default" disabled={busy}>
+          <Button type="button" variant="secondary" size="sm" disabled={busy}>
             {action.label}
           </Button>
         }

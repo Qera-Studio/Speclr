@@ -299,7 +299,7 @@ function ClauseDrawer({
               />
               <ConfirmActionButton
                 variant="ghost"
-                size="icon-sm"
+                size="sm"
                 label="Delete this clause"
                 tooltip="Delete"
                 icon={<Trash2 className="size-3.5" />}

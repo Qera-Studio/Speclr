@@ -122,7 +122,7 @@ export default function PrintToolbar({
     return (
       <PageHeaderSlot>
         <div data-print-hidden className="ml-auto flex shrink-0 items-center gap-2">
-          <Button type="button" variant="neutral" onClick={handlePrint}>
+          <Button type="button" variant="secondary" onClick={handlePrint}>
             <Printer aria-hidden="true" />
             Print / Save as PDF
           </Button>

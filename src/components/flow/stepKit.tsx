@@ -140,9 +140,9 @@ export function StepForm({
   // `hover:bg-primary` cancels the button's own tint: the arrow is the whole
   // hover response, and a colour shift under it answers the same event twice.
   const submit = (
-    <Button
+    <Button variant="primary"
       type="submit"
-      size="lg"
+      size="md"
       pending={submitting}
       form={STEP_FORM_ID}
       className="group/tray hover:bg-primary"

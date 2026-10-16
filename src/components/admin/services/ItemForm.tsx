@@ -381,10 +381,10 @@ export default function ItemForm({
       ) : null}
 
       <div className="mt-5 flex items-center justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onDone} disabled={pending}>
+        <Button type="button" variant="secondary" onClick={onDone} disabled={pending}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button variant="primary" type="submit" disabled={pending}>
           {pending ? 'Saving…' : item ? 'Save item' : 'Create item'}
         </Button>
       </div>

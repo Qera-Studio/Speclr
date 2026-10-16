@@ -235,7 +235,7 @@ export default function ScopePhase({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
+                            size="sm" icon
                             // Subtle blue: it is an offer, not a warning, and it
                             // sits beside a destructive bin that owns the row's one
                             // strong colour.
@@ -283,8 +283,8 @@ export default function ScopePhase({
                   {unfilled === 0 && !confirmed ? (
                     <Button
                       type="button"
-                      variant="outline"
-                      size="form"
+                      variant="secondary"
+                      size="lg"
                       // Visible always, unlike the three icons: it is the row's
                       // one remaining job stated in words, and a job that hides
                       // until hovered is a job nobody knows is outstanding.
@@ -305,7 +305,7 @@ export default function ScopePhase({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
+                          size="sm" icon
                           className={REVEALED}
                           aria-label={`Open ${part.name}`}
                           onClick={() => onOpen(part.code)}
@@ -342,7 +342,7 @@ export default function ScopePhase({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
+                          size="sm" icon
                           className={cn(
                             REVEALED,
                             "text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive",

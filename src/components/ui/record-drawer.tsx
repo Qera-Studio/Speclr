@@ -166,10 +166,10 @@ function footerFor(save: RecordSave): ReactNode {
           {save.note}
         </p>
       ) : null}
-      <Button type="button" variant="outline" onClick={save.onCancel}>
+      <Button type="button" variant="secondary" onClick={save.onCancel}>
         Cancel
       </Button>
-      <Button type="button" onClick={save.onSave} disabled={save.pending || !save.dirty}>
+      <Button variant="primary" type="button" onClick={save.onSave} disabled={save.pending || !save.dirty}>
         {save.pending ? 'Saving…' : save.saveLabel ?? 'Save'}
       </Button>
     </>

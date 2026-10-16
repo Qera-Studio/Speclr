@@ -179,7 +179,7 @@ export default function SitemapChart() {
           spellCheck={false}
           autoCapitalize="none"
         />
-        <Button type="submit" disabled={loading || !url.trim()}>
+        <Button variant="primary" type="submit" disabled={loading || !url.trim()}>
           {loading ? <Spinner /> : <Search />}
           Read sitemap
         </Button>

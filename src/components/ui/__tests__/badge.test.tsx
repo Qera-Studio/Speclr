@@ -1,26 +1,26 @@
 import { render, screen } from '@testing-library/react';
-import { StatusBadge } from '../status-badge';
+import { Badge } from '../badge';
 
 describe('StatusBadge', () => {
   it('says every status in a word, never colour alone', () => {
-    const { rerender } = render(<StatusBadge status="draft" />);
+    const { rerender } = render(<Badge status="draft" />);
     expect(screen.getByText('Draft')).toBeInTheDocument();
 
-    rerender(<StatusBadge status="finalized" />);
+    rerender(<Badge status="finalized" />);
     expect(screen.getByText('Finalized')).toBeInTheDocument();
 
-    rerender(<StatusBadge status="void" />);
+    rerender(<Badge status="void" />);
     expect(screen.getByText('Void')).toBeInTheDocument();
   });
 
   /** §1.3: a badge is `rounded-sm`. The primitive is a pill; this one is not. */
   it('is a rectangle, not a pill', () => {
-    render(<StatusBadge status="draft" />);
+    render(<Badge status="draft" />);
     expect(screen.getByText('Draft')).toHaveClass('rounded-sm');
   });
 
   it('carries no icon: the word is the whole badge', () => {
-    const { container } = render(<StatusBadge status="finalized" />);
+    const { container } = render(<Badge status="finalized" />);
     expect(container.querySelectorAll('svg')).toHaveLength(0);
   });
 });

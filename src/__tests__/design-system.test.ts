@@ -38,7 +38,7 @@ import {
 /**
  * An icon-only button with nothing to announce.
  *
- * A `size="icon"` button draws a glyph and no text, so unless it says its own
+ * An `icon` button draws a glyph and no text, so unless it says its own
  * name it reaches a screen reader as "button" and nothing else. Every one of
  * them in this app already had a name when the rule was written; the rule
  * exists because the *next* one is written in a hurry, the glyph is obvious to
@@ -51,8 +51,18 @@ import {
  * This is a guard against a forgotten label, not a parser, and a rule that
  * argues with formatting is a rule people delete.
  */
-const ICON_BUTTON = /size=\{?["']icon(-sm)?["']/g;
+const ICON_BUTTON = /<(?:Button|ConfirmActionButton|AddButton)\b[^>]*?(?<![\w-])icon(?:\s|=\{true\}|\/?>)[^>]*?>/g;
 const NAMES_ITSELF = /aria-label|sr-only|\blabel=/;
+
+/**
+ * The button API before 16 October 2026: eight fills and five sizes. `default`
+ * is `primary` now and is no longer the default; `outline` is `secondary` and
+ * is; `raised` and `neutral` are gone; `icon` is a shape rather than a size;
+ * `form` is `lg`. cva rejects the old names at the type level, but a tag with
+ * `{...props}` spread or a string built at runtime would not be caught there.
+ */
+const BUTTON_TAG = /<(?:Button|AlertDialogAction|AlertDialogCancel|ConfirmActionButton|AddButton|AddLink)\b[^>]*?>/g;
+const OLD_BUTTON_API = /\b(?:variant=["'](?:default|outline|raised|neutral)["']|size=["'](?:icon|icon-sm|default|form)["'])/;
 
 /**
  * Standing muted text under a field.
@@ -505,7 +515,7 @@ const HAND_FORMATTED_DATE = /formatDisplayDate\(/;
  * each wrote `status === 'finalized' ? 'Finalized' : 'Draft'` with their own
  * badge variant, which is two places to disagree about a fact with legal weight:
  * finalized means immutable, retained 72 months, correctable only by
- * duplication. `ui/status-badge.tsx` owns the word, the icon and the fill, and
+ * duplication. `ui/badge.tsx`'s `status` prop owns the word, the icon and the fill, and
  * the icon is why the rule is worth enforcing rather than merely tidy: colour
  * alone was carrying "sealed" and colour alone is not a message.
  *
@@ -922,6 +932,19 @@ describe('design system', () => {
     expect(own).toEqual([]);
   });
 
+  it('writes every button in the five-fill, three-height API', () => {
+    const root = join(__dirname, '..', '..');
+    const stale: string[] = [];
+    for (const file of policedFiles(['src/components/ui/button.tsx'])) {
+      const source = readFileSync(join(root, file), 'utf8');
+      for (const tag of source.matchAll(BUTTON_TAG)) {
+        const old = OLD_BUTTON_API.exec(tag[0]);
+        if (old) stale.push(`${file}: ${old[0]}`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
   it('gives every icon-only button a name to announce', () => {
     const root = join(__dirname, '..', '..');
     const unnamed: string[] = [];
@@ -947,7 +970,7 @@ describe('design system', () => {
     expect(violations(HAND_WRITTEN_OPTIONAL, UI_PRIMITIVES)).toEqual([]);
   });
 
-  it('says a document’s status through StatusBadge, never a ternary label', () => {
+  it('says a document’s status through Badge status, never a ternary label', () => {
     expect(violations(HAND_ROLLED_STATUS_BADGE, UI_PRIMITIVES)).toEqual([]);
   });
 

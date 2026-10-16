@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 
 /** Sizes mirror `Input` — see the note there. `default` stays byte-identical. */
 const textareaVariants = cva(
-  "flex field-sizing-content w-full resize-none rounded-md border border-input bg-background transition-colors outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+  "flex field-sizing-content w-full resize-none rounded-md border border-input bg-background transition-colors outline-none placeholder:text-placeholder focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
   {
     variants: {
       size: {
@@ -14,7 +14,6 @@ const textareaVariants = cva(
         // A textarea has no single height to match a row with, so `md` takes
         // the padding and type of the rung and a floor between the two: 72px,
         // midway between `default`'s 64 and `form`'s 80.
-        md: "min-h-18 px-3 py-2 text-sm",
         form: "min-h-20 px-3 py-2 text-sm",
       },
     },

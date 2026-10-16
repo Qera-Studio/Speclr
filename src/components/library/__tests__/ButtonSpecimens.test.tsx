@@ -24,17 +24,14 @@ describe('the button specimens', () => {
     render(<ButtonSpecimens entry={entry} />);
 
     const fills = screen.getByRole('group', { name: 'The fills' });
-    for (const name of ['default', 'raised', 'neutral', 'outline', 'secondary', 'ghost', 'destructive', 'link']) {
+    for (const name of ['primary', 'secondary', 'ghost', 'destructive', 'link']) {
       expect(within(fills).getByRole('button', { name })).toBeInTheDocument();
     }
 
     const heights = screen.getByRole('group', { name: 'The heights' });
-    for (const name of ['default', 'lg', 'form']) {
+    for (const name of ['sm', 'md', 'lg']) {
       expect(within(heights).getByRole('button', { name })).toBeInTheDocument();
     }
-    // The two icon heights are square, so they are named rather than labelled.
-    expect(within(heights).getByRole('button', { name: 'Edit, icon' })).toBeInTheDocument();
-    expect(within(heights).getByRole('button', { name: 'Edit, icon-sm' })).toBeInTheDocument();
   });
 
   /**

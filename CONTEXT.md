@@ -509,8 +509,9 @@ broken:
 | `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
 | `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
 | a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
-| `status === 'finalized' ? …` as a label | `StatusBadge` from `ui/status-badge.tsx` |
-| a `size="icon"` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `status === 'finalized' ? …` as a label | `<Badge status={…}>` from `ui/badge.tsx` |
+| an `icon` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `variant="default\|outline\|raised\|neutral"` or `size="icon\|form"` on a button | the five fills and three heights in `ui/button.tsx` (`docs/design.md` §2.1) |
 
 **The last row is the one a person caught before the suite did**, and it is the
 general lesson rather than a rule about dates. The dashboard printed a

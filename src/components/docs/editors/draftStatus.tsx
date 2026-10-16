@@ -109,7 +109,7 @@ export function SaveError({ autosave }: { autosave: DraftAutosave }) {
         <span>{serverError}</span>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           pending={saveState === 'saving'}
           onClick={async () => {
             setServerError(null);
@@ -166,7 +166,7 @@ export function UnsavedChangesDialog({
           <AlertDialogAction variant="destructive" onClick={guard.leave}>
             Discard
           </AlertDialogAction>
-          <Button
+          <Button variant="primary"
             type="button"
             onClick={async () => {
               if (await autosave.flush()) guard.leave();

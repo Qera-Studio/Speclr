@@ -267,7 +267,7 @@ export default function ServiceSheet({
               {missing.length} field{missing.length === 1 ? '' : 's'} still empty
             </p>
           ) : null}
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           {/*
@@ -280,7 +280,7 @@ export default function ServiceSheet({
             was lost for one run when this moved to `DrawerSheet`, and
             `ContractFlow.test.tsx` caught it.
           */}
-          <Button
+          <Button variant="primary"
             type="button"
             onClick={() => {
               onCommit(draft, values);

@@ -212,7 +212,7 @@ export default function CountryChooser({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="sm" icon
           className="absolute left-0"
           aria-label="Back to the clients list"
           onClick={onBack}
@@ -225,9 +225,9 @@ export default function CountryChooser({
           disabled control with no explanation is the commonest form of a form
           that cannot be finished for reasons it will not state.
         */}
-        <Button
+        <Button variant="primary"
           type="button"
-          size="lg"
+          size="md"
           disabled={!kind || !value}
           onClick={() => kind && value && onContinue(kind, value)}
           className="group/tray hover:bg-primary"

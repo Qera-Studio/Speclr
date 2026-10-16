@@ -496,63 +496,66 @@ text is typed, and nothing about that glyph is a colour choice.
 
 ### 2.1 Buttons
 
-**Never hand-roll one.** `src/components/ui/button.tsx`, always.
+**Rule of thumb:** one filled button per view; everything else is quiet; the
+height of a button is the height of whatever sits beside it.
 
-| Variant | Use | Rule |
+**Five fills**, and the order is the hierarchy:
+
+| Variant | Looks | When |
 |---|---|---|
-| `default` | The one action a screen exists for | **At most one per screen.** |
-| `outline` | The ordinary action. Most buttons are this. | |
-| `secondary` | An action grouped with an outline one, slightly louder | |
-| `ghost` | Toolbar, table row, nav, anywhere inside dense chrome | |
-| `destructive` | Delete, void, revoke | Tinted, never a solid red slab |
-| `link` | Inline in a sentence only | Never in a button row |
+| `primary` | `bg-primary` | The one action the page exists for. **One per view.** |
+| `secondary` | border, no fill | **Default.** Every ordinary action. |
+| `ghost` | nothing until hovered | A row of icons, a toolbar, "Cancel": anything that must not compete |
+| `destructive` | red tint | Delete, remove, discard. Solid red only on the confirm inside its own dialog |
+| `link` | text, underline on hover | Inline in prose |
 
-| Size | Use |
-|---|---|
-| `sm` / `default` | Chrome: toolbars, table rows, the sidebar |
-| `lg` | A page-level action in a header |
-| `form` | **Any button sitting inline with an Input, Combobox or DatePicker.** It is the only size that matches their height. |
-| `icon-xs` / `icon-sm` / `icon` | Icon-only, sized to its neighbours |
+`raised` and `neutral` were deleted on 16 October 2026: one was on trial on
+one button for a year, the other existed for a row with two solid buttons,
+which the one-primary rule forbids. A row that needs two solid buttons is a
+row with the wrong hierarchy.
+
+**Three heights:**
+
+| Size | px | Text | Where |
+|---|---|---|---|
+| `sm` | 28 | control | Toolbars (filter, sort, columns), row actions, the drawer toolbar, icon-only anywhere, inside a 40px table row |
+| `md` | 32 | control | **Default.** Page actions, dialog actions, drawer footer, beside a rail Input (also 32) |
+| `lg` | 36 | body, medium | Beside a form Input (also 36); a form's own submit |
+
+28 is the smallest thing that reads as a control rather than a chip. 32 is
+the height of an action on the page and of an Input in the editor rail. 36 is
+a form field's height, and a button beside a field is the field's height. 24
+was deleted: it was only ever icon-only row actions, and a 28 square sits in a
+40 row with 6px above and below. Inside a `FieldGroup size="form"` an `md`
+button grows to `lg` on its own.
+
+**`icon`** makes the button square at its height. It is a shape, not a fourth
+size. An icon-only button still names itself (`aria-label` or an `sr-only`
+span); **enforced**, it fails the build otherwise.
+
+**Six states, defined once in `buttonVariants`:** rest; hover (fill one step,
+75ms); active (`translate-y-px`, one frame); focus-visible (the one
+`focus-ring`); disabled (`opacity-50`, pointer events off, never hidden);
+pending (`Spinner` in front of a label that never changes, `aria-busy`).
 
 **Rules:**
 
-- **Order is [cancel] [confirm], confirm on the right,** in every dialog and
-  every form footer. One order across the app beats being right about which
-  order is better.
+- **`[Cancel] [Confirm]` order**, and Cancel is `ghost`.
 - **Label the verb and the object**: "Save client", not "Save"; "Delete
   invoice", not "Delete". A button that says "OK" says nothing.
 - **A destructive confirmation uses `AlertDialog`, never `Dialog`.**
-- **Every button that starts an async action has a pending state** and is
-  disabled while pending, or double-submit is a live bug. `pending` on
-  `Button` is the whole of it: a spinner in front of a label that never
-  changes.
+- **Every button that starts an async action passes `pending`**, or
+  double-submit is a live bug.
 - A disabled button must be explainable. If the reason is not obvious on the
   screen, wrap it in a tooltip that says why.
-- **Every control in one horizontal row is the same height.** The `form` size
-  above is this rule stated for one case; it holds for all of them. A toolbar of
-  `default` buttons is 28px, so anything sharing that row is 28px too, including
-  a hand-written control that is not a `Button` at all. Pick the height from
-  whichever primitive dominates the row rather than choosing one per control.
+- **Every control in one horizontal row is the same height.**
+- **One filled blue per viewport.** The rail's "New document" is on screen
+  everywhere, so a page-level create is `secondary`. A create action is an
+  `AddButton` / `AddLink`: a plus and a verb.
 
-  A row is a single band of chrome. Two heights inside it read as a rendering
-  artefact rather than a distinction, because they are not saying anything: no
-  control in a toolbar is more important than its neighbour, and 28 against 32
-  is too small a difference to mean something and too large to go unseen. The
-  case that produced this rule was the Table/Cards toggle in `DocumentsBrowser`,
-  hand-written at `h-8` beside filter and sort controls that take `Button`'s own
-  `h-7`.
-
-  **This one is not mechanically enforced**, and the reason is worth stating:
-  a grep cannot see which elements share a row. It is checked by eye, which
-  makes the fix above the reference rather than the exception. When a control in
-  a toolbar is hand-written, take its height from the primitive beside it and
-  say so in a comment, or the next person will have nothing to reconcile against.
-
-**One filled blue per viewport.** The rail's "New document" is the app's single
-primary and is on screen everywhere, so a page-level create is `outline`. Two
-filled blues make the viewport argue with itself about which action matters. A
-create action is an `AddButton` / `AddLink` whichever variant it wears: a plus
-and a verb.
+**Enforced:** the old API (`variant="default|outline|raised|neutral"`,
+`size="icon|icon-sm|default|form"`) fails `design-system.test.ts` on any
+button tag, and cva rejects it at the type level.
 
 ### 2.2 Inputs and fields
 
@@ -561,8 +564,11 @@ The pair rule (`CONTEXT.md` §5f) is the law here: the **rule** lives in
 `src/components/form/fields.tsx`, named to match. Every schema imports the
 first, every form the second.
 
-**Three heights, and 32px is the floor.** The compact `default` is **32px**
-(`h-8`), `md` is **36px** (`h-9`) and the roomy `form` is 38px (`h-9.5`).
+**Two heights, and 32px is the floor.** The compact `default` is **32px**
+(`h-8`) and the roomy `form` is **36px** (`h-9`), which are Button's `md` and
+`lg`, so a button beside a field is never a different height. The 36px `md`
+rung that sat between them (one caller) was folded into `form` on 16 October
+2026.
 Nothing typed into goes under 32 in any variant: input, textarea, select
 trigger, combobox and date trigger all declare the same number, so a field row
 cannot come out three heights. Pinned in `ui/__tests__/control-size.test.tsx`.
@@ -620,10 +626,10 @@ the floor.
 
 **Controls, settled:**
 
-- **Three heights.** 28 (`default`, the dense height this tool is built at),
-  32 (`lg`, a form's own submit), 38 (`form`, which is `Input`'s height, for a
-  button sitting inline with one). `sm` (24) and `icon-xs` (20) were deleted:
-  neither said anything the survivors do not, and a fourth height is a fourth
+- **Three heights.** 28 (`sm`, toolbars and row actions), 32 (`md`, the
+  default and a rail input's height), 36 (`lg`, a form field's height, for a
+  button sitting inline with one). 24 was deleted:
+  it said nothing the survivors do not, and a fourth height is a fourth
   decision every call site has to get right.
 - **Destructive is quiet, then loud.** Tinted (`bg-destructive/10`) everywhere
   it sits among other controls; solid red only as the confirming button inside
@@ -2387,7 +2393,7 @@ Append a line when a rule here changes. Keep it to one line and name the
 - **17 September 2026** — **A 36px rung, and the clause drawer resized around
   it.** The drawer's Heading and Description were the compact 32px under a
   full-width body editor and the three add-a-paragraph buttons were `form`
-  (38px), which is the size for a button sitting *inline with* an Input: these
+  (36px), which is the size for a button sitting *inline with* an Input: these
   sit in a row of their own with no field beside them, so it only made them the
   largest thing on the panel. Fields to 36, buttons to 28 (`default`, the dense
   height this tool is built at). The conflict was named before it was built,

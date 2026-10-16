@@ -54,7 +54,7 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
       {/* The create CTA lives here whether or not the list is empty — a control
           that moves depending on state is a control you have to look for. */}
       <PageHeader title="Employees">
-        <AddButton variant="outline" onClick={() => guardedSelect(null)}>
+        <AddButton variant="secondary" onClick={() => guardedSelect(null)}>
           Add employee
         </AddButton>
       </PageHeader>

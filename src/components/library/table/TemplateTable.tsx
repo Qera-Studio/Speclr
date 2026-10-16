@@ -235,7 +235,7 @@ function TemplateRowMenu({ row }: { row: TemplateRow }) {
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="sm" icon
               aria-label={`More actions for ${row.name}`}
               className="text-muted-foreground transition-colors hover:text-foreground"
             />

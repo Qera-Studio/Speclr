@@ -41,7 +41,7 @@ export default function ReceiptForInvoiceButton({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button type="button" variant="outline" onClick={onClick} pending={creating}>
+      <Button type="button" variant="secondary" onClick={onClick} pending={creating}>
         <ReceiptIndianRupee aria-hidden="true" />
         {`Receipt for ${invoiceNumber}`}
       </Button>

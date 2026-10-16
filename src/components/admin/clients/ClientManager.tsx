@@ -253,7 +253,7 @@ export default function ClientManager({
         and it is on screen on every page; a second filled blue here would
         make the viewport argue with itself about which action matters.
       */}
-      <AddLink href="/client/clients/new" variant="outline">
+      <AddLink href="/client/clients/new" variant="secondary">
         Add client
       </AddLink>
       {/*
@@ -266,8 +266,8 @@ export default function ClientManager({
           render={
             <Button
               type="button"
-              variant="outline"
-              size="icon"
+              variant="secondary"
+              size="sm" icon
               aria-pressed={showArchived}
               aria-label={showArchived ? 'Show active clients' : 'Show archived clients'}
               onClick={() => setShowArchived((v) => !v)}
@@ -337,7 +337,7 @@ export default function ClientManager({
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button type="button" variant="outline" onClick={() => onFiltersChange([])}>
+              <Button type="button" variant="secondary" onClick={() => onFiltersChange([])}>
                 Clear filters
               </Button>
             </EmptyContent>

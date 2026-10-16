@@ -71,7 +71,8 @@ function RemoveButton({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="sm"
+                  icon
                   disabled={disabled}
                   aria-label={label}
                   className={cn(

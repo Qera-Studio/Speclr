@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { Badge } from '@/components/ui/badge';
 import { Plus } from "lucide-react";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { DocumentCard } from "./DocumentsCards";
 import { formatDisplayMonth } from "@/lib/domain/dates";
 import { DOC_TYPES } from "@/lib/domain/registry";
@@ -84,7 +84,7 @@ export default function DocumentsKanban({
               className="min-w-0 truncate text-sm font-medium"
             >
               {groupBy === "status" ? (
-                <StatusBadge status={group.key as DocStatus} />
+                <Badge status={group.key as DocStatus} />
               ) : groupBy === "type" ? (
                 DOC_TYPES[group.key as DocTypeCode].label
               ) : (

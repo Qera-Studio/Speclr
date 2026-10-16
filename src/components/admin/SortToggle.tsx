@@ -77,9 +77,9 @@ export default function SortToggle({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
+          <Button size="sm"
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={onToggle}
             aria-pressed={showSort}
             className={cn(

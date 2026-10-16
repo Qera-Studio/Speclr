@@ -161,7 +161,7 @@ export default function ColumnsMenu({
 
   return (
     <Popover>
-      <PopoverTrigger render={<Button type="button" variant="outline" />}>
+      <PopoverTrigger render={<Button size="sm" type="button" variant="secondary" />}>
         <Columns3 aria-hidden />
         Properties
       </PopoverTrigger>

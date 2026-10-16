@@ -27,7 +27,7 @@ describe('control sizing defaults', () => {
     // control, so a bare substring check would give a false positive.
     const classes = input.className.split(/\s+/);
     expect(classes).toContain('h-8');
-    expect(classes).not.toContain('h-9.5');
+    expect(classes).not.toContain('h-9');
     expect(input).toHaveAttribute('data-size', 'default');
   });
 
@@ -39,12 +39,12 @@ describe('control sizing defaults', () => {
     expect(area).toHaveAttribute('data-size', 'default');
   });
 
-  it('opts Input into the roomy 38px size only when asked', () => {
+  it('opts Input into the roomy 36px size only when asked', () => {
     render(<Input aria-label="roomy" size="form" />);
     const input = screen.getByLabelText('roomy');
 
     const classes = input.className.split(/\s+/);
-    expect(classes).toContain('h-9.5');
+    expect(classes).toContain('h-9');
     expect(classes).not.toContain('h-7');
     expect(input).toHaveAttribute('data-size', 'form');
   });
@@ -86,7 +86,7 @@ describe('control sizing defaults', () => {
     );
 
     const classes = screen.getByLabelText('Label').className.split(/\s+/);
-    expect(classes).toContain('group-data-[size=form]/field-group:h-9.5');
+    expect(classes).toContain('group-data-[size=form]/field-group:h-9');
     // The standalone default is untouched — only the inherited value differs.
     expect(classes).toContain('h-8');
   });
@@ -124,55 +124,6 @@ describe('control sizing defaults', () => {
     }
   });
 
-  /**
-   * The middle rung, added 17 September 2026 on request for the clause drawer.
-   *
-   * The ladder was two values on purpose, so the same rule that made 32 a floor
-   * applies to this one: **every typed-into control declares the same 36**, or a
-   * field row can come out three heights and the rule §2.2 states stops being
-   * true. Adding it to `Input` alone would have been the cheaper diff and the
-   * broken one.
-   */
-  it('holds every medium control to the same 36px', () => {
-    const { container } = render(
-      <>
-        <Input aria-label="i" size="md" />
-        <Combobox options={[]} value="" onValueChange={() => {}} aria-label="c" size="md" />
-        <DatePicker value="" onValueChange={() => {}} size="md" />
-        <Select>
-          <SelectTrigger aria-label="s" size="md" />
-        </Select>
-      </>,
-    );
-
-    for (const slot of ['input', 'combobox', 'date-picker-trigger', 'select-trigger']) {
-      const el = container.querySelector(`[data-slot="${slot}"]`);
-      expect(el).not.toBeNull();
-      const declared = el!.className.split(/\s+/).filter((c) => !c.includes('file:'));
-
-      /*
-        The height this rung resolves to, which is `h-9` however it is spelled.
-
-        Two of these primitives are cva variants, where only the chosen size's
-        classes are present; the other three declare every size at once as
-        `data-[size=…]` selectors and let the attribute choose. So this asserts
-        the `md` rung *exists and is 36px* rather than that no other number
-        appears anywhere in the string, which was a first cut of this test that
-        failed on the three selector-based controls while they were correct.
-      */
-      const md = declared.filter((c) => c.endsWith('h-9') && !c.includes('h-9.5'));
-      expect(md.length).toBeGreaterThan(0);
-      for (const c of md) {
-        // Either the cva form (`h-9` alone) or the selector form
-        // (`data-[size=md]:h-9`). Never scoped to another size.
-        expect(c === 'h-9' || c === 'data-[size=md]:h-9').toBe(true);
-      }
-      // And the control reports the size it was given, which is what the
-      // selector-based ones need in order to pick that rung at all.
-      expect(el).toHaveAttribute('data-size', 'md');
-    }
-  });
-
   it('marks the group as form-sized so descendants can scale their text', () => {
     const { container } = render(
       <FieldGroup size="form">
@@ -192,21 +143,49 @@ describe('control sizing defaults', () => {
 
 describe('Button sizing', () => {
   /**
-   * `Button` was the only kit primitive without a `form` size, so a button set
-   * beside a `size="form"` Input/Combobox/DatePicker came out 8px shorter. The
-   * pairing is what this guards.
+   * Three heights, and the top two are the two Input heights (`docs/design.md`
+   * §2.1): 28 for a toolbar, 32 beside a rail input, 36 beside a form field.
+   * A button next to a field that does not match the field is the mismatch
+   * `lg` exists to stop, and `md` grows to it on its own inside a form group.
    */
-  it('matches the roomy control height on size="form"', () => {
-    render(<Button size="form">Add schedule</Button>);
+  it('defaults to 32px, the height of a rail input', () => {
+    render(<Button>Save</Button>);
     const classes = screen.getByRole('button').className.split(/\s+/);
-    expect(classes).toContain('h-9.5');
+    expect(classes).toContain('h-8');
+    expect(classes).toContain('group-data-[size=form]/field-group:h-9');
   });
 
-  it('still defaults to the compact height', () => {
-    render(<Button>Compact</Button>);
-    const classes = screen.getByRole('button').className.split(/\s+/);
-    expect(classes).toContain('h-7');
-    expect(classes).not.toContain('h-9.5');
+  it('is 28px at sm and 36px at lg', () => {
+    render(
+      <>
+        <Button size="sm">Filter</Button>
+        <Button size="lg">Add schedule</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Filter' }).className.split(/\s+/)).toContain('h-7');
+    expect(screen.getByRole('button', { name: 'Add schedule' }).className.split(/\s+/)).toContain('h-9');
+  });
+
+  it('is square at its height when icon-only', () => {
+    render(
+      <>
+        <Button size="sm" icon aria-label="Edit, sm" />
+        <Button icon aria-label="Edit, md" />
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Edit, sm' }).className.split(/\s+/)).toContain('size-7');
+    expect(screen.getByRole('button', { name: 'Edit, md' }).className.split(/\s+/)).toContain('size-8');
+  });
+
+  it('matches a form field at lg', () => {
+    render(
+      <>
+        <Input aria-label="i" size="form" />
+        <Button size="lg">Beside it</Button>
+      </>,
+    );
+    expect(screen.getByLabelText('i').className.split(/\s+/)).toContain('h-9');
+    expect(screen.getByRole('button').className.split(/\s+/)).toContain('h-9');
   });
 });
 

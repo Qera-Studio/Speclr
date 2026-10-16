@@ -136,7 +136,7 @@ export function TermsFields({
       <div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => onChange([...terms, { title: '', body: '' }])}
         >
           Add term

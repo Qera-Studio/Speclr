@@ -28,8 +28,8 @@ export default function ResetProgressButton({ onReset }: { onReset: () => void }
         render={
           <Button
             type="button"
-            variant="outline"
-            size="lg"
+            variant="secondary"
+            size="md"
             className="h-10 gap-2 px-4 text-sm text-muted-foreground hover:text-muted-foreground hover:bg-[unset] dark:hover:bg-input/30"
           >
             <RotateCcw aria-hidden="true" />

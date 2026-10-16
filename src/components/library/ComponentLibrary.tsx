@@ -386,7 +386,7 @@ function DrawerSpecimen() {
                 />
                 <ConfirmActionButton
                   variant="ghost"
-                  size="icon-sm"
+                  size="sm"
                   label="Delete this record"
                   tooltip="Delete"
                   icon={<Trash2 className="size-3.5" />}
@@ -425,7 +425,7 @@ function DrawerSpecimen() {
               </p>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => setOpen(false)}
               >
                 Cancel

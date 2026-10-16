@@ -64,7 +64,7 @@ export function EditButton({ label, onClick }: { label: string; onClick: () => v
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             onClick={onClick}
             aria-label={label}
             className="text-muted-foreground transition-colors hover:text-foreground"
@@ -115,7 +115,7 @@ export function ArchiveButton({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             onClick={onClick}
             aria-label={label}
             className="text-muted-foreground transition-colors hover:text-foreground"

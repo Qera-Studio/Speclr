@@ -654,7 +654,7 @@ export default function EmployeeForm({
         </Alert>
       ) : null}
 
-      <Button type="submit" size="lg" pending={isSubmitting}>
+      <Button variant="primary" type="submit" size="md" pending={isSubmitting}>
         {employee ? 'Save changes' : 'Add employee'}
       </Button>
     </form>

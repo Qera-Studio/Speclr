@@ -156,7 +156,7 @@ export function DrawerTrigger({
   onClick: () => void;
 }) {
   return (
-    <Button type="button" variant="outline" size="form" onClick={onClick}>
+    <Button type="button" variant="secondary" size="lg" onClick={onClick}>
       {label}
     </Button>
   );

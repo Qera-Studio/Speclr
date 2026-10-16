@@ -68,20 +68,13 @@ const COLOR_TOKENS = [
   { token: "ring", swatch: "bg-ring", use: "Focus ring" },
 ] as const;
 
-const BUTTON_VARIANTS = [
-  "default",
-  "outline",
-  "secondary",
-  "ghost",
-  "destructive",
-  "link",
-] as const;
+const BUTTON_VARIANTS = ['primary', 'secondary', 'ghost', 'destructive', 'link'] as const;
 
 /** Every size the Button actually ships. `xs` and `icon-lg` were removed as dead. */
 const BUTTON_SIZES = [
-  { size: "default", note: "28px, the app default and its dense height" },
-  { size: "lg", note: "32px, a form's own submit" },
-  { size: "form", note: "38px, matches Input/Combobox/DatePicker inline" },
+  { size: 'sm', note: '28px: toolbars and row actions' },
+  { size: 'md', note: '32px: the default' },
+  { size: 'lg', note: '36px: beside a form field' },
 ] as const;
 
 const ICON_SIZES = [
@@ -188,10 +181,10 @@ export default async function KitPage() {
             icon
           </code>
           <div className="flex items-center gap-2">
-            <Button size="icon-sm" variant="ghost" aria-label="Add">
+            <Button size="sm" icon variant="ghost" aria-label="Add">
               <Plus />
             </Button>
-            <Button size="icon" variant="ghost" aria-label="Delete">
+            <Button size="sm" icon variant="ghost" aria-label="Delete">
               <Trash2 />
             </Button>
           </div>
@@ -233,7 +226,7 @@ export default async function KitPage() {
             <Label htmlFor="kit-form">form — 36px</Label>
             <div className="flex max-w-sm items-center gap-2">
               <Input id="kit-form" size="form" placeholder="Roomy" />
-              <Button size="form">Save</Button>
+              <Button size="lg">Save</Button>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">

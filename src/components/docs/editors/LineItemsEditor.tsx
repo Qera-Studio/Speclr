@@ -376,7 +376,7 @@ export default function LineItemsEditor<T extends FieldValues>({
                 render={
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     className="w-full justify-between"
                   >
                     {addLabel}
@@ -418,7 +418,7 @@ export default function LineItemsEditor<T extends FieldValues>({
           ) : (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => addRow(emptyLineItem())}
             >

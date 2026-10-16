@@ -28,7 +28,7 @@ export interface AddButtonProps
 function AddButton({
   className,
   children,
-  variant = "default",
+  variant = "primary",
   ...props
 }: AddButtonProps) {
   return (
@@ -57,7 +57,7 @@ function AddButton({
 function AddLink({
   className,
   children,
-  variant = "default",
+  variant = "primary",
   ...props
 }: Omit<React.ComponentProps<typeof Link>, "children"> & {
   children: React.ReactNode

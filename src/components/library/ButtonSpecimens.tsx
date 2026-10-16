@@ -44,30 +44,22 @@ type ButtonSize = NonNullable<NonNullable<Parameters<typeof buttonVariants>[0]>[
   `Object.keys` on a fully-keyed record is then the same set, in source order.
 */
 const VARIANT_USE: Record<ButtonVariant, string> = {
-  default: 'The one action a view is for',
-  raised: 'On trial, one place only',
-  neutral: 'Solid, but not the primary',
-  outline: 'The workhorse, 52 uses',
-  secondary: 'A quiet fill',
-  ghost: 'In a row of icons, or a toolbar',
-  destructive: 'Deletes something',
+  primary: 'The one action a view is for',
+  secondary: 'The default: every ordinary action',
+  ghost: 'In a row of icons, a toolbar, or Cancel',
+  destructive: 'Deletes something; solid only inside its dialog',
   link: 'Reads as text, behaves as a button',
 };
 
 /** What each height is for, in the fewest words that distinguish it. */
 const SIZE_USE: Record<ButtonSize, string> = {
-  default: '28px, the dense default',
-  lg: '32px, a form’s own submit',
-  form: '38px, inline with a field',
-  icon: '28px square',
-  'icon-sm': '24px square',
+  sm: '28px: toolbars, row actions, icon-only',
+  md: '32px: the default, a rail input’s height',
+  lg: '36px: a form field’s height, a form’s own submit',
 };
 
 const VARIANTS = Object.keys(VARIANT_USE) as ButtonVariant[];
 const SIZES = Object.keys(SIZE_USE) as ButtonSize[];
-
-/** Which sizes take a word, and which are square. */
-const ICON_SIZES = new Set(['icon', 'icon-sm']);
 
 /**
  * A row of examples with a caption under each.
@@ -122,15 +114,9 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
         <Row>
           {SIZES.map((size) => (
             <Sample key={size} caption={SIZE_USE[size]}>
-              {ICON_SIZES.has(size as string) ? (
-                <Button size={size} variant="outline" aria-label={`Edit, ${size}`}>
-                  <Pencil />
-                </Button>
-              ) : (
-                <Button size={size} variant="outline">
-                  {size}
-                </Button>
-              )}
+              <Button size={size} variant="secondary">
+                {size}
+              </Button>
             </Sample>
           ))}
         </Row>
@@ -146,16 +132,16 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
       <Specimen name={states.name} note={states.note} fill>
         <Row>
           <Sample caption="Rest">
-            <Button variant="outline">Button</Button>
+            <Button variant="secondary">Button</Button>
           </Sample>
           <Sample caption="Hover it">
-            <Button variant="outline">Button</Button>
+            <Button variant="secondary">Button</Button>
           </Sample>
           <Sample caption="Tab to it">
-            <Button variant="outline">Button</Button>
+            <Button variant="secondary">Button</Button>
           </Sample>
           <Sample caption="Disabled, and unhoverable">
-            <Button variant="outline" disabled>
+            <Button variant="secondary" disabled>
               Button
             </Button>
           </Sample>
@@ -169,13 +155,13 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
       <Specimen name={withIcon.name} note={withIcon.note} fill>
         <Row>
           <Sample caption="Leading">
-            <Button variant="outline">
+            <Button variant="secondary">
               <Download data-icon="inline-start" />
               Download
             </Button>
           </Sample>
           <Sample caption="Trailing">
-            <Button variant="outline">
+            <Button variant="secondary">
               Continue
               <ArrowRight data-icon="inline-end" />
             </Button>
@@ -191,19 +177,24 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
 
       <Specimen name={iconOnly.name} note={iconOnly.note} fill>
         <Row>
-          <Sample caption="icon, 28px">
-            <Button size="icon" variant="outline" aria-label="Edit this record">
+          <Sample caption="sm, 28px square">
+            <Button size="sm" icon variant="secondary" aria-label="Edit this record">
               <Pencil />
             </Button>
           </Sample>
-          <Sample caption="icon-sm, 24px">
-            <Button size="icon-sm" variant="ghost" aria-label="Delete this record">
+          <Sample caption="md, 32px square">
+            <Button icon variant="secondary" aria-label="Edit this record, larger">
+              <Pencil />
+            </Button>
+          </Sample>
+          <Sample caption="Ghost, in a row">
+            <Button size="sm" icon variant="ghost" aria-label="Delete this record">
               <Trash2 />
             </Button>
           </Sample>
           <Sample caption="Ghost, muted until hovered">
             <Button
-              size="icon-sm"
+              size="sm" icon
               variant="ghost"
               aria-label="Download this record"
               className="text-muted-foreground hover:text-foreground"
@@ -218,15 +209,15 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
         <Row>
           <Sample caption="Alternatives to each other">
             <ButtonGroup>
-              <Button variant="outline">Draft</Button>
-              <Button variant="outline">Final</Button>
+              <Button variant="secondary">Draft</Button>
+              <Button variant="secondary">Final</Button>
             </ButtonGroup>
           </Sample>
           <Sample caption="With a separator">
             <ButtonGroup>
-              <Button variant="outline">Save</Button>
+              <Button variant="secondary">Save</Button>
               <ButtonGroupSeparator />
-              <Button variant="outline" size="icon" aria-label="More save options">
+              <Button variant="secondary" size="sm" icon aria-label="More save options">
                 <ArrowRight />
               </Button>
             </ButtonGroup>
@@ -243,7 +234,7 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
             <AddLink href="#">New invoice</AddLink>
           </Sample>
           <Sample caption="Quieter, in a section">
-            <AddButton variant="outline">Add line</AddButton>
+            <AddButton variant="secondary">Add line</AddButton>
           </Sample>
         </Row>
       </Specimen>
@@ -263,7 +254,7 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
           <Sample caption="Icon, in a toolbar">
             <ConfirmActionButton
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               label="Delete this record, from a toolbar"
               tooltip="Delete"
               icon={<Trash2 className="size-3.5" />}

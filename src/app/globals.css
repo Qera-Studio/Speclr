@@ -1174,6 +1174,12 @@
   @apply outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30;
 }
 
+/* The same ring on a box that *contains* the focused control (the combobox,
+   an attachment card), where the input inside is unstyled. */
+@utility focus-ring-within {
+  @apply focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30;
+}
+
 /* `cursor-default` resolves to the themed arrow rather than the platform's,
    so the places that already say "this is not clickable" show the same glyph
    the page does. A core utility redefined here takes precedence over the

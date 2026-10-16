@@ -90,7 +90,7 @@ function ConfirmActionButton({
   onConfirm,
   disabled,
   pending,
-  variant = "outline",
+  variant = "secondary",
   confirmVariant,
   size,
   className,
@@ -100,6 +100,7 @@ function ConfirmActionButton({
       type="button"
       variant={variant}
       size={size}
+      icon={icon ? true : undefined}
       disabled={disabled}
       pending={pending}
       className={className}

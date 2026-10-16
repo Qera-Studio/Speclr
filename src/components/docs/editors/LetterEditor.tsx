@@ -449,7 +449,7 @@ export default function LetterEditor({
                   <div>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => addBulletItem(si)}
                     >
                       Add bullet

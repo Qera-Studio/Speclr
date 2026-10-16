@@ -132,7 +132,7 @@ export default function ServiceCards({
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"
-                    size="icon"
+                    size="sm" icon
                     variant="ghost"
                     aria-label={`Add to ${schedule.name}`}
                     onClick={() => setAdding(schedule.key)}
@@ -362,7 +362,7 @@ function ServiceCardMenu({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="sm" icon
               aria-label={`Actions for ${service.name}`}
               // `ml-auto` here rather than on a wrapper: the trigger is the
               // last thing in the row, so it is the one that pushes.

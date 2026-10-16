@@ -51,7 +51,7 @@ export default function Notifications() {
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             aria-label="Notifications"
             className="shrink-0 text-muted-foreground"
           >

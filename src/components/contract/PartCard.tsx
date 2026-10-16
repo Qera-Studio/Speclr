@@ -120,7 +120,7 @@ export default function PartCard({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="sm" icon
           className="mr-2 shrink-0"
           onClick={onRemove}
         >

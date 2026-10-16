@@ -117,7 +117,7 @@ export default function ClauseLibrary({
     <div className="flex flex-col gap-6">
       <PageHeader title="Clauses">
         <AddButton
-          variant="outline"
+          variant="secondary"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
@@ -267,7 +267,7 @@ export default function ClauseLibrary({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
+                      size="sm" icon
                       disabled={pending}
                       aria-label={`Restore ${clause.heading}`}
                       onClick={() =>
@@ -298,7 +298,7 @@ export default function ClauseLibrary({
               */
               <ConfirmActionButton
                 variant="ghost"
-                size="icon"
+                size="sm"
                 disabled={pending}
                 icon={<Archive className="size-4" />}
                 label={`Archive ${clause.heading}`}
@@ -608,7 +608,7 @@ function ClauseDrawer({
             */}
             <ConfirmActionButton
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               disabled={pending}
               label="Delete this clause"
               // The one control in the row that said nothing on hover, because
@@ -673,7 +673,7 @@ function ClauseDrawer({
             <FieldLabel htmlFor="clause-heading">Heading</FieldLabel>
             <Input
               id="clause-heading"
-              size="md"
+              size="form"
               value={draft.heading}
               onChange={(e) => setDraft({ ...draft, heading: e.target.value })}
             />
@@ -693,7 +693,7 @@ function ClauseDrawer({
             />
             <Input
               id="clause-summary"
-              size="md"
+              size="form"
               value={draft.summary ?? ''}
               placeholder="What this clause does"
               onChange={(e) => setDraft({ ...draft, summary: e.target.value })}

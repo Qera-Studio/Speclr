@@ -73,11 +73,11 @@ export const CATALOGUE: LibraryEntry[] = [
     variants: [
       {
         name: 'The fills',
-        note: 'Eight, and the order is the hierarchy: one primary per view, everything else quieter. `neutral` exists for a row where more than one action is solid and only one is the primary, and `raised` is on trial in exactly one place, so it is either rolled into `default` or deleted rather than left half-adopted.',
+        note: 'Five, and the order is the hierarchy: one primary per view, everything else quieter. `secondary` is the default. `raised` and `neutral` were deleted on 16 October 2026: one was on trial for a year in one place, the other existed for a row with two solid buttons, which the one-primary rule forbids.',
       },
       {
         name: 'The heights',
-        note: 'Three text heights and two icon ones. 28 is the dense default; 32 is a form’s own submit; 38 (`form`) is not a fourth opinion but the height of Input, Combobox and DatePicker, for a button standing inline with one. `sm` and `icon-xs` were deleted for saying nothing the others do not.',
+        note: 'Three: 28 for a toolbar or a row action, 32 as the default and the height of a rail input, 36 as a form field’s height. `icon` makes any of them square. 24 was deleted: nothing needed it.',
       },
       {
         name: 'The four states',
@@ -93,7 +93,7 @@ export const CATALOGUE: LibraryEntry[] = [
       },
       {
         name: 'Icon only',
-        note: 'Two sizes, and both are silent without help. An icon button with no accessible name is the one rule the design-system test enforces by failing the build, because it is invisible in review and total for a screen reader.',
+        note: '`icon` on any height, and all of them are silent without help. An icon button with no accessible name is the one rule the design-system test enforces by failing the build, because it is invisible in review and total for a screen reader.',
       },
       {
         name: 'Grouped',

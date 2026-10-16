@@ -85,7 +85,7 @@ export default function ShellPreviewPage() {
     >
       <PageBody>
         <PageHeader title="Dashboard">
-          <Button type="button">New document</Button>
+          <Button variant="primary" type="button">New document</Button>
         </PageHeader>
         {/*
           The real `DocumentsTable`, not a hand-built one. It used to be four

@@ -396,8 +396,8 @@ export default function PrintPages({
       >
         <Button
           type="button"
-          variant="outline"
-          size="icon"
+          variant="secondary"
+          size="sm" icon
           onClick={scrollToTop}
           aria-label="Scroll to top"
           className={[

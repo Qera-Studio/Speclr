@@ -44,7 +44,7 @@ export default function ExportProgressButton({ clientName, onExport }: ExportPro
     // used to swap its label to "Downloaded" as well, which said it twice.
     <Button
       type="button"
-      variant="outline"
+      variant="secondary"
       onClick={handleExport}
       className="h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
     >

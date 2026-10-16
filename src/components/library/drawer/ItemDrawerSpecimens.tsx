@@ -102,7 +102,7 @@ function ItemDrawerSpecimen() {
             {showArchived ? 'hide' : 'show'} {archivedCount} archived
           </button>
         ) : null}
-        <AddButton variant="outline" onClick={() => setEditingId('')}>
+        <AddButton variant="secondary" onClick={() => setEditingId('')}>
           Add item
         </AddButton>
       </div>

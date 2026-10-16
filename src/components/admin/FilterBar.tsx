@@ -213,9 +213,9 @@ export default function FilterBar<F extends string>({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button
+              <Button size="sm"
                 type="button"
-                variant="outline"
+                variant="secondary"
                 // Every field is already in play — an empty menu would be a
                 // click that goes nowhere.
                 disabled={available.length === 0}
@@ -249,8 +249,8 @@ export default function FilterBar<F extends string>({
               render={
                 <Button
                   type="button"
-                  variant="outline"
-                  size="icon"
+                  variant="secondary"
+                  size="sm" icon
                   aria-label="Clear all filters"
                   onClick={() => onChange([])}
                   className="text-muted-foreground transition-colors hover:text-foreground"
@@ -302,7 +302,7 @@ export default function FilterBar<F extends string>({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
-                      <Button
+                      <Button size="sm"
                         type="button"
                         variant="ghost"
                         aria-label={`${name} condition`}
@@ -339,7 +339,7 @@ export default function FilterBar<F extends string>({
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
-                      <Button
+                      <Button size="sm"
                         type="button"
                         variant="ghost"
                         aria-label={`${name} value`}
@@ -384,7 +384,7 @@ export default function FilterBar<F extends string>({
                 />
               )}
 
-              <Button
+              <Button size="sm"
                 type="button"
                 variant="ghost"
                 aria-label={`Remove ${name} filter`}

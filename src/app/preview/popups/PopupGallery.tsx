@@ -90,7 +90,7 @@ export default function PopupGallery() {
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="outline" className="w-full">
+              <Button variant="secondary" className="w-full">
                 Menu
               </Button>
             }

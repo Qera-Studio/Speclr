@@ -6,7 +6,7 @@
  * this file disagrees with the source tree, which is what stops the gallery
  * quietly going stale.
  *
- * 128 icons across the app.
+ * 131 icons across the app.
  */
 
 /** `[name, how many files import it]`. */
@@ -44,7 +44,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['ChevronRightIcon', 2],
   ['ChevronsUpDown', 1],
   ['ChevronUpIcon', 1],
-  ['CircleAlert', 1],
+  ['CircleAlert', 2],
   ['CircleDashed', 3],
   ['CircleDot', 2],
   ['CircleHelp', 1],
@@ -73,6 +73,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['History', 1],
   ['IdCard', 3],
   ['Image', 1],
+  ['Inbox', 1],
   ['IndianRupee', 1],
   ['Info', 2],
   ['KanbanSquare', 1],
@@ -83,12 +84,13 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['List', 1],
   ['ListChecks', 1],
   ['ListFilter', 1],
-  ['Loader2', 2],
+  ['Loader2', 1],
   ['Lock', 2],
   ['LockOpen', 1],
   ['LogOut', 1],
   ['Mail', 1],
   ['MapPin', 3],
+  ['MapPinOff', 1],
   ['Maximize', 2],
   ['MessageSquare', 1],
   ['Minimize', 2],
@@ -115,6 +117,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['Scale', 1],
   ['ScrollText', 1],
   ['Search', 6],
+  ['SearchX', 1],
   ['Send', 1],
   ['Settings', 1],
   ['Settings2', 1],

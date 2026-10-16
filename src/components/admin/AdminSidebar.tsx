@@ -614,7 +614,7 @@ export default function AdminSidebar({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="sm" icon
                 onClick={() => {
                   // Float, parked: arm the suppression *before* the state
                   // flips, because this button is inside the rail and the

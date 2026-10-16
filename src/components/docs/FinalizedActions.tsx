@@ -146,12 +146,12 @@ export default function FinalizedActions({
                 the row reads as one primary among three solid actions instead
                 of three competing ones. */}
             {onDownload ? (
-              <Button type="button" onClick={onDownload} pending={downloading}>
+              <Button variant="primary" type="button" onClick={onDownload} pending={downloading}>
                 <Download aria-hidden="true" />
                 Download PDF
               </Button>
             ) : null}
-            <Button type="button" variant="neutral" onClick={onPrint}>
+            <Button type="button" variant="secondary" onClick={onPrint}>
               <Printer aria-hidden="true" />
               Print
             </Button>
@@ -159,7 +159,7 @@ export default function FinalizedActions({
         ) : (
           <Link
             href={`/${profile}/docs/${docId}/print`}
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'secondary' })}
           >
             Open print view
           </Link>
@@ -167,7 +167,7 @@ export default function FinalizedActions({
         {/* The primary action on a slip is next month's slip — correcting an
             issued one is the rarer case. */}
         {isSlip ? (
-          <Button type="button" onClick={onCopyNextMonth} pending={copying}>
+          <Button variant="primary" type="button" onClick={onCopyNextMonth} pending={copying}>
             Copy for next month
           </Button>
         ) : null}
@@ -181,7 +181,7 @@ export default function FinalizedActions({
         */}
         <Button
           type="button"
-          variant={isSlip || onPrint ? 'outline' : 'default'}
+          variant={isSlip || onPrint ? 'secondary' : 'primary'}
           onClick={onDuplicate}
           pending={duplicating}
         >

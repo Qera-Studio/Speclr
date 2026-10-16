@@ -37,11 +37,11 @@ function Calendar({
         // month's own centre line rather than sitting 2px proud of it.
         nav: "absolute inset-x-0 top-0 flex h-7 items-center justify-between",
         button_previous: cn(
-          buttonVariants({ variant: "ghost", size: "icon-sm" }),
+          buttonVariants({ variant: "ghost", size: "sm", icon: true }),
           "text-muted-foreground"
         ),
         button_next: cn(
-          buttonVariants({ variant: "ghost", size: "icon-sm" }),
+          buttonVariants({ variant: "ghost", size: "sm", icon: true }),
           "text-muted-foreground"
         ),
         month_grid: "w-full border-collapse",
@@ -53,7 +53,7 @@ function Calendar({
         day_button: cn(
           "size-8 rounded-md p-0 text-sm font-normal outline-none transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
-          "focus-visible:ring-2 focus-visible:ring-ring/30"
+          "focus-ring"
         ),
         selected:
           "[&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:hover:bg-primary [&>button]:hover:text-primary-foreground",

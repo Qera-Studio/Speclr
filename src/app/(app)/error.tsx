@@ -65,7 +65,7 @@ export default function AppError({
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button type="button" onClick={reset}>
+          <Button variant="primary" type="button" onClick={reset}>
             Try again
           </Button>
         </EmptyContent>

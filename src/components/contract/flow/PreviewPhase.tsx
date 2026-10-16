@@ -192,7 +192,7 @@ export default function PreviewPhase({
             </FieldGroup>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={() => setClausesOpen(false)}>
+            <Button variant="primary" type="button" onClick={() => setClausesOpen(false)}>
               Done
             </Button>
           </DialogFooter>

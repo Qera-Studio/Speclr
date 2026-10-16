@@ -357,15 +357,15 @@ export function ClauseBodyActions({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="default" onClick={() => add('point')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('point')}>
         <Plus className="size-3.5" />
         Point
       </Button>
-      <Button type="button" variant="outline" size="default" onClick={() => add('item')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('item')}>
         <Plus className="size-3.5" />
         Sub-item
       </Button>
-      <Button type="button" variant="outline" size="default" onClick={() => add('text')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('text')}>
         <Plus className="size-3.5" />
         Unnumbered
       </Button>
@@ -487,7 +487,7 @@ function Row({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="sm" icon
               aria-label={`Remove ${label}`}
               onClick={onRemove}
               className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
@@ -536,7 +536,7 @@ function DragHandle({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="sm" icon
             aria-label={label}
             onPointerDown={onPointerDown}
             onKeyDown={(e) => {

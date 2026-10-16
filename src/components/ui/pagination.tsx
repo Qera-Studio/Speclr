@@ -198,7 +198,7 @@ function PageRuns({
                   // boxes at one radius read as a single shape with a line
                   // through it.
                   'inline-flex h-6 min-w-6 items-center justify-center rounded-sm border border-transparent px-1.5 text-xs font-medium transition-colors [font-variant-numeric:tabular-nums]',
-                  'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                  'focus-ring',
                   current
                     ? // The tab strip's white pill, from the one place it is
                       // spelled (`ui/tabs.tsx`), so the two cannot drift.
@@ -350,7 +350,7 @@ export function Pagination({
                 // Dark's `--hover` is the ramp's floor, two steps under the
                 // gray-800 trough; `--background` is the one step.
                 'bg-hover dark:bg-background',
-                "h-6 w-9 rounded-sm text-center text-xs text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus:ring-2 focus:ring-ring focus:outline-none",
+                "h-6 w-9 rounded-sm text-center text-xs text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus-ring focus:outline-none",
               )}
             />
           ) : null
@@ -361,7 +361,7 @@ export function Pagination({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="sm" icon
               // Square, and a shade smaller than a page so the glyph sits at
               // the same optical weight as a digit beside it.
               className="size-6 rounded-sm"

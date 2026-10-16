@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import {
   Banknote,
   Building2,
@@ -19,7 +20,6 @@ import { CopyValue } from '@/components/admin/CopyCell';
 import { LocationCell } from '@/components/admin/LocationCell';
 import { PeopleCell, PersonCell } from '@/components/admin/PersonCell';
 import type { RecordColumn } from '@/components/admin/RecordTable';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { accentBadge, accentFor } from '@/lib/accent';
 import { NIL } from '@/lib/utils';
 import type { TemplateRow } from './rows';
@@ -146,7 +146,7 @@ export const TEMPLATE_COLUMNS: RecordColumn<TemplateRow>[] = [
     icon: CircleDot,
     size: 120,
     sortValue: (row) => row.status,
-    cell: (row) => <StatusBadge status={row.status} />,
+    cell: (row) => <Badge status={row.status} />,
   },
   {
     /*

@@ -423,9 +423,9 @@ export default function ContractFlow({
    */
   const advance =
     active < CONTRACT_PHASES.length - 1 ? (
-      <Button
+      <Button variant="primary"
         type="button"
-        size="lg"
+        size="md"
         className="group/tray hover:bg-primary"
         disabled={!phase.isComplete(draft)}
         onClick={() => goTo(active + 1)}
@@ -497,7 +497,7 @@ export default function ContractFlow({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             aria-label={back.label}
             onClick={back.go}
           >
@@ -509,8 +509,8 @@ export default function ContractFlow({
           title="Finalize this contract?"
           description="The contract becomes immutable and takes its number. Corrections after this mean duplicating it as a new draft."
           confirmLabel="Finalize"
-          variant="default"
-          size="lg"
+          variant="primary"
+          size="md"
           className="px-6"
           onConfirm={onFinalize}
           /*
@@ -530,7 +530,7 @@ export default function ContractFlow({
         <ConfirmActionButton
           label="Delete draft"
           icon={<Trash2 />}
-          size="icon"
+          size="sm"
           title="Delete this draft?"
           description={DELETE_DRAFT_CONSEQUENCE}
           confirmLabel="Delete"

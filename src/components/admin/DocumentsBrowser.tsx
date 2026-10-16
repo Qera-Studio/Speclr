@@ -513,7 +513,7 @@ export default function DocumentsBrowser({
           <EmptyContent>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => onFiltersChange([])}
             >
               Clear filters

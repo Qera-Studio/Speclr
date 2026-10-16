@@ -51,7 +51,7 @@ export function RowMenu({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             aria-label={label}
             className="text-muted-foreground transition-colors hover:text-foreground"
           />

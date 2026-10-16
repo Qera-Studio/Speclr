@@ -80,7 +80,7 @@ function RowsEditor({
         </FieldSet>
       ))}
       <div>
-        <Button type="button" variant="outline" onClick={() => append({ label: '', value: '' })}>
+        <Button type="button" variant="secondary" onClick={() => append({ label: '', value: '' })}>
           <Plus aria-hidden="true" />
           Add a {lower}
         </Button>
@@ -178,7 +178,7 @@ export default function WordingForm({ service }: { service: ContractService }) {
       ) : null}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
+        <Button variant="primary" type="submit" disabled={pending}>
           {pending ? 'Saving…' : 'Save wording'}
         </Button>
       </div>

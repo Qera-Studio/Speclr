@@ -57,7 +57,7 @@ export default function DocumentTypeList({
         ) : null}
         {shortcut ? (
           <Tooltip>
-            <TooltipTrigger render={<AddLink href={newHref} variant="outline">
+            <TooltipTrigger render={<AddLink href={newHref} variant="secondary">
                 {newLabel}
               </AddLink>} />
             <TooltipContent>
@@ -66,7 +66,7 @@ export default function DocumentTypeList({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <AddLink href={newHref} variant="outline">
+          <AddLink href={newHref} variant="secondary">
                 {newLabel}
               </AddLink>
         )}

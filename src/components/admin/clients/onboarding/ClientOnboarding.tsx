@@ -405,7 +405,7 @@ export default function ClientOnboarding({
           <Button
             type="button"
             variant="ghost"
-            size="lg"
+            size="md"
             className="absolute right-0 text-muted-foreground"
             onClick={() => {
               closing.current = true;

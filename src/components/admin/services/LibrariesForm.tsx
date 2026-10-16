@@ -110,7 +110,7 @@ export default function LibrariesForm({
       ) : null}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
+        <Button variant="primary" type="submit" disabled={pending}>
           {pending ? 'Saving…' : 'Save libraries'}
         </Button>
       </div>

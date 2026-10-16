@@ -45,7 +45,8 @@ export default function IconAction({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="sm"
+            icon
             aria-label={label}
             disabled={disabled}
             onClick={onClick}

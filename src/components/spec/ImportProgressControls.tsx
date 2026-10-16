@@ -33,8 +33,8 @@ export default function ImportProgressControls({ onImport, importError }: Import
     <div className="flex flex-col gap-3">
       <Button
         type="button"
-        variant="outline"
-        size="lg"
+        variant="secondary"
+        size="md"
         onClick={() => inputRef.current?.click()}
         className="group/tray h-10 w-fit gap-2 px-5 text-sm opacity-80 [&_svg:not([class*='size-'])]:size-4"
       >

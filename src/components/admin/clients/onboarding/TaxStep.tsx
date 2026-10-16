@@ -627,7 +627,7 @@ export default function TaxStep({
                     </span>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       pending={switching}
                       onClick={acceptCinEntityType}
                     >

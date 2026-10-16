@@ -194,7 +194,7 @@ export default function ClientRequestChecklist() {
         </Tabs>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={ticked.length === 0}
           onClick={downloadTicked}
         >

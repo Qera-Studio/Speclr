@@ -364,7 +364,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="self-start" pending={isSubmitting}>
+      <Button variant="primary" type="submit" size="md" className="self-start" pending={isSubmitting}>
         Save settings
       </Button>
     </form>

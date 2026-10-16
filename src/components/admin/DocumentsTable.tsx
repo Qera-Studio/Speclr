@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import {
   Banknote,
@@ -11,7 +12,6 @@ import {
   Layers,
   Package,
 } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { accentBadge, accentSwatch } from '@/lib/accent';
 import { NIL } from '@/lib/utils';
 import { totalPaiseOf, type SortColumn, type SortState } from '@/lib/domain/documentQuery';
@@ -191,7 +191,7 @@ export default function DocumentsTable({
                 href={openDocHref(doc)}
                 className="after:absolute after:inset-0 after:content-['']"
               >
-                {doc.number ?? <StatusBadge status="draft" />}
+                {doc.number ?? <Badge status="draft" />}
               </Link>
             );
             // A draft has no number to copy, so no copy control either: a
@@ -264,7 +264,7 @@ export default function DocumentsTable({
           icon: CircleDashed,
           size: 120,
           sortValue: (doc) => doc.status,
-          cell: (doc) => <StatusBadge status={doc.status} />,
+          cell: (doc) => <Badge status={doc.status} />,
         },
       ]}
       actions={(doc) => <DocumentRowActions doc={doc} />}

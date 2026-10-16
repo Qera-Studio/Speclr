@@ -255,7 +255,7 @@ export default function EditorSidebar() {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="sm" icon
                 aria-label="Back to the form"
                 onClick={() => setDrawer(null)}
                 className="size-7 shrink-0 text-muted-foreground"
