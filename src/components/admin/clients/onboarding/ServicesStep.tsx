@@ -20,7 +20,6 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Tabs,
-  TabsIndicator,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
@@ -289,7 +288,6 @@ export default function ServicesStep({
               onValueChange={(value) => setTab(value as ScheduleKey)}
             >
               <TabsList className="w-full">
-                <TabsIndicator />
                 {SCHEDULES.map((schedule) => (
                   <TabsTrigger
                     key={schedule.key}

@@ -37,15 +37,18 @@ const tabsListVariants = cva(
         default: "bg-muted",
         line: "gap-1 bg-transparent",
       },
+      // The button heights (`docs/design.md` §2.1), so a strip beside a
+      // button is never a different height. One 2px inset at every size: the
+      // pill is the strip minus that, and nothing else needs setting.
       size: {
-        default: "rounded-lg p-1 group-data-horizontal/tabs:h-10",
-        // For a toolbar row, where every button is 28px tall.
         sm: "rounded-lg p-0.5 group-data-horizontal/tabs:h-7",
+        md: "rounded-lg p-0.5 group-data-horizontal/tabs:h-8",
+        lg: "rounded-lg p-0.5 group-data-horizontal/tabs:h-9",
       },
     },
     defaultVariants: {
       variant: "default",
-      size: "default",
+      size: "md",
     },
   },
 );
@@ -235,10 +238,20 @@ export function useTabDrag() {
   };
 }
 
+/**
+ * A tab strip. A caller passes a `size` and its triggers, and nothing else.
+ *
+ * **The pill is drawn here, not by the caller** (16 October 2026). It used to
+ * be a separate `TabsIndicator` each screen had to remember, and four of six
+ * did not: their triggers painted their own fill, so a drag committed on
+ * release while nothing moved under the pointer. A part every caller needs is
+ * not a part, it is the component.
+ */
 function TabsList({
   className,
   variant = "default",
-  size = "default",
+  size = "md",
+  children,
   ...props
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
   const { style, ...drag } = useTabDrag();
@@ -254,7 +267,10 @@ function TabsList({
       // drag rides on a custom property and would otherwise be clobbered.
       {...drag}
       style={{ ...(props.style as React.CSSProperties), ...style }}
-    />
+    >
+      {variant === "default" ? <TabsIndicator /> : null}
+      {children}
+    </TabsPrimitive.List>
   );
 }
 
@@ -284,18 +300,18 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-full flex-1 items-center justify-center gap-2 rounded-sm px-4 text-body whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-control whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         segmentLabel,
-        // The compact strip, for a toolbar row.
-        "group-data-[size=sm]/tabs-list:gap-1.5 group-data-[size=sm]/tabs-list:px-3 group-data-[size=sm]/tabs-list:text-control group-data-[size=sm]/tabs-list:[&_svg:not([class*='size-'])]:size-3.5",
+        // Label and icon follow the strip, as they do on a button: 12px and a
+        // 14px icon at sm and md, 13px and 16px at lg.
+        "[&_svg:not([class*='size-'])]:size-3.5 group-data-[size=sm]/tabs-list:px-2.5 group-data-[size=lg]/tabs-list:px-4 group-data-[size=lg]/tabs-list:text-body group-data-[size=lg]/tabs-list:[&_svg:not([class*='size-'])]:size-4",
         // `line` is an underline, not a pill — its active trigger keeps no
         // fill and no border in either theme. Unprefixed rather than `dark:`
         // only, so it also overrides the new `data-active:border-border`
         // below in light mode.
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:shadow-none",
-        // Same surface as `tabPillSurface`, spelled with `data-active:` since
-        // it paints on the trigger itself. Keep the two in step.
-        "data-active:bg-background data-active:text-foreground data-active:shadow-raised dark:data-active:bg-foreground/10",
+        // The pill paints the chosen surface; the trigger only goes to full ink.
+        "data-active:text-foreground",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -320,8 +336,10 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
       className={cn(
         // `--tab-drag` is set on the list by `useTabDrag` and inherits down. It
         // is 0 at rest, so the resting position is exactly what it always was.
-        "absolute top-1/2 left-0 z-0 h-8 w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] group-data-[size=sm]/tabs-list:h-6",
+        "absolute inset-y-0.5 left-0 z-0 w-(--active-tab-width) translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))]",
         tabPillSurface,
+        // 8px trough, 2px inset: a 6px pill keeps the two corners concentric.
+        "rounded-md",
         className,
       )}
       {...props}
@@ -376,7 +394,6 @@ export {
   Tabs,
   TabsList,
   TabsTrigger,
-  TabsIndicator,
   TabsPanels,
   TabsContent,
   tabsListVariants,

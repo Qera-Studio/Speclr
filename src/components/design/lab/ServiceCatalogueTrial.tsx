@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SCHEDULES } from "@/lib/domain/contract/schedules";
 import type { ContractService } from "@/lib/domain/service";
 import { formatINR } from "@/lib/domain/money";
@@ -50,9 +50,6 @@ import { formatINR } from "@/lib/domain/money";
  */
 const QUIET =
   "border-border/50 text-muted-foreground hover:border-muted-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
-
-/** A trigger that leaves the active surface to `TabsIndicator`. */
-const PILL_ONLY = "data-active:bg-transparent data-active:shadow-none dark:data-active:bg-transparent";
 
 /** The ways the catalogue can be laid out. Only cards renders in the trial. */
 const VIEWS = [
@@ -86,14 +83,9 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
         </div>
         <div className="flex items-center justify-between gap-4">
           <Tabs defaultValue="active">
-            <TabsList size="sm" className="p-1 group-data-horizontal/tabs:h-8">
-              {/* The indicator is what the drag moves; without it the strip
-                  still commits on release but nothing travels under the
-                  pointer. The triggers drop their own active fill so the
-                  pill is the only one drawn. */}
-              <TabsIndicator />
-              <TabsTrigger value="active" className={PILL_ONLY}>Active</TabsTrigger>
-              <TabsTrigger value="archived" className={PILL_ONLY}>Archived</TabsTrigger>
+            <TabsList>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="archived">Archived</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex items-center gap-3">

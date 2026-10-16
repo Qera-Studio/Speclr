@@ -3,7 +3,6 @@
 import {
   Tabs,
   TabsContent,
-  TabsIndicator,
   TabsList,
   TabsPanels,
   TabsTrigger,
@@ -21,7 +20,6 @@ export default function TabGallery() {
     <main className="p-8">
       <Tabs defaultValue="summary" className="w-[440px]">
         <TabsList className="w-full">
-          <TabsIndicator />
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.label}

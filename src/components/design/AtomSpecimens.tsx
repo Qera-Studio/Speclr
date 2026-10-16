@@ -176,6 +176,13 @@ export function AtomSpecimens({ entry }: { entry: LibraryEntry }) {
               <TabsTrigger value="final">Final</TabsTrigger>
             </TabsList>
           </Tabs>
+          <Tabs defaultValue="month">
+            <TabsList size="lg">
+              <TabsTrigger value="month">Month</TabsTrigger>
+              <TabsTrigger value="quarter">Quarter</TabsTrigger>
+              <TabsTrigger value="year">Year</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </Specimen>
     );

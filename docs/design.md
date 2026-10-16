@@ -1134,9 +1134,15 @@ shade quieter than muted text and as light as AA allows on the trough
 (4.64:1 light, 4.58:1 dark, asserted in `contrast.test.ts`); the reference's
 paler grey fails 4.5:1 there.
 
-**Two sizes.** The default is a 40px trough holding a 32px pill at 14px;
-`size="sm"` is 28px with a 24px pill at 12px, for a toolbar row where every
-button is 28px tall (the documents view toggle).
+**Three sizes, the button heights** (16 October 2026): `sm` 28, `md` 32
+(the default), `lg` 36. One 2px inset at every size, so the pill is the strip
+minus 4px and its 6px corner stays concentric with the trough's 8px. Labels
+follow the button scale: 12px at `sm` and `md`, 13px at `lg`.
+
+**A caller passes a size and its triggers, nothing else.** `TabsList` draws
+the pill itself. It used to be a separate `TabsIndicator` each screen had to
+add, and four of six did not, so their drag committed on release with nothing
+moving under the pointer. The indicator is no longer exported.
 
 Six rules, each of which is a thing that broke while it was being built:
 

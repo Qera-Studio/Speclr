@@ -335,7 +335,7 @@ export const CATALOGUE: LibraryEntry[] = [
     source: 'src/components/ui/tabs.tsx',
     rule: '§2.7',
     variants: [
-      { name: 'Segmented', note: 'Two sizes: the 40px trough and the 28px toolbar one.' },
+      { name: 'Segmented', note: 'Three sizes, the button heights: sm 28, md 32 (default), lg 36. A caller passes a size and its labels; the strip draws its own pill, and the pill is what a drag moves.' },
     ],
   },
   {
