@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/ui/empty";
 import {
   DropdownMenu,
@@ -150,7 +151,6 @@ export default function ServiceCatalogue({
   const columns = SCHEDULES.filter(
     (s) => schedules.length === 0 || schedules.includes(s.key),
   );
-  const currentView = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
   const clear = () => {
     setQuery("");
     setSchedules([]);
@@ -245,22 +245,30 @@ export default function ServiceCatalogue({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button size="sm" className={QUIET} />}>
-                <currentView.icon aria-hidden />
-                {currentView.label}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-36">
-                <DropdownMenuRadioGroup value={view} onValueChange={(v) => setView(v as View)}>
-                  {VIEWS.map((v) => (
-                    <DropdownMenuRadioItem key={v.key} value={v.key} closeOnClick>
+            {/* Icons only, at the toolbar's 28px: two choices both on show
+                beat a menu that hides one. Each is named for a screen reader
+                and in a tooltip, since the glyph alone names nothing. */}
+            <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+              <TabsList size="sm" aria-label="View">
+                {VIEWS.map((v) => (
+                  <Tooltip key={v.key}>
+                    {/* The tab outside, the tooltip trigger as what it
+                        renders: the other way round, the tooltip's
+                        `data-slot` overwrote the tab's, and the drag, which
+                        finds tabs by that slot, had nothing to land on. */}
+                    <TabsTrigger
+                      value={v.key}
+                      aria-label={v.label}
+                      className="px-2"
+                      render={<TooltipTrigger />}
+                    >
                       <v.icon aria-hidden />
-                      {v.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    </TabsTrigger>
+                    <TooltipContent>{v.label}</TooltipContent>
+                  </Tooltip>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </div>
