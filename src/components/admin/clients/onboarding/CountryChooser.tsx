@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, Building2, Check, Search, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Check, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { searchCountries } from "@/lib/domain/countries";
-import { CycleArrowIcon } from "@/components/ui/tray-arrow-icon";
 import type { ClientKind } from "@/lib/domain/entityType";
 import CountryRow from "./CountryRow";
 
@@ -234,7 +233,7 @@ export default function CountryChooser({
           className="group/tray hover:bg-primary"
         >
           Continue
-          <CycleArrowIcon />
+          <ArrowRight aria-hidden="true" />
         </Button>
       </div>
       <p aria-live="polite" className="-mt-1 shrink-0 text-center text-xs text-muted-foreground">

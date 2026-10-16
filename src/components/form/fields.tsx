@@ -47,11 +47,7 @@ interface IdentifierProps<T extends FieldValues> {
   /** Overrides the accessible name of the info button. */
   infoLabel?: string;
   placeholder?: string;
-  /**
-   * Extra classes for the `<input>` itself. Exists for one thing: the
-   * `animate-fill-flash` a caller adds when the app filled the field in, the
-   * same signal `AddressFields` gives when a pincode fills city and state.
-   */
+  /** Extra classes for the `<input>` itself. */
   inputClassName?: string;
   /**
    * Derived from something else on the form and not typed here.

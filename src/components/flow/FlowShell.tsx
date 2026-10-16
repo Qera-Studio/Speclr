@@ -45,7 +45,6 @@ export default function FlowShell<R>({
   anchor = "center",
   fill = false,
   chrome = true,
-  slideFrom = "right",
   children,
 }: {
   steps: readonly FlowStep<R>[];
@@ -144,7 +143,6 @@ export default function FlowShell<R>({
    */
   chrome?: boolean;
   /** Which way the last move went, so the step slides in from where it came. */
-  slideFrom?: "left" | "right";
   children: ReactNode;
 }) {
   const step = steps[active];
@@ -294,19 +292,10 @@ export default function FlowShell<R>({
               `defaultValues` on mount only, so without this, stepping from one
               step to another and back would show the previous step's values.
 
-              The remount is also what replays the slide, for free. It comes in
-              from the side it is travelling from, so going back looks like
-              going back rather than like another new page.
             */
               <div
                 key={step?.key}
-                className={cn(
-                  "animate-in fade-in duration-200",
-                  slideFrom === "right"
-                    ? "slide-in-from-right-6"
-                    : "slide-in-from-left-6",
-                  fill && "flex min-h-0 flex-1 flex-col",
-                )}
+                className={cn(fill && "flex min-h-0 flex-1 flex-col")}
               >
                 {children}
               </div>
@@ -463,8 +452,7 @@ function StepNav<R>({
                     // is what makes the pop play exactly once, on the square
                     // that earned it, with no state tracking which.
                     <Check
-                      className="animate-in zoom-in-50 fill-mode-backwards size-3.5 duration-200"
-                      style={finishing ? { animationDelay: delay } : undefined}
+                      className="size-3.5"
                       aria-hidden
                     />
                   ) : (
@@ -505,9 +493,9 @@ export function FinishPanel({
   return (
     <div
       role="status"
-      className="animate-in fade-in zoom-in-95 flex flex-col items-center gap-3 py-16 text-center duration-200"
+      className="flex flex-col items-center gap-3 py-16 text-center"
     >
-      <span className="animate-in zoom-in-50 flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground duration-200">
+      <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <Check className="size-6" aria-hidden />
       </span>
       <p className="text-base font-medium">{heading}</p>

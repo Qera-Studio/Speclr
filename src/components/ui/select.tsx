@@ -4,7 +4,6 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 
 import { cn } from "@/lib/utils"
-import { MagicMove, useMagicMove } from "@/components/ui/magic-move"
 import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
@@ -87,8 +86,6 @@ function SelectContent({
      */
     size?: "default" | "md" | "form"
   }) {
-  // One highlight for the list, moved between rows rather than painted on each.
-  const { track, highlight } = useMagicMove()
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -103,15 +100,11 @@ function SelectContent({
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
           data-size={size}
-          className={cn(`group/select-content relative isolate z-50 max-h-(--available-height) ${RINGED_POPUP_WIDTH} origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`, className )}
+          className={cn(`group/select-content relative isolate z-50 max-h-(--available-height) ${RINGED_POPUP_WIDTH} origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0`, className )}
           {...props}
         >
           <SelectScrollUpButton />
-          {/* The list, not the popup, is the track: the scroll buttons sit
-              outside it and the highlight must not be able to travel over
-              them. See `magic-move.tsx`. */}
-          <SelectPrimitive.List ref={track.ref} className={track.className}>
-            <MagicMove {...highlight} />
+          <SelectPrimitive.List>
             {children}
           </SelectPrimitive.List>
           <SelectScrollDownButton />
@@ -143,10 +136,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        // No fill of its own: it is the one `MagicMove` slides behind the
-        // rows (`magic-move.tsx`). The text colour still switches in the frame the
-        // row is reached, and `z-10` keeps the label above that fill.
-        "relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none group-data-[size=form]/select-content:min-h-8 group-data-[size=form]/select-content:px-3 group-data-[size=form]/select-content:text-sm focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none group-data-[size=form]/select-content:min-h-8 group-data-[size=form]/select-content:px-3 group-data-[size=form]/select-content:text-sm focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

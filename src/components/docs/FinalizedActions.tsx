@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Printer } from 'lucide-react';
-import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
+import { Download, Lock, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -147,18 +146,8 @@ export default function FinalizedActions({
                 the row reads as one primary among three solid actions instead
                 of three competing ones. */}
             {onDownload ? (
-              // `group/tray` is what arms the arrow: `TrayArrowIcon` animates on
-              // its container's hover, and it is the house download icon
-              // everywhere else in the app (its own docstring says to use it
-              // instead of the raw Lucide one). This row was the last raw
-              // `Download` left.
-              <Button
-                type="button"
-                onClick={onDownload}
-                pending={downloading}
-                className="group/tray"
-              >
-                <TrayArrowIcon />
+              <Button type="button" onClick={onDownload} pending={downloading}>
+                <Download aria-hidden="true" />
                 Download PDF
               </Button>
             ) : null}

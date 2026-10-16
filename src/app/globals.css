@@ -967,9 +967,9 @@
     is the thing this is here to settle. Same trick as Lucide's own
     `absoluteStrokeWidth`, applied once instead of per icon.
 
-    It also flattens the three deliberate exceptions — `blue-check`'s 3 on a 10px
-    tick, `tray-arrow-icon`, `SitemapChart`. The tick was thickened on purpose
-    and wants a look if this weight settles.
+    It also flattens the two deliberate exceptions, `blue-check`'s 3 on a 10px
+    tick and `SitemapChart`. The tick was thickened on purpose and wants a
+    look if this weight settles.
   */
   /*
     2, up from 1.5, on request: against the table headings the icons read as
@@ -1144,12 +1144,6 @@
 }
 
 /*
-  `fill-flash` is a field the app filled in for you: city and state from a
-  pincode, PAN from the GSTIN that contains it. A value that appears in a box
-  you are not looking at is a value nobody checks, so the box asks for the
-  glance.
-*/
-/*
   `progress-slide` is the indeterminate bar. An upload here goes browser →
   server → Vercel Blob, and only the first leg reports bytes, so a percentage
   would read 100% while the slow half was still running. A bar that says
@@ -1168,21 +1162,6 @@
   }
 }
 
-@theme {
-  --animate-fill-flash: fill-flash 900ms ease-out;
-
-  @keyframes fill-flash {
-    0% {
-      box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
-    }
-    40% {
-      box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 28%, transparent);
-    }
-    100% {
-      box-shadow: 0 0 0 4px transparent;
-    }
-  }
-}
 
 /*
   The one focus indicator. Every interactive atom applies this and nothing

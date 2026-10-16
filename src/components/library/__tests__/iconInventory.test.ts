@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { collect } from '../../../../scripts/icon-inventory';
 import { ICON_USES } from '../iconInventory.generated';
-import { ANIMATED_ICONS } from '../IconSpecimens';
 
 /**
  * The icon gallery claims to show **every** icon in the app, and this is what
@@ -51,44 +50,5 @@ describe('the icon inventory', () => {
     for (const name of names) {
       expect(name).toMatch(/^[A-Z][A-Za-z0-9]*$/);
     }
-  });
-});
-
-/**
- * The animated half cannot be generated, so it is pinned instead.
- *
- * Motion lives in the component that uses an icon, not in the icon: the same
- * `Plus` is still in a table and turns on a drop zone. There is no property of
- * an icon to read. What can be checked is that every entry still describes
- * something real, which is what stops this list becoming a museum of motion
- * that was deleted two refactors ago.
- */
-describe('the animated icons', () => {
-  const root = join(__dirname, '..', '..', '..', '..');
-
-  it('names a file that exists', () => {
-    for (const icon of ANIMATED_ICONS) {
-      expect(existsSync(join(root, icon.source))).toBe(true);
-    }
-  });
-
-  /**
-   * **The claim is checked against the file, not just asserted.**
-   *
-   * Each entry carries the exact string its motion is written as, and this
-   * greps for it. Delete the rotation from `add-button.tsx` and this goes red,
-   * rather than the gallery going on describing a quarter-turn that no longer
-   * happens.
-   */
-  it('still finds the motion it describes, in the file it names', () => {
-    for (const icon of ANIMATED_ICONS) {
-      const source = readFileSync(join(root, icon.source), 'utf8');
-      expect(source).toContain(icon.proof);
-    }
-  });
-
-  it('gives every entry a distinct name', () => {
-    const names = ANIMATED_ICONS.map((icon) => icon.name);
-    expect(new Set(names).size).toBe(names.length);
   });
 });

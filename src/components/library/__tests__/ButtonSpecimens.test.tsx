@@ -108,13 +108,4 @@ describe('the button specimens', () => {
   });
 
   /** The confirm swap answers with its own label, for an action with no visible result. */
-  it('answers on the button itself when nothing else would change', async () => {
-    const u = userEvent.setup();
-    render(<ButtonSpecimens entry={entry} />);
-
-    const specimen = screen.getByRole('group', { name: 'Confirm swap' });
-    await u.click(within(specimen).getByRole('button', { name: /Download/ }));
-
-    expect(await within(specimen).findByText('Downloaded')).toBeInTheDocument();
-  });
 });

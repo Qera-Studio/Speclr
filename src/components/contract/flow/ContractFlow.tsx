@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { CycleArrowIcon } from '@/components/ui/tray-arrow-icon';
 import FlowShell, { useActionsSlot } from '@/components/flow/FlowShell';
 import { DocumentCrumbLabel } from '@/components/admin/DocumentCrumb';
 import { resumeStep, stepIndex } from '@/components/flow/steps';
@@ -214,7 +213,6 @@ export default function ContractFlow({
   );
   const active = stepIndex(CONTRACT_PHASES, requested ?? landed);
   const phase = CONTRACT_PHASES[active];
-  const [forward, setForward] = useState(true);
 
   /**
    * Put the phase in the URL once the draft has an id.
@@ -248,7 +246,6 @@ export default function ContractFlow({
     (index: number) => {
       const key = CONTRACT_PHASES[index]?.key;
       if (!key) return;
-      setForward(index >= active);
       const base = docId ? `/${profile}/docs/${docId}` : `/${profile}/docs/new/contract`;
       router.replace(`${base}?phase=${key}`, { scroll: false });
     },
@@ -434,7 +431,7 @@ export default function ContractFlow({
         onClick={() => goTo(active + 1)}
       >
         {CONTRACT_PHASES[active + 1].short}
-        <CycleArrowIcon />
+        <ArrowRight aria-hidden="true" />
       </Button>
     ) : null;
 
@@ -584,7 +581,6 @@ export default function ContractFlow({
         back={back}
         onSelect={goTo}
         onActionsSlot={setActions}
-        slideFrom={forward ? 'right' : 'left'}
         fill={phase.key === 'preview'}
         // The client phase's controls carry their own widths, so its panel
         // narrows to them rather than the form floating in a wider card.

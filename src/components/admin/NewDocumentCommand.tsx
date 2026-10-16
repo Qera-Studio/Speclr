@@ -4,7 +4,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Kbd, KbdGroup, Shortcut } from '@/components/ui/kbd';
-import { MagicMove, useMagicMove } from '@/components/ui/magic-move';
 import SheetThumbnail from '@/components/docs/SheetThumbnail';
 import { DOC_SAMPLES } from '@/components/docs/samples';
 import { cn } from '@/lib/utils';
@@ -157,23 +156,10 @@ function NewDocumentCommand({
   const cards = useRef<(HTMLButtonElement | null)[]>([]);
 
   /**
-   * One highlight behind the cards, moved rather than repainted: the same
-   * surface the menus, the select and the combobox use (`ui/magic-move.tsx`).
-   *
-   * `marked` mode, not `hover`, and the difference matters here. The rail
-   * follows the pointer because a nav row has nothing in the DOM to watch; a
-   * card does, because this grid already tracks a selection for the arrow keys
-   * and roving tabindex. Watching `data-highlighted` therefore covers the
-   * pointer, the arrow keys and Tab with one answer, where `hover` mode would
-   * have left the keyboard's own moves unlit.
-   *
-   * **The cursor and the pointer are one highlight**, which is the opposite
-   * call from the nav rail and for a reason that does not apply here: the
-   * rail's active fill says which page you are on and must not travel, while
-   * this one is only a cursor. So hovering a card selects it, and Enter opens
-   * whatever the fill is sitting on.
+   * **The cursor and the pointer are one highlight.** `data-highlighted` marks
+   * the selected card, and it is set by the pointer, the arrow keys and Tab
+   * alike, so hovering a card selects it and Enter opens whatever is marked.
    */
-  const { track, highlight } = useMagicMove();
 
   const go = useCallback(
     (link: NavLink) => {
@@ -268,23 +254,16 @@ function NewDocumentCommand({
             of them on screen at once. A box that filters a list you can already
             see whole is a keystroke asking to be spent on nothing. */}
         <div
-          {...track}
           role="listbox"
           aria-label="Document types"
           onKeyDown={onKeyDown}
           className={cn(
-            track.className,
             // The lifting of a clipped row is done by the selection effect
             // above, not by `scroll-smooth` here: that class was tried and
             // measured doing nothing, because a focus scroll ignores it.
             'grid max-h-[60vh] grid-cols-3 justify-items-center gap-3 overflow-y-auto p-4',
           )}
         >
-          {/* The card's own radius, and the fill the cards used to paint each
-              for themselves. `-z-10` puts it behind them: a card is a plain
-              button with no stacking of its own, so without it the fill would
-              cover the thumbnail it is meant to sit under. */}
-          <MagicMove {...highlight} className="-z-10 rounded-md bg-foreground/8" />
           {links.map((link, position) => {
             const slug = link.href.slice(link.href.lastIndexOf('/') + 1);
             const sample = DOC_SAMPLES[slug];
@@ -329,12 +308,10 @@ function NewDocumentCommand({
                 onClick={() => go(link)}
                 className={cn(
                   'group/card relative flex w-full cursor-pointer flex-col items-center gap-2 rounded-md p-2 text-center outline-none',
-                  // No fill of its own: the fill is the travelling one above,
-                  // and a card that painted its own would appear instantly
-                  // underneath, leaving nothing to watch (`magic-move.tsx`).
-                  // The tint the fill carries is still `bg-foreground/8`, a
-                  // step darker than --accent, which gets the same step in both
-                  // themes: darker on light, lighter on dark.
+                  // `bg-foreground/8` is a step darker than --accent and gets
+                  // the same step in both themes: darker on light, lighter on
+                  // dark.
+                  'data-highlighted:bg-foreground/8',
                   //
                   // The ring is ours rather than `focus-visible:`, because the
                   // browser's answer is wrong here: programmatic focus inherits

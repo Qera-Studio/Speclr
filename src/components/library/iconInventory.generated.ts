@@ -6,7 +6,7 @@
  * this file disagrees with the source tree, which is what stops the gallery
  * quietly going stale.
  *
- * 127 icons across the app.
+ * 128 icons across the app.
  */
 
 /** `[name, how many files import it]`. */
@@ -17,7 +17,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['ArchiveRestore', 4],
   ['ArrowDown', 1],
   ['ArrowLeft', 7],
-  ['ArrowRight', 1],
+  ['ArrowRight', 4],
   ['ArrowUp', 2],
   ['ArrowUpDown', 1],
   ['ArrowUpRight', 1],
@@ -33,8 +33,8 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['CalendarIcon', 1],
   ['CalendarPlus', 1],
   ['ChartColumn', 1],
-  ['Check', 12],
-  ['CheckCheck', 3],
+  ['Check', 11],
+  ['CheckCheck', 2],
   ['CheckIcon', 3],
   ['ChevronDown', 4],
   ['ChevronDownIcon', 2],
@@ -54,7 +54,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['Columns3', 2],
   ['Contact', 1],
   ['Copy', 3],
-  ['Download', 7],
+  ['Download', 8],
   ['Eye', 2],
   ['EyeOff', 1],
   ['FileBadge', 1],
@@ -83,7 +83,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['List', 1],
   ['ListChecks', 1],
   ['ListFilter', 1],
-  ['Loader2', 3],
+  ['Loader2', 2],
   ['Lock', 2],
   ['LockOpen', 1],
   ['LogOut', 1],
@@ -129,6 +129,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['TriangleAlert', 5],
   ['Type', 1],
   ['Undo2', 1],
+  ['Upload', 2],
   ['User', 3],
   ['UserPlus', 1],
   ['UserRound', 3],

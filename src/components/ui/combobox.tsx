@@ -5,7 +5,6 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { MagicMove, useMagicMove } from "@/components/ui/magic-move";
 import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup";
 
 /**
@@ -129,11 +128,10 @@ function renderItem(item: ComboboxOption) {
                     still reads as hover.
                   */
       className={cn(
-        // The *selected* tint stays on the row: it marks a standing fact and
-        // several rows' worth of it can be on screen at once. The *highlight*
-        // does not, because there is only ever one and it slides between rows
-        // (`magic-move.tsx`). `z-10` keeps both the label and that tint above it.
-        "group/combobox-item relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
+        // The *selected* tint marks a standing fact and several rows' worth of
+        // it can be on screen at once; the *highlight* is the one row under the
+        // pointer or the cursor.
+        "group/combobox-item relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
         item.separatorBefore &&
           "mt-1 rounded-t-none border-t border-border pt-2",
       )}
@@ -209,8 +207,6 @@ function Combobox({
   freeText,
   ...aria
 }: ComboboxProps) {
-  // One highlight for the list, moved between rows rather than painted on each.
-  const { track, highlight } = useMagicMove();
   // Flattened once, so the selected row is found the same way whether the list
   // is grouped or not.
   const flat = React.useMemo(
@@ -338,10 +334,10 @@ function Combobox({
           className={cn("isolate z-50", RINGED_POPUP_WIDTH)}
         >
           <ComboboxPrimitive.Popup
-            ref={track.ref}
+            
             data-slot="combobox-content"
             data-size={size}
-            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
+            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 print:hidden"
           >
             {/* Suppressed under `freeText`: there, a list matching nothing
                 means the typed value is new, which is allowed, so "No matches."
@@ -351,11 +347,6 @@ function Combobox({
                 {emptyMessage}
               </ComboboxPrimitive.Empty>
             )}
-            {/* The highlight is a child of the popup rather than of the list:
-                the list takes a *render function* as its only child, so it has
-                no room for a sibling. The popup is the scrolling box and is
-                already `relative`, so it measures the same. See `magic-move.tsx`. */}
-            <MagicMove {...highlight} />
             <ComboboxPrimitive.List>
               {groups
                 ? (group: ComboboxGroup) => (

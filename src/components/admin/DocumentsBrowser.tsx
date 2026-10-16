@@ -230,9 +230,6 @@ export default function DocumentsBrowser({
           // the offsets stay at zero.
           "pointer-events-none absolute inset-y-0 left-0 z-0",
           tabPillSurface,
-          "transition-transform duration-200 ease-standard motion-reduce:transition-none",
-          // Untransitioned under the hand; the offset is already per-frame.
-          "group-data-dragging/tabs-list:transition-none",
         )}
       />
       {VIEW_TABS.map(({ value, label, icon: Icon }) => (

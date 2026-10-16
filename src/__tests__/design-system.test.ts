@@ -7,7 +7,6 @@ import {
   UI_PRIMITIVES,
 } from './policedSource';
 import {
-  EASING_MIGRATED_LATER,
   INLINE_TRANSITION_MIGRATED_LATER,
   RADIUS_MIGRATED_LATER,
   RESPONSIVE_MIGRATED_LATER,
@@ -210,9 +209,38 @@ const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
  * never read. One control, three speeds, and no test that could see it.
  */
 const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b)\[?[0-9]+m?s?\]?/g;
-const SIGNATURE_MOTION = [
-  'src/components/ui/tray-arrow-icon.tsx',
-  'src/components/spec/ResetProgressButton.tsx',
+
+/**
+ * Decorative motion, by the forms it actually took here (`docs/design.md`
+ * §1.6, 16 October 2026): a spring library, a shared-layout pill, an icon
+ * that transforms on hover, a transform transition anywhere a panel is not
+ * sliding, a ring that pulses when a field fills, a popup that zooms as it
+ * fades, and anything that animates in on mount. None carried information.
+ */
+const MOTION_LIB = /from ['"]motion(?:\/react)?['"]/g;
+const LAYOUT_ID = /\blayoutId=/g;
+const ICON_TRANSFORM = /\b(?:group-)?hover(?:\/[\w-]+)?:-?(?:rotate|scale|translate)-/g;
+const TRANSITION_TRANSFORM = /\btransition-(?:transform|all)\b/g;
+/** The three things that really do slide: the sheet, the nav rail, the profile track. */
+const PANELS_THAT_SLIDE = [
+  'src/components/ui/sheet.tsx',
+  'src/components/ui/sidebar.tsx',
+  'src/components/ui/switch.tsx',
+  'src/components/admin/AdminSidebar.tsx',
+];
+const FILL_FLASH = /animate-fill-flash/g;
+const ZOOMING_POPUP = /\bzoom-(?:in|out)-\d+/g;
+const MOUNT_ANIMATION = /\b(?:animate-in|slide-in-from-[a-z]+-\d+)\b/g;
+/** The overlay atoms fade in at the Overlay tier; the skeleton's delayed fade stops a flash on fast loads. */
+const OVERLAYS = [
+  'src/components/ui/alert-dialog.tsx',
+  'src/components/ui/combobox.tsx',
+  'src/components/ui/dialog.tsx',
+  'src/components/ui/dropdown-menu.tsx',
+  'src/components/ui/popover.tsx',
+  'src/components/ui/select.tsx',
+  'src/components/ui/tooltip.tsx',
+  'src/app/(app)/loading.tsx',
 ];
 
 /**
@@ -674,7 +702,7 @@ const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['RADIUS', RADIUS_MIGRATED_LATER, [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
   ['SHADOW', SHADOW_MIGRATED_LATER, [ARBITRARY_SHADOW], []],
   ['RING', RING_MIGRATED_LATER, [OWN_FOCUS_RING], []],
-  ['EASING', EASING_MIGRATED_LATER, [OWN_EASING], []],
+  ['EASING', [], [OWN_EASING], []],
   ['INLINE_TRANSITION', INLINE_TRANSITION_MIGRATED_LATER, [INLINE_TRANSITION], []],
   ['Z', Z_MIGRATED_LATER, [RAW_Z], []],
   ['RESPONSIVE', RESPONSIVE_MIGRATED_LATER, [RESPONSIVE], SHELL],
@@ -740,7 +768,17 @@ describe('design system', () => {
   });
 
   it('takes every duration from the three-tier motion scale', () => {
-    expect(violations(OFF_SCALE_DURATION, SIGNATURE_MOTION)).toEqual([]);
+    expect(violations(OFF_SCALE_DURATION)).toEqual([]);
+  });
+
+  it('has no decorative motion: no spring library, no sliding pill, no icon that moves on hover', () => {
+    expect(violations(MOTION_LIB, [], /\.tsx?$/)).toEqual([]);
+    expect(violations(LAYOUT_ID)).toEqual([]);
+    expect(violations(ICON_TRANSFORM)).toEqual([]);
+    expect(violations(TRANSITION_TRANSFORM, PANELS_THAT_SLIDE)).toEqual([]);
+    expect(violations(FILL_FLASH)).toEqual([]);
+    expect(violations(ZOOMING_POPUP)).toEqual([]);
+    expect(violations(MOUNT_ANIMATION, OVERLAYS)).toEqual([]);
   });
 
   it('puts every table in a TableCard', () => {

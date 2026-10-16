@@ -10,7 +10,7 @@ import {
 import { createPortal } from 'react-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { CycleArrowIcon } from '@/components/ui/tray-arrow-icon';
+import { ArrowRight } from 'lucide-react';
 import { FieldGroup } from '@/components/ui/field';
 
 /**
@@ -148,7 +148,7 @@ export function StepForm({
       className="group/tray hover:bg-primary"
     >
       {submitLabel}
-      {submitting ? null : <CycleArrowIcon />}
+      {submitting ? null : <ArrowRight aria-hidden="true" />}
     </Button>
   );
 

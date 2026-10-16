@@ -51,7 +51,7 @@ export default function EditorSection({
           >
             <ChevronRight
               aria-hidden="true"
-              className="size-3 shrink-0 mt-[4px] text-muted-foreground transition-transform group-data-[open]/section:rotate-90"
+              className="size-3 shrink-0 mt-[4px] text-muted-foreground group-data-[open]/section:rotate-90"
             />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">

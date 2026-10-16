@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { ArrowRight, Check, Download, Pencil, Plus, Send, Trash2 } from 'lucide-react';
+import { ArrowRight, Download, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import { AddButton, AddLink } from '@/components/ui/add-button';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group';
 import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { ConfirmButton } from '@/components/ui/confirm-button';
 import { CopyButton } from '@/components/ui/copy-button';
 import IconAction from '@/components/ui/icon-action';
 import { RemoveButton } from '@/components/ui/remove-button';
@@ -103,7 +102,6 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
     add,
     confirmed,
     removeRow,
-    swap,
     copy,
     toolbar,
   ] = entry.variants;
@@ -287,32 +285,6 @@ export function ButtonSpecimens({ entry }: { entry: LibraryEntry }) {
           </Sample>
           <Sample caption="Disabled on the last row">
             <RemoveButton label="Remove the only line" onConfirm={() => {}} disabled />
-          </Sample>
-        </Row>
-      </Specimen>
-
-      <Specimen name={swap.name} note={swap.note} fill>
-        <Row>
-          <Sample caption="Click it">
-            <ConfirmButton
-              idleIcon={Download}
-              idleLabel="Download"
-              confirmIcon={Check}
-              confirmLabel="Downloaded"
-              iconMotion="bob-down"
-              onAction={() => {}}
-              variant="outline"
-            />
-          </Sample>
-          <Sample caption="Primary, and it bobs up">
-            <ConfirmButton
-              idleIcon={Send}
-              idleLabel="Send"
-              confirmIcon={Check}
-              confirmLabel="Sent"
-              iconMotion="bob-up"
-              onAction={() => {}}
-            />
           </Sample>
         </Row>
       </Specimen>

@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { motion } from "motion/react"
 import { Plus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -10,15 +9,15 @@ import { buttonVariants } from "@/components/ui/button"
 import type { VariantProps } from "class-variance-authority"
 
 /**
- * The "add a thing" button: a plus that turns a quarter-turn on hover.
+ * The "add a thing" button: a plus and a verb.
  *
- * Reserved for the page-level create actions — Add client, Add employee, Add
- * service, New invoice. Deliberately NOT used inside the editor rail, where
- * "Add line item" and friends sit next to real form fields and a spinning icon
- * would be noise.
+ * Reserved for the page-level create actions (Add client, Add employee, Add
+ * service, New invoice). Deliberately NOT used inside the editor rail, where
+ * "Add line item" and friends sit next to real form fields.
  *
- * Rotates clockwise (+90°) so the plus leans into the page rather than away
- * from it; anticlockwise reads as an undo.
+ * The plus used to turn a quarter-turn on hover. It does not any more: an
+ * icon that moves delays recognising *which* icon it is by the length of the
+ * move, and carries no information (`docs/design.md` §1.6).
  */
 export interface AddButtonProps
   extends Omit<React.ComponentProps<"button">, "children"> {
@@ -33,30 +32,21 @@ function AddButton({
   ...props
 }: AddButtonProps) {
   return (
-    <motion.button
+    <button
       type="button"
       data-slot="button"
-      initial="rest"
-      animate="rest"
-      whileHover="hover"
       className={cn(buttonVariants({ variant }), className)}
-      {...(props as React.ComponentProps<typeof motion.button>)}
+      {...props}
     >
-      <motion.span
-        className="inline-flex"
-        variants={{ rest: { rotate: 0 }, hover: { rotate: 90 } }}
-        transition={{ type: "spring", stiffness: 350, damping: 18 }}
-      >
-        <Plus aria-hidden="true" />
-      </motion.span>
+      <Plus aria-hidden="true" />
       {children}
-    </motion.button>
+    </button>
   )
 }
 
 /**
  * Same treatment for a create action that navigates instead of opening a panel
- * (the dashboard's "New invoice"). Kept separate rather than polymorphic — two
+ * (the dashboard's "New invoice"). Kept separate rather than polymorphic: two
  * small components beat one with an `as` prop.
  *
  * A Next `Link`, not a bare `<a>`: every href it is given is internal, and a
@@ -64,8 +54,6 @@ function AddButton({
  * admin shell down and back up, which is how a collapsed sidebar came back
  * expanded.
  */
-const MotionLink = motion.create(Link)
-
 function AddLink({
   className,
   children,
@@ -76,22 +64,10 @@ function AddLink({
   variant?: VariantProps<typeof buttonVariants>["variant"]
 }) {
   return (
-    <MotionLink
-      initial="rest"
-      animate="rest"
-      whileHover="hover"
-      className={cn(buttonVariants({ variant }), className)}
-      {...(props as React.ComponentProps<typeof MotionLink>)}
-    >
-      <motion.span
-        className="inline-flex"
-        variants={{ rest: { rotate: 0 }, hover: { rotate: 90 } }}
-        transition={{ type: "spring", stiffness: 350, damping: 18 }}
-      >
-        <Plus aria-hidden="true" />
-      </motion.span>
+    <Link className={cn(buttonVariants({ variant }), className)} {...props}>
+      <Plus aria-hidden="true" />
       {children}
-    </MotionLink>
+    </Link>
   )
 }
 

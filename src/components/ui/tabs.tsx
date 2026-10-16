@@ -275,7 +275,7 @@ function TabsList({
  */
 const segmentTrough = "rounded-lg bg-muted";
 const tabPillSurface =
-  "rounded-sm bg-background shadow-[0_1px_2px_oklch(0_0_0/0.08),0_1px_1px_oklch(0_0_0/0.04)] dark:bg-[var(--gray-700)] dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+  "rounded-sm bg-background shadow-raised dark:bg-foreground/10";
 /** A segment's label: muted at rest, full ink once chosen or under the pointer. */
 const segmentLabel = "font-medium text-tab-label transition-colors hover:text-foreground";
 
@@ -295,7 +295,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:shadow-none",
         // Same surface as `tabPillSurface`, spelled with `data-active:` since
         // it paints on the trigger itself. Keep the two in step.
-        "data-active:bg-background data-active:text-foreground data-active:shadow-[0_1px_2px_oklch(0_0_0/0.08),0_1px_1px_oklch(0_0_0/0.04)] dark:data-active:bg-[var(--gray-700)] dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
+        "data-active:bg-background data-active:text-foreground data-active:shadow-raised dark:data-active:bg-foreground/10",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -306,11 +306,12 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
 
 /**
  * The pill behind the active tab. Base UI measures the active trigger onto
- * `--active-tab-left` / `--active-tab-width`, so this slides between them
- * rather than blinking from one to the next.
+ * `--active-tab-left` / `--active-tab-width`, so one element is positioned
+ * under whichever tab is on. It moves in a frame: a pill that slid between
+ * tabs was decoration, and the drag in `useTabDrag` still works because the
+ * offset there is per-frame anyway (`docs/design.md` §1.6).
  *
- * A list using it should suppress its triggers' own `data-active` background —
- * otherwise that paints instantly and there is nothing left to watch.
+ * A list using it should suppress its triggers' own `data-active` background.
  */
 function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
   return (
@@ -319,10 +320,7 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
       className={cn(
         // `--tab-drag` is set on the list by `useTabDrag` and inherits down. It
         // is 0 at rest, so the resting position is exactly what it always was.
-        "absolute top-1/2 left-0 z-0 h-8 w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] transition-[translate,width] duration-200 ease-standard group-data-[size=sm]/tabs-list:h-6",
-        // Untransitioned under the hand: the offset is already per-frame, and a
-        // transition on top of it lags the pointer.
-        "group-data-dragging/tabs-list:transition-none",
+        "absolute top-1/2 left-0 z-0 h-8 w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] group-data-[size=sm]/tabs-list:h-6",
         tabPillSurface,
         className,
       )}
@@ -353,16 +351,8 @@ function TabsPanels({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 /**
- * Panels are kept mounted so the one leaving can animate out; Base UI marks it
- * `data-ending-style` and waits for the transition before hiding it. The
- * direction of travel decides which way each goes — moving right, the arriving
- * panel comes from the right and the leaving one goes out to the left.
- *
- * 1.5s. Base UI holds the leaving panel in the DOM for the whole of it, so the
- * tabs stay clickable throughout — a second click mid-slide just redirects it.
- *
- * Belongs inside `TabsPanels`. On its own the two panels would stack
- * vertically for the length of the transition.
+ * Panels are kept mounted by default so a form inside one keeps its state
+ * across a switch. Nothing slides: the arriving panel is simply the one shown.
  */
 function TabsContent({
   className,
@@ -375,9 +365,6 @@ function TabsContent({
       keepMounted={keepMounted}
       className={cn(
         "flex-1 text-xs/relaxed outline-none",
-        "transition-[translate] duration-200 ease-standard motion-reduce:transition-none",
-        "data-[activation-direction=right]:data-[starting-style]:translate-x-full data-[activation-direction=right]:data-[ending-style]:-translate-x-full",
-        "data-[activation-direction=left]:data-[starting-style]:-translate-x-full data-[activation-direction=left]:data-[ending-style]:translate-x-full",
         className,
       )}
       {...props}

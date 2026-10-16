@@ -32,10 +32,7 @@ export default function ResetProgressButton({ onReset }: { onReset: () => void }
             size="lg"
             className="h-10 gap-2 px-4 text-sm text-muted-foreground hover:text-muted-foreground hover:bg-[unset] dark:hover:bg-input/30"
           >
-            <RotateCcw
-              aria-hidden="true"
-              className="transition-transform duration-500 ease-in-out group-hover/button:-rotate-[360deg]"
-            />
+            <RotateCcw aria-hidden="true" />
             Reset all
           </Button>
         }

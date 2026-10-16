@@ -138,13 +138,6 @@ export default function ClientOnboarding({
   const step = steps[active];
 
   /**
-   * Which way the last move went, so the step slides in from the side it came
-   * from. Derived from the click rather than from comparing indexes across
-   * renders: the URL is the state, and by the time the new step renders the old
-   * index is gone.
-   */
-  const [forward, setForward] = useState(true);
-  /**
    * The last step saved and we are about to leave. Held for a beat so the row
    * can finish ticking. See the panel below for why the wait earns its keep.
    */
@@ -169,7 +162,6 @@ export default function ClientOnboarding({
     (index: number, id = client?.id) => {
       const key = steps[index]?.key;
       if (!key) return;
-      setForward(index >= active);
       const base = id ? `/client/clients/${id}` : "/client/clients/new";
       // The kind rides along only while there is no record to derive it from.
       // Once the row exists its entity type is the answer, and a second copy in
@@ -222,7 +214,6 @@ export default function ClientOnboarding({
    */
   const changeKind = (next: ClientKind) => {
     if (next === kind) return;
-    setForward(false);
     const first = onboardingSteps(next)[0].key;
     if (client) {
       router.replace(`/client/clients/${client.id}?step=${first}&kind=${next}`, {
@@ -390,7 +381,6 @@ export default function ClientOnboarding({
       }
       onSelect={(index) => goTo(index)}
       onActionsSlot={setActions}
-      slideFrom={forward ? "right" : "left"}
       rightAction={
         /*
           The flow saves a section at a time and always did. Nothing said so,

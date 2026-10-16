@@ -415,14 +415,7 @@ export default function AttachmentsStep({
       // the list squeezes the drop box as it fills: a flex item's default is to
       // give up height, and this one is a target.
       className={inlineExtra ? "min-h-56" : "shrink-0"}
-      // Turns a quarter on hover, so this card answers the pointer the way the
-      // `TrayArrowIcon` boxes beside it do.
-      icon={
-        <Plus
-          aria-hidden
-          className="size-5 text-muted-foreground transition-transform group-hover/tray:rotate-90"
-        />
-      }
+      icon={<Plus aria-hidden className="size-5 text-muted-foreground" />}
       label="Add anything else"
       hint={`Add any document up to ${maxMb} MB`}
       onFileSelected={() => {}}

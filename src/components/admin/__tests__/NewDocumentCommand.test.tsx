@@ -157,10 +157,8 @@ describe('NewDocumentCommand', () => {
   });
 
   /**
-   * The cards share one highlight that travels, exactly as a menu's rows do
-   * (`ui/magic-move.tsx`, `docs/design.md` §2.6). Two things follow, and both
-   * are asserted here because jsdom can see the wiring even though it cannot
-   * see the slide:
+   * The cards share one highlight, exactly as a menu's rows do. Two things
+   * follow, and both are asserted here:
    *
    * `data-highlighted` is what the hook watches, so the selected card has to
    * carry it, and only the selected card, or the fill has two places to be.

@@ -372,7 +372,7 @@ export default function ServicesStep({
                               ) : (
                                 // A quarter turn on hover, so the mark answers
                                 // the pointer before the click does.
-                                <Plus className="size-3 transition-transform group-hover/service:rotate-90" />
+                                <Plus className="size-3" />
                               )}
                             </span>
                           </span>
@@ -456,7 +456,7 @@ export default function ServicesStep({
                             <ChevronDown
                               aria-hidden
                               className={cn(
-                                "size-3 transition-transform",
+                                "size-3",
                                 open && "rotate-180",
                               )}
                             />

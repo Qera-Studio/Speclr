@@ -25,7 +25,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { MagicMove, useMagicMove } from "@/components/ui/magic-move";
 import { cn } from "@/lib/utils";
 import { PROFILES, type Profile } from "@/lib/profile";
 import {
@@ -239,32 +238,24 @@ function ProfileNavBody({
 }
 
 /**
- * The rail's rows, under one hover fill that moves between them.
+ * The rail's rows.
  *
  * Both rails render through this rather than `SidebarMenu` directly, so the
- * admin and client columns cannot drift apart on it. See `ui/magic-move.tsx`;
- * `hover` mode because a nav row carries no `data-highlighted` to watch, and
- * the fill is `--sidebar-hover` rather than the popups' `--accent`.
- *
- * **The active row's fill is untouched and does not move.** Hover and active
- * are deliberately two different fills (`globals.css`), and the active one is
- * what says which page you are on: if it travelled with the pointer, "you are
- * here" would be lost the moment the cursor rested anywhere else. So this
- * slides *under* the active row's block rather than replacing it.
+ * admin and client columns cannot drift apart on it. The hover fill is
+ * `--sidebar-hover` rather than the primitive's `--sidebar-accent`, and the
+ * active row keeps its own fill: hover and active are deliberately two
+ * different colours (`globals.css`), and the active one is what says which
+ * page you are on.
  */
 function RailRows({ children }: { children: React.ReactNode }) {
-  const { track, highlight } = useMagicMove({ mode: "hover" });
   return (
     <SidebarMenu
-      {...track}
       // Two changes, both scoped to this list rather than made in the
       // primitive, which the editor rail and the mobile sheet still use
       // unchanged.
       className={cn(
-        track.className,
         /*
-          The rows' own hover *fill* comes off, because the moving one is the
-          fill now, and so does the hover *text* colour.
+          The hover *text* colour comes off.
 
           The primitive darkens a hovered row from `--sidebar-foreground` to
           `--sidebar-accent-foreground`, which in light mode is slate-600 to
@@ -283,7 +274,7 @@ function RailRows({ children }: { children: React.ReactNode }) {
           assumed, and true before any of this work. The active fill is what
           says which page you are on.
         */
-        "[&_[data-slot=sidebar-menu-button]]:hover:bg-transparent",
+        "[&_[data-slot=sidebar-menu-button]]:hover:bg-sidebar-hover",
         "[&_[data-slot=sidebar-menu-button][data-active]]:hover:bg-sidebar-active",
         "[&_[data-slot=sidebar-menu-button]:hover]:text-sidebar-foreground",
         /*
@@ -293,26 +284,11 @@ function RailRows({ children }: { children: React.ReactNode }) {
           it: the row got *paler* under the pointer, which reads as the current
           page being un-selected. Measured at slate-200 (L 90.9) idle against
           slate-100 (L 95.6) hovered.
-
-          The travelling fill still passes under it. That is the point of
-          `-z-10`: the active row's own opaque background covers the fill for
-          exactly as long as it is there, so "you are here" outranks "you are
-          pointing here" without either one blinking.
         */
         /*
-          4px between the rows, and it is *padding*, never a gap.
-
-          `SidebarMenu` sets `gap-[8px]`, which put 8px of background between
-          each row. Two things were wrong with that: the fill spent a third of
-          every one-row move over dead space, so the travel read as a block
-          jumping a hole rather than a surface sliding, and 8px broke the
-          column into seven separate plates.
-
-          A `gap` cannot be the answer at any size, because a gap is a hole:
-          the list stops being contiguous and the fill has somewhere to be that
-          is not a row. So `gap-0` with `py-1` on each item instead. Every
-          pixel of the column belongs to some row, which is what keeps the move
-          seamless, and the spacing is the same to the eye.
+          4px between the rows, as *padding* rather than a gap, so every pixel
+          of the column belongs to some row and the list reads as one surface
+          rather than seven plates.
 
           `py-1` is 4px *per side*, which is 8px between two neighbours: the
           padding meets its neighbour's, so the number here is half the gap it
@@ -321,14 +297,6 @@ function RailRows({ children }: { children: React.ReactNode }) {
         "gap-0 [&>[data-slot=sidebar-menu-item]]:py-1",
       )}
     >
-      <MagicMove
-        {...highlight}
-        // The row's own radius, and the rail's hover fill rather than the
-        // popups'. `-z-10` puts it behind rows that are not themselves
-        // stacked: a nav row is a plain link with no `z-10` of its own, unlike
-        // a menu item.
-        className="-z-10 rounded-[calc(var(--radius-sm)+2px)] bg-sidebar-hover"
-      />
       {children}
     </SidebarMenu>
   );
@@ -711,16 +679,16 @@ export default function AdminSidebar({
           // `items-start` so the dead copy's `h-0` is honoured; the default
           // `stretch` would grow it back to the live one's height and the pill
           // would size to the taller profile again.
-          className="flex w-[200%] flex-1 items-start"
-          style={{
-            transform: `translateX(${(-index - offset) * 50}%)`,
-            // Gated on `dragging`, not `offset === 0`: a committed gesture holds
-            // a non-zero offset while its navigation loads, and that is exactly
-            // the moment the movement has to animate. During a drag the offset
-            // is already updated per frame, and a transition on top of that lags
-            // the fingers.
-            transition: dragging ? undefined : "transform 300ms ease-out",
-          }}
+          // Gated on `dragging`, not `offset === 0`: a committed gesture holds
+          // a non-zero offset while its navigation loads, and that is exactly
+          // the moment the movement has to animate. During a drag the offset
+          // is already updated per frame, and a transition on top of that lags
+          // the fingers.
+          className={cn(
+            "flex w-[200%] flex-1 items-start",
+            !dragging && "transition-transform duration-200 ease-standard",
+          )}
+          style={{ transform: `translateX(${(-index - offset) * 50}%)` }}
         >
           {PROFILES.map((value) => (
             <ProfileNavBody

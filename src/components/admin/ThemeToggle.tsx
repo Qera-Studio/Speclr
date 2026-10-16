@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { motion } from 'motion/react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { segmentTrough, tabPillSurface } from '@/components/ui/tabs';
@@ -70,7 +69,7 @@ export function ThemeMenuItems() {
 /**
  * Theme switcher pinned at the bottom of the sidebar.
  * - Expanded: a segmented, icon-only control with all three options and a
- *   sliding pill behind the active one (same pattern as the card detail tabs).
+ *   pill behind the active one.
  * - Collapsed (icon rail): a single button showing the active theme's icon that
  *   cycles to the next option on click.
  * Renders a stable placeholder until mounted to avoid a hydration mismatch (the
@@ -78,7 +77,6 @@ export function ThemeMenuItems() {
  */
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const layoutId = useId();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -109,17 +107,10 @@ export default function ThemeToggle() {
               onClick={() => setTheme(value)}
               className={cn(
                 'relative flex flex-1 items-center justify-center rounded-sm py-1.5 transition-colors',
-                active ? 'text-foreground' : 'text-tab-label hover:text-foreground',
+                active ? cn('text-foreground', tabPillSurface) : 'text-tab-label hover:text-foreground',
               )}
             >
-              {active && (
-                <motion.span
-                  layoutId={`${layoutId}-theme-pill`}
-                  className={cn('absolute inset-0', tabPillSurface)}
-                  transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-                />
-              )}
-              <Icon className="relative z-10 size-4" aria-hidden="true" />
+              <Icon className="size-4" aria-hidden="true" />
             </button>
           );
         })}

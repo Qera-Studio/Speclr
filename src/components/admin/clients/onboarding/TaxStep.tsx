@@ -432,7 +432,7 @@ export default function TaxStep({
                 // appears: a field that pops into a form the eye has already
                 // measured reads as a redraw, and the same field sliding down
                 // reads as a response.
-                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
                   <GstinField
                     control={control}
                     name="gstin"
@@ -465,7 +465,7 @@ export default function TaxStep({
               </LegendInfo>
 
               {tdsApplicable ? (
-                <FieldRow className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <FieldRow >
                   <Field>
                     <FieldLabel htmlFor="client-tds-section">
                       Section
@@ -535,7 +535,6 @@ export default function TaxStep({
                 name="pan"
                 id="client-pan"
                 info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step: a Private Limited's PAN is a C, an individual's a P. A GSTIN contains it verbatim, so a registered client's PAN is read from there rather than typed."
-                inputClassName={panAutofilled ? "animate-fill-flash" : undefined}
                 readOnly={Boolean(derivedPan)}
               />
               {/* The flash says something happened; this says what. A field that
@@ -617,7 +616,7 @@ export default function TaxStep({
               {offerEntityType ? (
                 <Alert
                   variant="warning"
-                  className="animate-in fade-in slide-in-from-top-1"
+                  
                 >
                   <TriangleAlert aria-hidden />
                   <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -854,7 +853,7 @@ export default function TaxStep({
             {tdsApplicable ? (
               <FieldRow
                 columns={3}
-                className="animate-in fade-in slide-in-from-top-2 duration-200"
+                
               >
                 <Field>
                   <FieldLabel htmlFor="client-withholding-rate">

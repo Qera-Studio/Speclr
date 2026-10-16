@@ -247,7 +247,6 @@ export const SPACING_MIGRATED_LATER = [
 
 export const RADIUS_MIGRATED_LATER = [
   'src/components/admin/AdminShell.tsx',
-  'src/components/admin/AdminSidebar.tsx',
   'src/components/admin/AmountCell.tsx',
   'src/components/admin/ColumnsMenu.tsx',
   'src/components/admin/LocationCell.tsx',
@@ -278,7 +277,6 @@ export const SHADOW_MIGRATED_LATER = [
   'src/components/ui/sheet.tsx',
   'src/components/ui/sidebar.tsx',
   'src/components/ui/switch.tsx',
-  'src/components/ui/tabs.tsx',
   'src/lib/accent.ts',
 ];
 
@@ -330,13 +328,6 @@ export const RING_MIGRATED_LATER = [
   'src/components/ui/textarea.tsx',
 ];
 
-export const EASING_MIGRATED_LATER = [
-  'src/components/admin/AdminSidebar.tsx',
-  'src/components/spec/ResetProgressButton.tsx',
-  'src/components/ui/sheet.tsx',
-  'src/components/ui/tray-arrow-icon.tsx',
-];
-
 export const INLINE_TRANSITION_MIGRATED_LATER = [
   'src/components/admin/AdminSidebar.tsx',
 ];
@@ -344,17 +335,14 @@ export const INLINE_TRANSITION_MIGRATED_LATER = [
 export const Z_MIGRATED_LATER = [
   'src/components/admin/AdminHeader.tsx',
   'src/components/admin/AdminShell.tsx',
-  'src/components/admin/AdminSidebar.tsx',
   'src/components/admin/AmountCell.tsx',
   'src/components/admin/BulkSelect.tsx',
   'src/components/admin/CopyCell.tsx',
   'src/components/admin/DocumentsBrowser.tsx',
-  'src/components/admin/NewDocumentCommand.tsx',
   'src/components/admin/ProfileSwitcher.tsx',
   'src/components/admin/RecordTable.tsx',
   'src/components/admin/SearchCommand.tsx',
   'src/components/admin/SidebarResizeHandle.tsx',
-  'src/components/admin/ThemeToggle.tsx',
   'src/components/admin/clients/onboarding/AttachmentsStep.tsx',
   'src/components/admin/clients/onboarding/ClientAxes.tsx',
   'src/components/admin/clients/onboarding/CountryChooser.tsx',
@@ -363,7 +351,6 @@ export const Z_MIGRATED_LATER = [
   'src/components/docs/PrintToolbar.tsx',
   'src/components/library/richTable/RichClientTable.tsx',
   'src/components/library/tabs/SegmentedTabs.tsx',
-  'src/components/spec/SpecDetailsTabs.tsx',
   'src/components/ui/alert-dialog.tsx',
   'src/components/ui/attachment.tsx',
   'src/components/ui/avatar.tsx',
@@ -371,7 +358,6 @@ export const Z_MIGRATED_LATER = [
   'src/components/ui/combobox.tsx',
   'src/components/ui/dialog.tsx',
   'src/components/ui/dropdown-menu.tsx',
-  'src/components/ui/magic-move.tsx',
   'src/components/ui/popover.tsx',
   'src/components/ui/select.tsx',
   'src/components/ui/sheet.tsx',

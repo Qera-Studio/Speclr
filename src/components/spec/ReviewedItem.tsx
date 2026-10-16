@@ -51,7 +51,7 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
           <span className="text-sm font-medium text-foreground">Reviewed</span>
           <span className="ml-auto text-xs text-muted-foreground">{summary}</span>
           <ChevronDown
-            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+            className={cn('size-4 shrink-0 text-muted-foreground', open && 'rotate-180')}
             aria-hidden="true"
           />
         </CollapsibleTrigger>

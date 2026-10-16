@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
+import { Upload } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ImportProgressControlsProps {
@@ -38,7 +38,7 @@ export default function ImportProgressControls({ onImport, importError }: Import
         onClick={() => inputRef.current?.click()}
         className="group/tray h-10 w-fit gap-2 px-5 text-sm opacity-80 [&_svg:not([class*='size-'])]:size-4"
       >
-        <TrayArrowIcon direction="up" />
+        <Upload aria-hidden="true" />
         Import progress
       </Button>
 

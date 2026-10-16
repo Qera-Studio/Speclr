@@ -307,10 +307,6 @@ export default function ProfileSwitcher({
           // `translateX(100%)` lands it exactly on the second half.
           "pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)]",
           tabPillSurface,
-          // Untransitioned while dragging — the offset is already per-frame, and
-          // a transition on top of it lags the fingers. Everything else,
-          // including the committed hold that outlasts the gesture, animates.
-          !live && "transition-transform duration-200 ease-standard",
         )}
         style={{ transform: `translateX(${(index + shown) * 100}%)` }}
       />

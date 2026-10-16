@@ -90,9 +90,9 @@ export default function FieldCheck<T extends FieldValues>({
   return (
     <span
       ref={ref}
-      className="animate-in fade-in text-primary pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1.5 text-xs duration-200"
+      className="text-primary pointer-events-none absolute inset-y-0 right-2 flex items-center gap-1.5 text-xs"
     >
-      <Check aria-hidden className="animate-in zoom-in-50 size-4 shrink-0" />
+      <Check aria-hidden className="size-4 shrink-0" />
       {/*
         Hidden from assistive tech for the same reason the tick is: this is
         confirmation of the expected, and `FieldError`'s live region is reserved

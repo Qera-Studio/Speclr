@@ -420,151 +420,29 @@ measurement in `e2e/popup.spec.ts` caught:
 The measured resting state is now 6px offset and anchor+4px width on the three
 ringed controls (a visible 4px gap and edges flush with the ring), and 4px with
 equal width on the unringed menu. **The animation must be killed before
-measuring**: `zoom-in-95` and `slide-in-from-*` are transforms, so a box read
+measuring**: `slide-in-from-*` is a transform, so a box read
 inside the first 100ms is smaller than the one that settles, and the numbers
 moved between runs until the spec disabled them.
 
-**The highlight behind the active row is one surface that slides**, not a fill
-painted on whichever row is under the pointer. `useMagicMove` and `MagicMove`
-in `src/components/ui/magic-move.tsx`, used by the dropdown menu, the select and the
-combobox; it is `TabsIndicator`'s idea reaching the popups, and it exists as a
-hook only because Base UI measures the active *tab* onto custom properties and
-offers nothing equivalent for a row. Panel tier, `duration-200 ease-standard`,
-per §1.6's "a sliding pill indicator".
+**The highlighted row is painted, not slid.** A menu, select or combobox row
+under the pointer or the keyboard cursor takes `bg-accent` in the frame it is
+reached, the nav rail's row takes `bg-sidebar-hover`, and the ⌘D palette's
+card takes `bg-foreground/8`. There was a travelling highlight once
+(`MagicMove`, removed 16 October 2026 with the rest of the decorative motion,
+§1.6): one surface that slid between rows at 200ms. It cost a hook, a
+`MutationObserver`, three e2e specs that sampled `transform` per frame, and a
+rule that rows must *not* paint their own fill so the slide had something to
+be seen against. A row reached by keyboard still had to answer in the frame
+it was reached, which meant the text colour switched instantly while the fill
+arrived 200ms later. Painting the fill in that same frame is what every
+reader actually wanted.
 
-Four rules, each of which was a bug first:
-
-- **The row keeps its text colour and loses its fill.** A row reached by
-  keyboard has to answer in the frame it is reached; one waiting on a 200ms
-  slide reads as lag. So `focus:bg-accent` came off the items and
-  `focus:text-accent-foreground` stayed.
-- **Two fills stay on their rows**, because they are not the one highlight: a
-  **destructive** menu row is a different colour, and a combobox's
-  **selected** tint marks a standing fact several rows can carry at once. The
-  magic move hides under the destructive row rather than sliding grey beneath red.
-- **The track takes a callback ref, never `useRef`.** A popup is portalled and
-  unmounted while closed, so it mounts after the hook's effects have run; an
-  effect keyed on a ref object attaches its observers to `null` and is never
-  re-run. Confirmed red: with a plain ref, all four magic-move tests fail.
-- **Measure the row, do not compute it.** The three primitives put their
-  padding in three different places, so the fill's box is read off the row
-  rather than assumed from the track's inset.
-
-**The nav rail uses it too, in `hover` mode.** A nav row carries no
-`data-highlighted` to watch: its hover is a CSS pseudo-class and nothing in the
-DOM changes, so the hook follows the pointer instead, through one delegated
-`pointerover`/`pointerout` pair on the list rather than handlers per row. The
-rail adds the one constraint the popups do not have, and it is the reason the
-active fill is left alone:
-
-- **Hover and active are two fills, and only hover moves.** They are one step
-  apart on the gray ramp deliberately (`globals.css`), because the active one
-  says which page you are on. A highlight that travelled in the active colour,
-  or that dragged the active row's own fill with it, would take "you are here"
-  away the moment the pointer rested anywhere else. Both halves are pinned, and
-  the colour half needs its own test: a version painting the moving fill in
-  `--sidebar-active` leaves the active row genuinely untouched and still reads
-  as three current pages on the way past.
-- **The rows' `hover:bg-*` is suppressed on the list, not in the primitive.**
-  The editor rail and the mobile sheet still use `ui/sidebar.tsx`'s own hover.
-  Without the suppression the hovered row paints instantly under a fill that is
-  still 200ms away, so two rows claim the pointer for the length of the move.
-- **Keyboard focus is deliberately not tracked in this mode.** The rows are
-  links with a focus ring of their own, and a fill chasing focus would compete
-  with the active fill rather than add to it.
-- **Hovering changes the fill and nothing else.** The primitive also darkens a
-  hovered row's text to `--sidebar-accent-foreground`, gray-600 to gray-900
-  in light mode: a measured drop from L 33.7 to L 5.0, near enough to black.
-  That reads as pressed rather than pointed at, and it restates what the fill
-  already says, so it is suppressed on this list. Worth knowing before
-  restoring it: the primitive's `data-active:text-*` and
-  `data-active:font-medium` never reach this rail either, because `MenuLink`
-  passes `text-sm` and `cn` drops the conflicting utilities on merge. An active
-  row here is its fill and only its fill, and the one place its text *did*
-  change was under the pointer, which said "hovered" rather than "current".
-- **The rows sit 8px apart, and that 8px is padding rather than a gap.** The
-  distinction is the rule, and the number is unchanged from what the rail
-  always had: this is the same spacing, expressed so it is not a hole.
-  `SidebarMenu`'s `gap-[8px]` put dead space between each row, and the fill
-  spent a third of every one-row move crossing it, which read as a block
-  jumping rather than a surface sliding. `gap-0` with `py-1` on each item puts
-  that distance inside the list instead, so every pixel of the column belongs
-  to some row. **The original `gap-[8px]` is the trap**: it is pixel-identical
-  and fails both halves of the test, which asserts 8px of visible ground
-  between rows *and* zero between the items the fill travels along. Note that
-  `py-1` is 4px per side and two neighbours' padding meets, so the class is
-  half the spacing it produces. The rows stay at the primitive's 32px, pinned,
-  since growing them into the spacing looks like the same fix.
-- **A row's hint waits 500ms before appearing.** The chevron and the ⌘D keycap
-  are a *delay*, not a slower fade: the State tier's 75ms is untouched and only
-  its start moves, so §1.6's table still holds. It exists because the fill
-  follows the pointer down the whole column, and running past six rows flashed
-  a chevron on each. The delay is on the arriving direction only (`delay-0`
-  with `group-hover:delay-500`), since a hint lingering over a row the pointer
-  has left is the same noise arriving late.
-
-**The ⌘D palette is the third caller, and the first that is a grid.** Its five
-document cards share one fill (`admin/NewDocumentCommand.tsx`). Two rules that
-only a grid could have produced:
-
-- **One fill for the pointer and the keyboard cursor**, which is the opposite
-  call from the rail and for a reason that does not carry: the rail's active
-  fill says which page you are on and must not travel, while a palette's
-  selection is only a cursor. So hovering a card selects it, and Enter opens
-  whatever the fill is sitting on. `marked` mode rather than `hover`, because
-  the grid already tracks a selection for the arrow keys and roving tabindex,
-  and watching `data-highlighted` answers the pointer, the arrows and Tab at
-  once where `hover` would leave the keyboard's own moves unlit.
-- **The focus ring is ours, not `focus-visible:`.** Selecting a card focuses
-  it, which is what makes Enter work. But `.focus()` called from code inherits
-  the modality the dialog was entered with, so Chromium reports
-  `:focus-visible` and paints the ring even when a mouse caused the move,
-  measured in both themes with the ring chasing the pointer across the grid.
-  The card records what moved the selection (`data-moved-by`) and the ring is
-  drawn only for the keyboard. **This is the rule to remember before adding a
-  fourth caller that moves focus**: a programmatic `.focus()` is never the
-  browser's evidence of a keyboard user.
-
-- **The grid lifts a clipped row itself, because the browser will not do it
-  smoothly.** Five cards do not fit (607px of content in 540px), so the bottom
-  row is clipped by 51px and reaching it has to bring it into view. Focusing an
-  element makes the browser scroll it in **instantly**, and that scroll ignores
-  `scroll-behavior: smooth`: the class lands, `getComputedStyle` reports
-  `smooth`, the grid is the only scroller in the ancestry, and it still snapped.
-  So the browser's scroll is suppressed with `focus({ preventScroll: true })`
-  and the same move made through `scrollIntoView`, which does animate.
-  `block: 'nearest'` is the intent: lift a clipped card just far enough to be
-  whole, and leave one already in view where it is (measured at 0px moved).
-  **Its reduced-motion handling cannot ride on `globals.css`**, and this is the
-  general trap rather than a fact about this grid: the blanket
-  `scroll-behavior: auto !important` cannot reach a scroll whose behavior comes
-  from an *argument*, so this one kept animating under
-  `prefers-reduced-motion` while every CSS transition correctly stopped. The
-  media query is read in the effect, as `useProfileDrag` already does.
-
-Its e2e pair is the one that catches an axis. Every other caller is a list of
-full-width rows, where `left` and `width` never change and a fill tracking only
-`top` passes every test above; pinning `left` to 0 in the hook leaves all four
-popup tests green and turns only the palette's landing test red. Confirmed in
-exactly that way before it was trusted.
-
-**A scroll test must move the pointer with `mouse.move`, never `hover()`.**
-Playwright's `hover()` scrolls its target into view before it moves the
-pointer, so a test using it performs the very scroll it is measuring,
-instantly, before the app sees a pointer event at all. That produced a test
-failing against a fix that worked, and it was only identified by trapping
-every `scrollTop` write: the scroll arrived with no JavaScript stack behind it.
-Parking the pointer on a visible card and moving down measures the app.
-
-**Only the frames in between prove it, which is why this is e2e.** Both ends
-of the move look identical whether the highlight glides or jumps, so
-`e2e/popup.spec.ts` samples `transform` every frame and counts distinct values:
-a jump gives two, a real transition gives twenty-five. Three separate causes
-were invisible from the endpoints, each with the class and the computed
-`duration` both reading 0.2s the whole time — a ref read during render leaving
-the transition class one move stale, a `translate` value the browser normalises
-to a non-interpolable shape (hence `transform: translate3d`), and the class
-dropping for the single frame a select has no row marked.
+Two fills were never the highlight and still are not: a **destructive** menu
+row is a different colour, and a combobox's **selected** tint marks a standing
+fact several rows can carry at once. On the rail, **hover and active are two
+fills**, one step apart on the gray ramp (`globals.css`), because the active
+one says which page you are on; hovering the current page leaves it in its
+active colour.
 
 ### 1.8 Focus and hit targets — **enforced**
 
@@ -645,8 +523,9 @@ text is typed, and nothing about that glyph is a colour choice.
   invoice", not "Delete". A button that says "OK" says nothing.
 - **A destructive confirmation uses `AlertDialog`, never `Dialog`.**
 - **Every button that starts an async action has a pending state** and is
-  disabled while pending, or double-submit is a live bug. See `ConfirmButton`
-  and the confirmSwap pattern for the feedback shape.
+  disabled while pending, or double-submit is a live bug. `pending` on
+  `Button` is the whole of it: a spinner in front of a label that never
+  changes.
 - A disabled button must be explainable. If the reason is not obvious on the
   screen, wrap it in a tooltip that says why.
 - **Every control in one horizontal row is the same height.** The `form` size
@@ -672,8 +551,8 @@ text is typed, and nothing about that glyph is a colour choice.
 **One filled blue per viewport.** The rail's "New document" is the app's single
 primary and is on screen everywhere, so a page-level create is `outline`. Two
 filled blues make the viewport argue with itself about which action matters. A
-create action is an `AddButton` / `AddLink` whichever variant it wears, so it
-keeps the plus animation (§1.6).
+create action is an `AddButton` / `AddLink` whichever variant it wears: a plus
+and a verb.
 
 ### 2.2 Inputs and fields
 
@@ -1750,6 +1629,18 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, decorative motion removed.** The `motion` package and
+  its four callers, `MagicMove` and the five surfaces that used it, the
+  sliding tab pill and the two Motion pills, the tray and cycle arrow icons
+  (static Lucide `Download` / `Upload` / `ArrowRight` now), every hover
+  transform on an icon, the reset spin, the chevron rotation transition, the
+  `fill-flash` ring, every mount animation (the flow step slide, the finish
+  ticks, the tax step's reveals, the field tick's zoom) and the `zoom-in-95`
+  on every popup. What stays is in §1.6. The three e2e blocks that sampled
+  the glide per frame went with it. `ConfirmButton` (the confirm-swap) was
+  deleted; its one caller is a plain button, because the browser's download
+  bar already says the file arrived.
 
 - **16 October 2026, foundations as tokens and tests.** The type scale
   (`text-caption` … `text-display`, with line-height, weight and tracking in
