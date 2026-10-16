@@ -35,12 +35,7 @@ import { cn } from "@/lib/utils";
  * own documentation, which is the failure `CONTEXT.md` §5e describes one layer
  * down.
  *
- * It supersedes `/admin/kit`, which is a flat scroll of static examples with no
- * way to drive any of them. The three things that page could not do are the
- * three reasons this one exists: a component is addressable (so a variant can
- * be linked to in a review), every variant is named and explained rather than
- * merely shown, and the specimens are wired to real state, which is the only
- * way behaviour rather than appearance can be finalised.
+ * It replaced `/admin/kit` and `/client/library` on 16 October 2026.
  *
  * **The rule is not restated here.** Each component points at its section of
  * `docs/design.md`, which is the law, and at its source file. A page that

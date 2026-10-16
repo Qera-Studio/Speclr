@@ -159,7 +159,7 @@ function NewDocumentRow() {
  * Home matches exactly — every admin URL starts with `/admin`, so the prefix
  * rule would leave Dashboard permanently lit. Everything else matches by prefix
  * *plus* the pages it stands in for, which is what keeps Tools lit on
- * `/admin/spec` and `/admin/kit`: its index page sends you there, but neither
+ * `/admin/spec` and `/design`: its index page sends you there, but neither
  * URL sits under `/admin/tools`.
  */
 function isRailActive(

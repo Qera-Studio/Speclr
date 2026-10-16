@@ -275,7 +275,7 @@ describe('AdminSidebar', () => {
     });
 
     /**
-     * Icon spec and UI Kit live at `/admin/spec` and `/admin/kit`, not under
+     * Icon spec and the design system live at `/admin/spec` and `/design`, not under
      * `/admin/tools` — so href matching alone would send the row dark on two of
      * the four pages it had just offered. `covers` is what stops that.
      */

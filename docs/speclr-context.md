@@ -1,6 +1,6 @@
 # speclr: the complete project context
 
-> Generated 2026-10-13 from commit `01f3e11` plus 55 uncommitted working-tree changes by `node scripts/build-context.mjs`. This is a snapshot: rerun the script rather than trusting an old copy.
+> Generated 2026-10-16 from commit `3bcdb6b` plus 9 uncommitted working-tree changes by `node scripts/build-context.mjs`. This is a snapshot: rerun the script rather than trusting an old copy.
 
 ## Read this first
 
@@ -136,7 +136,7 @@ The core (this file):
 | 17 | `git log` | Every commit, oldest first: what was done and when |
 
 The reference file: `docs/design.md`, `docs/service-catalogue.md`,
-`docs/contract-content.md`, `docs/ui-elevation.md`, `docs/ux-review.md`,
+`docs/contract-content.md`, `docs/ux-review.md`,
 the original design specs and plans, and the eight checklists in `dev/`.
 
 ## Vocabulary you will meet
@@ -303,8 +303,10 @@ These checklists travel to every Qera project. When one's floor changes, update 
 ## Coding rules
 
 - **Server Components by default.** Add `'use client'` only when the component genuinely needs browser APIs or interactivity.
-- **[`docs/design.md`](docs/design.md) is the design law.** Read it before
-  building any new surface: colour, spacing, radius, type, icons, motion,
+- **[`docs/design.md`](docs/design.md) is the design law, and `/design` is it
+  live.** Read the doc before building any new surface, and look at the page:
+  every token, atom, pattern, state and decision is there, imported from the
+  real files. Read it before building any new surface: colour, spacing, radius, type, icons, motion,
   elevation, and the rules per primitive. A value it does not cover is a value
   you are inventing, which means a new row there in the same commit. Where a
   rule is mechanically enforced, breaking it fails `npm test`.
@@ -946,10 +948,14 @@ broken:
 | a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
 | `register('pan' / 'gstin' / 'tan' / 'cin')` | the matching component in `form/fields.tsx` |
 | `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
-| `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
+| `formatDisplayDate` in a file with a `<TableCell>` | `DateValue` from `patterns/Page.tsx` |
 | a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
-| `status === 'finalized' ? …` as a label | `StatusBadge` from `ui/status-badge.tsx` |
-| a `size="icon"` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `status === 'finalized' ? …` as a label | `<Badge status={…}>` from `ui/badge.tsx` |
+| an `AlertDialog` written by hand, or a `ConfirmDialog` title ending in `?` | `ConfirmDialog` from `patterns/` (`docs/design.md` §2.6) |
+| `disabled={pending}` on a `Button` | `pending={pending}` |
+| `font-mono` on a string, `Loader2` imported | `Mono` from `patterns/`, `Spinner` from `ui/` |
+| an `icon` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `variant="default\|outline\|raised\|neutral"` or `size="icon\|form"` on a button | the five fills and three heights in `ui/button.tsx` (`docs/design.md` §2.1) |
 
 **The last row is the one a person caught before the suite did**, and it is the
 general lesson rather than a rule about dates. The dashboard printed a
@@ -1754,7 +1760,7 @@ form → Zod validate → Server Action → Drizzle → Postgres
 - **`src/db/`** — Drizzle schema + queries + migrations. Relational tables (`clients`, `employees`, `service_templates`, `documents`, `counters`) with JSONB for the doc-type-specific parts. Zod validates JSONB on write.
 - **`src/server/actions/`** — Server Actions (documents, clients, employees, services). Each verifies the Clerk session server-side.
 - **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Tailwind + `src/styles/print.css` for A4/print. Do not redesign.
-- **`src/components/`** — everything else, fresh shadcn (dashboard Table, forms, nav, editors, the Paginator).
+- **`src/components/`** — everything else, fresh shadcn, in layers: `ui/` atoms, `patterns/` molecules and organisms, `shell/` the frame, and the domain screens (`admin/`, `contract/`, `docs/`). `docs/design.md` §0 has the table and the test that holds the order.
 - **`src/app/(app)/{client,admin}/`** — the two profiles (see below). `_routes/` holds the route bodies both profiles share; the page files under each profile are thin wrappers that say which one they are.
 - **`src/lib/profile.ts`** — which side a thing belongs to, and the one documented seam between them.
 
@@ -5217,7 +5223,6 @@ These are distinct accounts, not teams under one login. The Vercel CLI must be l
     "drizzle-orm": "^0.45.2",
     "libphonenumber-js": "^1.13.9",
     "lucide-react": "^1.26.0",
-    "motion": "^12.42.2",
     "next": "16.2.11",
     "next-themes": "^0.4.6",
     "puppeteer-core": "^25.9.0",
@@ -5822,9 +5827,9 @@ e2e/account-card.spec.ts
 e2e/clause-library.spec.ts
 e2e/client-chooser.spec.ts
 e2e/client-draft.spec.ts
-e2e/component-library.spec.ts
 e2e/contract-flow.spec.ts
 e2e/contract.spec.ts
+e2e/design.spec.ts
 e2e/document-header.spec.ts
 e2e/documents-row.spec.ts
 e2e/header.spec.ts
@@ -5840,6 +5845,7 @@ e2e/shell-sheets.spec.ts
 e2e/sidebar-float.spec.ts
 e2e/tabs.spec.ts
 scripts/backfill-addresses.ts
+scripts/build-context.mjs
 scripts/icon-inventory.ts
 scripts/migrate-region.ts
 scripts/rate-card-menu.json
@@ -5849,6 +5855,7 @@ src/__tests__/contrast.test.ts
 src/__tests__/design-system.test.ts
 src/__tests__/design-tokens.test.ts
 src/__tests__/manifest.test.ts
+src/__tests__/migratedLater.ts
 src/__tests__/policedSource.ts
 src/__tests__/security-headers.test.ts
 src/app/(app)/_routes/DocumentRoute.tsx
@@ -5867,7 +5874,6 @@ src/app/(app)/admin/docs/[id]/print/page.tsx
 src/app/(app)/admin/docs/new/[type]/page.tsx
 src/app/(app)/admin/docs/page.tsx
 src/app/(app)/admin/employees/page.tsx
-src/app/(app)/admin/kit/page.tsx
 src/app/(app)/admin/page.tsx
 src/app/(app)/admin/settings/page.tsx
 src/app/(app)/admin/spec/__tests__/page.test.tsx
@@ -5878,23 +5884,26 @@ src/app/(app)/admin/tools/sitemap/page.tsx
 src/app/(app)/client/__tests__/libraryPages.test.tsx
 src/app/(app)/client/checklist/page.tsx
 src/app/(app)/client/clauses/page.tsx
+src/app/(app)/client/clients/[id]/loading.tsx
 src/app/(app)/client/clients/[id]/page.tsx
+src/app/(app)/client/clients/new/loading.tsx
 src/app/(app)/client/clients/new/page.tsx
 src/app/(app)/client/clients/page.tsx
 src/app/(app)/client/dashboard/page.tsx
 src/app/(app)/client/docs/[id]/page.tsx
 src/app/(app)/client/docs/[id]/print/page.tsx
 src/app/(app)/client/docs/new/[type]/page.tsx
-src/app/(app)/client/library/page.tsx
 src/app/(app)/client/page.tsx
 src/app/(app)/client/services/[code]/page.tsx
 src/app/(app)/client/services/page.tsx
+src/app/(app)/design/page.tsx
 src/app/(app)/docs/[id]/page.tsx
 src/app/(app)/docs/[id]/print/page.tsx
 src/app/(app)/docs/new/[type]/page.tsx
 src/app/(app)/error.tsx
 src/app/(app)/layout.tsx
 src/app/(app)/loading.tsx
+src/app/(app)/not-found.tsx
 src/app/(app)/page.tsx
 src/app/api/clients/[id]/files/[fileId]/route.ts
 src/app/api/docs/[id]/pdf/route.ts
@@ -5918,7 +5927,7 @@ src/app/preview/client-chooser/page.tsx
 src/app/preview/client-draft/page.tsx
 src/app/preview/clients/page.tsx
 src/app/preview/contract-flow/page.tsx
-src/app/preview/library/page.tsx
+src/app/preview/design/page.tsx
 src/app/preview/popups/PopupGallery.tsx
 src/app/preview/popups/page.tsx
 src/app/preview/record-table/page.tsx
@@ -5928,15 +5937,6 @@ src/app/preview/shell/page.tsx
 src/app/preview/tabs/TabGallery.tsx
 src/app/preview/tabs/page.tsx
 src/app/sign-in/[[...sign-in]]/page.tsx
-src/components/admin/AdminHeader.tsx
-src/components/admin/AdminShell.tsx
-src/components/admin/AdminSidebar.tsx
-src/components/admin/AmountCell.tsx
-src/components/admin/Breadcrumbs.tsx
-src/components/admin/BulkSelect.tsx
-src/components/admin/Clock.tsx
-src/components/admin/CopyCell.tsx
-src/components/admin/DocumentCrumb.tsx
 src/components/admin/DocumentRowActions.tsx
 src/components/admin/DocumentTotal.tsx
 src/components/admin/DocumentTypeList.tsx
@@ -5944,61 +5944,11 @@ src/components/admin/DocumentsBrowser.tsx
 src/components/admin/DocumentsCards.tsx
 src/components/admin/DocumentsKanban.tsx
 src/components/admin/DocumentsTable.tsx
-src/components/admin/EditorPanel.tsx
-src/components/admin/EditorSidebar.tsx
-src/components/admin/FilterBar.tsx
-src/components/admin/KeyboardShortcuts.tsx
-src/components/admin/LocationCell.tsx
-src/components/admin/NavIndex.tsx
-src/components/admin/NewDocumentButton.tsx
-src/components/admin/NewDocumentCommand.tsx
-src/components/admin/Notifications.tsx
-src/components/admin/OfflineBar.tsx
-src/components/admin/Page.tsx
-src/components/admin/PageHeaderSlot.tsx
-src/components/admin/PersonCell.tsx
-src/components/admin/ProfileSwitcher.tsx
 src/components/admin/ReceiptForInvoiceButton.tsx
-src/components/admin/RecordPanel.tsx
-src/components/admin/RecordTable.tsx
-src/components/admin/RememberLocation.tsx
-src/components/admin/RowActions.tsx
-src/components/admin/RowMenu.tsx
-src/components/admin/SearchCommand.tsx
-src/components/admin/SidebarResizeHandle.tsx
-src/components/admin/SortToggle.tsx
-src/components/admin/ThemeToggle.tsx
-src/components/admin/TopPanel.tsx
-src/components/admin/UserCard.tsx
-src/components/admin/__tests__/AdminHeader.test.tsx
-src/components/admin/__tests__/AdminShell.test.tsx
-src/components/admin/__tests__/AdminSidebar.test.tsx
-src/components/admin/__tests__/AmountCell.test.tsx
-src/components/admin/__tests__/Breadcrumbs.test.tsx
-src/components/admin/__tests__/BulkSelect.test.tsx
-src/components/admin/__tests__/Clock.test.tsx
-src/components/admin/__tests__/CopyCell.test.tsx
-src/components/admin/__tests__/DocumentCrumb.test.tsx
 src/components/admin/__tests__/DocumentRowActions.test.tsx
 src/components/admin/__tests__/DocumentTypeList.test.tsx
 src/components/admin/__tests__/DocumentsBrowser.test.tsx
 src/components/admin/__tests__/DocumentsTable.test.tsx
-src/components/admin/__tests__/EditorPanel.test.tsx
-src/components/admin/__tests__/EditorSidebar.test.tsx
-src/components/admin/__tests__/KeyboardShortcuts.test.tsx
-src/components/admin/__tests__/NewDocumentCommand.test.tsx
-src/components/admin/__tests__/OfflineBar.test.tsx
-src/components/admin/__tests__/ProfileSwitcher.test.tsx
-src/components/admin/__tests__/RecordTable.test.tsx
-src/components/admin/__tests__/SearchCommand.test.tsx
-src/components/admin/__tests__/SidebarResizeHandle.test.tsx
-src/components/admin/__tests__/TableSkeleton.test.tsx
-src/components/admin/__tests__/ThemeMenuItems.test.tsx
-src/components/admin/__tests__/TopPanel.test.tsx
-src/components/admin/__tests__/breadcrumb.test.ts
-src/components/admin/__tests__/nav.test.ts
-src/components/admin/__tests__/useProfileDrag.test.tsx
-src/components/admin/breadcrumb.ts
 src/components/admin/clauses/ClauseBodyEditor.tsx
 src/components/admin/clauses/ClauseCitations.tsx
 src/components/admin/clauses/ClauseLibrary.tsx
@@ -6050,7 +6000,6 @@ src/components/admin/employees/EmployeesTable.tsx
 src/components/admin/employees/__tests__/EmployeeForm.test.tsx
 src/components/admin/employees/__tests__/EmployeeManager.test.tsx
 src/components/admin/employees/__tests__/EmployeesTable.test.tsx
-src/components/admin/nav.ts
 src/components/admin/services/ItemForm.tsx
 src/components/admin/services/ItemsManager.tsx
 src/components/admin/services/ItemsTable.tsx
@@ -6067,9 +6016,6 @@ src/components/admin/services/__tests__/WordingForm.test.tsx
 src/components/admin/services/useSectionSave.ts
 src/components/admin/settings/StudioForm.tsx
 src/components/admin/settings/__tests__/StudioForm.test.tsx
-src/components/admin/useFullscreen.ts
-src/components/admin/useProfileDrag.ts
-src/components/admin/useRecordPanel.ts
 src/components/contract/BlankFields.tsx
 src/components/contract/PartCard.tsx
 src/components/contract/ServiceCatalog.tsx
@@ -6086,6 +6032,24 @@ src/components/contract/flow/__tests__/phases.test.ts
 src/components/contract/flow/__tests__/summary.test.ts
 src/components/contract/flow/phases.ts
 src/components/contract/flow/summary.ts
+src/components/design/AtomSpecimens.tsx
+src/components/design/ButtonSpecimens.tsx
+src/components/design/DesignPage.tsx
+src/components/design/FoundationSpecimens.tsx
+src/components/design/IconSpecimens.tsx
+src/components/design/PageSpecimens.tsx
+src/components/design/PatternSpecimens.tsx
+src/components/design/Specimen.tsx
+src/components/design/TableSpecimens.tsx
+src/components/design/__tests__/ButtonSpecimens.test.tsx
+src/components/design/__tests__/DesignPage.test.tsx
+src/components/design/__tests__/catalogue.test.ts
+src/components/design/__tests__/iconInventory.test.ts
+src/components/design/catalogue.ts
+src/components/design/iconInventory.generated.ts
+src/components/design/table/TemplateTable.tsx
+src/components/design/table/columns.tsx
+src/components/design/table/rows.ts
 src/components/docs/ContractPages.tsx
 src/components/docs/DocumentPager.tsx
 src/components/docs/DocumentPreview.tsx
@@ -6145,14 +6109,7 @@ src/components/docs/sheets/__tests__/SlipSheet.test.tsx
 src/components/docs/sheets/frame.ts
 src/components/docs/usePagination.ts
 src/components/docs/workspaceTitle.ts
-src/components/flow/FlowShell.tsx
-src/components/flow/__tests__/FlowShell.test.tsx
-src/components/flow/__tests__/steps.test.ts
-src/components/flow/stepKit.tsx
-src/components/flow/steps.ts
 src/components/form/AddressFields.tsx
-src/components/form/FieldCheck.tsx
-src/components/form/FieldInfo.tsx
 src/components/form/IfscField.tsx
 src/components/form/PhoneField.tsx
 src/components/form/UpiQrUpload.tsx
@@ -6166,20 +6123,86 @@ src/components/form/__tests__/fields.test.tsx
 src/components/form/__tests__/inputFilters.test.ts
 src/components/form/fields.tsx
 src/components/form/inputFilters.ts
-src/components/library/ButtonSpecimens.tsx
-src/components/library/ComponentLibrary.tsx
-src/components/library/IconSpecimens.tsx
-src/components/library/Specimen.tsx
-src/components/library/TableSpecimens.tsx
-src/components/library/__tests__/ButtonSpecimens.test.tsx
-src/components/library/__tests__/ComponentLibrary.test.tsx
-src/components/library/__tests__/catalogue.test.ts
-src/components/library/__tests__/iconInventory.test.ts
-src/components/library/catalogue.ts
-src/components/library/iconInventory.generated.ts
-src/components/library/table/TemplateTable.tsx
-src/components/library/table/columns.tsx
-src/components/library/table/rows.ts
+src/components/patterns/AddAction.tsx
+src/components/patterns/AmountCell.tsx
+src/components/patterns/BulkSelect.tsx
+src/components/patterns/ColumnsMenu.tsx
+src/components/patterns/ConfirmAction.tsx
+src/components/patterns/ConfirmDialog.tsx
+src/components/patterns/CopyCell.tsx
+src/components/patterns/DrawerToolbar.tsx
+src/components/patterns/FieldCheck.tsx
+src/components/patterns/FieldInfo.tsx
+src/components/patterns/FilterBar.tsx
+src/components/patterns/IconAction.tsx
+src/components/patterns/LocationCell.tsx
+src/components/patterns/Mono.tsx
+src/components/patterns/NavIndex.tsx
+src/components/patterns/Page.tsx
+src/components/patterns/PersonCell.tsx
+src/components/patterns/RecordTable.tsx
+src/components/patterns/RowActions.tsx
+src/components/patterns/RowMenu.tsx
+src/components/patterns/SortToggle.tsx
+src/components/patterns/__tests__/AmountCell.test.tsx
+src/components/patterns/__tests__/BulkSelect.test.tsx
+src/components/patterns/__tests__/ConfirmAction.test.tsx
+src/components/patterns/__tests__/CopyAction.test.tsx
+src/components/patterns/__tests__/CopyCell.test.tsx
+src/components/patterns/__tests__/RecordTable.test.tsx
+src/components/patterns/__tests__/RemoveButton.test.tsx
+src/components/patterns/__tests__/TableSkeleton.test.tsx
+src/components/patterns/flow/FlowShell.tsx
+src/components/patterns/flow/__tests__/FlowShell.test.tsx
+src/components/patterns/flow/__tests__/steps.test.ts
+src/components/patterns/flow/stepKit.tsx
+src/components/patterns/flow/steps.ts
+src/components/shell/AdminHeader.tsx
+src/components/shell/AdminShell.tsx
+src/components/shell/AdminSidebar.tsx
+src/components/shell/Breadcrumbs.tsx
+src/components/shell/Clock.tsx
+src/components/shell/DocumentCrumb.tsx
+src/components/shell/EditorPanel.tsx
+src/components/shell/EditorSidebar.tsx
+src/components/shell/KeyboardShortcuts.tsx
+src/components/shell/NewDocumentButton.tsx
+src/components/shell/NewDocumentCommand.tsx
+src/components/shell/Notifications.tsx
+src/components/shell/OfflineBar.tsx
+src/components/shell/PageHeaderSlot.tsx
+src/components/shell/ProfileSwitcher.tsx
+src/components/shell/RecordPanel.tsx
+src/components/shell/RememberLocation.tsx
+src/components/shell/SearchCommand.tsx
+src/components/shell/SidebarResizeHandle.tsx
+src/components/shell/ThemeToggle.tsx
+src/components/shell/TopPanel.tsx
+src/components/shell/UserCard.tsx
+src/components/shell/__tests__/AdminHeader.test.tsx
+src/components/shell/__tests__/AdminShell.test.tsx
+src/components/shell/__tests__/AdminSidebar.test.tsx
+src/components/shell/__tests__/Breadcrumbs.test.tsx
+src/components/shell/__tests__/Clock.test.tsx
+src/components/shell/__tests__/DocumentCrumb.test.tsx
+src/components/shell/__tests__/EditorPanel.test.tsx
+src/components/shell/__tests__/EditorSidebar.test.tsx
+src/components/shell/__tests__/KeyboardShortcuts.test.tsx
+src/components/shell/__tests__/NewDocumentCommand.test.tsx
+src/components/shell/__tests__/OfflineBar.test.tsx
+src/components/shell/__tests__/ProfileSwitcher.test.tsx
+src/components/shell/__tests__/SearchCommand.test.tsx
+src/components/shell/__tests__/SidebarResizeHandle.test.tsx
+src/components/shell/__tests__/ThemeMenuItems.test.tsx
+src/components/shell/__tests__/TopPanel.test.tsx
+src/components/shell/__tests__/breadcrumb.test.ts
+src/components/shell/__tests__/nav.test.ts
+src/components/shell/__tests__/useProfileDrag.test.tsx
+src/components/shell/breadcrumb.ts
+src/components/shell/nav.ts
+src/components/shell/useFullscreen.ts
+src/components/shell/useProfileDrag.ts
+src/components/shell/useRecordPanel.ts
 src/components/spec/ClientDetailsFields.tsx
 src/components/spec/ExportProgressButton.tsx
 src/components/spec/IconSpecCard.tsx
@@ -6220,24 +6243,18 @@ src/components/tools/__tests__/ClientRequestChecklist.test.tsx
 src/components/tools/__tests__/CtcCalculator.test.tsx
 src/components/tools/__tests__/SitemapChart.test.tsx
 src/components/ui/__tests__/autofill.test.tsx
+src/components/ui/__tests__/badge.test.tsx
 src/components/ui/__tests__/blue-check.test.tsx
 src/components/ui/__tests__/button.test.tsx
 src/components/ui/__tests__/combobox.test.tsx
-src/components/ui/__tests__/confirm-action-button.test.tsx
-src/components/ui/__tests__/confirm-button.test.tsx
 src/components/ui/__tests__/control-size.test.tsx
-src/components/ui/__tests__/copy-button.test.tsx
 src/components/ui/__tests__/date-picker.test.tsx
 src/components/ui/__tests__/drawer-sheet.test.tsx
 src/components/ui/__tests__/pageGroups.test.ts
 src/components/ui/__tests__/pagination.test.tsx
-src/components/ui/__tests__/remove-button.test.tsx
 src/components/ui/__tests__/sheet.test.tsx
 src/components/ui/__tests__/sidebar.test.tsx
-src/components/ui/__tests__/status-badge.test.tsx
 src/components/ui/__tests__/table.test.tsx
-src/components/ui/__tests__/tray-arrow-icon.test.tsx
-src/components/ui/add-button.tsx
 src/components/ui/alert-dialog.tsx
 src/components/ui/alert.tsx
 src/components/ui/attachment.tsx
@@ -6251,30 +6268,22 @@ src/components/ui/card.tsx
 src/components/ui/checkbox.tsx
 src/components/ui/collapsible.tsx
 src/components/ui/combobox.tsx
-src/components/ui/confirm-action-button.tsx
-src/components/ui/confirm-button.tsx
-src/components/ui/copy-button.tsx
 src/components/ui/date-picker.tsx
 src/components/ui/derived-note.tsx
 src/components/ui/dialog.tsx
 src/components/ui/drawer-sheet.tsx
-src/components/ui/drawer-toolbar.tsx
 src/components/ui/dropdown-menu.tsx
 src/components/ui/empty.tsx
 src/components/ui/field-row.tsx
 src/components/ui/field.tsx
-src/components/ui/icon-action.tsx
 src/components/ui/input.tsx
 src/components/ui/kbd.tsx
 src/components/ui/label.tsx
-src/components/ui/magic-move.tsx
 src/components/ui/pageGroups.ts
 src/components/ui/pagination.tsx
 src/components/ui/popover.tsx
 src/components/ui/popup.ts
 src/components/ui/progress.tsx
-src/components/ui/record-drawer.tsx
-src/components/ui/remove-button.tsx
 src/components/ui/select.tsx
 src/components/ui/separator.tsx
 src/components/ui/sheet.tsx
@@ -6282,13 +6291,11 @@ src/components/ui/sidebar.tsx
 src/components/ui/skeleton.tsx
 src/components/ui/sonner.tsx
 src/components/ui/spinner.tsx
-src/components/ui/status-badge.tsx
 src/components/ui/switch.tsx
 src/components/ui/table.tsx
 src/components/ui/tabs.tsx
 src/components/ui/textarea.tsx
 src/components/ui/tooltip.tsx
-src/components/ui/tray-arrow-icon.tsx
 src/db/__tests__/mappers.actor.test.ts
 src/db/__tests__/mappers.client.test.ts
 src/db/__tests__/mappers.content.test.ts
@@ -6328,6 +6335,7 @@ src/db/migrations/meta/_journal.json
 src/db/schema.ts
 src/db/store.ts
 src/hooks/use-mobile.ts
+src/lib/__tests__/cn.test.ts
 src/lib/__tests__/draft.test.ts
 src/lib/__tests__/fileSignature.test.ts
 src/lib/__tests__/profile.test.ts
@@ -6472,6 +6480,7 @@ src/lib/spec/svgHygiene.ts
 src/lib/spec/types.ts
 src/lib/spec/useIconSpecState.ts
 src/lib/spec/useImageValidation.ts
+src/lib/useCopy.ts
 src/lib/useDownloadPdf.ts
 src/lib/useMinimumDuration.ts
 src/lib/useProfile.ts
@@ -6522,27 +6531,23 @@ src/test-utils/combobox.ts
 
 ---
 name: confirmswap-pattern
-description: "The reusable \"confirmSwap\" action-feedback animation and its ConfirmButton component"
-metadata: 
-  node_type: memory
+description: confirmSwap (ConfirmButton, the hover icon animation and the label swap) was deleted on 16 Oct 2026 with every decorative motion; a working button is `pending`
+metadata:
   type: project
-  originSessionId: adc4af2a-6b45-44de-b19d-65922dc0b4c3
-  modified: 2026-07-24T12:56:12.890Z
 ---
 
-**confirmSwap** is Shivanshu's named, reusable action-feedback EXPERIENCE for buttons. When he says "add confirmSwap to this button" (any action — download, save, copy, send), it means BOTH parts below, together — including a purposeful hover icon animation, not just the click-confirm. Base component: `ConfirmButton` at `src/components/ui/confirm-button.tsx`.
+**confirmSwap no longer exists.** `ConfirmButton`, `TrayArrowIcon`, the
+`motion` package and every hover icon animation were removed on 16 October
+2026 when the design system settled on functional motion only
+(`docs/design.md` §1.6; the decision is on `/design`). If Shivanshu says "add
+confirmSwap", the house answer now is `Button pending` (a spinner in front of
+a label that never changes) and, for something that happens off screen, a
+toast; the browser's own download bar is the confirmation for an export.
 
-The essence is constant; the SPECIFIC icon animation is per-button — design a hover animation that ECHOES what that button does (download → arrow cycles into the tray; upload → arrow cycles up; save → e.g. a disk/check motion). Do NOT blindly reuse the tray-arrow icon; pick/build motion appropriate to the action. The reference example is `TrayArrowIcon` (`src/components/ui/tray-arrow-icon.tsx`, direction 'down'|'up') — a Lucide-native icon whose arrow cycles once per hover, clipping behind the tray bar, driven by CSS `group-hover/button` (no Motion/JS).
-
-What it does (the cues a bare button misses):
-1. **hover** → the ICON plays a purposeful, once-per-hover animation echoing the action. The button itself does NOT lift/scale — Shivanshu explicitly rejected lift/scale; the icon carries the motion.
-2. **click** → `onAction` fires immediately; after `confirmDelayMs` (~500) the icon + label SNAP to a confirming state (e.g. double-tick `CheckCheck` + "Downloaded") at a FIXED width (idle/confirm content share a grid cell so the button never resizes), linger `revertAfterMs`, then snap back. NO crossfade / width / layout animation — the snap-not-crossfade is deliberate: an earlier AnimatePresence crossfade caused an expand→gap→collapse jank he called out.
-
-Props: `idleIcon` (fallback), `idleIconSlot` (custom idle icon node, e.g. `<TrayArrowIcon direction="down" />` — replaces idleIcon, runs its own hover animation), `idleLabel`, `confirmIcon`, `confirmLabel`, `onAction`, `iconMotion` ('bob-down'|'bob-up'|'none' for the default icon), `confirmDelayMs`, `revertAfterMs`, plus `buttonVariants` variant/size + className. `onAction` does the real work; the confirm state shows regardless (purely presentational feedback). Export uses idleIconSlot=TrayArrowIcon + revertAfterMs=3000.
-
-Built on **Motion** (`motion/react`) — added deliberately this session (introduced zero new npm-audit advisories; only 3 first-party transitive pkgs). First used on the Export button in `src/components/spec/ExportImportControls.tsx`.
-
-**Testing note:** tests must mock `motion/react` to plain elements (see `confirm-button.test.tsx`) — `AnimatePresence` exit removal is animation-gated and never completes under jsdom fake timers, so behaviour/revert assertions need the mock. Behaviour (handler runs, label swaps, reverts) is state-driven and must not depend on the animation lifecycle. Related: [[spec-tool-finalisation]]
+**Why:** an icon that moves delays recognising which icon it is; the label
+swap said the same thing twice; springs ignored reduced-motion. He agreed to
+the removal after a senior designer's advice. Do not rebuild it quietly.
+Related: [[speclr-design-system]]
 
 ## no-em-dashes.md
 
@@ -6697,6 +6702,49 @@ Two implementation notes, both cost real debugging time: the hook payload is
 JSON whose command contains newlines, so `json.loads` needs `strict=False`;
 and extracting it in shell mangles the quoting before python sees it, so the
 guard is a standalone `.py` file rather than an inline `python3 -c`.
+
+## speclr-design-system.md
+
+---
+name: speclr-design-system
+description: speclr's design system as built 16 Oct 2026: tokens + tests + allowlists, ui/patterns/shell folders, /design page; the rules of thumb and the one tailwind-merge trap
+metadata:
+  type: project
+---
+
+Built across seven commits on 16 October 2026 (`style(tokens)` through
+`feat(design)`), from the plan the user approved.
+
+**Shape:** `ui/` atoms, `patterns/` molecules and organisms, `shell/` the
+frame, screens elsewhere; a test holds the import order. `/design` is the
+catalogue (`src/components/design/`), profile-neutral, with decisions as
+records in `catalogue.ts`. `docs/design.md` is the law; every rule is a test
+in `src/__tests__/design-system.test.ts` and existing violations sit in
+`migratedLater.ts`, which only shrinks and is checked by a ratchet.
+
+**Numbers decided with him:** body 13 / controls 12 / caption 11, page title
+20; buttons 28 / 32 / 36 with `icon` as a shape and `secondary` the default;
+inputs 32 / 36; 4px grid with 9 (36) admitted for insets aligned to a
+control; radii 4/6/8/12; three shadows; motion 75/100/200 and nothing
+decorative; stroke 1.75; one `focus-ring`; `ConfirmDialog` wording fixed.
+
+**Why:** the audit found every drifted rule was a prose rule; colour had
+stopped drifting the day a test banned hex.
+
+**How to apply:** a new value is a token plus a doc row plus a test, seen
+red once, in one commit. A rule with violations lands with an allowlist.
+Experiments go on `/design`, never in the product.
+
+**Trap:** `cn()` uses tailwind-merge, which reads unknown `text-*` as a
+colour; `lib/utils.ts` extends it with the eight size tokens and three
+shadows, pinned by `lib/__tests__/cn.test.ts`. Any new token family that
+shares a prefix with a colour group must be added there or it is silently
+dropped beside a colour class.
+
+**Left open:** ~90 margin sites and 32 raw `<button>` screens remain on
+allowlists; `docs/design.md` is still ~2,500 lines (the ≤600 rewrite was
+deferred rather than done by deleting history). Related:
+[[confirmswap-pattern]] [[rules-need-enforcement-not-prose]]
 
 ## speclr-format-freeze-before-any-issue.md
 
@@ -7218,5 +7266,19 @@ Related: [[no-em-dashes]], [[speclr-latency-is-the-perf-problem]].
 2026-10-04 17d68c3 docs: record the table template, the exchange-rate deviation and the client axes editor
 2026-10-04 2594c2a test(e2e): find back by its label, and anchor the document number
 2026-10-04 01f3e11 fix(pager): the rules and the library catch up with the unfilled container
+2026-10-14 805a9bd style(tokens): neutral gray ramp, a placeholder token and quiet accent ink
+2026-10-14 f296a02 feat(tabs): one segmented trough and pill shared by every switcher
+2026-10-14 9f819c5 feat(table): fixed columns that fit their data, a columns menu, and cell-scoped copy
+2026-10-14 e6c7109 feat(library): segmented tabs, item and clause drawer experiments, rich client table
+2026-10-14 bc506ba docs: design law for the new tokens and tabs, the founder's list, and the context bundle
+2026-10-16 d9d8e48 style(tokens): type scale, fixed radii, elevation and focus tokens, ten enforced rules
+2026-10-16 1025cf9 style(motion): functional motion only
+2026-10-16 b148f61 feat(ui): five fills, three heights, one focus ring
+2026-10-16 c07123a feat(patterns): the molecules, and one confirmation
+2026-10-16 559f9f7 refactor(components): shell and patterns folders
+2026-10-16 b6bdb91 style(type): every text size is a token
+2026-10-16 1e1a601 style(screens): shadows, rings, corners, insets and the molecules in every screen
+2026-10-16 a31e349 feat(states): one empty state, a not-found page, form skeletons, 40px rows
+2026-10-16 3bcdb6b feat(design): the design system's own page at /design
 ```
 

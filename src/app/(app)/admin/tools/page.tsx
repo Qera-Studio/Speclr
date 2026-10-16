@@ -10,7 +10,7 @@ export const metadata: Metadata = {
  * `/admin/tools` — the studio's own instruments.
  *
  * Lists more than lives under this path: Icon spec and UI Kit sit at
- * `/admin/spec` and `/admin/kit`. That is why the rail row carries `covers` —
+ * `/admin/spec` and `/design`. That is why the rail row carries `covers` —
  * without it the row would go dark on two of the four pages it just offered.
  */
 export default function AdminToolsPage() {

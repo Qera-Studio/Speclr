@@ -5,9 +5,8 @@
 > button, the answer is already in here. If it is not, you are about to invent
 > one, which means you add a row here in the same commit.
 >
-> This file grows as `ui-elevation.md` is worked through. Anything decided there
-> that will be reused, or that changes how a whole class of thing looks, lands
-> here. `ui-elevation.md` is the **to-do list**; this is the **result**.
+> The decisions behind every rule are on `/design` (the decisions section)
+> and in §6 below; the test that holds each is in §4.
 
 ---
 
@@ -35,18 +34,13 @@ what to do.
 **Changing something everywhere:** change it here first, then in the code, then
 add the test that stops it drifting back (§4).
 
-**Status key**, on every rule:
-
-| | Meaning |
-|---|---|
-| **enforced** | A test fails if you break it. Named in §4. |
-| **house** | Agreed and applied, not yet mechanically enforced. Enforce it the day it gets broken twice. |
-| **open** | Decided in principle, not built yet. Carries a `ui-elevation.md` id. |
-
-**The escalation rule.** A house rule that gets broken a second time becomes an
-enforced rule in the commit that fixes the second break. That is the §5e
-mechanism from `CONTEXT.md`, and it is the only thing keeping this file from
-becoming decoration.
+**Every rule is enforced or it is deleted.** There used to be a "house"
+status for rules agreed but not tested, with an escalation rule for the day
+one was broken twice. It was retired on 16 October 2026: the audit found the
+house rules were the ones that had drifted, every one. A rule that cannot be
+written as a test is rewritten until it can, and until then it is a note in
+§6, not a rule. Where a rule has existing violations it lands with a
+shrinking allowlist (§4).
 
 ---
 
@@ -262,7 +256,7 @@ down: anything compared against a certificate or a bank statement gets
   be compared, which is most of what these tables are for.
 - **Never centre body text.** Numbers are right-aligned, everything else left.
 
-### 1.5 Icons — **house**, partly enforced
+### 1.5 Icons — **enforced**, except the stroke width
 
 Lucide only. One weight everywhere: `globals.css` sets `stroke-width: 1.75`
 with `non-scaling-stroke` on `.lucide`, so the weight is screen pixels and does
@@ -475,7 +469,7 @@ active colour.
   bug, not a shortcut. Where the visual must be a box (the upload drop zone), it
   is `role="button"` with a keyboard handler and an `sr-only` real input inside.
 
-### 1.9 Cursors — **house**
+### 1.9 Cursors
 
 The platform cursors are black with a white outline whatever the theme, and on
 a gray shell they sat like strangers. Five are drawn in-house, as inline SVG
@@ -630,7 +624,7 @@ the floor.
 - No quoted em or en dash as a nil glyph. `NIL` from `lib/utils.ts`, which is a
   hyphen. Same reason as the row above, and the house rule on dashes.
 - No `status === 'finalized' ? …` label written in a component. `StatusBadge`
-  from `ui/status-badge.tsx` owns the word and the fill, and every status
+  from `ui/badge.tsx`'s `status` prop owns the word and the fill, and every status
   carries a word so colour is never the message.
 - No `size="icon"` button without a name to announce: `aria-label`, an
   `sr-only` span, or a `label` prop on one of the wrappers that renders both.
@@ -1044,7 +1038,7 @@ stated `size` instead of being stretched in proportion.
 ### 2.4 Cards and page layout
 
 - **A page is: header (title, description, primary action), then content.** One
-  component owns that (`PageHeader`, `ui-elevation.md` B1), so the inset,
+  component owns that (`PageHeader`), so the inset,
   the title size and the action placement cannot drift per page.
 - A card is `border border-border rounded-lg bg-card`, no shadow, and its own
   padding is `p-4` (dense) or `p-6` (a form).

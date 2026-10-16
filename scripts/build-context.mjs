@@ -167,7 +167,7 @@ The core (this file):
 | 17 | \`git log\` | Every commit, oldest first: what was done and when |
 
 The reference file: \`docs/design.md\`, \`docs/service-catalogue.md\`,
-\`docs/contract-content.md\`, \`docs/ui-elevation.md\`, \`docs/ux-review.md\`,
+\`docs/contract-content.md\`, \`docs/ux-review.md\`,
 the original design specs and plans, and the eight checklists in \`dev/\`.
 
 ## Vocabulary you will meet
@@ -247,7 +247,6 @@ const reference =
   file('docs/design.md', 'The design law: tokens, components, writing, and what tests enforce.') +
   file('docs/service-catalogue.md', 'The spec the 16 services and 293 items are generated from.') +
   file('docs/contract-content.md', 'Every word of the MSA, the four Schedules and the Parts.') +
-  file('docs/ui-elevation.md') +
   file('docs/ux-review.md') +
   ls('docs/superpowers/specs').map((p) => file(p, 'Original design spec.')).join('') +
   ls('docs/superpowers/plans').map((p) => file(p, 'Original implementation plan, historical.')).join('') +

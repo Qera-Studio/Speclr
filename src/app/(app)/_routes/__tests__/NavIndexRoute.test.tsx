@@ -43,7 +43,7 @@ describe('NavIndexRoute', () => {
 
   /**
    * Icon spec and UI Kit are listed here but live at `/admin/spec` and
-   * `/admin/kit`. That mismatch is exactly why the rail row carries `covers`.
+   * `/design`. That mismatch is exactly why the rail row carries `covers`.
    */
   it('lists a group’s links, including the ones outside its own path', async () => {
     render(await NavIndexRoute({ profile: 'admin', section: 'Tools' }));
