@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { policedFiles, violations } from './policedSource';
+import { PALETTE_ESCAPE_MIGRATED_LATER } from './migratedLater';
 
 /**
  * The design system's enforcement layer.
@@ -32,6 +33,33 @@ const RAW_PALETTE_CLASS = new RegExp(
 
 const HEX_LITERAL = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 
+/**
+ * The three ways past the two rules above that were actually taken:
+ * `text-[var(--gray-400)]` reaches the ramp the tokens exist to hide,
+ * `text-[oklch(…)]` is a colour nobody measured, and `rgba(` is a shadow
+ * colour the hex rule cannot see.
+ */
+const PALETTE_ESCAPE = /\[(?:var\(--gray-|oklch\(|rgba?\()/g;
+
+/**
+ * The tokens the rest of the system is built on. Each is named here so that
+ * deleting one from `globals.css` fails the build rather than silently
+ * reverting every `text-body` in the app to Tailwind's default.
+ */
+const REQUIRED_TOKENS = [
+  ...['caption', 'meta', 'control', 'body', 'lead', 'section', 'title', 'display'].map(
+    (t) => `--text-${t}:`,
+  ),
+  ...['caption', 'meta', 'control', 'body', 'lead', 'section', 'title', 'display'].map(
+    (t) => `--text-${t}--line-height:`,
+  ),
+  '--shadow-raised:', '--shadow-overlay:', '--shadow-modal:',
+  '--radius-sm:', '--radius-md:', '--radius-lg:', '--radius-xl:',
+  '--z-sticky:', '--z-rail:', '--z-overlay:', '--z-modal:', '--z-toast:',
+  '--success:', '--success-foreground:',
+  '@utility focus-ring',
+];
+
 describe('design tokens', () => {
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
@@ -43,6 +71,20 @@ describe('design tokens', () => {
 
   it('uses theme tokens, never hex colour literals', () => {
     expect(violations(HEX_LITERAL)).toEqual([]);
+  });
+
+  it('never reaches the ramp, a raw oklch() or an rgba() through an arbitrary value', () => {
+    expect(violations(PALETTE_ESCAPE, PALETTE_ESCAPE_MIGRATED_LATER, /\.tsx?$/)).toEqual([]);
+  });
+
+  it('defines every token the system is built on', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    expect(REQUIRED_TOKENS.filter((t) => !css.includes(t))).toEqual([]);
+  });
+
+  it('never defines a radius past xl or a multiplier base', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    expect(css).not.toMatch(/--radius-[234]xl|--radius:\s/);
   });
 
   /**
@@ -93,7 +135,7 @@ describe('design tokens', () => {
   it('defines neutral roles as ramp aliases, not as raw values', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     const CHROMATIC =
-      /^--(sidebar-)?(primary|destructive|warning|chart-\d|accent-[a-z]+(?:-ink)?)(-foreground)?$/;
+      /^--(sidebar-)?(primary|destructive|warning|success|chart-\d|accent-[a-z]+(?:-ink)?)(-foreground)?$/;
     const strays: string[] = [];
     for (const [, name, C] of css.matchAll(
       /^\s*(--[a-z0-9-]+):\s*oklch\((?:[\d.]+)\s+([\d.]+)\s+[\d.]+\)/gm,

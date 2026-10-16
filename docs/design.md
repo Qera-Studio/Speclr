@@ -120,134 +120,139 @@ it at 3.94:1, and most of what a card prints is muted.
 `ring-ring/30`). Prefer them to a new token; add a token only when the value has
 a *meaning* that needs naming.
 
-### 1.2 Spacing — **house**
+### 1.2 Spacing — **enforced**
 
-One scale, and it is Tailwind's. The vocabulary in use, in order of how often
-it should appear:
+**Rule of thumb:** 4px grid. Inside a control, 8; between controls, 8; between
+groups of controls, 16; between sections, 24; the page inset is 32. Nothing
+else.
 
-Four values carry the rhythm. Everything else is an exception that wants a
-reason.
+A grid is what makes alignment free: with one base, any two things on screen
+are either aligned or an obvious multiple apart, and the eye reads
+"intentional" even when nothing was individually tuned. 4 rather than 8
+because a 28px control needs a 6px gap from icon to label and a 4px gap to an
+adjacent chip, and 8 cannot express either.
 
-| Step | px | Where |
+| Step | px | Name | Where |
+|---|---|---|---|
+| `gap-1` | 4 | hairline | Icon to text inside a chip; stacked meta lines |
+| `gap-1.5` | 6 | inline | Icon to label inside a button |
+| `gap-2` | 8 | control | Between controls in a row; input padding-x |
+| `gap-3` | 12 | group | Label to field; between rows of a form |
+| `gap-4` | 16 | card | Between cards; card padding; between fields in a `FieldGroup` |
+| `gap-6` | 24 | section | Between sections of a page |
+| `gap-8` | 32 | page | The page inset (`PageBody`) |
+
+`gap-3` was admitted on 16 October 2026: it was the second most-used value in
+the app and not in the vocabulary, which is how a rulebook loses. `p-9` (36)
+becomes `p-8`: 36 is off-grid.
+
+**Rules, all enforced by `design-system.test.ts`:**
+
+- **The page inset is never typed by a page.** `PageBody` owns it.
+- **Spacing is a `gap` on the parent, never a margin on the child.** A child
+  with `mt-*` carries a decision about its neighbours into every place it is
+  reused. `m*-auto` is alignment, not spacing, and is allowed. `space-y-*` is
+  margin in disguise and is banned with it.
+- **No value off the scale, no arbitrary value.** `p-[13px]` or `gap-5` means
+  the scale is wrong or the component is. Round to the scale.
+
+Files that broke these before the rule existed are listed in
+`src/__tests__/migratedLater.ts`, which only shrinks (§4).
+
+### 1.3 Radius — **enforced**
+
+**Rule of thumb:** a nested corner is one step tighter than its parent; a
+corner is never larger than half the thing's height.
+
+Four integers, fixed in `globals.css`. They were multipliers of one base and
+landed on 3.6px and 4.8px, which anti-alias differently on every edge and read
+as "slightly soft" without anyone being able to say why. 6px on a 28px control
+is the ratio macOS uses on a push button.
+
+| Class | px | For |
 |---|---|---|
-| `gap-6` | 24 | **Section.** Between the blocks of a page. |
-| `gap-4` | 16 | **Card.** Between distinct blocks inside one surface. |
-| `gap-2` | 8 | **Control.** Between sibling controls in a row. |
-| `gap-1.5` | 6 | **Inline.** Icon to its label, a label to its value. |
+| `rounded-sm` | 4 | Chips, badges, kbd, checkbox, a cell highlight |
+| `rounded-md` | 6 | **Default.** Buttons, inputs, menu rows, table rows, the inset shell frame |
+| `rounded-lg` | 8 | Cards, panels, popovers, drawers, the tab trough |
+| `rounded-xl` | 12 | `Dialog` and `AlertDialog` only |
+| `rounded-full` | | Avatars, the status dot, a switch thumb |
 
-Plus one fixed number that is not a rhythm step:
-
-| `p-9` | 36 | **The page inset.** Header and body both. |
-|---|---|---|
-
-**Rules:**
-
-- **The page inset is 36px and it is never typed by a page.** `PageBody` owns
-  it (`src/components/admin/Page.tsx`), and it matches `AdminHeader`'s `px-9`.
-  **Enforced:** a hand-typed `p-9` fails `design-system.test.ts`. A page that
-  genuinely differs passes `className`, which is an override with a reason
-  rather than a second inset.
-- **Vertical rhythm is a gap on the parent, never a margin on the child.** A
-  child with `mt-*` cannot be reordered or reused; a `flex flex-col gap-*`
-  parent can. If you are typing `mt-`, you probably want a gap one level up.
-- **No arbitrary spacing values.** `p-[13px]` means the scale is wrong or the
-  component is. Round to the scale.
-- Odd steps (`gap-5`, `p-10`) are allowed but want a reason in a comment.
-
-### 1.3 Radius — **house**
-
-One root (`--radius: 0.375rem`) and everything derives from it. Use the named
-steps, never a raw `rounded-[6px]`:
-
-| Class | For |
-|---|---|
-| `rounded-sm` | Chips, badges, the smallest icon buttons |
-| `rounded-md` | **Buttons, inputs, menu rows.** The default. |
-| `rounded-lg` | Cards, panels, popovers |
-| `rounded-xl` and up | Nothing, currently |
+`2xl` and up do not exist. `rounded-[Npx]` is banned. `rounded-xl` outside the
+two dialog primitives fails the build.
 
 **The inset shell frame is `rounded-md`, and it is the exception to the nesting
-rule.** It used to be the one thing at `rounded-xl` and up, on the reasoning
-that the largest box takes the largest corner. That is backwards at this size:
-a frame the height of the window reads its radius as a *hint* of one, and a
-visible curve on it makes the shell look like a widget floated on the page
-rather than one surface with a seam in it. So it takes the smallest named step
-above square, and the cards inside it keep `rounded-lg` rather than stepping
-down from it.
+rule.** A frame the height of the window reads its radius as a *hint* of one,
+and a visible curve on it makes the shell look like a widget floated on the
+page rather than one surface with a seam in it. So it takes the smallest step
+above square, and the cards inside it keep `rounded-lg`.
 
-A nested corner is one step *smaller* than its parent, never equal. A button
-inside a card is `rounded-md` inside `rounded-lg`. Where the maths matters,
-`calc(var(--radius-sm) + 2px)` is legitimate (the sidebar's create button does
-this) and is preferred to guessing a pixel.
+### 1.4 Type — **enforced**
 
-### 1.4 Type — **house**
+**Rule of thumb:** a dense tool reads at 13px; a control reads one step
+smaller than the prose beside it; a caption one step smaller than that;
+headings grow by *weight and one step*, not by two steps.
 
 Geist for everything, Geist Mono for anything a human reads character by
-character. There is one type scale and it is small on purpose: this is a
-data-dense internal tool, not a marketing page.
+character. Eight sizes, six in routine use, each a token in `globals.css` that
+carries its own line-height (a multiple of 4, so text rows sit on the spacing
+grid), weight and tracking. A call site says one word.
 
-Four sizes. A fifth is a mistake, not a nuance.
+| Token | px / line | Weight | Tracking | Use |
+|---|---|---|---|---|
+| `text-caption` | 11 / 16 | 400 | +0.01em | Badge text, kbd, a timestamp inside a cell. Never for anything that must be read to act. |
+| `text-meta` | 12 / 16 | 400 | +0.01em | Field labels, column headers, help, secondary cell text. Always `text-muted-foreground`. |
+| `text-control` | 12 / 16 | 500 | | Button, chip, tab and menu labels; input text at `md`. |
+| `text-body` | 13 / 20 | 400 | | Prose, table cells, input text at `lg`, descriptions, dialog bodies. **The default on `body`.** |
+| `text-lead` | 14 / 20 | 500 | | Row titles, card titles, drawer titles, the name column. |
+| `text-section` | 16 / 24 | 500 | | Section headings inside a page, dialog titles, `h2`. |
+| `text-title` | 20 / 28 | 600 | -0.01em | The page `h1`. One per page, owned by `PageHeader`. |
+| `text-display` | 24 / 32 | 600 | -0.02em | A figure that is the page's result (the CTC total). Never a heading. |
 
-| Role | Class | px |
-|---|---|---|
-| Page title | `text-2xl font-semibold` | 24 |
-| Card / section heading | `text-base font-medium` | 16 |
-| Body, table cell, label | `text-sm` | 14 |
-| Secondary, help, meta | `text-xs text-muted-foreground` | 12 |
-| Control text (buttons, chips) | `text-xs/relaxed` | 12 |
+**Why 13 and not 14.** 14 is the web default because browsers default to 16
+and shadcn scaled down once. Tools people sit in for hours (Linear, Figma,
+Finder, Notion's sidebar; macOS HIG body is 13pt) sit at 13 because at a
+desk's viewing distance 13px Geist clears the x-height floor where reading
+speed stops dropping, and it fits about eight percent more rows than 14.
+**12 for controls** because a label is read once, not read through, and a
+control one step quieter than the prose lets the prose lead. **11 is the
+floor**: below it Geist's counters close at 1x and the contrast test cannot
+save it.
 
-**Sentence case, never uppercase. Enforced.** Small caps was how three
-surfaces said "this is a name, not a value": a table header, a search group
-heading, a stat label. All-caps is the worst available way to say it. It
-destroys the word shapes a reader recognises without looking, it costs about a
-tenth of the reading speed of the same word in sentence case, and some screen
-readers spell it out letter by letter. Hierarchy is carried by colour at one
-size, which is what everything else here already does. The document sheets are
-exempt and correctly so: "DESCRIPTION" is the printed artifact's own
-typography, and Rule 46 wants several of those headings verbatim.
+**Enforced** (`design-system.test.ts`): `text-xs` … `text-2xl`, `text-[N]`,
+`leading-*`, `tracking-*`, `text-x/y` and `font-semibold` / `font-bold` are
+banned outside the token definitions. Two weights per screen is therefore
+mechanical: 400 and 500 everywhere, 600 only where `text-title` and
+`text-display` apply it.
 
-**One optical correction, at the top of the scale.** The page title takes
-`tracking-[-0.01em]`; a 12px meta label that has to hold its own beside a value
-takes `tracking-[0.01em]`, and so does the 11px industry badge on the clients
-list. (That badge is also borderless and set in the hue's quieter ink,
-`accentBadge(..., true)`: same lightness at 0.55 chroma, because opacity would
-have dropped light mode under 4.5:1.) Nothing between the two gets tracking at all. Type
-set for body text reads loose at 24px and tight at 12px, and this is the whole
-of the correction, not the start of a system.
+**Sentence case, never uppercase. Enforced.** All-caps destroys the word shapes
+a reader recognises without looking, costs about a tenth of reading speed, and
+some screen readers spell it out letter by letter. Hierarchy is carried by
+colour at one size. The document sheets are exempt: "DESCRIPTION" is the
+printed artifact's own typography, and Rule 46 wants several of those headings
+verbatim.
 
-**Label and value are one size, separated by colour.** `text-sm
-text-muted-foreground` over `text-sm` for the value. Making the label smaller
-*as well* says the same thing twice and leaves the label unreadable at the size
-it ends up.
+**Label and value are one size, separated by colour.** `text-body
+text-muted-foreground` over `text-body` for the value. Making the label smaller
+*as well* says the same thing twice.
 
-**The page title is never typed by a page.** `PageHeader` owns the `h1`, its
-optional description and where the actions sit. **Enforced:** an `h1` carrying
-`text-2xl` outside `Page.tsx` fails `design-system.test.ts`. The rule is scoped
-to the heading, not the type size, because 24px semibold is also what the CTC
-calculator's result figure is, and a number is not a page title.
+**The page title is never typed by a page.** `PageHeader` owns the `h1`.
 
 **Mono is for identity, not for decoration.** Document numbers, GSTIN, PAN,
-CIN, IFSC, employee codes, uuids, amounts in a column that is scanned down.
-Anything the reader compares against a certificate or a bank statement gets
-`font-mono` and `tabular-nums`. Prose never does.
+CIN, IFSC, UPI, employee codes, uuids, amounts in a column that is scanned
+down: anything compared against a certificate or a bank statement gets
+`font-mono tabular-nums`. Prose never does.
 
-**Rules:**
-
-- **Never more than two weights on one screen** (regular and medium/semibold).
-  Bold is not a level; if you need a third level, use colour or size.
 - **`tabular-nums` on every numeric column.** Digits that do not line up cannot
   be compared, which is most of what these tables are for.
 - **Never centre body text.** Numbers are right-aligned, everything else left.
-- Sentence case for labels, buttons and headings. Not Title Case, not ALL CAPS,
-  with the single exception of the document sheets, whose structural labels
-  ("DESCRIPTION", "TERMS") are fixed by `CONTEXT.md` §5b and are not ours to
-  restyle.
 
 ### 1.5 Icons — **house**, partly enforced
 
-Lucide only. One weight everywhere: `globals.css` sets `stroke-width: 1.5`
+Lucide only. One weight everywhere: `globals.css` sets `stroke-width: 1.75`
 with `non-scaling-stroke` on `.lucide`, so the weight is screen pixels and does
-not drift with size. **Do not set `strokeWidth` per icon.**
+not drift with size. 1.75 because 2 is heavy at 14px and 1.5 breaks at 12, and
+the doc and the stylesheet had disagreed (1.5 and 2) for a month without
+anyone noticing. **Do not set `strokeWidth` per icon.**
 
 | Size | Where |
 |---|---|
@@ -285,144 +290,96 @@ pass).
 
 ### 1.6 Motion — **enforced**
 
+**Rule of thumb:** motion exists only to connect two states the reader caused.
+If removing it loses no information, remove it.
+
 Motion is decoration, never information. Every animated state also says itself
 in text, a live region or `aria-current`. That is why `globals.css` can kill all
-motion under `prefers-reduced-motion` in one blanket rule instead of per
-animation, and why adding an animation never requires adding an opt-out.
+motion under `prefers-reduced-motion` in one blanket rule.
 
-**Four tiers, and a transition belongs to exactly one.** Defined in
-`globals.css`, enforced by `design-system.test.ts`: a duration outside the
-scale fails the build. Each tier is roughly double the one above it, which is
-the interval at which two speeds are actually told apart rather than merely
-measured differently.
+**Three tiers, one easing, and a transition belongs to exactly one tier.**
 
-| Tier | Duration | For |
-|---|---|---|
-| **State** | **75ms — the default** | Hover, press, focus, a colour, a chevron |
-| **Overlay** | `duration-100` | Popover, dropdown, select, combobox, dialog, an overlay scrim |
-| **Panel** | `duration-200` | Sheet, sidebar, editor rail, a sliding pill indicator |
-| **Reveal** | `duration-400` | Content arriving unasked, for reading rather than acknowledging |
-
-**The Reveal tier is the newest and has one member: the nav pill's hover
-grow.** It exists because the other three all animate a result the operator
-already knows is coming — they clicked for it, and the motion is a receipt. A
-peek is the opposite: nothing was clicked, and the labels that arrive are the
-whole reason the motion happened. At Panel speed they land after the eye has
-moved on, so the preview has to be re-read rather than read. Only the *arriving*
-direction is slowed; the pill shrinking on mouse-out is getting out of the way
-and stays on Panel.
-
-800ms was tried and reverted: past about half a second the pill stops reading
-as a panel opening and starts reading as one that is stuck, and a nav the
-operator is waiting on is worse than one whose labels they have to look at
-twice. 400 is the top of the scale for that reason, not for lack of a rung
-above it.
-
-Reach for it sparingly. A fifth tier would mean the scale stopped being a scale.
+| Tier | Duration | Property | For |
+|---|---|---|---|
+| **State** | **75ms, the default** | colour, opacity | Hover, press, focus, selected |
+| **Overlay** | `duration-100` | opacity, a 2px translate | Popover, menu, tooltip, dialog, scrim |
+| **Panel** | `duration-200` | transform | Sheet, drawer, sidebar collapse, editor rail |
 
 **75ms is the default**, set once as `--default-transition-duration` rather
-than per call site. That is deliberate: the state tier was the one nobody ever
-wrote, so a bare `transition-colors` silently took Tailwind's 150ms and every
-hover in the app ran at twice the intended speed. Making the most-wanted tier
-free is what stops that recurring. The other two are written explicitly,
-because they are the exceptions.
+than per call site: the state tier was the one nobody ever wrote, so a bare
+`transition-colors` silently took Tailwind's 150ms and every hover ran at
+twice the intended speed. The other two are written explicitly, because they
+are the exceptions. The fourth tier (400ms, one member) and the two
+"signature" exemptions (a 420ms tray arrow, a 500ms spin) were removed on 16
+October 2026 with the rest of the decorative motion (§6).
 
 **One easing: `ease-standard`** (`cubic-bezier(.2, 0, 0, 1)`). It leaves
 immediately and settles slowly, which is what makes a control feel like it
-responded to the click rather than thought about it. No `ease-linear` (reads
-mechanical, and was on the sidebar collapse), no per-component curve.
+responded to the click rather than thought about it. It is the default, so
+nothing names an easing; `ease-*` anything else fails the build, and so does a
+duration written inside a `style` string.
 
-Exactly two animations sit outside the scale, both one-off icon performances
-rather than state changes: the tray arrow's 420ms and the reset button's 500ms
-spin. They are exempted **by filename**, so a third cannot join them quietly.
+**What stays:** `animate-spin` (a spinner says "working"), `animate-pulse` (a
+skeleton says "loading, not empty"), `progress-slide` (indeterminate
+progress), the overlay fade, the panel slide, and `active:translate-y-px`
+(one frame: how a button says the click landed).
+
+**What does not exist here, by decision:** animated icons (a chevron that
+rotates, a plus that turns, an arrow that slides), a highlight that follows
+the pointer through a menu, a pill that slides between tabs, a spring
+library, a ring that pulses when a field auto-fills. Each delays recognising
+*which* control this is by the length of its animation, none carries
+information, and together they made the tool feel like it was reacting to
+the reader rather than waiting for them. macOS does almost none of this: a
+button changes colour in no frames, a menu appears in one, a sheet slides
+because it *is* arriving from somewhere.
 
 **Rules:**
 
 - **Animate `transform` and `opacity`.** Not `width`, `height`, `top`, `left`.
-  The nav rail is the one exception and it is deliberate: collapsing detaches
-  it into a floating column, which is a change of *box* rather than of
-  position, so there is no transform that expresses it. It animates width, top,
-  left and radius together in a single declaration in `ui/sidebar.tsx`. Nothing
-  else may reach for that, and a second call site is a signal that the thing
-  wants a transform instead.
-
-  **Both endpoints of an animated `height` must be lengths**, and the cheapest
-  way to obey that is for them to be the *same* length. The float used to shrink
-  to its rows, which cost a measured `--rail-height` and a `ResizeObserver` to
-  animate at all: releasing a fixed box's bottom edge to let it size to its
-  content does not tween, because the box stops being stretched, drops to its
-  intrinsic height in one frame, and only the remainder animates (measured at
-  672px → 360px instantly), and `height: fit-content` does not animate either,
-  because its computed value never changes when its content does.
-  `interpolate-size: allow-keywords` (set on `:root`) tweens a length to
-  `fit-content` but cannot tween the loss of an anchor, and neither
-  `transition-behavior: allow-discrete` nor a grid track reaches it. The float
-  is full height now and states the same `calc()` the docked rail does, so the
-  height transition is gone rather than fixed. Prefer that shape.
-- **Press gives physical feedback.** `active:translate-y-px` is on every button
-  by default (`button.tsx`) and is excluded on menu triggers, which move their
-  popover instead.
-- **Nothing animates on mount.** Staggered list entrances, fade-in-on-scroll and
-  skeleton-to-content crossfades are refused: this is a tool people use fifty
-  times a day, and an animation you have seen fifty times is a delay.
+  The nav rail is the one exception: collapsing is a change of *box*, so it
+  animates width and radius together in one declaration in `ui/sidebar.tsx`.
+  **Both endpoints of an animated `height` must be lengths.**
+- **Nothing animates on mount.** This is a tool people use fifty times a day,
+  and an animation seen fifty times is a delay.
 - **Layout must not shift.** A hover state that adds a border changes size;
-  reserve the space (transparent border, or `ring` which does not affect
-  layout).
+  reserve the space (transparent border, or `ring`).
 
-**One control was drawn three ways, and that is what the rule is worth.** The
-sliding pill indicator exists in `Tabs`, the document browser's view toggle and
-the profile switcher. They ran at 500ms, 300ms and 300ms, with the tab *panel*
-sliding at 1500ms. Nobody chose those numbers: they are shadcn defaults nobody
-read. All four are 200ms now.
+### 1.7 Elevation and borders — **enforced**
 
-**Open — `ui-elevation.md` F-series: icon motion on buttons.** The intent is
-that an icon inside an interactive control responds to hover: a chevron rotates,
-an arrow slides in its direction, a plus rotates 90° into an active state, a
-trash lid tips. The rule when it lands: the motion is **on the icon only**
-(`group-hover/button:` on the svg), `duration-200 ease-out`, transform only, and
-never more than one moving part per control. Not built yet — do not scatter
-one-off hover transforms in the meantime.
+**Rule of thumb:** flat and bordered on the page; shadow only on things that
+float; the higher it floats, the softer and larger the shadow.
 
-### 1.7 Elevation and borders — **house**
+A shadow says "this is above that". On a flat page nothing is above anything,
+so a card gets a border, not a shadow. A popover is above the page; a dialog is
+above everything and gets a scrim too. Three levels are all a reader can tell
+apart, and they are the only shadows that exist.
 
-This is a **flat, bordered** design language. Depth comes from a hairline and a
-background step, not from shadow.
+| Token | Light | For |
+|---|---|---|
+| `shadow-raised` | `0 1px 2px` at 6% | The inset shell frame, the selected tab pill, a dragged row |
+| `shadow-overlay` | `0 4px 12px` at 10% + a 1px edge | Popover, dropdown, combobox, tooltip, toast |
+| `shadow-modal` | `0 16px 48px` at 18% + a 2px edge | Dialog, drawer, sheet |
 
-- A surface is separated by `border border-border`, and if it needs to sit above
-  the page, `bg-card`.
-- **Shadows are for things that float over the page only**: popover, dropdown,
-  dialog, toast, tooltip. Never on a card, a table or a button.
-- **One exception, and it is the frame, not a card**: the inset shell frame in
-  `AdminShell` carries `shadow-2xs` (one pixel of 5% black) under its ring, so
-  the frame reads as a hair above the shell rather than flush with it. That is
-  the only step permitted there. It is not a licence for the cards inside it,
-  which stay flat. The nav's resize handle sits on that frame's left ring and
-  lights it in `--ring` only at the pointer's height, fading to nothing 160px
-  above and below; the whole edge never lights, and there is no bar.
-- The one licensed exception is the `raised` button variant's two inset
-  hairlines, which are on trial and either get rolled into `default` or deleted.
+Dark theme: same geometry at about twice the alpha, because a shadow on a dark
+ground is mostly invisible at the light values. Values live in `:root` /
+`.dark` as `--elevation-*` and are mapped in `@theme`. `shadow-[…]` and
+Tailwind's `shadow-sm` … `shadow-2xl` fail the build.
+
 - **One border, not two.** A bordered card containing a bordered table produces
   a double line at the join; the inner element drops its outer border.
-- **A shadow separates nothing in dark mode.** A drop shadow on a near-black
-  page is invisible, so every floating surface carries `ring-1
-  ring-foreground/10` as well and that hairline is what actually does the work.
-  The shadow is depth for the light theme; the ring is the edge in both.
-- **A pill inside a trough is raised by its fill, not by an outline.** The
-  active tab, the list/card toggle and the profile switcher all sit *in* a
-  recess rather than floating over the page, so what says "this one is on" is a
-  fill lighter than the trough behind it, plus a slight shadow. Same rule in
-  both themes, different values: light paints `bg-background` on `bg-muted`,
-  dark paints a white overlay, because there `--background` is the darker of
-  the two. No border in either. One `tabPillSurface` in `ui/tabs.tsx`.
-- **Dark mode is its own design, not an inversion.** Text is `oklch(0.93)`, not
+- **A shadow separates nothing in dark mode on its own.** Every floating
+  surface also carries `ring-1 ring-foreground/10`; the ring is the edge in
+  both themes, the shadow is depth.
+- **A pill inside a trough is raised by its fill, not by an outline.** Light
+  paints `bg-background` on `bg-muted`; dark paints a step up the ramp. No
+  border in either. One `tabPillSurface` in `ui/tabs.tsx`.
+- **Dark mode is its own design, not an inversion.** Text is `--gray-200`, not
   white, because pure white on near-black haloes; `--border` and `--input` are
-  *higher* than their light counterparts in relative terms, because a hairline
-  that reads as an edge on white is nearly gone on black. Both live in
-  `globals.css` with the reasoning beside them. `--input` is 16%, one step above
-  `--border` rather than eight: at 22% a rail of eight fields read as a grid of
-  hard boxes instead of a form. It is not held to 1.4.11, because every field
-  here is identified by a visible `<Label>` — written down in `contrast.test.ts`
-  rather than silently skipped.
+  a 10% white overlay, which composites to a hairline of whatever ground it
+  sits on. Neither is held to 1.4.11, because every field is identified by a
+  visible `<Label>`; that is written down in `contrast.test.ts` rather than
+  silently skipped.
 
 ### 1.7a Popups anchored to a control — **enforced**
 
@@ -609,13 +566,17 @@ the transition class one move stale, a `translate` value the browser normalises
 to a non-interpolable shape (hence `transform: translate3d`), and the class
 dropping for the single frame a select has no row marked.
 
-### 1.8 Focus and hit targets — **house**
+### 1.8 Focus and hit targets — **enforced**
 
-- Focus is `focus-visible:ring-2 ring-ring/30` plus `focus-visible:border-ring`.
-  It is on the primitives already. **Never `outline-none` without replacing it.**
-- Every interactive element has a **minimum 24px hit area**, and a row-level
-  action (a kebab in a table row) has 28px. Padding, not size, buys this where
-  the visual must stay small.
+- **One focus indicator, `focus-ring`** (`@utility` in `globals.css`): a 2px
+  ring of `--ring` at 30% plus `border-ring`, visible only on
+  `focus-visible`. Every interactive atom applies it; a component drawing
+  its own `ring-ring` or `focus-visible:ring-*` fails the build. The audit
+  found rings at 30%, 40%, 50% and solid, and one control with none, and the
+  keyboard user is the one reader with no other cue. **Never `outline-none`
+  without `focus-ring`.**
+- **Hit targets:** 28px minimum (a `sm` button), 32 standard, 36 in forms.
+  Nothing clickable is under 28 on either axis.
 - Anything clickable is a `<button>` or an `<a>`. A `div` with an `onClick` is a
   bug, not a shortcut. Where the visual must be a box (the upload drop zone), it
   is `role="button"` with a keyboard handler and an `sr-only` real input inside.
@@ -1718,7 +1679,16 @@ when a house rule gets broken twice.
 | The seven primitive/field rules in §2.2 | `src/__tests__/design-system.test.ts` |
 | Page inset comes from `PageBody` (§1.2) | `src/__tests__/design-system.test.ts` |
 | Page title comes from `PageHeader` (§1.4) | `src/__tests__/design-system.test.ts` |
-| Every duration is on the three-tier scale (§1.6) | `src/__tests__/design-system.test.ts` |
+| Every duration is on the three-tier scale; one easing; no inline transition (§1.6) | `src/__tests__/design-system.test.ts` |
+| Every text size is a type token; no `leading`/`tracking`; two weights (§1.4) | `src/__tests__/design-system.test.ts` |
+| Every gap and inset is on the spacing scale; no margin (§1.2) | `src/__tests__/design-system.test.ts` |
+| Every corner is on the radius scale; `xl` is the dialogs' (§1.3) | `src/__tests__/design-system.test.ts` |
+| Every shadow is one of three elevation tokens (§1.7) | `src/__tests__/design-system.test.ts` |
+| The focus ring is `focus-ring`, never drawn by hand (§1.8) | `src/__tests__/design-system.test.ts` |
+| Every z-index is a named layer; breakpoints stay in the shell | `src/__tests__/design-system.test.ts` |
+| No `[var(--gray-N)]`, `[oklch()]` or `rgba()` escape past the tokens (§1.1) | `src/__tests__/design-tokens.test.ts` |
+| Every token the system is built on exists in `globals.css` | `src/__tests__/design-tokens.test.ts` |
+| Every text pair clears 4.5:1 in both themes and in the editor rail (§1.1) | `src/__tests__/contrast.test.ts` |
 | Every table is in a `TableCard` (§2.3) | `src/__tests__/design-system.test.ts` |
 | Every pager is `Pagination` (§2.10) | `src/__tests__/design-system.test.ts` |
 | A sorting table has a `SortToggle` (§2.3) | `src/__tests__/design-system.test.ts` |
@@ -1738,8 +1708,16 @@ when a house rule gets broken twice.
 | Autofill defaults off | `src/components/ui/__tests__/autofill.test.tsx` |
 
 Both design walkers share `src/__tests__/policedSource.ts`, so their exemption
-lists cannot drift apart, and each one asserts it matched some files — a rule
+lists cannot drift apart, and each one asserts it matched some files: a rule
 that matches nothing is a test that passes forever.
+
+**Rules land with a shrinking allowlist, never a regex exemption.** When a new
+rule has existing violations, the files that break it are listed in
+`src/__tests__/migratedLater.ts` on the day the rule is written, and nothing
+else changes in that commit. A file added to a list fails the build; a file
+that stops violating must leave the list in the same commit (a test checks
+every entry still earns its place); an empty list is deleted and the rule
+stands bare. Every list from 16 October 2026 empties in the screen migration.
 
 **To add a rule:** add the regex and its `it(…)` to `design-system.test.ts`,
 confirm it **fails** when the thing it guards is removed, then fix the
@@ -1772,6 +1750,17 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, foundations as tokens and tests.** The type scale
+  (`text-caption` … `text-display`, with line-height, weight and tracking in
+  the token), fixed-pixel radii (4/6/8/12), three elevation tokens, five named
+  z-index layers, a `success` token, and the one `focus-ring` utility. Motion
+  tightened to three tiers with no exemptions. Stroke width settled at 1.75.
+  `@theme` reads next/font's variables rather than naming Geist by string, so
+  the metrics-matched fallback is finally used. Ten new enforcement rules,
+  each with a shrinking allowlist in `migratedLater.ts`; the screen migration
+  that empties them is a later phase. The design-system plan this is the first
+  phase of is at `/design` once Phase 6 lands.
 
 Append a line when a rule here changes. Keep it to one line and name the
 `ui-elevation.md` id where there is one.

@@ -135,6 +135,9 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['destructive-foreground', 'destructive'],
   ['warning', 'background'],
   ['warning', 'card'],
+  ['success', 'background'],
+  ['success', 'card'],
+  ['success-foreground', 'success'],
   ['sidebar-foreground', 'sidebar'],
   // A table's header row sits on `--sidebar` (§2.3), and `TableHead` draws its
   // label at full strength, so this is the pair every column name is read on.
@@ -215,9 +218,22 @@ function washed(
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/**
+ * The editor rail restates five tokens one step firmer (`[data-editor-rail]`
+ * in `globals.css`). Contrast there "only ever goes up", which is a claim this
+ * file can check rather than take on trust: the rail's tokens over the
+ * theme's are a fourth and fifth theme as far as the pairs are concerned.
+ */
+const rail = (theme: string, selector: string) => ({
+  ...tokensIn(theme),
+  ...tokensIn(selector),
+});
+
 describe.each([
   ['light', tokensIn(':root'), 0.1],
   ['dark', tokensIn('.dark'), 0.12],
+  ['light editor rail', rail(':root', '[data-editor-rail]'), 0.1],
+  ['dark editor rail', rail('.dark', '.dark [data-editor-rail]'), 0.12],
 ])('%s theme', (_theme, tokens, wash) => {
   it.each(TEXT_PAIRS)('%s on %s reaches 4.5:1', (fg, bg) => {
     expect(Number(contrast(fg, bg, tokens).toFixed(2))).toBeGreaterThanOrEqual(4.5);

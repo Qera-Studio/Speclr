@@ -7,10 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading:
-    "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  /* `layout.tsx` loads Geist through next/font and publishes it as these two
+     variables on <html>, metrics-matched fallback included. Naming the family
+     by its literal string here, as this once did, skipped that fallback and
+     left two variables nothing read. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,6 +53,8 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -67,13 +71,76 @@
   --color-card: var(--card);
   --color-raised: var(--raised);
   --color-hover: var(--hover);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /*
+    Radius is four integers. They were multipliers of one base (0.6, 0.8, 1,
+    1.4...) and landed on 3.6px and 4.8px, which anti-alias differently on
+    every edge and read as "slightly soft" without anyone being able to say
+    why. A nested corner is one step tighter than its parent; a corner is
+    never more than half the height of the thing it is on. `xl` is for the
+    two dialogs and nothing else (`design-system.test.ts`); `2xl` and up do
+    not exist.
+  */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /*
+    The type scale. Eight sizes, six in routine use, each carrying its own
+    line-height (a multiple of 4, so text rows sit on the spacing grid) and
+    where it has one, its weight and tracking. A call site says `text-body`
+    and nothing else; `leading-*`, `tracking-*` and `font-semibold` are banned
+    outside this file for that reason.
+
+      caption  11/16 400 +0.01em  badge, kbd, a timestamp inside a cell
+      meta     12/16 400 +0.01em  field labels, column headers, help
+      control  12/16 500          button, tab, chip and menu labels
+      body     13/20 400          prose, table cells, inputs. The default.
+      lead     14/20 500          a row title, a card title, the name column
+      section  16/24 500          a section heading inside a page, a dialog title
+      title    20/28 600 -0.01em  the page h1, one per page, owned by PageHeader
+      display  24/32 600 -0.02em  a figure that is the page's result. Never a heading.
+
+    13 rather than 14 for the body: this is a tool people sit in for hours,
+    and 13px Geist is where the x-height clears the legibility floor while
+    fitting eight percent more rows than 14. The tools built for the same
+    kind of use (Linear, Figma, Finder) sit at 13 for the same reason.
+  */
+  --text-caption: 11px;
+  --text-caption--line-height: 16px;
+  --text-caption--letter-spacing: 0.01em;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-meta--letter-spacing: 0.01em;
+  --text-control: 12px;
+  --text-control--line-height: 16px;
+  --text-control--font-weight: 500;
+  --text-body: 13px;
+  --text-body--line-height: 20px;
+  --text-lead: 14px;
+  --text-lead--line-height: 20px;
+  --text-lead--font-weight: 500;
+  --text-section: 16px;
+  --text-section--line-height: 24px;
+  --text-section--font-weight: 500;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-display: 24px;
+  --text-display--line-height: 32px;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.02em;
+
+  /*
+    Elevation. Flat and bordered on the page; a shadow only on what floats,
+    and the higher it floats the softer and larger the shadow. Three is all a
+    reader can tell apart. The values live in `:root` / `.dark` because a
+    shadow on a dark ground needs about twice the weight to register at all.
+  */
+  --shadow-raised: var(--elevation-raised);
+  --shadow-overlay: var(--elevation-overlay);
+  --shadow-modal: var(--elevation-modal);
 
   /*
     The motion scale. Three tiers, and a transition belongs to exactly one:
@@ -93,8 +160,8 @@
 
     One easing everywhere. It leaves immediately and settles slowly, which is
     what makes a control feel like it responded to the click rather than
-    thought about it. The three signature animations keep their own curves and
-    say so in place: the tab indicator, the tray arrow, the reset spin.
+    thought about it. There are no exceptions: motion here connects two states
+    the reader caused, and nothing else moves.
   */
   --default-transition-duration: 75ms;
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
@@ -272,6 +339,12 @@
      is only 2.15:1 here, which is why this is a token and not a palette
      class. Same hue (70) in both modes so the state doesn't shift colour. */
   --warning: oklch(0.555 0.14 70);
+  /* Verified, saved, passed. The green that "a tick" needs, which was being
+     borrowed from `--primary` (a selection colour, not a result) or from one
+     of the accent hues (grouping aids, not signals). 4.9:1 on this background
+     as text; white sits on it as a fill at the same ratio. */
+  --success: oklch(0.527 0.154 150);
+  --success-foreground: oklch(1 0 0);
   --border: var(--gray-200);
   --input: var(--gray-200);
   /* The focus indicator, and the one token that has to clear 3:1 against the
@@ -340,7 +413,17 @@
   --accent-rose-ink: oklch(0.5 0.116 12);
   --accent-magenta-ink: oklch(0.5 0.127 335);
 
-  --radius: 0.375rem;
+  /* See the elevation note in `@theme`. */
+  --elevation-raised: 0 1px 2px oklch(0 0 0 / 0.06);
+  --elevation-overlay: 0 4px 12px oklch(0 0 0 / 0.1), 0 1px 2px oklch(0 0 0 / 0.06);
+  --elevation-modal: 0 16px 48px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.08);
+  /* The stacking order, named. A bare `z-50` says nothing about what it is
+     above; `z-(--z-overlay)` does. Five layers, and a sixth is a question. */
+  --z-sticky: 10;
+  --z-rail: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
   /* The page's own ground, deliberately, matching dark mode where the rail and
      the page have always shared --gray-950. The rail was a step down the ramp
      while it was a full-height panel welded to the window edge, where a seam
@@ -525,6 +608,14 @@
   --destructive-foreground: var(--gray-950);
   /* 9.23:1 on the dark background. */
   --warning: oklch(0.769 0.188 70.08);
+  /* 8.6:1 on the dark background; near-black on the fill, as destructive does. */
+  --success: oklch(0.792 0.209 151.7);
+  --success-foreground: var(--gray-950);
+  /* Twice the weight of light mode: a shadow on a dark ground is mostly
+     invisible at the light values. */
+  --elevation-raised: 0 1px 2px oklch(0 0 0 / 0.3);
+  --elevation-overlay: 0 4px 12px oklch(0 0 0 / 0.4), 0 1px 2px oklch(0 0 0 / 0.3);
+  --elevation-modal: 0 16px 48px oklch(0 0 0 / 0.55), 0 2px 6px oklch(0 0 0 / 0.35);
   /* See the note above the block for why these are a pure white overlay.
      `--input` was 22%, which drew a bright hairline around every field and made
      a rail of eight inputs read as a grid of boxes rather than a form. It sits
@@ -898,7 +989,7 @@
     to move this number again, not to exempt them.
   */
   .lucide {
-    stroke-width: 2;
+    stroke-width: 1.75;
     vector-effect: non-scaling-stroke;
   }
 
@@ -1091,6 +1182,17 @@
       box-shadow: 0 0 0 4px transparent;
     }
   }
+}
+
+/*
+  The one focus indicator. Every interactive atom applies this and nothing
+  writes its own ring: a ring at 50% on a badge, solid on a raw button and 30%
+  on an input is three answers to "am I focused", and the keyboard user is the
+  one reader with no other cue. `--ring` is the step that clears 3:1 on every
+  ground (see its note in `:root`).
+*/
+@utility focus-ring {
+  @apply outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30;
 }
 
 /* `cursor-default` resolves to the themed arrow rather than the platform's,

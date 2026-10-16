@@ -6,6 +6,18 @@ import {
   SCHEMA_PRIMITIVES,
   UI_PRIMITIVES,
 } from './policedSource';
+import {
+  EASING_MIGRATED_LATER,
+  INLINE_TRANSITION_MIGRATED_LATER,
+  RADIUS_MIGRATED_LATER,
+  RESPONSIVE_MIGRATED_LATER,
+  RING_MIGRATED_LATER,
+  SHADOW_MIGRATED_LATER,
+  SPACING_MIGRATED_LATER,
+  TYPE_MIGRATED_LATER,
+  WEIGHT_MIGRATED_LATER,
+  Z_MIGRATED_LATER,
+} from './migratedLater';
 
 /**
  * The other half of the enforcement layer.
@@ -197,7 +209,7 @@ const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
  * sliding at 1500ms. Nobody chose those; they are shadcn defaults that were
  * never read. One control, three speeds, and no test that could see it.
  */
-const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b|400\b)\[?[0-9]+m?s?\]?/g;
+const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b)\[?[0-9]+m?s?\]?/g;
 const SIGNATURE_MOTION = [
   'src/components/ui/tray-arrow-icon.tsx',
   'src/components/spec/ResetProgressButton.tsx',
@@ -553,6 +565,126 @@ const HAND_WRITTEN_OPTIONAL =
  */
 const BOOLEAN_DATA_ATTR = /data-[a-z-]+=\{(?![^}]*(?:\?|undefined))(?:!|[^}]*[=!]==?)[^}]*\}/g;
 
+
+/**
+ * A text size outside the type scale.
+ *
+ * `globals.css` defines eight sizes (`text-caption` … `text-display`), each
+ * carrying its own line-height, weight and tracking, so a call site says one
+ * word. The audit that produced the scale found ten distinct sizes in use
+ * against a rulebook that said four: 11px written two ways, 13px written as a
+ * rem, 10px inside two primitives. None of them looked wrong on its own.
+ * Tailwind's `text-xs`…`text-2xl` are banned with the arbitrary ones because
+ * they are a second scale with different line-heights, and
+ * `leading-*` / `tracking-*` / `text-x/y` are banned because the token
+ * already answered that question. See `docs/design.md` §1.4.
+ */
+const ARBITRARY_TEXT = /\btext-\[[0-9.]+(?:px|rem|em)\]/g;
+const OFF_SCALE_TEXT = /(?<![\w-])text-(?:xs|sm|base|lg|xl|[2-9]xl)\b/g;
+const OWN_LINE_HEIGHT = /\btext-[\w-]+\/[\w.]+|\bleading-[\w.[\]]+|\btracking-[\w.[\]-]+/g;
+
+/**
+ * A third weight. Regular and medium are the two on every screen; 600 exists
+ * only inside `--text-title` and `--text-display`, where the token applies
+ * it, so nothing outside `globals.css` writes `font-semibold`. Bold is not a
+ * level: a third level is colour or size (§1.4).
+ */
+const HEAVY_WEIGHT = /\bfont-(?:semibold|bold|extrabold|black)\b/g;
+
+/**
+ * Spacing off the grid.
+ *
+ * Seven gaps: 4, 6, 8, 12, 16, 24, 32 (`gap-1` … `gap-8`), and the same set
+ * for padding. The audit found `gap-3` was the second most used value in the
+ * app and not in the house vocabulary, which is how a rulebook loses: a value
+ * everybody needs and nobody wrote down gets written by hand at every site.
+ * Margin is banned outright (except `*-auto`, which is alignment): spacing
+ * belongs to the parent as a `gap`, because a child with a margin carries a
+ * decision about its neighbours into every place it is reused. §1.2.
+ */
+const OFF_SCALE_SPACING =
+  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8)\b)[0-9.]+\b/g;
+const MARGIN = /(?<![\w-])-?m[trblxy]?-(?!auto\b)(?:[0-9.]+|px)\b/g;
+const SPACE_BETWEEN = /\bspace-[xy]-[\w.]+/g;
+const ARBITRARY_SPACE = /\b(?:gap|p|m)[xytrbl]?-\[[^\]]*\]/g;
+
+/**
+ * A corner off the radius scale. Four integers (4, 6, 8, 12) and `full`;
+ * `rounded-xl` belongs to the two dialogs and nothing else, because a 12px
+ * corner on a 28px control is a pill. §1.3.
+ */
+const OFF_SCALE_RADIUS = /\brounded-(?:[2-4]xl|\[[^\]]*\])/g;
+const DIALOG_RADIUS = /\brounded-xl\b/g;
+const DIALOG_PRIMITIVES = ['src/components/ui/dialog.tsx', 'src/components/ui/alert-dialog.tsx'];
+
+/**
+ * A shadow written by hand. Three tokens (`shadow-raised`, `shadow-overlay`,
+ * `shadow-modal`), each with a dark value twice the weight of the light one,
+ * replaced fourteen distinct arbitrary shadows, two of them in `rgba()` where
+ * the colour test could not see them. §1.7.
+ */
+const ARBITRARY_SHADOW = /\bshadow-(?:\[[^\]]*\]|2?xs\b|sm\b|md\b|lg\b|xl\b|2xl\b)/g;
+
+/**
+ * A focus ring of its own. `focus-ring` in `globals.css` is the one
+ * indicator; the audit found rings at 30%, 40%, 50% and solid, and one
+ * control (`InfoTip`) with none. §1.8.
+ */
+const OWN_FOCUS_RING = /focus-visible:ring-[\w/[\]]+|\bring-ring\b/g;
+
+/**
+ * Motion outside the three tiers, in the places the duration rule could not
+ * see: a second easing curve, an inline `style` transition, a `motion` spring.
+ * One easing (`ease-standard`), and it is the default, so nothing names one.
+ */
+const OWN_EASING = /\bease-(?!standard\b)[a-z[][\w.,()[\]-]*/g;
+// A CSS duration inside a JS string: `"transform 300ms ease-out"` in a
+// `style` prop is a transition the class-based rules never see.
+const INLINE_TRANSITION = /["'][\w-]+ \d+m?s\b[^"']*["']/g;
+
+/**
+ * A bare z-index. `--z-sticky` … `--z-toast` in `globals.css` name the five
+ * layers; `z-(--z-overlay)` says what a thing is above, `z-50` does not.
+ */
+const RAW_Z = /\bz-(?:\[[^\]]*\]|[0-9]+)\b/g;
+
+/**
+ * A breakpoint outside the shell. The app is desktop-first and the shell is
+ * the one thing that responds (nav collapses, rail becomes a sheet); a page
+ * that carries `md:` is a page with a second layout nobody tests. §B10.
+ */
+const RESPONSIVE = /(?<![\w-])(?:sm|md|lg|xl|2xl):/g;
+const SHELL = [
+  'src/components/admin/AdminShell.tsx',
+  'src/components/admin/AdminSidebar.tsx',
+  'src/components/admin/TopPanel.tsx',
+  'src/components/admin/AdminHeader.tsx',
+  'src/components/admin/EditorSidebar.tsx',
+];
+
+/**
+ * Every allowlist in `migratedLater.ts`, paired with the patterns it defers,
+ * so the "only shrinks" rule is a test rather than a comment: a listed file
+ * that no longer violates is reported, and leaves the list.
+ */
+const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
+  ['TYPE', TYPE_MIGRATED_LATER, [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
+  ['WEIGHT', WEIGHT_MIGRATED_LATER, [HEAVY_WEIGHT], []],
+  ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
+  ['RADIUS', RADIUS_MIGRATED_LATER, [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
+  ['SHADOW', SHADOW_MIGRATED_LATER, [ARBITRARY_SHADOW], []],
+  ['RING', RING_MIGRATED_LATER, [OWN_FOCUS_RING], []],
+  ['EASING', EASING_MIGRATED_LATER, [OWN_EASING], []],
+  ['INLINE_TRANSITION', INLINE_TRANSITION_MIGRATED_LATER, [INLINE_TRANSITION], []],
+  ['Z', Z_MIGRATED_LATER, [RAW_Z], []],
+  ['RESPONSIVE', RESPONSIVE_MIGRATED_LATER, [RESPONSIVE], SHELL],
+];
+
+/** `violations` over every pattern of a migration, minus its allowlist. */
+function outstanding([, later, patterns, exempt]: (typeof MIGRATIONS)[number]) {
+  return patterns.flatMap((p) => violations(p, [...later, ...exempt], /\.tsx?$/));
+}
+
 describe('design system', () => {
   it('writes a boolean data attribute as present or absent, never as "false"', () => {
     expect(violations(BOOLEAN_DATA_ATTR)).toEqual([]);
@@ -799,5 +931,56 @@ describe('design system', () => {
     const all = policedFiles([], /\.tsx?$/);
     expect(all).toContain('src/lib/domain/registry.ts');
     expect(all.length).toBeGreaterThan(policedFiles().length);
+  });
+  it('takes every text size from the type scale, never Tailwind’s or a pixel value', () => {
+    expect(outstanding(MIGRATIONS[0])).toEqual([]);
+  });
+
+  it('sets at most two weights; 600 lives only in the title and display tokens', () => {
+    expect(outstanding(MIGRATIONS[1])).toEqual([]);
+  });
+
+  it('keeps every gap and inset on the spacing scale, and never uses margin', () => {
+    expect(outstanding(MIGRATIONS[2])).toEqual([]);
+  });
+
+  it('keeps every corner on the radius scale; xl is the dialogs’ alone', () => {
+    expect(outstanding(MIGRATIONS[3])).toEqual([]);
+  });
+
+  it('takes every shadow from the three elevation tokens', () => {
+    expect(outstanding(MIGRATIONS[4])).toEqual([]);
+  });
+
+  it('takes the focus ring from focus-ring, never drawing its own', () => {
+    expect(outstanding(MIGRATIONS[5])).toEqual([]);
+  });
+
+  it('uses the one easing and never an inline transition', () => {
+    expect(outstanding(MIGRATIONS[6])).toEqual([]);
+    expect(outstanding(MIGRATIONS[7])).toEqual([]);
+  });
+
+  it('names every z-index layer, never a bare number', () => {
+    expect(outstanding(MIGRATIONS[8])).toEqual([]);
+  });
+
+  it('keeps breakpoints inside the shell', () => {
+    expect(outstanding(MIGRATIONS[9])).toEqual([]);
+  });
+
+  it('keeps every migration allowlist honest: a listed file still violates, or it leaves the list', () => {
+    const root = join(__dirname, '..', '..');
+    const stale: string[] = [];
+    for (const [name, later, patterns, exempt] of MIGRATIONS) {
+      for (const file of later) {
+        if (exempt.includes(file)) stale.push(`${name}: ${file} is already exempt`);
+        const source = readFileSync(join(root, file), 'utf8');
+        if (!patterns.some((p) => new RegExp(p.source, p.flags.replace('g', '')).test(source))) {
+          stale.push(`${name}: ${file} no longer violates; remove it from migratedLater.ts`);
+        }
+      }
+    }
+    expect(stale).toEqual([]);
   });
 });

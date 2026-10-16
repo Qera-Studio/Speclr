@@ -389,7 +389,7 @@ function Sidebar({
           // speed the labels arrive after the eye has moved on. Only the
           // growing direction is slowed: the shrink on mouse-out is the pill
           // getting out of the way, and stays on Panel.
-          "group-data-float:group-data-peek:w-(--sidebar-width) group-data-float:group-data-peek:duration-400",
+          "group-data-float:group-data-peek:w-(--sidebar-width) group-data-float:group-data-peek:duration-200",
           className,
         )}
         {...props}
