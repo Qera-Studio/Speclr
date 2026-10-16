@@ -1,6 +1,6 @@
 "use client";
 
-import { Specimen } from "./Specimen";
+import { LivePager, Specimen } from "./Specimen";
 import { DECISIONS, type LibraryEntry } from "./catalogue";
 import { Mono } from "@/components/patterns/Mono";
 import { PageHeader } from "@/components/patterns/Page";
@@ -101,6 +101,28 @@ export function PageSpecimens({ entry }: { entry: LibraryEntry }) {
           </div>
         </Specimen>
         <Specimen name={v[1].name} note={v[1].note} fill>{table(TEMPLATES, ["Template", "Screens", "Primary action"])}</Specimen>
+      </>
+    );
+  }
+  if (entry.slug === "specimen") {
+    // Each variant is the real Specimen demonstrating its own prop, not a
+    // Specimen holding a Specimen: the frame is the subject here.
+    return (
+      <>
+        <Specimen name={v[0].name} note={v[0].note}>
+          <Button>The subject</Button>
+        </Specimen>
+        <Specimen name={v[1].name} note={v[1].note} fill>
+          <Button variant="primary">One</Button>
+          <Button>Two</Button>
+          <Button variant="ghost">Three</Button>
+        </Specimen>
+        <Specimen name={v[2].name} note={v[2].note} stage="sidebar">
+          <LivePager pageCount={3} />
+        </Specimen>
+        <Specimen name={v[3].name} note={v[3].note} empty>
+          {null}
+        </Specimen>
       </>
     );
   }

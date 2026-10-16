@@ -423,6 +423,22 @@ export const CATALOGUE: LibraryEntry[] = [
     ],
   },
   {
+    slug: 'specimen',
+    section: 'patterns',
+    level: 'molecule',
+    name: 'Specimen',
+    blurb:
+      'The frame every example on this page sits in: a tinted card holding the name, and a stage inset on the fill the component really ships on. The card is furniture; the stage is the subject.',
+    source: 'src/components/design/Specimen.tsx',
+    rule: '§2.13',
+    variants: [
+      { name: 'The card and the stage', note: 'The default: one control pushed right, on `--background`, which is where nearly everything stands.' },
+      { name: 'Fill', note: 'A set of examples that wants the whole stage, laid out from the left like the prose above it.' },
+      { name: 'On the sidebar band', note: 'A pager lives in a table footer on `--sidebar`, so it is judged there. Signed off on any other fill, it is signed off on a band it never sits on.' },
+      { name: 'An absence', note: 'A component declining to render gets no stage at all. An empty inset among full ones reads as something that broke.' },
+    ],
+  },
+  {
     slug: 'flow',
     section: 'patterns',
     level: 'organism',

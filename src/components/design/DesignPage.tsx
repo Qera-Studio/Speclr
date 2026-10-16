@@ -158,7 +158,7 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
         {["actions", "cells", "flow", "empty"].includes(entry.slug) ? (
           <PatternSpecimens entry={entry} />
         ) : null}
-        {["overview", "page", "shell", "writing", "decisions"].includes(entry.slug) ? (
+        {["overview", "page", "shell", "writing", "decisions", "specimen"].includes(entry.slug) ? (
           <PageSpecimens entry={entry} />
         ) : null}
       </div>

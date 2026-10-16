@@ -1549,6 +1549,10 @@ the overview. `replace`, not `push`.
   real state: the pager pages, the drawer opens, the dialog asks.
 - **A specimen is drawn on the band the component actually lives on**, never a
   neutral backdrop chosen to flatter it.
+  `Specimen` (`design/Specimen.tsx`) is that frame: a tinted card for the
+  name, a stage inset on the real fill for the component, `fill` for a row of
+  examples, `stage="sidebar"` for a pager, `empty` for an absence. It is on
+  the page as its own entry, so the frame is decided where everything else is.
 - **A decision is a record, not a paragraph.** `DECISIONS` in `catalogue.ts`
   holds each one with what was rejected and the test that holds it; the
   decisions section renders them newest first. §6 below is the same history
