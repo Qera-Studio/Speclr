@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ServiceCatalogue from '../ServiceCatalogue';
 import { PARTS } from '@/lib/domain/seed/parts';
@@ -192,6 +192,8 @@ describe('ServiceCatalogue', () => {
 
     await user.click(screen.getByRole('button', { name: 'Cards' }));
     await user.click(await screen.findByRole('menuitemradio', { name: 'Board' }));
+    // A choice closes the menu; left open, its overlay ate the next click.
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
     for (const schedule of SCHEDULES) {
       expect(screen.getByRole('region', { name: schedule.name })).toBeInTheDocument();
     }

@@ -36,8 +36,8 @@ import { SCHEDULE_ICONS } from "@/components/contract/scheduleIcons";
 import { removeService, restoreService } from "@/server/actions/services";
 import { SCHEDULES, type Schedule, type ScheduleKey } from "@/lib/domain/contract/schedules";
 import type { ContractService } from "@/lib/domain/service";
-import { formatINR } from "@/lib/domain/money";
-import { accentBadge } from "@/lib/accent";
+import { formatQuote } from "@/lib/domain/quotation";
+import { accentBadge, type Accent } from "@/lib/accent";
 import { cn } from "@/lib/utils";
 
 /**
@@ -78,12 +78,33 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["key"];
 
+/**
+ * A list price, without paise when there are none: these are round figures a
+ * quote starts from, and ".00" on every card is noise (`formatQuote`, the
+ * quotation's own rule). Real paise still print.
+ */
 function priceOf(service: ContractService) {
   if (service.ratePaise === undefined) return "Quoted";
   return service.scheduleKey === "retainer"
-    ? `${formatINR(service.ratePaise)} / mo`
-    : formatINR(service.ratePaise);
+    ? `${formatQuote(service.ratePaise)} / mo`
+    : formatQuote(service.ratePaise);
 }
+
+/**
+ * A board column's ground: its Schedule's accent at a few percent, so the four
+ * read as four without a border between them. Written out because Tailwind
+ * only builds class names it can see.
+ */
+const COLUMN_WASH: Record<Accent, string> = {
+  violet: "bg-accent-violet/4 dark:bg-accent-violet/6",
+  cyan: "bg-accent-cyan/4 dark:bg-accent-cyan/6",
+  teal: "bg-accent-teal/4 dark:bg-accent-teal/6",
+  green: "bg-accent-green/4 dark:bg-accent-green/6",
+  amber: "bg-accent-amber/4 dark:bg-accent-amber/6",
+  orange: "bg-accent-orange/4 dark:bg-accent-orange/6",
+  rose: "bg-accent-rose/4 dark:bg-accent-rose/6",
+  magenta: "bg-accent-magenta/4 dark:bg-accent-magenta/6",
+};
 
 /** Lowest first, with quoted-per-engagement Services after every priced one. */
 function byPrice(a: ContractService, b: ContractService) {
@@ -205,7 +226,7 @@ export default function ServiceCatalogue({
               <DropdownMenuContent align="end" className="min-w-40">
                 <DropdownMenuRadioGroup value={sort} onValueChange={(v) => setSort(v as Sort)}>
                   {SORTS.map((s) => (
-                    <DropdownMenuRadioItem key={s.key} value={s.key}>
+                    <DropdownMenuRadioItem key={s.key} value={s.key} closeOnClick>
                       {s.label}
                     </DropdownMenuRadioItem>
                   ))}
@@ -221,7 +242,7 @@ export default function ServiceCatalogue({
               <DropdownMenuContent align="end" className="min-w-36">
                 <DropdownMenuRadioGroup value={view} onValueChange={(v) => setView(v as View)}>
                   {VIEWS.map((v) => (
-                    <DropdownMenuRadioItem key={v.key} value={v.key}>
+                    <DropdownMenuRadioItem key={v.key} value={v.key} closeOnClick>
                       <v.icon aria-hidden />
                       {v.label}
                     </DropdownMenuRadioItem>
@@ -286,20 +307,26 @@ export default function ServiceCatalogue({
         </div>
       ) : (
         <div
-          className="grid gap-4"
+          className="grid items-start gap-6"
           style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
         >
           {columns.map((schedule) => {
             const mine = shown.filter((s) => s.scheduleKey === schedule.key);
             return (
-              <section key={schedule.key} aria-label={schedule.name} className="flex min-w-0 flex-col gap-3">
-                <SectionHead
-                  schedule={schedule}
-                  count={mine.length}
-                  onAdd={tab === "active" ? () => setAdding(schedule.key) : undefined}
-                />
+              <section
+                key={schedule.key}
+                aria-label={schedule.name}
+                className={cn("flex min-w-0 flex-col gap-4 rounded-lg p-3", COLUMN_WASH[schedule.accent])}
+              >
+                <div className="px-1 pt-1">
+                  <SectionHead
+                    schedule={schedule}
+                    count={mine.length}
+                    onAdd={tab === "active" ? () => setAdding(schedule.key) : undefined}
+                  />
+                </div>
                 {mine.length ? (
-                  <ul className="flex flex-col gap-2">
+                  <ul className="flex flex-col gap-3">
                     {mine.map((service) => (
                       <li key={service.code}>
                         <ServiceCard
@@ -314,7 +341,7 @@ export default function ServiceCatalogue({
                 ) : (
                   // An empty column keeps its place, so the four stay four, and
                   // says so in the column rather than leaving a hole.
-                  <p className="rounded-lg border border-dashed border-border/50 p-3 text-meta text-tab-label">
+                  <p className="px-1 pb-2 text-meta text-tab-label">
                     Nothing here
                   </p>
                 )}
@@ -399,8 +426,8 @@ function ServiceCard({
       className={cn(
         // The ring is the card's when its link has keyboard focus: the link
         // fills the card, so the card is what was focused.
-        "group/card relative flex h-full flex-col justify-between rounded-lg border border-border/50 bg-background p-3 transition-colors hover:border-muted-foreground/50 has-[a:focus-visible]:ring-forced",
-        compact ? "gap-4" : "gap-6",
+        "group/card relative flex h-full flex-col justify-between rounded-lg border border-border/50 bg-background transition-colors hover:border-muted-foreground/50 has-[a:focus-visible]:ring-forced",
+        compact ? "gap-6 p-4" : "gap-6 p-3",
       )}
     >
       <div className="flex flex-col gap-3">
@@ -409,12 +436,17 @@ function ServiceCard({
             {compact ? null : <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />}
             <Link
               href={`/client/services/${service.code}`}
-              className="truncate text-lead outline-none after:absolute after:inset-0 after:rounded-lg"
+              // Two lines on the board rather than clipped: a quarter-width
+              // column cuts "Website Maintenance" mid-word otherwise.
+              className={cn(
+                "text-lead outline-none after:absolute after:inset-0 after:rounded-lg",
+                compact ? "line-clamp-2" : "truncate",
+              )}
             >
               {service.name}
             </Link>
           </div>
-          <CardMenu service={service} onEdit={onEdit} />
+          <CardMenu service={service} onEdit={onEdit} hidden={compact} />
         </div>
         {compact ? null : (
           // `min-h-10` holds two lines, so a short description does not pull
@@ -443,7 +475,21 @@ function ServiceCard({
  * rendered within a menu item unmounts with the menu the instant the item is
  * chosen, so it would never open.
  */
-function CardMenu({ service, onEdit }: { service: ContractService; onEdit: () => void }) {
+function CardMenu({
+  service,
+  onEdit,
+  hidden = false,
+}: {
+  service: ContractService;
+  onEdit: () => void;
+  /**
+   * Out of sight until the card is hovered or anything in it has focus, on
+   * the board, where a square on every card is a column of marks down each
+   * lane. Opacity, not `display`, so it stays in the tab order and in the
+   * accessibility tree, and it stays up while its menu is open.
+   */
+  hidden?: boolean;
+}) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -468,6 +514,8 @@ function CardMenu({ service, onEdit }: { service: ContractService; onEdit: () =>
               aria-label={`Actions for ${service.name}`}
               className={cn(
                 "relative z-10 size-6 shrink-0 group-hover/card:border-muted-foreground group-hover/card:text-foreground",
+                hidden &&
+                  "opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100",
                 QUIET,
               )}
             />
