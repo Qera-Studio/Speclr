@@ -130,7 +130,7 @@ export default function CountryChooser({
           type="search"
           autoFocus
           size="form"
-          className="pl-10"
+          className="pl-9"
           placeholder="Search countries"
           aria-label="Search countries"
           value={query}

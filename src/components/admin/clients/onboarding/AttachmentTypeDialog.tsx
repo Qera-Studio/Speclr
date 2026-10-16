@@ -110,7 +110,7 @@ export default function AttachmentTypeDialog({
             size="form"
             aria-label="Search document types"
             placeholder="Search document types…"
-            className="pl-10"
+            className="pl-9"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />

@@ -8,6 +8,7 @@ import {
 } from './policedSource';
 import {
   MONO_MIGRATED_LATER,
+  RAW_BUTTON_MIGRATED_LATER,
   RESPONSIVE_MIGRATED_LATER,
   SPACING_MIGRATED_LATER,
 } from './migratedLater';
@@ -245,6 +246,8 @@ const OVERLAYS = [
   'src/components/ui/select.tsx',
   'src/components/ui/tooltip.tsx',
   'src/app/(app)/loading.tsx',
+  'src/app/(app)/client/clients/new/loading.tsx',
+  'src/app/(app)/client/clients/[id]/loading.tsx',
 ];
 
 /**
@@ -617,6 +620,13 @@ const MONO_PRIMITIVE = ['src/components/patterns/Mono.tsx'];
 const OWN_SPINNER = /\bLoader2\b/g;
 const SPINNER_PRIMITIVE = ['src/components/ui/spinner.tsx'];
 const COPY_PASTED_EMPTY = /No \w+ match these filters/g;
+/**
+ * A `<button>` written by hand. `Button` and `IconAction` carry the height,
+ * the fill, the focus ring and the name rule; a raw element carries none of
+ * them and is how a 24px unnamed control gets back in. The primitives and
+ * patterns are exempt because they are where the element is built.
+ */
+const RAW_BUTTON = /<button\b/g;
 const QUESTION_TITLE = /<ConfirmDialog\b[^>]*?title=["'][^"']*\?["']/g;
 
 /**
@@ -657,7 +667,9 @@ const HEAVY_WEIGHT = /\bfont-(?:semibold|bold|extrabold|black)\b/g;
  * decision about its neighbours into every place it is reused. §1.2.
  */
 const OFF_SCALE_SPACING =
-  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8|10|12|16)\b)[0-9.]+\b/g;
+  // 9 (36px) is the form control's height, so an inset that aligns to one
+  // (the table footer's count under the first column, an icon in a field).
+  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8|9|10|12|16)\b)[0-9.]+\b/g;
 const MARGIN = /(?<![\w-])-?m[trblxy]?-(?!auto\b)(?:[0-9.]+|px)\b/g;
 const SPACE_BETWEEN = /(?<!-)\bspace-[xy]-[\w.]+/g;
 const ARBITRARY_SPACE = /\b(?:gap|p|m)[xytrbl]?-\[[^\]]*\]/g;
@@ -728,6 +740,7 @@ const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['PENDING', [], [DISABLED_NOT_PENDING], []],
   ['RAW_ALERT', [], [RAW_ALERT], []],
   ['MONO', MONO_MIGRATED_LATER, [OWN_MONO], MONO_PRIMITIVE],
+  ['RAW_BUTTON', RAW_BUTTON_MIGRATED_LATER, [RAW_BUTTON], UI_PRIMITIVES],
   ['WEIGHT', [], [HEAVY_WEIGHT], []],
   ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
   ['RADIUS', [], [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
@@ -1002,6 +1015,10 @@ describe('design system', () => {
 
   it('reports a field error through FieldError, never a raw alert paragraph', () => {
     expect(outstanding('RAW_ALERT')).toEqual([]);
+  });
+
+  it('builds every clickable thing from Button or IconAction, never a raw button', () => {
+    expect(outstanding('RAW_BUTTON')).toEqual([]);
   });
 
   it('sets identity strings in Mono, never font-mono by hand', () => {

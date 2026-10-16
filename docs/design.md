@@ -156,6 +156,7 @@ adjacent chip, and 8 cannot express either.
 | `gap-4` | 16 | card | Between cards; card padding; between fields in a `FieldGroup` |
 | `gap-6` | 24 | section | Between sections of a page |
 | `gap-8` | 32 | page | The page inset (`PageBody`) |
+| `pl-9` | 36 | control | Only as an inset that aligns to a form control (36px tall): the footer count under the first column, an icon inside a field |
 
 `gap-3` was admitted on 16 October 2026: it was the second most-used value in
 the app and not in the vocabulary, which is how a rulebook loses. `p-9` (36)
@@ -750,7 +751,7 @@ same red `StatusBadge`'s danger variant uses, holds for **10 seconds** rather
 than 4, and every toast (this class included) carries a manual close. Four
 seconds was never enough to read a reason; it was enough for a confirmation.
 
-**The table, settled:** rows are 44px (`h-11` on the row, 12px cell padding,
+**The table, settled:** rows are 40px (`h-10` on the row, 8px cell padding, the 20px line with one control gap each side,
 `leading-none`), hover is `bg-muted/40`, the header is sticky, the whole row is
 one stretched anchor, row actions and copy buttons reveal on `group-hover/row`
 and on `focus-within`, every figure is `tabular-nums`, money is right-aligned,
@@ -1056,17 +1057,21 @@ stated `size` instead of being stretched in proportion.
 - **Never nest a card in a card.** If a section inside a card needs separating,
   a hairline and a heading do it.
 
-### 2.5 The four states
+### 2.5 The six states
 
-Every surface that loads data declares all four. This is not optional polish;
-three of them are what the screen looks like when something goes wrong.
+Every surface that loads data declares all of them, from one component:
+`EmptyState` in `ui/empty.tsx` carries the copy for the four empties, so
+"No clients match these filters" is written once. Enforced: the sentence
+written anywhere else fails the build.
 
 | State | Rule |
 |---|---|
-| **Loading** | A skeleton in the shape of the content, not a spinner, and it must not shift layout when real content lands. For a list that means `TableSkeleton`, which is a real `Table` of real `TableRow`s so its geometry cannot drift from the table it stands in for. |
-| **Empty** | One line saying what would be here, and **the button that creates the first one**. Never just "No results". |
-| **Error** | What failed, in a sentence, plus a retry. Never a raw error string. |
-| **Filtered-empty** | Different from empty: says which filter is hiding things, and offers to clear it. |
+| **Loading** | A skeleton in the shape of what is arriving, held back 150ms so a fast route never flashes one. `TableSkeleton` for a list, `FormSkeleton` for a form (`clients/new` and `clients/[id]` carry their own `loading.tsx`). Never a spinner, never layout shift. |
+| **Empty** | `preset="none-yet"`: what would be here, and **the button that creates the first one**. Never just "No results". |
+| **Filtered-empty** | `preset="no-matches"`: says the filters are hiding things and offers to clear them. |
+| **Error** | `preset="error"` or `(app)/error.tsx`: what failed, in a sentence, plus retry, plus the digest in `Mono`. |
+| **Not found** | `(app)/not-found.tsx`, inside the shell: a dead link lands on a page that still has the nav and the way back. |
+| **Pending** | `Button pending`: a spinner in front of a label that never changes. Enforced on every submit, primary and destructive. |
 
 ### 2.6 Feedback
 
@@ -1683,6 +1688,14 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, the states, the row, and the last raw buttons.**
+  `EmptyState` with four presets replaces the two copied "no matches"
+  blocks; `not-found.tsx` inside the shell; `FormSkeleton` and a
+  `loading.tsx` for the two client form routes. Table rows are 40px, which
+  is the body line plus a control gap each side, and the footer band
+  matches. A rule bans `<button>` outside `ui/` and `patterns/`, with the
+  32 screens that still write one on a shrinking list.
 
 - **16 October 2026, the folders follow the ladder.** `shell/` (25 files
   out of `admin/`: the frame, nav, rail, palettes, and the record panel that

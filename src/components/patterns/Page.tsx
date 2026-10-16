@@ -99,7 +99,7 @@ export function TableCard({
     >
       {children}
       {/*
-        `pl-10 pr-2`, and the asymmetry is the rule rather than an oversight.
+        `pl-9 pr-2`, and the asymmetry is the rule rather than an oversight.
         The left holds the row count, which is prose and lines up with the
         first column's text. The right holds the pager, whose ghost icon
         buttons carry their own padding inside the hit target: the glyph sits
@@ -107,7 +107,7 @@ export function TableCard({
         the card's corner. Padding to a control is not padding to a letterform.
       */}
       {count || pagination ? (
-        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-10 pr-2 text-meta text-muted-foreground">
+        <div className="flex min-h-10 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-9 pr-2 text-meta text-muted-foreground">
           <span>{count}</span>
           {pagination}
         </div>
@@ -152,6 +152,24 @@ const SKELETON_COLUMNS = [
  * `table-layout: auto` and sized by content nobody has yet. A route with a
  * known column set passes its own; the default is the documents list's.
  */
+/**
+ * The shape of a form that is about to arrive: a label bar over a field bar,
+ * at the form rung's height, three times. For the routes whose page is a
+ * form rather than a list, so the skeleton holds the right space.
+ */
+export function FormSkeleton({ fields = 3 }: { fields?: number }) {
+  return (
+    <div className="flex max-w-xl flex-col gap-6" aria-hidden="true">
+      {Array.from({ length: fields }, (_, i) => (
+        <div key={i} className="flex flex-col gap-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function TableSkeleton({
   columns = SKELETON_COLUMNS,
   rows = 6,

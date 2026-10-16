@@ -214,7 +214,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(box).toBeVisible();
 
     const { boxL, bandL, inside, padRight, padLeft } = await box.evaluate((el) => {
-      const footer = el.closest('div[class*="min-h-11"]') as HTMLElement;
+      const footer = el.closest('div[class*="min-h-10"]') as HTMLElement;
       const trough = el.closest('[data-slot="page-runs"]') as HTMLElement;
       const lightness = (c: string) => Number(/lab\(([-\d.]+)/.exec(c)?.[1] ?? NaN);
       const footerStyle = getComputedStyle(footer);

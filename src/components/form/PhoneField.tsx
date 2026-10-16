@@ -50,7 +50,7 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
  * rather than fixed, because a fixed inset that clears `+91` runs straight
  * through `+971`.
  */
-const PREFIX_PADDING: Record<number, string> = { 1: 'pl-10', 2: 'pl-12', 3: 'pl-12' };
+const PREFIX_PADDING: Record<number, string> = { 1: 'pl-9', 2: 'pl-12', 3: 'pl-12' };
 
 /**
  * The strict phone check, for a form's resolver to call.
