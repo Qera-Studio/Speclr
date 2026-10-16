@@ -69,8 +69,8 @@ export function Specimen({
       role="group"
       aria-label={name}
       className={cn(
-        "flex flex-col rounded-md border",
-        trial ? "border-border/50 bg-muted" : "border-border bg-sidebar",
+        "flex flex-col border",
+        trial ? "rounded-lg border-border/50 bg-muted" : "rounded-md border-border bg-sidebar",
       )}
     >
       {/*
@@ -114,8 +114,8 @@ export function Specimen({
             // already `w-full` and doing the right thing: what was wrong was
             // the box being asked to contain it. It costs nothing to a specimen
             // whose content fits, which is every other one on this page.
-            "flex min-h-14 min-w-0 items-center gap-4 rounded-sm",
-            trial ? "mx-1.5 mb-1.5 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
+            "flex min-h-14 min-w-0 items-center gap-4",
+            trial ? "mx-1.5 mb-1.5 rounded-md px-6 py-4" : "mx-0.5 mb-0.5 rounded-sm border border-border px-4 py-3",
             stage === "sidebar" ? "bg-sidebar" : "bg-background",
             fill ? "justify-start" : "justify-between",
           )}
