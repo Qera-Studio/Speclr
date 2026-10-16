@@ -344,7 +344,6 @@ export default function ServiceCatalogue({
                         <ServiceCard
                           service={service}
                           schedule={schedule}
-                          compact
                           onEdit={() => setEditing(service)}
                         />
                       </li>
@@ -416,55 +415,42 @@ function SectionHead({
  * name. The menu sits above that box (`relative z-10`) and takes its hover
  * state from the card, so it is found without being hunted for.
  *
- * `compact` is the board's: no description, because a column is a quarter of
- * the width and two clipped lines there say less than nothing.
+ * One card for both views. The board had a compact one while its lanes were a
+ * quarter of the page; at 28% they are nearly a card's width, so the reason
+ * for a second shape went with them.
  */
 function ServiceCard({
   service,
   schedule,
-  compact = false,
   onEdit,
 }: {
   service: ContractService;
   schedule: Schedule;
-  compact?: boolean;
   onEdit: () => void;
 }) {
   const Icon = SCHEDULE_ICONS[schedule.key];
   return (
-    <div
-      className={cn(
-        // The ring is the card's when its link has keyboard focus: the link
-        // fills the card, so the card is what was focused.
-        "group/card relative flex h-full flex-col justify-between rounded-lg border border-border/50 bg-background transition-colors hover:border-muted-foreground/50 has-[a:focus-visible]:ring-forced",
-        compact ? "gap-6 p-4" : "gap-6 p-3",
-      )}
-    >
+    // The ring is the card's when its link has keyboard focus: the link
+    // fills the card, so the card is what was focused.
+    <div className="group/card relative flex h-full flex-col justify-between gap-6 rounded-lg border border-border/50 bg-background p-3 transition-colors hover:border-muted-foreground/50 has-[a:focus-visible]:ring-forced">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            {compact ? null : <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />}
+            <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
             <Link
               href={`/client/services/${service.code}`}
-              // Two lines on the board rather than clipped: a quarter-width
-              // column cuts "Website Maintenance" mid-word otherwise.
-              className={cn(
-                "text-lead outline-none after:absolute after:inset-0 after:rounded-lg",
-                compact ? "line-clamp-2" : "truncate",
-              )}
+              className="truncate text-lead outline-none after:absolute after:inset-0 after:rounded-lg"
             >
               {service.name}
             </Link>
           </div>
-          <CardMenu service={service} onEdit={onEdit} hidden={compact} />
+          <CardMenu service={service} onEdit={onEdit} />
         </div>
-        {compact ? null : (
-          // `min-h-10` holds two lines, so a short description does not pull
-          // the footer up and break the row's baseline.
-          <p className="line-clamp-2 min-h-10 text-body text-muted-foreground">
-            {service.blurb ?? service.overview[0]}
-          </p>
-        )}
+        {/* `min-h-10` holds two lines, so a short description does not pull
+            the footer up and break the row's baseline. */}
+        <p className="line-clamp-2 min-h-10 text-body text-muted-foreground">
+          {service.blurb ?? service.overview[0]}
+        </p>
       </div>
       <div className="flex items-center justify-between gap-2 text-meta tabular-nums">
         {/* The Schedule's accent, quiet: the hue groups, the text names it. */}
@@ -491,17 +477,9 @@ function ServiceCard({
 function CardMenu({
   service,
   onEdit,
-  hidden = false,
 }: {
   service: ContractService;
   onEdit: () => void;
-  /**
-   * Out of sight until the card is hovered or anything in it has focus, on
-   * the board, where a square on every card is a column of marks down each
-   * lane. Opacity, not `display`, so it stays in the tab order and in the
-   * accessibility tree, and it stays up while its menu is open.
-   */
-  hidden?: boolean;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -527,8 +505,6 @@ function CardMenu({
               aria-label={`Actions for ${service.name}`}
               className={cn(
                 "relative z-10 size-6 shrink-0 group-hover/card:border-tab-label/50 group-hover/card:text-muted-foreground",
-                hidden &&
-                  "opacity-0 group-hover/card:opacity-100 group-focus-within/card:opacity-100 aria-expanded:opacity-100",
                 QUIET,
               )}
             />
