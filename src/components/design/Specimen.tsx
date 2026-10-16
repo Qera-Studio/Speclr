@@ -115,7 +115,7 @@ export function Specimen({
             // the box being asked to contain it. It costs nothing to a specimen
             // whose content fits, which is every other one on this page.
             "flex min-h-14 min-w-0 items-center gap-4 rounded-sm",
-            trial ? "mx-1 mb-1 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
+            trial ? "mx-3 mb-3 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
             stage === "sidebar" ? "bg-sidebar" : "bg-background",
             fill ? "justify-start" : "justify-between",
           )}
