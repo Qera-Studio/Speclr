@@ -83,7 +83,7 @@ export function Specimen({
         reasoning behind each variant and `catalogue.ts` is where that belongs.
         Bring it back by rendering `note` here.
       */}
-      <div className={trial ? "px-3 pt-4 pb-3" : "px-1 pt-2 pb-2"}>
+      <div className={trial ? "px-1.5 py-3" : "px-1 pt-2 pb-2"}>
         <h3 className="text-body font-medium">{name}</h3>
       </div>
       {/*
@@ -115,7 +115,7 @@ export function Specimen({
             // the box being asked to contain it. It costs nothing to a specimen
             // whose content fits, which is every other one on this page.
             "flex min-h-14 min-w-0 items-center gap-4 rounded-sm",
-            trial ? "mx-3 mb-3 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
+            trial ? "mx-1.5 mb-1.5 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
             stage === "sidebar" ? "bg-sidebar" : "bg-background",
             fill ? "justify-start" : "justify-between",
           )}
