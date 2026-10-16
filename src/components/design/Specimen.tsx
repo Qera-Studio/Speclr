@@ -68,7 +68,10 @@ export function Specimen({
     <section
       role="group"
       aria-label={name}
-      className="flex flex-col rounded-md border border-border bg-sidebar"
+      className={cn(
+        "flex flex-col rounded-md border border-border",
+        trial ? "bg-muted" : "bg-sidebar",
+      )}
     >
       {/*
         The note is not rendered. Tried under the heading and again inside the
