@@ -510,6 +510,9 @@ broken:
 | `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
 | a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
 | `status === 'finalized' ? …` as a label | `<Badge status={…}>` from `ui/badge.tsx` |
+| an `AlertDialog` written by hand, or a `ConfirmDialog` title ending in `?` | `ConfirmDialog` from `patterns/` (`docs/design.md` §2.6) |
+| `disabled={pending}` on a `Button` | `pending={pending}` |
+| `font-mono` on a string, `Loader2` imported | `Mono` from `patterns/`, `Spinner` from `ui/` |
 | an `icon` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
 | `variant="default\|outline\|raised\|neutral"` or `size="icon\|form"` on a button | the five fills and three heights in `ui/button.tsx` (`docs/design.md` §2.1) |
 

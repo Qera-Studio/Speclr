@@ -31,7 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { numericField } from "@/components/form/inputFilters";
 import { NIL } from "@/lib/utils";

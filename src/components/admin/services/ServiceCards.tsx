@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import Link from "next/link";
 import {
   Archive,
@@ -15,16 +16,6 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -397,28 +388,16 @@ function ServiceCardMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archive this service?</AlertDialogTitle>
-            <AlertDialogDescription>
-              It leaves the catalogue and stops being offered on new contracts.
-              Contracts already holding it keep their own copy, and it stays
-              readable for audit.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={pending}
-              onClick={archive}
-            >
-              Archive
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Archive service"
+        consequence="It leaves the catalogue and stops being offered on new contracts. Contracts already holding it keep their own copy, and it stays readable for audit."
+        confirmLabel="Archive service"
+        destructive
+        pending={pending}
+        onConfirm={archive}
+      />
     </>
   );
 }

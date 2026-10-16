@@ -14,6 +14,7 @@
  */
 
 export const TYPE_MIGRATED_LATER = [
+  'src/components/patterns/DrawerToolbar.tsx',
   'src/app/(app)/admin/kit/page.tsx',
   'src/components/admin/AdminHeader.tsx',
   'src/components/admin/AdminShell.tsx',
@@ -125,7 +126,6 @@ export const TYPE_MIGRATED_LATER = [
   'src/components/ui/derived-note.tsx',
   'src/components/ui/dialog.tsx',
   'src/components/ui/drawer-sheet.tsx',
-  'src/components/ui/drawer-toolbar.tsx',
   'src/components/ui/dropdown-menu.tsx',
   'src/components/ui/empty.tsx',
   'src/components/ui/field.tsx',
@@ -134,7 +134,6 @@ export const TYPE_MIGRATED_LATER = [
   'src/components/ui/label.tsx',
   'src/components/ui/pagination.tsx',
   'src/components/ui/progress.tsx',
-  'src/components/ui/record-drawer.tsx',
   'src/components/ui/select.tsx',
   'src/components/ui/sheet.tsx',
   'src/components/ui/sidebar.tsx',
@@ -237,7 +236,6 @@ export const SPACING_MIGRATED_LATER = [
   'src/components/ui/field.tsx',
   'src/components/ui/pagination.tsx',
   'src/components/ui/popup.ts',
-  'src/components/ui/record-drawer.tsx',
   'src/components/ui/select.tsx',
   'src/components/ui/sidebar.tsx',
   'src/components/ui/table.tsx',
@@ -309,7 +307,6 @@ export const RING_MIGRATED_LATER = [
   'src/components/spec/ReviewedItem.tsx',
   'src/components/ui/badge.tsx',
   'src/components/ui/button.tsx',
-  'src/components/ui/copy-button.tsx',
   'src/components/ui/sidebar.tsx',
   'src/components/ui/tabs.tsx',
 ];
@@ -398,4 +395,27 @@ export const PALETTE_ESCAPE_MIGRATED_LATER = [
   'src/components/library/drawer/ClauseDrawerSpecimens.tsx',
   'src/components/library/drawer/ExperimentClauseBodyEditor.tsx',
   'src/components/ui/tabs.tsx',
+];
+
+export const PENDING_MIGRATED_LATER = [
+  'src/components/admin/BulkSelect.tsx',
+  'src/components/admin/clauses/ClauseLibrary.tsx',
+  'src/components/admin/services/ItemForm.tsx',
+  'src/components/admin/services/LibrariesForm.tsx',
+  'src/components/admin/services/ServiceEditDialog.tsx',
+  'src/components/admin/services/WordingForm.tsx',
+];
+
+export const RAW_ALERT_MIGRATED_LATER = [
+  'src/components/form/UpiQrUpload.tsx',
+  'src/components/spec/IconSpecCard.tsx',
+];
+
+export const MONO_MIGRATED_LATER = [
+  'src/app/(app)/admin/kit/page.tsx',
+  'src/app/(app)/error.tsx',
+  'src/components/library/ComponentLibrary.tsx',
+  'src/components/library/IconSpecimens.tsx',
+  'src/components/library/table/columns.tsx',
+  'src/components/spec/IconSpecCard.tsx',
 ];

@@ -1,21 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isPrimaryPath, parentCrumb } from "./breadcrumb";
 import { usePageHeaderSlot } from "./PageHeaderSlot";
@@ -145,41 +135,20 @@ export default function AdminHeader() {
         over.
       */}
       {guarded ? (
-        <AlertDialog>
-          {/*
-            The button is built once and passed *through* both triggers, which
-            is the pairing `ConfirmActionButton` uses for a dialog with a
-            tooltip.
-
-            Worth knowing when checking this in a browser: Base UI's tooltip is
-            not `[role=tooltip]`. The trigger carries `aria-haspopup="dialog"`,
-            so a hover check should look for `[data-slot=tooltip-content]`.
-          */}
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <AlertDialogTrigger
-                  render={<BackButton label={parent.label} />}
-                />
-              }
-            />
-            <TooltipContent>{parent.label}</TooltipContent>
-          </Tooltip>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Leave this page?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Anything you have not saved will be lost.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Stay</AlertDialogCancel>
-              <AlertDialogAction onClick={() => router.push(parent.href)}>
-                Leave
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        /*
+          Worth knowing when checking this in a browser: Base UI's tooltip is
+          not `[role=tooltip]`. The trigger carries `aria-haspopup="dialog"`,
+          so a hover check should look for `[data-slot=tooltip-content]`.
+        */
+        <ConfirmDialog
+          trigger={<BackButton label={parent.label} />}
+          tooltip={parent.label}
+          title="Leave page"
+          consequence="Anything you have not saved will be lost."
+          confirmLabel="Leave page"
+          destructive
+          onConfirm={() => router.push(parent.href)}
+        />
       ) : (
         /*
           A real anchor where nothing can be lost, not a `router.push` behind a

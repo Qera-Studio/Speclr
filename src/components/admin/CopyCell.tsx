@@ -1,7 +1,8 @@
 'use client';
 
 import { CheckCheck, Copy } from 'lucide-react';
-import { CopyButton, useCopy } from '@/components/ui/copy-button';
+import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
+import { useCopy } from '@/lib/useCopy';
 import { TableCell } from '@/components/ui/table';
 import { NIL, cn } from '@/lib/utils';
 

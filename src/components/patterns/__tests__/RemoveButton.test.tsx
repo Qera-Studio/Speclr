@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 
 describe('RemoveButton', () => {
   it('exposes its label as the accessible name', () => {

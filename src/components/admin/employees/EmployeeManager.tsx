@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AddButton } from '@/components/ui/add-button';
+import { AddButton } from '@/components/patterns/AddAction';
 import RecordPanel from '../RecordPanel';
 import { useRecordPanel } from '../useRecordPanel';
 import EmployeeForm from './EmployeeForm';

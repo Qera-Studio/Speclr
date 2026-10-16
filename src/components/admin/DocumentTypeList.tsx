@@ -1,4 +1,4 @@
-import { AddLink } from "@/components/ui/add-button";
+import { AddLink } from "@/components/patterns/AddAction";
 import { Shortcut } from "@/components/ui/kbd";
 import {
   Tooltip,

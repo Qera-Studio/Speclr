@@ -1,16 +1,7 @@
 'use client';
 
 import { EditorPanelContent } from './EditorPanel';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 
 /**
  * The record add/edit form, rendered into the app's editor rail, plus the
@@ -48,23 +39,15 @@ export default function RecordPanel({
         </EditorPanelContent>
       ) : null}
 
-      <AlertDialog open={pendingDiscard} onOpenChange={(o) => (o ? null : onCancelDiscard())}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes in this form. Leaving now will discard them.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={onCancelDiscard}>Keep editing</AlertDialogCancel>
-            {/* Destructive: this throws away work you typed. */}
-            <AlertDialogAction variant="destructive" onClick={onConfirmDiscard}>
-              Discard changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={pendingDiscard}
+        onOpenChange={(o) => (o ? null : onCancelDiscard())}
+        title="Discard changes"
+        consequence="You have unsaved changes in this form. Leaving now discards them."
+        confirmLabel="Discard changes"
+        destructive
+        onConfirm={onConfirmDiscard}
+      />
     </>
   );
 }

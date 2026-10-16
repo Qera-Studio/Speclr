@@ -8,6 +8,9 @@ import {
 } from './policedSource';
 import {
   INLINE_TRANSITION_MIGRATED_LATER,
+  MONO_MIGRATED_LATER,
+  PENDING_MIGRATED_LATER,
+  RAW_ALERT_MIGRATED_LATER,
   RADIUS_MIGRATED_LATER,
   RESPONSIVE_MIGRATED_LATER,
   RING_MIGRATED_LATER,
@@ -605,6 +608,22 @@ const BOOLEAN_DATA_ATTR = /data-[a-z-]+=\{(?![^}]*(?:\?|undefined))(?:!|[^}]*[=!
 
 
 /**
+ * The molecules in `patterns/` each replaced something that was written by
+ * hand in several places (`docs/design.md` §2.6, 16 October 2026): nine
+ * confirmations with three different cancel labels, two spinners, a `<p
+ * role="alert">` where `FieldError` was, `font-mono` sprinkled on strings, and
+ * a `disabled={pending}` that spun nothing. Each rule here points at the one.
+ */
+const OWN_ALERT_DIALOG = /<AlertDialog\b/g;
+const DISABLED_NOT_PENDING = /<Button\b[^>]*?disabled=\{(?:is)?(?:pending|saving|submitting|busy)\}/g;
+const RAW_ALERT = /<p\b[^>]*role=["']alert["']/g;
+const OWN_MONO = /\bfont-mono\b/g;
+const MONO_PRIMITIVE = ['src/components/patterns/Mono.tsx'];
+const OWN_SPINNER = /\bLoader2\b/g;
+const SPINNER_PRIMITIVE = ['src/components/ui/spinner.tsx'];
+const QUESTION_TITLE = /<ConfirmDialog\b[^>]*?title=["'][^"']*\?["']/g;
+
+/**
  * A text size outside the type scale.
  *
  * `globals.css` defines eight sizes (`text-caption` … `text-display`), each
@@ -707,6 +726,9 @@ const SHELL = [
  */
 const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['TYPE', TYPE_MIGRATED_LATER, [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
+  ['PENDING', PENDING_MIGRATED_LATER, [DISABLED_NOT_PENDING], []],
+  ['RAW_ALERT', RAW_ALERT_MIGRATED_LATER, [RAW_ALERT], []],
+  ['MONO', MONO_MIGRATED_LATER, [OWN_MONO], MONO_PRIMITIVE],
   ['WEIGHT', WEIGHT_MIGRATED_LATER, [HEAVY_WEIGHT], []],
   ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
   ['RADIUS', RADIUS_MIGRATED_LATER, [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
@@ -719,7 +741,10 @@ const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
 ];
 
 /** `violations` over every pattern of a migration, minus its allowlist. */
-function outstanding([, later, patterns, exempt]: (typeof MIGRATIONS)[number]) {
+function outstanding(name: string) {
+  const row = MIGRATIONS.find(([n]) => n === name);
+  if (!row) throw new Error(`no migration named ${name}`);
+  const [, later, patterns, exempt] = row;
   return patterns.flatMap((p) => violations(p, [...later, ...exempt], /\.tsx?$/));
 }
 
@@ -932,6 +957,24 @@ describe('design system', () => {
     expect(own).toEqual([]);
   });
 
+  it('builds every confirmation on ConfirmDialog, with a title that states rather than asks', () => {
+    expect(violations(OWN_ALERT_DIALOG, UI_PRIMITIVES)).toEqual([]);
+    expect(violations(QUESTION_TITLE)).toEqual([]);
+  });
+
+  it('shows a spinner on every working button, and takes it from Spinner', () => {
+    expect(outstanding('PENDING')).toEqual([]);
+    expect(violations(OWN_SPINNER, SPINNER_PRIMITIVE)).toEqual([]);
+  });
+
+  it('reports a field error through FieldError, never a raw alert paragraph', () => {
+    expect(outstanding('RAW_ALERT')).toEqual([]);
+  });
+
+  it('sets identity strings in Mono, never font-mono by hand', () => {
+    expect(outstanding('MONO')).toEqual([]);
+  });
+
   it('writes every button in the five-fill, three-height API', () => {
     const root = join(__dirname, '..', '..');
     const stale: string[] = [];
@@ -994,40 +1037,40 @@ describe('design system', () => {
     expect(all.length).toBeGreaterThan(policedFiles().length);
   });
   it('takes every text size from the type scale, never Tailwind’s or a pixel value', () => {
-    expect(outstanding(MIGRATIONS[0])).toEqual([]);
+    expect(outstanding('TYPE')).toEqual([]);
   });
 
   it('sets at most two weights; 600 lives only in the title and display tokens', () => {
-    expect(outstanding(MIGRATIONS[1])).toEqual([]);
+    expect(outstanding('WEIGHT')).toEqual([]);
   });
 
   it('keeps every gap and inset on the spacing scale, and never uses margin', () => {
-    expect(outstanding(MIGRATIONS[2])).toEqual([]);
+    expect(outstanding('SPACING')).toEqual([]);
   });
 
   it('keeps every corner on the radius scale; xl is the dialogs’ alone', () => {
-    expect(outstanding(MIGRATIONS[3])).toEqual([]);
+    expect(outstanding('RADIUS')).toEqual([]);
   });
 
   it('takes every shadow from the three elevation tokens', () => {
-    expect(outstanding(MIGRATIONS[4])).toEqual([]);
+    expect(outstanding('SHADOW')).toEqual([]);
   });
 
   it('takes the focus ring from focus-ring, never drawing its own', () => {
-    expect(outstanding(MIGRATIONS[5])).toEqual([]);
+    expect(outstanding('RING')).toEqual([]);
   });
 
   it('uses the one easing and never an inline transition', () => {
-    expect(outstanding(MIGRATIONS[6])).toEqual([]);
-    expect(outstanding(MIGRATIONS[7])).toEqual([]);
+    expect(outstanding('EASING')).toEqual([]);
+    expect(outstanding('INLINE_TRANSITION')).toEqual([]);
   });
 
   it('names every z-index layer, never a bare number', () => {
-    expect(outstanding(MIGRATIONS[8])).toEqual([]);
+    expect(outstanding('Z')).toEqual([]);
   });
 
   it('keeps breakpoints inside the shell', () => {
-    expect(outstanding(MIGRATIONS[9])).toEqual([]);
+    expect(outstanding('RESPONSIVE')).toEqual([]);
   });
 
   it('keeps every migration allowlist honest: a listed file still violates, or it leaves the list', () => {

@@ -170,7 +170,7 @@ describe('bulk selection on the documents list', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Select all rows' }));
     await user.click(bulkDelete());
     const dialog = await screen.findByRole('alertdialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete \d/i }));
 
     await waitFor(() => expect(deleteDraftAction).toHaveBeenCalledTimes(2));
     expect(deleteDraftAction).not.toHaveBeenCalledWith('d1');
@@ -193,7 +193,7 @@ describe('bulk selection on the documents list', () => {
     await user.click(bulkDelete());
     // The confirm dialog, not the bar's own trigger.
     const dialog = await screen.findByRole('alertdialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete \d/i }));
 
     await waitFor(() => expect(deleteDraftAction).toHaveBeenCalledTimes(2));
     expect(deleteDraftAction).toHaveBeenCalledWith('d2');
@@ -213,7 +213,7 @@ describe('bulk selection on the documents list', () => {
     await user.click(bulkDelete());
 
     const dialog = await screen.findByRole('alertdialog');
-    const confirm = within(dialog).getByRole('button', { name: /^delete$/i });
+    const confirm = within(dialog).getByRole('button', { name: /^delete \d/i });
     // `bg-destructive` is what `AlertDialogAction` adds *only* for the
     // destructive variant, so it is the one class that proves the prop was
     // passed. A looser match hits the variant selectors in Button's own base
@@ -247,7 +247,7 @@ describe('bulk selection on the documents list', () => {
 
     await user.click(bulkDelete());
     const dialog = await screen.findByRole('alertdialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete \d/i }));
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(toastError.mock.calls[0][0]).toMatch(/1 of 2 could not be deleted/);
@@ -260,7 +260,7 @@ describe('bulk selection on the documents list', () => {
 
     await user.click(bulkDelete());
     const dialog = await screen.findByRole('alertdialog');
-    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await user.click(within(dialog).getByRole('button', { name: /^delete \d/i }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(toastError).not.toHaveBeenCalled();

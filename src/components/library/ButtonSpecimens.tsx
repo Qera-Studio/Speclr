@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import { ConfirmActionButton, RemoveButton } from '@/components/patterns/ConfirmAction';
 import { ArrowRight, Download, Pencil, Plus, Send, Trash2 } from 'lucide-react';
-import { AddButton, AddLink } from '@/components/ui/add-button';
+import { AddButton, AddLink } from '@/components/patterns/AddAction';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { CopyButton } from '@/components/ui/copy-button';
-import IconAction from '@/components/ui/icon-action';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
+import { IconAction } from '@/components/patterns/IconAction';
 import { Specimen } from './Specimen';
 import type { LibraryEntry } from './catalogue';
 

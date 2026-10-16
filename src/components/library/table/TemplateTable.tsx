@@ -1,19 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { Archive, FileText, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import RecordTable, { type RecordColumn } from '@/components/admin/RecordTable';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -263,20 +254,15 @@ function TemplateRowMenu({ row }: { row: TemplateRow }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete record</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes {row.name}. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Delete record"
+        consequence={<>This permanently removes {row.name}. It cannot be undone.</>}
+        confirmLabel="Delete record"
+        destructive
+        onConfirm={() => {}}
+      />
     </>
   );
 }

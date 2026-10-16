@@ -8,7 +8,7 @@ import FieldInfo from '@/components/form/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 /**

@@ -1,6 +1,6 @@
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CopyButton } from '../copy-button';
+import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
 
 describe('CopyButton', () => {
   it('renders a copy button labelled for its value', () => {

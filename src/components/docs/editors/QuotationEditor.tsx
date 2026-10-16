@@ -37,10 +37,10 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
-import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
 import { numericField } from "@/components/form/inputFilters";
 import DocumentWorkspace from "@/components/docs/DocumentWorkspace";
 import {

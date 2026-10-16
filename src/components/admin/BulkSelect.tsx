@@ -1,21 +1,11 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableHead } from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 /**
  * Row selection and bulk delete, shared by every list in the admin.
@@ -248,38 +238,23 @@ export function BulkBar({
         />
       ))}
       {onDelete ? (
-      <AlertDialog>
-        <AlertDialogTrigger
-          render={
+        <ConfirmDialog
+          trigger={
             <Button type="button" variant="destructive" size="sm" disabled={busy}>
               <Trash2 aria-hidden="true" className="size-4" />
               Delete
             </Button>
           }
+          title={`Delete ${counted}`}
+          consequence={consequence}
+          confirmLabel={`Delete ${counted}`}
+          destructive
+          onConfirm={async () => {
+            setBusy(true);
+            await onDelete();
+            setBusy(false);
+          }}
         />
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {count} {noun}
-              {count === 1 ? '' : 's'}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>{consequence}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={async () => {
-                setBusy(true);
-                await onDelete();
-                setBusy(false);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       ) : null}
     </div>
   );
@@ -312,30 +287,16 @@ function BulkActionButton({
   }
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger
-        render={
-          <Button type="button" variant="secondary" size="sm" disabled={busy}>
-            {action.label}
-          </Button>
-        }
-      />
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {action.label} {counted}?
-          </AlertDialogTitle>
-          <AlertDialogDescription>{action.confirm}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          {/* Named, not "Confirm": the button that does the thing says what
-              the thing is, which is also what makes it findable in a test. */}
-          <AlertDialogAction onClick={run}>
-            {action.label} {counted}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      trigger={
+        <Button type="button" variant="secondary" size="sm" disabled={busy}>
+          {action.label}
+        </Button>
+      }
+      title={`${action.label} ${counted}`}
+      consequence={action.confirm}
+      confirmLabel={`${action.label} ${counted}`}
+      onConfirm={run}
+    />
   );
 }

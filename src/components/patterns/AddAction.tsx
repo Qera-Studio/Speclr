@@ -9,6 +9,8 @@ import { buttonVariants } from "@/components/ui/button"
 import type { VariantProps } from "class-variance-authority"
 
 /**
+ * @level molecule
+ *
  * The "add a thing" button: a plus and a verb.
  *
  * Reserved for the page-level create actions (Add client, Add employee, Add

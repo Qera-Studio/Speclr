@@ -16,7 +16,7 @@ import {
 // `ClientsTable`, and that is what renders the pager. `Pagination` and
 // `rowCountLabel` were imported here and never used.
 import { usePagedRows } from '@/components/ui/pagination';
-import { AddLink } from '@/components/ui/add-button';
+import { AddLink } from '@/components/patterns/AddAction';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import ClientsTable, { CLIENT_COLUMNS, DEFAULT_CLIENT_COLUMNS } from './ClientsTable';

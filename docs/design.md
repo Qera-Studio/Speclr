@@ -1055,11 +1055,44 @@ three of them are what the screen looks like when something goes wrong.
 
 ### 2.6 Feedback
 
-- **A toast is for something that happened out of sight.** An action whose
-  result is visible on screen (a row appearing, a field saving) does not toast.
-- **Destructive actions confirm before, not undo after** — these are financial
-  records; there is no undo to offer.
-- **Never a toast for a validation error.** Errors belong on the field.
+**The ladder, lowest to highest:** a field error (inline, `FieldError`, on
+blur) → a form error (`Alert destructive` at the top of the form) → a toast
+(only for something that happened out of view: "Archived", "Copied") → a
+dialog (only when the reader must decide). A validation error is never a
+toast. Confirm before anything destructive.
+
+**One confirmation, `patterns/ConfirmDialog`.** Enforced: an `AlertDialog`
+written outside `ui/` and `patterns/` fails the build. There were nine of
+them, with "Cancel", "Stay" and "Keep editing" between them, and the dialog
+that threw work away was the one the eye landed on. The wording is the
+component's, not the call site's:
+
+| Part | Rule | Example |
+|---|---|---|
+| Title | Verb and object, no question mark | "Delete draft", "Leave page", "Archive service" |
+| Consequence | One sentence: what cannot be undone | "The draft and its line items are removed." |
+| Cancel | Always "Cancel", always `ghost` | |
+| Confirm | Repeats the verb and the object; solid red when destructive | "Delete draft" |
+| `extra` | A third action only where there is a better answer than either | "Save and leave" |
+
+Enforced: a `ConfirmDialog` title ending in `?` fails the build.
+`ConfirmAction` is a button that opens one; `RemoveButton` is its preset for
+a repeatable row.
+
+**The other molecules in `patterns/`, and what each replaced:**
+
+| Molecule | Replaces | Rule it holds |
+|---|---|---|
+| `IconAction` | a ghost icon `Button` + `Tooltip` written per site | Every icon-only control is 28px square, muted until hovered, named, with a one-word tooltip |
+| `CopyAction` | `copy-button.tsx` (a raw `<button>`) | Copy shows a tick for 1.5s; `useCopy` lives in `lib/` |
+| `AddButton` / `AddLink` | `ui/add-button.tsx` | A create action is a plus and a verb |
+| `Mono` | `font-mono` by hand | Identity strings are mono with tabular figures (§1.4); `font-mono` elsewhere fails the build |
+| `DrawerToolbar` | `ui/drawer-toolbar.tsx` | Back, expand, pager and actions in one row of `IconAction`s |
+| `Spinner` (`ui/`) | `Loader2` imported per site | One spinner; `Button pending` uses it; `Loader2` elsewhere fails the build |
+
+**Working buttons say so.** `disabled={pending}` on a `Button` fails the
+build (allowlisted until the screen migration); `pending={pending}` is the
+spelling, and it draws the spinner.
 
 ### 2.7 Tabs and segmented pills
 
@@ -1635,6 +1668,17 @@ In order:
 ---
 
 ## 6. Change log
+
+- **16 October 2026, the atoms and the molecules.** Button: five fills
+  (`primary`, `secondary` as the default, `ghost`, `destructive`, `link`),
+  three heights (28/32/36), `icon` as a shape; `raised`, `neutral`, the grey
+  `secondary` fill and the 24px size deleted. Inputs: 32 and 36, equal to
+  Button's `md` and `lg`. One `focus-ring`. `Badge` carries status and
+  retires `status-badge`. `Empty` gains four presets. New `patterns/`
+  folder for the molecules: `ConfirmDialog` (nine hand-written dialogs
+  moved onto it, wording fixed), `ConfirmAction` with `RemoveButton`,
+  `IconAction` with `CopyAction`, `AddButton`/`AddLink`, `Mono`,
+  `DrawerToolbar`. Eight rules added, each red on a probe.
 
 - **16 October 2026, decorative motion removed.** The `motion` package and
   its four callers, `MagicMove` and the five surfaces that used it, the

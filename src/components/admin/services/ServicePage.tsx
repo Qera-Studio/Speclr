@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { PageHeader } from '@/components/admin/Page';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import type { ContractService, LibraryLine } from '@/lib/domain/service';

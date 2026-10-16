@@ -10,7 +10,7 @@ import {
   duplicateDocument,
 } from '@/server/actions/documents';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import { useProfile } from '@/lib/useProfile';

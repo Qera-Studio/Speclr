@@ -1,18 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RowMenu } from '../RowMenu';
 import type { ClientRecord } from '@/lib/domain/types';
@@ -70,23 +61,20 @@ export function ClientRowMenu({
       {/* `AlertDialog`, not `Dialog`: this is a destructive confirmation, which
           is the house rule (AGENTS.md) and also what puts focus on the cancel
           and traps it until a choice is made. */}
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete client</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently removes {client.name} and any files uploaded for them. A
-              client that has been on a document can&apos;t be deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => onDelete(client)}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Delete client"
+        consequence={
+          <>
+            This permanently removes {client.name} and any files uploaded for them. A
+            client that has been on a document can&apos;t be deleted.
+          </>
+        }
+        confirmLabel="Delete client"
+        destructive
+        onConfirm={() => onDelete(client)}
+      />
     </>
   );
 }

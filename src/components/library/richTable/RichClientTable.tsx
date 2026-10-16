@@ -7,7 +7,7 @@ import { AmountCell } from '@/components/admin/AmountCell';
 import { flagOf, RaisedChip } from '@/components/admin/LocationCell';
 import { PeopleCell, PersonCell } from '@/components/admin/PersonCell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { CopyButton } from '@/components/ui/copy-button';
+import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
 import { ACCENT_TINTS, accentBadge, accentFor } from '@/lib/accent';
 import { countryName } from '@/lib/domain/countries';
 import type { DayRates } from '@/lib/domain/currency';

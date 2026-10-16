@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { BlueCheck } from '@/components/ui/blue-check';
-import { CopyButton } from '@/components/ui/copy-button';
+import { CopyAction as CopyButton } from '@/components/patterns/IconAction';
 import type { IconSpec, PreviewMockupKind, SlotState, ValidationResult } from '@/lib/spec/types';
 import { useImageValidation } from '@/lib/spec/useImageValidation';
 import { computePassed } from '@/lib/spec/computePassed';

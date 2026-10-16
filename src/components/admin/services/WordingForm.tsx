@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 import { Textarea } from '@/components/ui/textarea';
 import { partSectionLabel } from '@/lib/domain/contract/completeness';
 import type { ContractService, ServiceRow } from '@/lib/domain/service';

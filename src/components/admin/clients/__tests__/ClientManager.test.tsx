@@ -205,7 +205,7 @@ describe('ClientManager', () => {
   async function deleteFirstClient(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: /more actions for acme co\./i }));
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
-    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+    await user.click(await screen.findByRole('button', { name: /^delete client$/i }));
   }
 
   async function archiveFirstClient(user: ReturnType<typeof userEvent.setup>) {

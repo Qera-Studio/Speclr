@@ -41,6 +41,9 @@ export const EXEMPT = [
  */
 export const UI_PRIMITIVES = [
   'src/components/ui/',
+  // The molecules: the one place a confirmation, an icon action or a mono
+  // string is built, so the one place allowed to build it.
+  'src/components/patterns/',
   'src/components/form/UploadDropzone.tsx',
   // The identifier inputs. Same standing as the two above: they are allowed to
   // know how a PAN input is built, because they are the one place it is built.

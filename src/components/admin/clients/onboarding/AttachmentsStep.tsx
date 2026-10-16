@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/attachment";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import FieldInfo, { InfoTip } from "@/components/form/FieldInfo";

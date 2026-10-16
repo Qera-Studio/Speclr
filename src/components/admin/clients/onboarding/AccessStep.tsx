@@ -4,8 +4,8 @@ import "@/lib/zod-config";
 import { useCallback, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AddButton } from "@/components/ui/add-button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { AddButton } from "@/components/patterns/AddAction";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Field,

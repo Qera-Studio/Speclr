@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import FlowShell, { useActionsSlot } from '@/components/flow/FlowShell';
 import { DocumentCrumbLabel } from '@/components/admin/DocumentCrumb';
 import { resumeStep, stepIndex } from '@/components/flow/steps';

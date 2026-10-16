@@ -260,7 +260,7 @@ describe('ClientsTable', () => {
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
     expect(onDelete).not.toHaveBeenCalled();
 
-    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+    await user.click(await screen.findByRole('button', { name: /^delete client$/i }));
     expect(onDelete).toHaveBeenCalledWith(clients[0]);
   });
 });

@@ -1,19 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { ConfirmDialog } from '@/components/patterns/ConfirmDialog';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarPlus, Copy, Download, Pencil, Printer, Trash2 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RowMenu } from './RowMenu';
 import {
@@ -140,26 +131,19 @@ export default function DocumentRowActions({ doc }: { doc: AdminDocument }) {
       {/* `AlertDialog`, not `Dialog`: a destructive confirmation, which is the
           house rule (AGENTS.md) and also what puts focus on the cancel and
           traps it until a choice is made. */}
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isDraft ? 'Delete this draft?' : 'Delete this finalized document?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isDraft
-                ? DELETE_DRAFT_CONSEQUENCE
-                : 'Testing escape hatch: finalized documents are permanent in production. This cannot be undone.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={onDelete}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={isDraft ? 'Delete draft' : 'Delete finalized document'}
+        consequence={
+          isDraft
+            ? DELETE_DRAFT_CONSEQUENCE
+            : 'Testing escape hatch: finalized documents are permanent in production. This cannot be undone.'
+        }
+        confirmLabel={isDraft ? 'Delete draft' : 'Delete document'}
+        destructive
+        onConfirm={onDelete}
+      />
     </>
   );
 }

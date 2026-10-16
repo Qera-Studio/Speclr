@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DrawerSheet } from '../drawer-sheet';
-import { DrawerToolbar } from '../drawer-toolbar';
+import { DrawerToolbar } from '@/components/patterns/DrawerToolbar';
 
 /**
  * The frame, tested for the things that had drifted between the three

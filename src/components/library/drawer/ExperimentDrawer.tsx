@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize } from 'lucide-react';
-import IconAction from '@/components/ui/icon-action';
+import { IconAction } from '@/components/patterns/IconAction';
 import {
   Sheet,
   SheetContent,

@@ -1,7 +1,7 @@
 'use client';
 
 import { IdCard } from 'lucide-react';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 import { EditButton } from '../RowActions';
 import RecordTable from '../RecordTable';
 import { CopyCell } from '../CopyCell';

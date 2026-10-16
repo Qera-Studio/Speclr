@@ -120,7 +120,7 @@ describe('the back button', () => {
     const user = userEvent.setup();
     await clickBack(user);
 
-    expect(screen.getByText('Leave this page?')).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: 'Leave page' })).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -128,7 +128,7 @@ describe('the back button', () => {
     const user = userEvent.setup();
     pathname = '/admin/docs/new/exit-letter';
     await clickBack(user);
-    await user.click(screen.getByRole('button', { name: 'Leave' }));
+    await user.click(screen.getByRole('button', { name: 'Leave page' }));
 
     expect(push).toHaveBeenCalledWith('/admin/docs/exit-letter');
   });
@@ -141,7 +141,7 @@ describe('the back button', () => {
   it('dismisses itself on leaving, not relying on the page unmounting it', async () => {
     const user = userEvent.setup();
     await clickBack(user);
-    await user.click(screen.getByRole('button', { name: 'Leave' }));
+    await user.click(screen.getByRole('button', { name: 'Leave page' }));
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
   });
@@ -149,7 +149,7 @@ describe('the back button', () => {
   it('stays put when the user cancels', async () => {
     const user = userEvent.setup();
     await clickBack(user);
-    await user.click(screen.getByRole('button', { name: 'Stay' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(push).not.toHaveBeenCalled();
   });

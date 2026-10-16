@@ -1,6 +1,6 @@
 'use client';
 
-import { AddButton } from '@/components/ui/add-button';
+import { AddButton } from '@/components/patterns/AddAction';
 import { useNewDocument } from './NewDocumentCommand';
 
 /**

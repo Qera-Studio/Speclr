@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AddButton } from '@/components/ui/add-button';
+import { AddButton } from '@/components/patterns/AddAction';
 import { ArchiveButton } from '@/components/admin/RowActions';
 import ItemsTable from '@/components/admin/services/ItemsTable';
 import { SERVICES } from '@/lib/domain/seed/services';

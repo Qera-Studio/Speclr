@@ -33,7 +33,7 @@ import {
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
-import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import FieldInfo, { InfoTip } from "@/components/form/FieldInfo";

@@ -234,7 +234,7 @@ describe('ServiceCards', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Archive' }));
 
     expect(removeService).not.toHaveBeenCalled();
-    await user.click(await screen.findByRole('button', { name: 'Archive' }));
+    await user.click(await screen.findByRole('button', { name: 'Archive service' }));
     expect(removeService).toHaveBeenCalledWith('06');
   });
 });
