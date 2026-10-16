@@ -487,7 +487,7 @@ export default function ContractFlow({
       {serverError ? (
         <div
           role="alert"
-          className="pointer-events-auto max-w-lg rounded-lg border border-destructive/50 bg-card/95 px-3 py-2 text-sm text-destructive shadow-lg backdrop-blur"
+          className="pointer-events-auto max-w-lg rounded-lg border border-destructive/50 bg-card/95 px-3 py-2 text-body text-destructive shadow-lg backdrop-blur"
         >
           {serverError}
         </div>

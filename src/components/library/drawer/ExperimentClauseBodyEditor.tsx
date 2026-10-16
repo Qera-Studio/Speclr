@@ -384,7 +384,7 @@ export function ClauseBodyActions({
 }
 
 const ADD_BUTTON =
-  'h-6 px-1.5 text-[0.6875rem] text-[var(--gray-800)] dark:text-[var(--gray-300)]';
+  'h-6 px-1.5 text-caption text-[var(--gray-800)] dark:text-[var(--gray-300)]';
 
 /** What each kind is called where a reader needs the word. */
 const KIND_LABEL: Record<ClausePartKind, string> = {
@@ -443,7 +443,7 @@ function Row({
       */}
       <span
         aria-hidden="true"
-        className="w-10 shrink-0 pt-2 text-right text-xs text-muted-foreground tabular-nums"
+        className="w-10 shrink-0 pt-2 text-right text-meta text-muted-foreground tabular-nums"
       >
         {marker}
       </span>
@@ -481,7 +481,7 @@ function Row({
           drawing fourteen boxes. The edge comes back on focus, where it is
           the one thing telling the reader which paragraph has the caret.
         */
-        className="min-h-9 flex-1 border-transparent bg-muted/60 py-2 pr-16 pl-3 font-normal text-[0.8125rem]/relaxed hover:bg-muted focus-visible:border-ring focus-visible:bg-background md:text-[0.8125rem]/relaxed"
+        className="min-h-9 flex-1 border-transparent bg-muted/60 py-2 pr-16 pl-3 font-normal text-body hover:bg-muted focus-visible:border-ring focus-visible:bg-background text-body"
       />
 
       {/*

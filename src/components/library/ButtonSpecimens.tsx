@@ -76,7 +76,7 @@ function Sample({ caption, children }: { caption: string; children: ReactNode })
   return (
     <div className="flex flex-col items-start gap-1.5">
       {children}
-      <span className="text-[11px] text-muted-foreground">{caption}</span>
+      <span className="text-caption text-muted-foreground">{caption}</span>
     </div>
   );
 }

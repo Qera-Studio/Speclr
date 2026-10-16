@@ -124,7 +124,7 @@ export default function ScopePhase({
   */
   if (contract.parts.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         No services on this contract yet. Pick them on the Services step, then
         come back to say what each one covers.
       </p>
@@ -133,7 +133,7 @@ export default function ScopePhase({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Open each service to say what it covers, or confirm the ones with
         nothing to change.
       </p>
@@ -182,7 +182,7 @@ export default function ScopePhase({
                   nobody reading the contract. What stands there now is what the
                   row still needs, which is the thing worth a second line. */}
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="min-w-0 truncate text-sm font-medium">
+                  <span className="min-w-0 truncate text-body font-medium">
                     {part.name}
                   </span>
                   {/*
@@ -198,7 +198,7 @@ export default function ScopePhase({
                   acknowledgement exists (`contract/ledger.ts`).
                 */}
                   {done ? null : (
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate text-meta text-muted-foreground">
                       {unfilled > 0
                         ? `${unfilled} to fill`
                         : "Nothing missing, not yet confirmed"}

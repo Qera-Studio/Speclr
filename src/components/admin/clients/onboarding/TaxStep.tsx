@@ -660,7 +660,7 @@ export default function TaxStep({
             >
               Tax registration
             </LegendInfo>
-            <p className="-mt-2 text-xs text-muted-foreground">
+            <p className="-mt-2 text-meta text-muted-foreground">
               Recorded and printed on their documents. Nothing is computed from
               it.
             </p>

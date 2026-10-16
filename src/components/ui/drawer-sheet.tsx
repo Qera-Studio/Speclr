@@ -96,14 +96,14 @@ export function DrawerFrame({
       >
         {titleAside ? (
           <div className="flex items-start justify-between gap-3">
-            <SheetTitle className="text-base">{title}</SheetTitle>
+            <SheetTitle className="text-section">{title}</SheetTitle>
             <span className="flex shrink-0 items-center gap-2">{titleAside}</span>
           </div>
         ) : (
-          // `text-base` is §1.4's card/section heading rung, and that is what a
+          // `text-section` is §1.4's card/section heading rung, and that is what a
           // drawer title is: the name of the thing the panel is about. The
-          // primitive's `text-sm` is sized for a label over a feed.
-          <SheetTitle className="text-base">{title}</SheetTitle>
+          // primitive's `text-body` is sized for a label over a feed.
+          <SheetTitle className="text-section">{title}</SheetTitle>
         )}
         {description ? <SheetDescription>{description}</SheetDescription> : null}
       </SheetHeader>

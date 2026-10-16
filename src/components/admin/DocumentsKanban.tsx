@@ -81,7 +81,7 @@ export default function DocumentsKanban({
           <div className="flex items-center justify-between gap-2 px-3 py-2">
             <h2
               id={headingId(group.key)}
-              className="min-w-0 truncate text-sm font-medium"
+              className="min-w-0 truncate text-body font-medium"
             >
               {groupBy === "status" ? (
                 <Badge status={group.key as DocStatus} />
@@ -91,7 +91,7 @@ export default function DocumentsKanban({
                 formatDisplayMonth(group.key)
               )}
             </h2>
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+            <span className="shrink-0 text-meta text-muted-foreground tabular-nums">
               {group.documents.length}
             </span>
           </div>
@@ -135,7 +135,7 @@ function NewInColumn({ code }: { code: DocTypeCode }) {
   return (
     <Link
       href={newDocHref(code, spec.slug)}
-      className="mx-1 mb-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-input text-sm text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="mx-1 mb-1 flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-input text-body text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       <Plus className="size-4" aria-hidden="true" />
       New {spec.label.toLowerCase()}

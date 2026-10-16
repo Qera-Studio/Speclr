@@ -160,7 +160,7 @@ export default function PageThumbnails({
             </span>
             <span
               className={[
-                'text-[10px] tabular-nums transition-colors',
+                'text-caption tabular-nums transition-colors',
                 current ? 'text-foreground' : 'text-muted-foreground',
               ].join(' ')}
             >

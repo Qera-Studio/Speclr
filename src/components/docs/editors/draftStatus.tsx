@@ -49,7 +49,7 @@ export function AutosaveStatus({
   else if (saveState !== 'idle') message = `Saved ${formatClockTime(savedAt)}`;
 
   return (
-    <p role="status" aria-live="polite" className="text-sm text-muted-foreground empty:hidden">
+    <p role="status" aria-live="polite" className="text-body text-muted-foreground empty:hidden">
       {/*
         The time, not just the word. "Saved" is true of a write that landed two
         seconds ago and of one that landed before the connection dropped twenty

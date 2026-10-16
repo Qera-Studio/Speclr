@@ -102,7 +102,7 @@ function Chart({ tree, origin }: { tree: SitemapNode; origin: string }) {
               stroke="var(--card)"
               strokeWidth={4}
               strokeLinejoin="round"
-              className={`text-[11px] ${
+              className={`text-caption ${
                 node.present ? 'fill-foreground' : 'fill-muted-foreground italic'
               }`}
             >
@@ -188,7 +188,7 @@ export default function SitemapChart() {
       {/* One live region for both outcomes, so a screen reader hears the result
           of a submit it cannot otherwise observe. */}
       <div role="status" aria-live="polite" className="flex flex-col gap-3">
-        {loading ? <p className="text-sm text-muted-foreground">Reading the sitemap…</p> : null}
+        {loading ? <p className="text-body text-muted-foreground">Reading the sitemap…</p> : null}
 
         {result && !result.ok ? (
           <Alert variant="destructive" className="max-w-lg">
@@ -199,7 +199,7 @@ export default function SitemapChart() {
 
         {result?.ok && result.tree && result.origin ? (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               {result.total} {result.total === 1 ? 'URL' : 'URLs'} in{' '}
               <span className="text-foreground">{result.host}</span>
               {result.truncated ? ' — only the first 2,000 are drawn' : ''}. Hollow, italic

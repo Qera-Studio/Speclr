@@ -44,7 +44,7 @@ export default function ClauseCitations({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-xs text-muted-foreground">Refers to</span>
+      <span className="text-meta text-muted-foreground">Refers to</span>
       {found.map((cite) => {
         const missing = !known.has(cite.clause) && cite.clause !== self;
         return (

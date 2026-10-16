@@ -61,7 +61,7 @@ function DatePicker({
         // presence, so `{!selected}` greyed every filled date.
         data-empty={selected ? undefined : ''}
         className={cn(
-          "flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-placeholder data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-xs/relaxed group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm data-[size=form]:h-9 data-[size=form]:px-3 data-[size=form]:text-sm",
+          "flex items-center justify-between gap-2 rounded-md border border-input bg-background text-left whitespace-nowrap transition-colors outline-none focus-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-empty:text-placeholder data-[size=default]:h-8 data-[size=default]:px-2 data-[size=default]:text-meta group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-body data-[size=form]:h-9 data-[size=form]:px-3 data-[size=form]:text-body",
           // The calendar's width, not the column's. See `CALENDAR_FIELD_WIDTH`:
           // the grid cannot stretch to the field, so the field matches the grid
           // and the two edges line up. A cap rather than a width, because

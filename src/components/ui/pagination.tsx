@@ -197,7 +197,7 @@ function PageRuns({
                   // inner corner is what says the pill is *in* the box. Two
                   // boxes at one radius read as a single shape with a line
                   // through it.
-                  'inline-flex h-6 min-w-6 items-center justify-center rounded-sm border border-transparent px-1.5 text-xs font-medium transition-colors [font-variant-numeric:tabular-nums]',
+                  'inline-flex h-6 min-w-6 items-center justify-center rounded-sm border border-transparent px-1.5 text-control font-medium transition-colors [font-variant-numeric:tabular-nums]',
                   'focus-ring',
                   current
                     ? // The tab strip's white pill, from the one place it is
@@ -350,7 +350,7 @@ export function Pagination({
                 // Dark's `--hover` is the ramp's floor, two steps under the
                 // gray-800 trough; `--background` is the one step.
                 'bg-hover dark:bg-background',
-                "h-6 w-9 rounded-sm text-center text-xs text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus-ring focus:outline-none",
+                "h-6 w-9 rounded-sm text-center text-control text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus-ring focus:outline-none",
               )}
             />
           ) : null

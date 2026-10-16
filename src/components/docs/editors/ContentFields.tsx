@@ -54,7 +54,7 @@ export function ContentText({
         <Textarea
           id={id}
           rows={rows}
-          className="font-normal leading-relaxed"
+          className="font-normal "
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -96,10 +96,10 @@ export function TermsFields({
                   className="size-4 shrink-0 text-muted-foreground group-data-[open]/term:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
+                  <span className="block truncate text-body">
                     {term.title.trim() || `Term ${index + 1}`}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">{term.body}</span>
+                  <span className="block truncate text-meta text-muted-foreground">{term.body}</span>
                 </span>
               </button>
             }
@@ -188,10 +188,10 @@ export function ClauseFields({
                   className="size-4 shrink-0 text-muted-foreground group-data-[open]/clause:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
+                  <span className="block truncate text-body">
                     {clause.number}. {clause.heading.trim() || 'Untitled clause'}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="block truncate text-meta text-muted-foreground">
                     {clause.body[0] ?? ''}
                   </span>
                 </span>
@@ -218,7 +218,7 @@ export function ClauseFields({
                 <Textarea
                   id={`clause-body-${index}`}
                   rows={8}
-                  className="font-normal leading-relaxed"
+                  className="font-normal "
                   value={clause.body.join('\n\n')}
                   onChange={(e) => update(index, { body: splitParagraphs(e.target.value) })}
                 />

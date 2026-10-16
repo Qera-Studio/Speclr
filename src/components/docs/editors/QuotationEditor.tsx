@@ -313,7 +313,7 @@ function ServiceFieldset({
       {/* The ordinal lives on the legend, not on the name field's label: it is
           the *fieldset* that is service 2, and a field labelled "Service 2"
           reads as though the service were called that. */}
-      <legend className="mb-1 text-sm font-medium">Service {index + 1}</legend>
+      <legend className="mb-1 text-body font-medium">Service {index + 1}</legend>
       <div className="flex items-end gap-2">
         <Field className="flex-1">
           <FieldLabel htmlFor={`qtn-service-name-${index}`}>Name</FieldLabel>
@@ -644,7 +644,7 @@ export default function QuotationEditor({
             {/* Derived, so it is shown rather than asked for. */}
             <Field>
               <FieldLabel>Subject line</FieldLabel>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 {quotationSubject(previewDoc)}
               </p>
             </Field>
@@ -678,14 +678,14 @@ export default function QuotationEditor({
 
         <FieldGroup size="form">
           <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-            <legend className="mb-1 text-sm font-medium">
+            <legend className="mb-1 text-body font-medium">
               Recurring infrastructure
             </legend>
             {/* No rows is the ordinary case, and the sheet prints no page for
                 it. Said here so an empty section does not read as one that
                 failed to load. */}
             {recurringRows.fields.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Optional. Adding a row gives the quotation its own recurring
                 page, with the summary under it.
               </p>
@@ -799,7 +799,7 @@ export default function QuotationEditor({
         <section
           aria-label="Totals"
           aria-live="polite"
-          className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-4 text-sm"
+          className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-4 text-body"
         >
           {totals.services.map((service, i) => (
             <div key={i} className="flex justify-between">
@@ -822,7 +822,7 @@ export default function QuotationEditor({
               )}
             </span>
           </div>
-          <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
+          <div className="mt-1 flex justify-between border-t border-border pt-2 font-medium">
             <span>Total</span>
             <span className="tabular-nums">
               {formatQuote(totals.totalPaise)}
@@ -840,17 +840,17 @@ export default function QuotationEditor({
         */}
         <FieldGroup size="form">
           <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-            <legend className="mb-1 text-sm font-medium">
+            <legend className="mb-1 text-body font-medium">
               Payment schedule
             </legend>
 
             {phaseRows.fields.length === 0 ? (
               <>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-meta text-muted-foreground">
                   From the one-time total, {formatQuote(totals.oneTimePaise)}.
                 </p>
                 {phases.map((phase, i) => (
-                  <div key={i} className="flex justify-between text-sm">
+                  <div key={i} className="flex justify-between text-body">
                     <span className="text-muted-foreground">{phase.label}</span>
                     <span className="tabular-nums">{phase.percent}%</span>
                   </div>
@@ -914,7 +914,7 @@ export default function QuotationEditor({
                 */}
                 <p
                   aria-live="polite"
-                  className={`text-xs ${
+                  className={`text-meta ${
                     Math.abs(phasesSum - 100) > 0.001
                       ? "text-destructive"
                       : "text-muted-foreground"

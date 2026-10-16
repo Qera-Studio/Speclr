@@ -47,9 +47,9 @@ export function OfflineBar() {
       // The slot is read by the shell: the search field is centred on the
       // viewport rather than in the band, so when this bar is up the field
       // has to step down under it by this bar's height (28px: `py-1.5` around
-      // a `text-xs` line). Change the height, change `top-7` in `TopPanel`.
+      // a `text-meta` line). Change the height, change `top-7` in `TopPanel`.
       data-slot="offline-bar"
-      className="flex h-7 shrink-0 items-center justify-center gap-2 bg-destructive px-3 text-xs text-destructive-foreground"
+      className="flex h-7 shrink-0 items-center justify-center gap-2 bg-destructive px-3 text-meta text-destructive-foreground"
     >
       <WifiOff className="size-3.5" aria-hidden="true" />
       No connection. Changes are not being saved.

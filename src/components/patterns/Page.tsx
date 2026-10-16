@@ -107,7 +107,7 @@ export function TableCard({
         the card's corner. Padding to a control is not padding to a letterform.
       */}
       {count || pagination ? (
-        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-9 pr-2 text-xs text-muted-foreground">
+        <div className="flex min-h-11 items-center justify-between gap-2 border-t bg-sidebar py-2 pl-9 pr-2 text-meta text-muted-foreground">
           <span>{count}</span>
           {pagination}
         </div>
@@ -327,13 +327,13 @@ export function PageHeader({
     // strips.
     <div className="flex min-h-9 flex-wrap items-start justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        {/* `tracking-[-0.01em]`: at 24px semibold the default spacing that
+        {/* ``: at 24px semibold the default spacing that
             suits body text reads loose, which is the optical correction every
             type scale needs and almost none apply. It is the only place in the
             app with type this large, so it is the only place that needs it. */}
-        <h1 className="text-2xl font-semibold tracking-[-0.01em]">{title}</h1>
+        <h1 className="text-title ">{title}</h1>
         {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-body text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children ? (

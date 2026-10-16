@@ -196,7 +196,7 @@ export default function AdminHeader() {
         disagree about what is open.
       */}
       {typeLabel ? (
-        <p className="pointer-events-none absolute inset-x-0 text-center text-sm font-medium text-foreground">
+        <p className="pointer-events-none absolute inset-x-0 text-center text-body font-medium text-foreground">
           {typeLabel}
         </p>
       ) : null}

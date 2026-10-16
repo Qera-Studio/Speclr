@@ -208,7 +208,7 @@ export default function PhoneField<T extends FieldValues>({
             aria-hidden="true"
             className={cn(
               'pointer-events-none absolute inset-y-0 left-0 flex items-center select-none',
-              size === 'form' ? 'pl-3 text-sm' : 'pl-2 text-xs/relaxed',
+              size === 'form' ? 'pl-3 text-body' : 'pl-2 text-body',
             )}
           >
             +{dialCode}

@@ -430,7 +430,7 @@ function Row({
       */}
       <span
         aria-hidden="true"
-        className="w-10 shrink-0 pt-2 text-right text-[11px] text-muted-foreground tabular-nums"
+        className="w-10 shrink-0 pt-2 text-right text-caption text-muted-foreground tabular-nums"
       >
         {marker}
       </span>
@@ -463,7 +463,7 @@ function Row({
           paragraphs in a row without looking away.
         */
         onFocus={onFocus}
-        className="min-h-9 flex-1 py-1.5 font-normal leading-relaxed"
+        className="min-h-9 flex-1 py-1.5 font-normal "
       />
 
       <DragHandle

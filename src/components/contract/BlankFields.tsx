@@ -119,7 +119,7 @@ export function BlankSection({
 }) {
   return (
     <section aria-label={heading} className="flex flex-col gap-3">
-      <h3 className="text-xs font-medium text-muted-foreground">{heading}</h3>
+      <h3 className="text-meta font-medium text-muted-foreground">{heading}</h3>
       <FieldRow columns={3}>
         {scope.parsed.flatMap((parsed, i) =>
           parsed.blanks.map((blank, j) => (

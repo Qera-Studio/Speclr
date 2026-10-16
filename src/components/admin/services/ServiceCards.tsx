@@ -119,7 +119,7 @@ export default function ServiceCards({
                   here it is in the same place in every column instead of
                   wherever that column's cards happen to end. */}
               <div className="flex items-center justify-between gap-2 px-3 py-2">
-                <h2 className="text-sm font-medium">{schedule.name}</h2>
+                <h2 className="text-body font-medium">{schedule.name}</h2>
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"
@@ -131,7 +131,7 @@ export default function ServiceCards({
                   >
                     <Plus />
                   </Button>
-                  <span className="text-xs text-muted-foreground tabular-nums">
+                  <span className="text-meta text-muted-foreground tabular-nums">
                     {mine.length}
                   </span>
                 </div>
@@ -169,7 +169,7 @@ export default function ServiceCards({
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="secondary"
-                          className="h-6 rounded-sm bg-muted px-2 text-xs font-normal text-muted-foreground tabular-nums"
+                          className="h-6 rounded-sm bg-muted px-2 text-meta font-normal text-muted-foreground tabular-nums"
                         >
                           {service.code}
                         </Badge>
@@ -179,7 +179,7 @@ export default function ServiceCards({
                         {service.items?.length ? (
                           <Badge
                             variant="outline"
-                            className="ml-auto h-6 gap-1.5 rounded-sm bg-transparent px-2 text-xs font-normal text-muted-foreground tabular-nums [&>svg]:size-3!"
+                            className="ml-auto h-6 gap-1.5 rounded-sm bg-transparent px-2 text-meta font-normal text-muted-foreground tabular-nums [&>svg]:size-3!"
                           >
                             <LayoutGrid aria-hidden />
                             {service.items.length}
@@ -202,7 +202,7 @@ export default function ServiceCards({
                             who does not think to click a heading. */}
                         <Link
                           href={`/client/services/${service.code}`}
-                          className="text-sm font-medium hover:underline"
+                          className="text-body font-medium hover:underline"
                         >
                           {service.name}
                         </Link>
@@ -210,7 +210,7 @@ export default function ServiceCards({
                             source material and belongs to the dialog; here it
                             is only enough to tell two similar names apart. */}
                         {service.overview[0] ? (
-                          <span className="line-clamp-1 text-xs text-muted-foreground">
+                          <span className="line-clamp-1 text-meta text-muted-foreground">
                             {service.overview[0]}
                           </span>
                         ) : null}
@@ -227,7 +227,7 @@ export default function ServiceCards({
                             size-carried, so it reads as the answer the name
                             asks for rather than as a second heading competing
                             with it. */}
-                        <span className="mt-5 text-xs font-medium tabular-nums">
+                        <span className="mt-5 text-meta font-medium tabular-nums">
                           {service.ratePaise === undefined
                             ? "Quoted"
                             : service.scheduleKey === "retainer"
@@ -242,7 +242,7 @@ export default function ServiceCards({
                           quiet fact a card ends on, and the menu sits opposite
                           it rather than on the title row, where it would have
                           been a target beside the link that opens the page. */}
-                      <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                      <div className="flex items-center gap-2 text-meta tabular-nums text-muted-foreground">
                         <span>
                           {service.sacCode ? `SAC ${service.sacCode}` : NIL}
                         </span>

@@ -333,7 +333,7 @@ export default function ProfileSwitcher({
               // between the labels is the links' own padding: widening it is
               // what separates them without introducing a gap the pill would
               // then have to be short of.
-              "relative z-10 flex h-8 flex-1 items-center justify-center gap-2 rounded-sm px-4 text-sm",
+              "relative z-10 flex h-8 flex-1 items-center justify-center gap-2 rounded-sm px-4 text-body",
               segmentLabel,
               // Exactly the rail's own two weights. A nav row below never
               // changes colour to say it is active — `sidebarMenuButtonVariants`

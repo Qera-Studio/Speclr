@@ -52,7 +52,7 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
               aria-label="Filter icons by name"
               className="max-w-56"
             />
-            <span className="text-xs text-muted-foreground" role="status">
+            <span className="text-meta text-muted-foreground" role="status">
               {matches.length} of {ICON_USES.length}
             </span>
           </div>
@@ -73,13 +73,13 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
                   className="flex flex-col items-center gap-1.5 border-r border-b border-border bg-background px-2 py-3 text-center"
                 >
                   {Glyph ? <Glyph className="size-5" /> : null}
-                  <span className="font-mono text-[11px] leading-tight break-all">{name}</span>
+                  <span className="font-mono text-caption break-all">{name}</span>
                   {/*
                     How many files import it, which is the one fact that tells a
                     reader whether an icon is the house answer for something or
                     a one-off somebody reached for once.
                   */}
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {files} {files === 1 ? 'file' : 'files'}
                   </span>
                 </li>
@@ -88,7 +88,7 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
           </ul>
 
           {matches.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               No icon by that name. The app has {ICON_USES.length}, and Lucide has far more: an
               icon missing here is one nothing imports yet.
             </p>
@@ -107,8 +107,8 @@ export function IconSpecimens({ entry }: { entry: LibraryEntry }) {
             <span className="inline-flex size-9 items-center justify-center">
               <BlueCheck aria-label="Passed" />
             </span>
-            <span className="text-xs font-medium">BlueCheck</span>
-            <span className="text-[11px] leading-snug text-muted-foreground">
+            <span className="text-meta font-medium">BlueCheck</span>
+            <span className="text-caption text-muted-foreground">
               Not an icon but a ring around one: the app’s passed marker, taking a Lucide glyph
               so the same container serves a tick or an alert.
             </span>

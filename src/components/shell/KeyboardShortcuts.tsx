@@ -129,12 +129,12 @@ export default function KeyboardShortcuts({ profile }: { profile: Profile }) {
 function Row({ keys, alt, label }: { keys: string[]; alt?: string[]; label: string }) {
   return (
     <div className="flex items-center justify-between gap-6 py-1.5">
-      <span className="truncate text-sm text-foreground">{label}</span>
+      <span className="truncate text-body text-foreground">{label}</span>
       <span className="flex shrink-0 items-center gap-1.5">
         <Shortcut keys={keys} />
         {alt ? (
           <>
-            <span className="text-xs text-muted-foreground">or</span>
+            <span className="text-meta text-muted-foreground">or</span>
             <Shortcut keys={alt} />
           </>
         ) : null}
@@ -146,7 +146,7 @@ function Row({ keys, alt, label }: { keys: string[]; alt?: string[]; label: stri
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col">
-      <h3 className="pb-1 text-xs font-medium text-muted-foreground">{title}</h3>
+      <h3 className="pb-1 text-meta font-medium text-muted-foreground">{title}</h3>
       <div className="divide-y divide-border">{children}</div>
     </section>
   );

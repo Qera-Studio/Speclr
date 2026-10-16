@@ -131,7 +131,7 @@ function renderItem(item: ComboboxOption) {
         // The *selected* tint marks a standing fact and several rows' worth of
         // it can be on screen at once; the *highlight* is the one row under the
         // pointer or the cursor.
-        "group/combobox-item relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
+        "group/combobox-item relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-meta outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-body",
         item.separatorBefore &&
           "mt-1 rounded-t-none border-t border-border pt-2",
       )}
@@ -140,7 +140,7 @@ function renderItem(item: ComboboxOption) {
         {/* No truncate; the popup sizes to its content instead. */}
         <span className="whitespace-nowrap">{item.label}</span>
         {item.hint ? (
-          <span className="whitespace-nowrap text-xs/relaxed text-muted-foreground">
+          <span className="whitespace-nowrap text-meta text-muted-foreground">
             {item.hint}
           </span>
         ) : null}
@@ -298,8 +298,8 @@ function Combobox({
           className={cn(
             "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-placeholder",
             size === "form"
-              ? "px-3 text-sm"
-              : "px-2 text-xs/relaxed group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm",
+              ? "px-3 text-body"
+              : "px-2 text-meta group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-body",
           )}
           {...aria}
         />
@@ -343,7 +343,7 @@ function Combobox({
                 means the typed value is new, which is allowed, so "No matches."
                 would report a failure that has not happened. */}
             {freeText ? null : (
-              <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
+              <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-meta text-muted-foreground group-data-[size=form]/combobox-content:text-body">
                 {emptyMessage}
               </ComboboxPrimitive.Empty>
             )}
@@ -362,7 +362,7 @@ function Combobox({
                         what keeps a search from returning a page of empty
                         headings.
                       */}
-                      <ComboboxPrimitive.GroupLabel className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground group-data-[size=form]/combobox-content:px-3">
+                      <ComboboxPrimitive.GroupLabel className="px-2 pt-2 pb-1 text-meta font-medium text-muted-foreground group-data-[size=form]/combobox-content:px-3">
                         {group.label}
                       </ComboboxPrimitive.GroupLabel>
                       <ComboboxPrimitive.Collection>

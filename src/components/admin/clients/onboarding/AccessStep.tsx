@@ -115,7 +115,7 @@ export default function AccessStep({
       </Alert>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Nothing here yet. Add the accounts this engagement will touch — the
           domain, the DNS, the hosting, the analytics — so nobody has to go
           looking when the work starts.

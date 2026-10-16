@@ -166,7 +166,7 @@ export default function ColumnsMenu({
         Properties
       </PopoverTrigger>
       <PopoverContent align="start" className="max-h-[min(32rem,var(--available-height))] w-60 overflow-y-auto p-1.5">
-        <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">Shown in table</p>
+        <p className="px-2 pt-1 pb-1.5 text-meta text-muted-foreground">Shown in table</p>
         <ul ref={list} aria-label="Columns" className="flex flex-col">
           {arranged.map(({ key, label, icon: Icon, locked }, index) => (
             <li
@@ -196,7 +196,7 @@ export default function ColumnsMenu({
                   <GripVertical className="size-3.5" aria-hidden />
                 </button>
               )}
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-xs has-disabled:cursor-default">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-meta has-disabled:cursor-default">
                 {Icon ? <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" /> : null}
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 {/* 14px, down from the primitive's 16: a list of twenty is

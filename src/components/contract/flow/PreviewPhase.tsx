@@ -171,7 +171,7 @@ export default function PreviewPhase({
 
         <SaveError autosave={autosave} />
         {saveState === 'idle' ? null : (
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="text-body text-muted-foreground">
             {saveState === 'saving' ? 'Saving…' : 'Saved'}
           </p>
         )}

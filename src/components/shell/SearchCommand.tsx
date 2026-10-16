@@ -219,7 +219,7 @@ export default function SearchCommand() {
         <div className="absolute top-full -right-0.5 z-50 mt-1.5 w-[calc(100%+4px)] min-w-72 overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
           {hits.length === 0 ? (
             <p
-              className="px-3 py-2 text-xs text-muted-foreground"
+              className="px-3 py-2 text-meta text-muted-foreground"
               role="status"
             >
               {loading ? "Searching…" : "No matches."}
@@ -237,7 +237,7 @@ export default function SearchCommand() {
                 return (
                   <li key={`${hit.group}-${hit.id}`}>
                     {heading ? (
-                      <p className="px-3 pt-2 pb-1 text-xs font-medium tracking-[0.01em] text-muted-foreground">
+                      <p className="px-3 pt-2 pb-1 text-meta font-medium text-muted-foreground">
                         {heading}
                       </p>
                     ) : null}
@@ -249,13 +249,13 @@ export default function SearchCommand() {
                       onMouseEnter={() => setActive(index)}
                       onClick={() => go(hit)}
                       className={cn(
-                        "flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left text-sm",
+                        "flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left text-body",
                         index === active && "bg-accent text-accent-foreground",
                       )}
                     >
                       <span className="truncate font-medium">{hit.label}</span>
                       {hit.hint ? (
-                        <span className="truncate text-xs text-muted-foreground">
+                        <span className="truncate text-meta text-muted-foreground">
                           {hit.hint}
                         </span>
                       ) : null}

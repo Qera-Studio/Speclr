@@ -23,8 +23,8 @@ import type { ClientKind } from '@/lib/domain/entityType';
 export default function KindChooser({ onChoose }: { onChoose: (kind: ClientKind) => void }) {
   return (
     <div className="m-auto w-full max-w-2xl">
-      <h2 className="mb-1 text-center text-lg font-medium">Who are you adding?</h2>
-      <p className="mb-6 text-center text-sm text-muted-foreground">
+      <h2 className="mb-1 text-center text-section font-medium">Who are you adding?</h2>
+      <p className="mb-6 text-center text-body text-muted-foreground">
         It decides what they are asked for. You can change it later by changing their entity type.
       </p>
 
@@ -74,8 +74,8 @@ function KindCard({
       <span className="text-muted-foreground transition-colors group-hover/kind:text-primary">
         {icon}
       </span>
-      <span className="text-base font-medium text-foreground">{title}</span>
-      <span className="max-w-[28ch] text-xs/relaxed text-balance text-muted-foreground">{line}</span>
+      <span className="text-section font-medium text-foreground">{title}</span>
+      <span className="max-w-[28ch] text-body text-balance text-muted-foreground">{line}</span>
     </button>
   );
 }

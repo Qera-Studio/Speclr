@@ -16,8 +16,6 @@ import {
   RING_MIGRATED_LATER,
   SHADOW_MIGRATED_LATER,
   SPACING_MIGRATED_LATER,
-  TYPE_MIGRATED_LATER,
-  WEIGHT_MIGRATED_LATER,
   Z_MIGRATED_LATER,
 } from './migratedLater';
 
@@ -638,7 +636,8 @@ const QUESTION_TITLE = /<ConfirmDialog\b[^>]*?title=["'][^"']*\?["']/g;
  */
 const ARBITRARY_TEXT = /\btext-\[[0-9.]+(?:px|rem|em)\]/g;
 const OFF_SCALE_TEXT = /(?<![\w-])text-(?:xs|sm|base|lg|xl|[2-9]xl)\b/g;
-const OWN_LINE_HEIGHT = /\btext-[\w-]+\/[\w.]+|\bleading-[\w.[\]]+|\btracking-[\w.[\]-]+/g;
+const OWN_LINE_HEIGHT =
+  /\btext-(?:caption|meta|control|body|lead|section|title|display|xs|sm|base|lg|xl|\dxl)\/[\w.]+|\bleading-[\w.[\]]+|\btracking-[\w.[\]-]+/g;
 
 /**
  * A third weight. Regular and medium are the two on every screen; 600 exists
@@ -725,11 +724,11 @@ const SHELL = [
  * that no longer violates is reported, and leaves the list.
  */
 const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
-  ['TYPE', TYPE_MIGRATED_LATER, [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
+  ['TYPE', [], [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
   ['PENDING', PENDING_MIGRATED_LATER, [DISABLED_NOT_PENDING], []],
   ['RAW_ALERT', RAW_ALERT_MIGRATED_LATER, [RAW_ALERT], []],
   ['MONO', MONO_MIGRATED_LATER, [OWN_MONO], MONO_PRIMITIVE],
-  ['WEIGHT', WEIGHT_MIGRATED_LATER, [HEAVY_WEIGHT], []],
+  ['WEIGHT', [], [HEAVY_WEIGHT], []],
   ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
   ['RADIUS', RADIUS_MIGRATED_LATER, [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
   ['SHADOW', SHADOW_MIGRATED_LATER, [ARBITRARY_SHADOW], []],

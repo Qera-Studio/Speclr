@@ -117,7 +117,7 @@ function Pager({
           disabled={!hasPrevious || disabled}
           onClick={() => onPage(-1)}
         />
-        <span className="min-w-20 text-center text-xs text-muted-foreground tabular-nums">
+        <span className="min-w-20 text-center text-meta text-muted-foreground tabular-nums">
           {position}
         </span>
         <IconAction

@@ -231,7 +231,7 @@ export default function LineItemsEditor<T extends FieldValues>({
        beginning to the right of the word "Line items" rather than above it. */
     <div className={className}>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{legend}</legend>
+        <legend className="mb-1 text-body font-medium">{legend}</legend>
         {fields.map((field, index) => {
           const row = rows[index];
           /*
@@ -258,7 +258,7 @@ export default function LineItemsEditor<T extends FieldValues>({
             <div key={field.id} className="rounded-md border border-border">
               <div className="flex w-full items-center gap-2 px-3 py-2 text-left">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{description}</span>
+                  <span className="block truncate text-body">{description}</span>
                 </span>
                 {custom ? null : (
                   <button

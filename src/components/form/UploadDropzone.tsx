@@ -134,7 +134,7 @@ export default function UploadDropzone({
         else onFileSelected?.(files[0], files.length);
       }}
       className={cn(
-        "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-sm transition-colors",
+        "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-body transition-colors",
         "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         // A wash of the same blue the border turns, not the neutral hover
         // grey: the box being armed to receive the file is a different state
@@ -195,7 +195,7 @@ export default function UploadDropzone({
             {isDragging ? "Drop to upload" : action}
           </span>
           {!hasFile ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               {hint ?? "Drag & drop or click to browse"}
             </span>
           ) : null}

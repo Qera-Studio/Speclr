@@ -101,9 +101,9 @@ export function RaisedChip({
         // and `px-1` is what keeps that string off the border.
         'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-[4px] border border-border bg-card px-1',
         'shadow-[0_1px_1px_-0.5px_var(--border),inset_0_1px_0_0_var(--background)]',
-        // `leading-none` because a glyph's line box carries descender space that
+        // `` because a glyph's line box carries descender space that
         // would push it off centre in a box this small.
-        'text-[12px] leading-none',
+        'text-caption ',
         className,
       )}
     >

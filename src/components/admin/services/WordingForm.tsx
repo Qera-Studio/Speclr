@@ -138,7 +138,7 @@ export default function WordingForm({ service }: { service: ContractService }) {
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       {/* Not `FieldDescription` (CONTEXT §5e): a standing note about the whole
           form, said once, rather than a description under each field. */}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         One paragraph per line. Anything in [brackets] becomes a blank the contract fills
         in, labelled by the sentence it sits in.
       </p>

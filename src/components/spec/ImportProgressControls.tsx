@@ -36,7 +36,7 @@ export default function ImportProgressControls({ onImport, importError }: Import
         variant="secondary"
         size="md"
         onClick={() => inputRef.current?.click()}
-        className="group/tray h-10 w-fit gap-2 px-5 text-sm opacity-80 [&_svg:not([class*='size-'])]:size-4"
+        className="group/tray h-10 w-fit gap-2 px-5 text-body opacity-80 [&_svg:not([class*='size-'])]:size-4"
       >
         <Upload aria-hidden="true" />
         Import progress

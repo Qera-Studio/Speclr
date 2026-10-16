@@ -35,7 +35,7 @@ function TickList({
       <ul className="flex flex-col">
         {lines.map((line) => (
           <li key={line.id}>
-            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-body hover:bg-accent/50">
               <Checkbox
                 className="mt-0.5"
                 checked={chosen.has(line.id)}

@@ -198,7 +198,7 @@ export function EditorPanelContent({
             renders here instead, for the same reason the form does: a missing
             shell must not cost the page its `h1`, which is the one thing a
             screen-reader user has to find out what the page is. */}
-        {title && <h1 className="truncate text-sm font-medium">{title}</h1>}
+        {title && <h1 className="truncate text-body font-medium">{title}</h1>}
         {children}
         {footer}
       </>

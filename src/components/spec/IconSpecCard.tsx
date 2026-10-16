@@ -200,7 +200,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
   return (
     <Card aria-labelledby={`${spec.id}-heading`} className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-        <h3 id={`${spec.id}-heading`} className="text-base font-semibold text-foreground">
+        <h3 id={`${spec.id}-heading`} className="text-section font-medium text-foreground">
           {spec.name}
         </h3>
         <div className="flex flex-shrink-0 items-center gap-2">
@@ -213,7 +213,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
               {verdict && <Badge variant={verdict.variant}>{verdict.label}</Badge>}
               <span
                 className={cn(
-                  'text-xs font-medium',
+                  'text-meta font-medium',
                   spec.priority === 'required' ? 'text-primary' : 'text-muted-foreground',
                 )}
               >
@@ -227,9 +227,9 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
       <CardContent className="flex flex-1 flex-col gap-4">
         <dl className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
-            <dt className="text-sm text-muted-foreground">Filename</dt>
+            <dt className="text-body text-muted-foreground">Filename</dt>
             <dd className="flex items-center justify-between gap-1.5">
-              <span className="truncate font-mono text-sm text-foreground" title={spec.filename}>
+              <span className="truncate font-mono text-body text-foreground" title={spec.filename}>
                 {spec.filename}
               </span>
               <CopyButton
@@ -240,8 +240,8 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             </dd>
           </div>
           <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
-            <dt className="text-sm text-muted-foreground">Size</dt>
-            <dd className="text-sm text-foreground">
+            <dt className="text-body text-muted-foreground">Size</dt>
+            <dd className="text-body text-foreground">
               {spec.acceptedDimensions.length > 0
                 ? spec.acceptedDimensions.map((d) => `${d.width}×${d.height}px`).join(' / ')
                 : 'Vector — no fixed pixel size'}
@@ -307,7 +307,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
           />
 
           {error && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-body text-destructive">
               {error}
             </p>
           )}
@@ -342,7 +342,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
                     setShowNotes(false);
                   }}
                   aria-label="Delete note"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-destructive"
+                  className="inline-flex items-center gap-1 text-meta font-medium text-muted-foreground transition-colors hover:text-destructive"
                 >
                   <Trash2 className="size-3.5" aria-hidden="true" />
                   Delete
@@ -361,7 +361,7 @@ export default function IconSpecCard({ spec, slotState, onUpdate, clientName, do
             <button
               type="button"
               onClick={() => setShowNotes(true)}
-              className="inline-flex w-fit items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="inline-flex w-fit items-center gap-1 text-meta font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               Add note

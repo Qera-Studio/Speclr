@@ -74,7 +74,7 @@ export function Specimen({
         Bring it back by rendering `note` here.
       */}
       <div className="px-1 pt-2 pb-2">
-        <h3 className="text-sm font-medium">{name}</h3>
+        <h3 className="text-body font-medium">{name}</h3>
       </div>
       {/*
         `min-h-14` so a short control still gets a stage to stand in, and

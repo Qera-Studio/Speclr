@@ -56,7 +56,7 @@ export function accentBadge(accent: Accent, className?: string, quiet = false) {
     // stroke was compounding an emphasis the colour had spent: the badges read
     // as louder than the client's name, which is the thing on the row that
     // actually matters.
-    'text-[0.6875rem] font-normal whitespace-nowrap',
+    'text-caption font-normal whitespace-nowrap',
     ACCENT_CLASSES[accent],
     // The ink: the same hue, desaturated at the same lightness, on a lighter
     // wash, so it reads quieter without giving up contrast. A lighter wash

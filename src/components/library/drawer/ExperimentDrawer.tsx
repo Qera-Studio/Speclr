@@ -85,11 +85,11 @@ export function ExperimentDrawer({
         >
           {titleAside ? (
             <div className="flex items-start justify-between gap-3">
-              <SheetTitle className="text-base">{title}</SheetTitle>
+              <SheetTitle className="text-section">{title}</SheetTitle>
               <span className="flex shrink-0 items-center gap-2">{titleAside}</span>
             </div>
           ) : (
-            <SheetTitle className="text-base">{title}</SheetTitle>
+            <SheetTitle className="text-section">{title}</SheetTitle>
           )}
           {description ? <SheetDescription>{description}</SheetDescription> : null}
         </SheetHeader>
@@ -190,7 +190,7 @@ function Pager({
           onClick={() => onPage(-1)}
         />
         {position ? (
-          <span className="min-w-20 text-center text-xs text-muted-foreground tabular-nums">
+          <span className="min-w-20 text-center text-meta text-muted-foreground tabular-nums">
             {position}
           </span>
         ) : null}

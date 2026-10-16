@@ -110,7 +110,7 @@ export default function ServicePage({
             disabled={pending}
           />
         </PageHeader>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-meta text-muted-foreground">
           <span className="tabular-nums">{service.code}</span>
           <Badge variant="outline">{schedule.name}</Badge>
         </div>
@@ -124,13 +124,13 @@ export default function ServicePage({
       {SECTIONS.map((section) => (
         <section key={section.id} aria-labelledby={`${section.id}-heading`} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <h2 id={`${section.id}-heading`} className="text-base font-medium">
+            <h2 id={`${section.id}-heading`} className="text-section font-medium">
               {section.heading}
             </h2>
             {/* Optional, so a section whose table explains itself does not
                 carry a paragraph restating it. */}
             {section.note ? (
-              <p className="text-sm text-muted-foreground">{section.note}</p>
+              <p className="text-body text-muted-foreground">{section.note}</p>
             ) : null}
           </div>
           {forms[section.id]}

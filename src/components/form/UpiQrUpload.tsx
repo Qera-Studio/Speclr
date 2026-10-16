@@ -58,7 +58,7 @@ export default function UpiQrUpload({ id, value, onValueChange }: UpiQrUploadPro
                 alt="UPI QR code preview"
                 className="size-12 shrink-0 rounded border border-border bg-card object-contain"
               />
-              <span className="flex-1 text-xs text-muted-foreground">
+              <span className="flex-1 text-meta text-muted-foreground">
                 Shown on stipend slips issued to this employee.
               </span>
               <Button
@@ -77,7 +77,7 @@ export default function UpiQrUpload({ id, value, onValueChange }: UpiQrUploadPro
       />
 
       {error ? (
-        <p role="alert" className="text-xs/relaxed text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {error}
         </p>
       ) : null}

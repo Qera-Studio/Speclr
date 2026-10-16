@@ -17,7 +17,7 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
     <kbd
       data-slot="kbd"
       className={cn(
-        "pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm bg-muted px-1 font-sans text-[0.7rem] font-medium text-muted-foreground select-none",
+        "pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm bg-muted px-1 font-sans text-caption font-medium text-muted-foreground select-none",
         // Inside a tooltip the surface is --foreground, so the default muted
         // fill would fight it. Tint the tooltip's own background instead.
         "in-data-[slot=tooltip-content]:bg-background/20 in-data-[slot=tooltip-content]:text-background",

@@ -54,11 +54,11 @@ export default function EditorSection({
               className="size-3 shrink-0 mt-[4px] text-muted-foreground group-data-[open]/section:rotate-90"
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">
+              <span className="block truncate text-body font-medium">
                 {title}
               </span>
               {description ? (
-                <span className="block truncate text-xs text-muted-foreground">
+                <span className="block truncate text-meta text-muted-foreground">
                   {description}
                 </span>
               ) : null}

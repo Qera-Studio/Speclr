@@ -15,7 +15,7 @@ export default function ResetProgressButton({ onReset }: { onReset: () => void }
         <Button
           type="button"
           variant="secondary"
-          className="h-10 gap-2 px-4 text-sm text-muted-foreground hover:text-muted-foreground hover:bg-[unset] dark:hover:bg-input/30"
+          className="h-10 gap-2 px-4 text-body text-muted-foreground hover:text-muted-foreground hover:bg-[unset] dark:hover:bg-input/30"
         >
           <RotateCcw aria-hidden="true" />
           Reset all

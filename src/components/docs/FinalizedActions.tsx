@@ -119,7 +119,7 @@ export default function FinalizedActions({
     button that will never be there.
   */
   const card = (
-    <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+    <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-meta text-muted-foreground">
       <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
       <p>
         <span className="font-medium text-foreground">Finalized and sealed.</span> This document is

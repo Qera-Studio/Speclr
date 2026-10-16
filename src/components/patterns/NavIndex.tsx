@@ -44,7 +44,7 @@ export default function NavIndex({
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   <Icon className="size-4" aria-hidden="true" />
                 </span>
-                <span className="min-w-0 truncate text-sm font-medium">{link.label}</span>
+                <span className="min-w-0 truncate text-body font-medium">{link.label}</span>
               </Link>
             </li>
           );

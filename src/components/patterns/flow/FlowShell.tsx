@@ -419,7 +419,7 @@ function StepNav<R>({
                 disabled={locked || finishing}
                 aria-current={current ? "step" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors",
+                  "flex items-center gap-2 rounded-md px-2 py-1 text-body transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   current && "font-medium text-primary/80",
                   !current && complete && "text-foreground",
@@ -435,7 +435,7 @@ function StepNav<R>({
                   // that just turned pops on its own.
                   style={finishing ? { transitionDelay: delay } : undefined}
                   className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-sm text-[11px] tabular-nums transition-colors",
+                    "flex size-5 shrink-0 items-center justify-center rounded-sm text-caption tabular-nums transition-colors",
                     complete && "bg-primary text-primary-foreground",
                     // Current is the accent held back rather than the accent
                     // dropped: same blue as done, at a tenth of the fill. The
@@ -498,9 +498,9 @@ export function FinishPanel({
       <span className="flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <Check className="size-6" aria-hidden />
       </span>
-      <p className="text-base font-medium">{heading}</p>
+      <p className="text-section font-medium">{heading}</p>
       {children ? (
-        <p className="max-w-sm text-sm text-muted-foreground">{children}</p>
+        <p className="max-w-sm text-body text-muted-foreground">{children}</p>
       ) : null}
     </div>
   );

@@ -204,7 +204,7 @@ export default function EditorSidebar() {
           */}
           {title && (
             <div className="flex h-12 shrink-0 items-center px-3">
-              <h1 className="truncate text-sm font-medium">{title}</h1>
+              <h1 className="truncate text-body font-medium">{title}</h1>
             </div>
           )}
 
@@ -262,7 +262,7 @@ export default function EditorSidebar() {
               >
                 <ArrowLeft className="size-4" />
               </Button>
-              <span className="truncate text-sm font-semibold">{drawer}</span>
+              <span className="truncate text-body font-medium">{drawer}</span>
             </div>
           </div>
           <div

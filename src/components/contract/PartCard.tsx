@@ -55,9 +55,9 @@ export default function PartCard({
   const body = (
     <>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
-        <span className="min-w-0 truncate text-sm font-medium">{title}</span>
+        <span className="min-w-0 truncate text-body font-medium">{title}</span>
         {subtitle ? (
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{subtitle}</span>
+          <span className="min-w-0 truncate text-meta text-muted-foreground">{subtitle}</span>
         ) : null}
       </span>
       {unfilled > 0 ? (

@@ -168,7 +168,7 @@ export default function Clock() {
     <Popover open={!long && hover} onOpenChange={setHover}>
       <span
         className={cn(
-          "hidden shrink-0 items-center text-xs whitespace-nowrap tabular-nums sm:inline-flex",
+          "hidden shrink-0 items-center text-meta whitespace-nowrap tabular-nums sm:inline-flex",
           // The header's two weights, the same pair `ProfileSwitcher` uses:
           // resting on the muted ramp, stepping to the rail's own ink under
           // the pointer rather than lighting up a fill.
@@ -214,7 +214,7 @@ export default function Clock() {
         // Without this, opening it would pull focus off whatever the reader was
         // on for a card they never clicked.
         initialFocus={false}
-        className="px-3 py-2 text-xs whitespace-nowrap text-foreground"
+        className="px-3 py-2 text-meta whitespace-nowrap text-foreground"
       >
         {/* The date alone. The short form abbreviates the *date* and prints the
             time in full beside it, so the time is already on screen and a card

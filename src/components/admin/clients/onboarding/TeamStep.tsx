@@ -172,7 +172,7 @@ export default function TeamStep({
  */
 function EmptyNote() {
   return (
-    <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+    <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-body text-muted-foreground">
       Nobody to assign yet. People added under Employees, on the studio side,
       appear here.
     </p>
@@ -218,13 +218,13 @@ function PersonCard({
       */}
       <span
         aria-hidden
-        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-meta font-medium text-muted-foreground"
       >
         {initialsOf(person.name)}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{person.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">
+        <span className="block truncate text-body font-medium">{person.name}</span>
+        <span className="block truncate text-meta text-muted-foreground">
           {person.departed ? 'No longer here' : person.role}
         </span>
       </span>

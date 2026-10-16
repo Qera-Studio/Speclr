@@ -427,7 +427,7 @@ export default function ClientsTable({
               <span
                 className={accentBadge(
                   industry.accent,
-                  'h-[1.375rem] border-0 px-2 tracking-[0.01em]',
+                  'h-[1.375rem] border-0 px-2 ',
                   true,
                 )}
               >

@@ -391,7 +391,7 @@ export default function LetterEditor({
               <Textarea
                 id="letter-body"
                 rows={18}
-                className="font-normal leading-relaxed"
+                className="font-normal "
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
               />
@@ -416,7 +416,7 @@ export default function LetterEditor({
                   key={si}
                   className="flex flex-col gap-3 rounded-lg border border-border p-4"
                 >
-                  <legend className="px-1 text-sm font-medium">
+                  <legend className="px-1 text-body font-medium">
                     Bullet section {si + 1}
                   </legend>
                   <Field>

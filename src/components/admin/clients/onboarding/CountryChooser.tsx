@@ -70,8 +70,8 @@ export default function CountryChooser({
   return (
     <div className="m-auto flex w-full min-h-0 max-w-4xl flex-col gap-5">
       <div className="shrink-0 text-center">
-        <h2 className="mb-1 text-lg font-medium">Who are you adding?</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="mb-1 text-section font-medium">Who are you adding?</h2>
+        <p className="text-body text-muted-foreground">
           The type and the country decide what they are asked for. Both can be
           changed later, on the client’s identity step.
         </p>
@@ -116,7 +116,7 @@ export default function CountryChooser({
       */}
       <div className="flex shrink-0 items-center gap-3">
         <span aria-hidden className="h-px flex-1 bg-border" />
-        <h3 className="text-sm font-medium">Where are they based?</h3>
+        <h3 className="text-body font-medium">Where are they based?</h3>
         <span aria-hidden className="h-px flex-1 bg-border" />
       </div>
 
@@ -148,7 +148,7 @@ export default function CountryChooser({
 
         **Measured in a browser rather than derived from the classes**, which
         is the second thing that went wrong: computing it from `py-2` and
-        `text-sm` gave 12.25rem and produced three rows, because a row's *pitch*
+        `text-body` gave 12.25rem and produced three rows, because a row's *pitch*
         is not its height and the heading's block is not its line box. The
         numbers, from `/preview/client-chooser`: the heading occupies 41px
         before the list starts, a row is 36px tall and rows repeat every 40px.
@@ -162,7 +162,7 @@ export default function CountryChooser({
       */}
       <div className="h-[197px] overflow-y-auto pr-1">
         {groups.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
+          <p className="py-10 text-center text-body text-muted-foreground">
             No country matches “{query.trim()}”.
           </p>
         ) : (
@@ -173,7 +173,7 @@ export default function CountryChooser({
                 you scroll a continent that is fifty rows long. `bg-background`
                 rather than transparent, or the rows scroll through the words.
               */}
-              <h3 className="sticky top-0 z-10 mb-2 border-b border-border bg-background pt-1 pb-2 text-sm font-medium text-foreground">
+              <h3 className="sticky top-0 z-10 mb-2 border-b border-border bg-background pt-1 pb-2 text-body font-medium text-foreground">
                 {group.continent}
               </h3>
               <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -236,7 +236,7 @@ export default function CountryChooser({
           <ArrowRight aria-hidden="true" />
         </Button>
       </div>
-      <p aria-live="polite" className="-mt-1 shrink-0 text-center text-xs text-muted-foreground">
+      <p aria-live="polite" className="-mt-1 shrink-0 text-center text-meta text-muted-foreground">
         {!kind && !value
           ? "Choose a type and a country."
           : !kind
@@ -292,8 +292,8 @@ function KindCard({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="block text-xs text-muted-foreground">{line}</span>
+        <span className="block text-body font-medium">{title}</span>
+        <span className="block text-meta text-muted-foreground">{line}</span>
       </span>
       {selected ? <Check aria-hidden className="size-4 shrink-0 text-primary" /> : null}
     </button>

@@ -49,8 +49,8 @@ const DISC: Record<DiscSize, string> = { default: 'size-5', sm: 'size-4', xs: 's
 // the accessible label, which is where a reader gets them.
 const DISC_TEXT: Record<DiscSize, string | undefined> = {
   default: undefined,
-  sm: 'group-data-[size=sm]/avatar:text-[0.4375rem]',
-  xs: 'group-data-[size=sm]/avatar:text-[0.375rem]',
+  sm: 'group-data-[size=sm]/avatar:text-caption',
+  xs: 'group-data-[size=sm]/avatar:text-caption',
 };
 
 function PersonAvatar({
@@ -66,7 +66,7 @@ function PersonAvatar({
     <Avatar size="sm" className={cn(DISC[size], className)}>
       <AvatarFallback
         className={cn(
-          'text-[0.5625rem] font-medium',
+          'text-caption font-medium',
           DISC_TEXT[size],
           ACCENT_TINTS[accentFor(name)],
         )}
@@ -149,7 +149,7 @@ export function PeopleCell({
               />
             ))}
             {rest > 0 ? (
-              <span className="ml-1 text-[0.6875rem] text-muted-foreground tabular-nums">
+              <span className="ml-1 text-caption text-muted-foreground tabular-nums">
                 +{rest}
               </span>
             ) : null}

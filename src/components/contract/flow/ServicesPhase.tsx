@@ -84,7 +84,7 @@ export default function ServicesPhase({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         {engaged.size > 0
           ? 'Taken from what this client is engaged for. Add or remove what this contract covers.'
           : 'This client has no services on their record yet. Add what this contract covers.'}
@@ -164,8 +164,8 @@ export default function ServicesPhase({
                       )}
                       aria-hidden
                     />
-                    <span className="text-sm font-medium">{schedule.name}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-body font-medium">{schedule.name}</span>
+                    <span className="text-meta text-muted-foreground tabular-nums">
                       {count} service{count === 1 ? '' : 's'}
                     </span>
                     {/*
@@ -254,7 +254,7 @@ export default function ServicesPhase({
                           : 'bg-card hover:border-ring/60',
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      <span className="min-w-0 flex-1 truncate text-body font-medium">
                         {service.name}
                       </span>
                       {chosen ? (

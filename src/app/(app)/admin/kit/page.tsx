@@ -98,8 +98,8 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{blurb}</p>
+        <h2 className="text-section font-medium">{title}</h2>
+        <p className="text-body text-muted-foreground">{blurb}</p>
       </div>
       <Separator />
       {children}
@@ -128,12 +128,12 @@ export default async function KitPage() {
       >
         <ul className="flex flex-col gap-1">
           {COLOR_TOKENS.map(({ token, swatch, use }) => (
-            <li key={token} className="flex items-center gap-3 text-sm">
+            <li key={token} className="flex items-center gap-3 text-body">
               <span
                 className={`size-7 shrink-0 rounded-md border border-border ${swatch}`}
                 aria-hidden="true"
               />
-              <code className="w-40 shrink-0 font-mono text-xs">--{token}</code>
+              <code className="w-40 shrink-0 font-mono text-meta">--{token}</code>
               <span className="text-muted-foreground">{use}</span>
             </li>
           ))}
@@ -147,7 +147,7 @@ export default async function KitPage() {
         <div className="flex flex-col gap-4">
           {BUTTON_VARIANTS.map((variant) => (
             <div key={variant} className="flex items-center gap-3">
-              <code className="w-24 shrink-0 font-mono text-xs text-muted-foreground">
+              <code className="w-24 shrink-0 font-mono text-meta text-muted-foreground">
                 {variant}
               </code>
               <div className="flex flex-wrap items-center gap-2">
@@ -167,17 +167,17 @@ export default async function KitPage() {
         <div className="mt-4 flex flex-col gap-3">
           {BUTTON_SIZES.map(({ size, note }) => (
             <div key={size} className="flex items-center gap-3">
-              <code className="w-24 shrink-0 font-mono text-xs text-muted-foreground">
+              <code className="w-24 shrink-0 font-mono text-meta text-muted-foreground">
                 {size}
               </code>
               <Button size={size}>Label</Button>
-              <span className="text-xs text-muted-foreground">{note}</span>
+              <span className="text-meta text-muted-foreground">{note}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-4 flex items-center gap-3">
-          <code className="w-24 shrink-0 font-mono text-xs text-muted-foreground">
+          <code className="w-24 shrink-0 font-mono text-meta text-muted-foreground">
             icon
           </code>
           <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default async function KitPage() {
               <Trash2 />
             </Button>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-meta text-muted-foreground">
             icon-xs / icon-sm / icon — square, always needs an aria-label
           </span>
         </div>
@@ -246,11 +246,11 @@ export default async function KitPage() {
       >
         <ul className="flex flex-col gap-2">
           {ICON_SIZES.map(({ cls, note }) => (
-            <li key={cls} className="flex items-center gap-3 text-sm">
+            <li key={cls} className="flex items-center gap-3 text-body">
               <span className="flex w-8 justify-center text-muted-foreground">
                 <Check className={cls} aria-hidden="true" />
               </span>
-              <code className="w-20 shrink-0 font-mono text-xs">{cls}</code>
+              <code className="w-20 shrink-0 font-mono text-meta">{cls}</code>
               <span className="text-muted-foreground">{note}</span>
             </li>
           ))}
@@ -272,7 +272,7 @@ export default async function KitPage() {
             <AlertTitle>Something failed</AlertTitle>
             <AlertDescription>Reserved for actual errors.</AlertDescription>
           </Alert>
-          <p className="text-sm text-warning">
+          <p className="text-body text-warning">
             text-warning — advisory. Passes AA in both themes.
           </p>
         </div>

@@ -97,7 +97,7 @@ function MenuLink({ item, active }: { item: NavLink; active: boolean }) {
     <SidebarMenuItem>
       <SidebarMenuButton
         isActive={active}
-        className="text-sm"
+        className="text-body"
         tooltip={item.label}
         render={
           <Link href={item.href} aria-current={active ? "page" : undefined}>
@@ -131,7 +131,7 @@ function NewDocumentRow() {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        className="text-sm"
+        className="text-body"
         tooltip="New document"
         render={
           <button type="button" onClick={open} aria-haspopup="dialog">
@@ -266,7 +266,7 @@ function RailRows({ children }: { children: React.ReactNode }) {
 
           It applies to the active row too, and deliberately. The primitive
           means to darken an active row's text as well, but that rule never
-          reaches this rail: `MenuLink` passes `text-sm`, and `cn` drops the
+          reaches this rail: `MenuLink` passes `text-body`, and `cn` drops the
           conflicting `data-active:text-*` and `data-active:font-medium` on
           merge. So an active row here has only ever been its fill, and the one
           place its text *did* change was under the pointer, which is the
@@ -605,7 +605,7 @@ export default function AdminSidebar({
         and one was tried and removed for measuring the same pixel.
       */}
       <SidebarHeader className="h-12 shrink-0 flex-row items-center justify-between gap-2 px-2 py-0 group-data-[collapsible=icon]:justify-center">
-        <span className="truncate pl-1 text-base font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden group-data-float:hidden">
+        <span className="truncate pl-1 text-section font-medium text-sidebar-foreground group-data-[collapsible=icon]:hidden group-data-float:hidden">
           speclr
         </span>
         <Tooltip>

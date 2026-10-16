@@ -359,7 +359,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         </Alert>
       ) : null}
       {saved ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="text-body text-muted-foreground">
           Saved. Documents already issued keep the details they were issued with.
         </p>
       ) : null}

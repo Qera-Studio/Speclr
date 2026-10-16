@@ -32,7 +32,7 @@ function Calendar({
         months: "flex flex-col gap-4",
         month: "flex flex-col gap-4",
         month_caption: "flex h-7 items-center justify-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "text-body font-medium",
         // `h-7` matches the caption's height so the 24px buttons centre on the
         // month's own centre line rather than sitting 2px proud of it.
         nav: "absolute inset-x-0 top-0 flex h-7 items-center justify-between",
@@ -47,11 +47,11 @@ function Calendar({
         month_grid: "w-full border-collapse",
         weekdays: "flex",
         weekday:
-          "w-8 text-xs/relaxed font-normal text-muted-foreground",
+          "w-8 text-control font-normal text-muted-foreground",
         week: "mt-1 flex w-full",
         day: "size-8 p-0 text-center",
         day_button: cn(
-          "size-8 rounded-md p-0 text-sm font-normal outline-none transition-colors",
+          "size-8 rounded-md p-0 text-body font-normal outline-none transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
           "focus-ring"
         ),

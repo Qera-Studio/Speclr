@@ -147,10 +147,10 @@ export function AmountCell({
               unambiguous. */}
           <span className="sr-only">{nameOf(shown.currency)} </span>
           <span className="truncate">{digits}</span>
-          {suffix ? <span className="shrink-0 text-xs text-muted-foreground">{suffix}</span> : null}
+          {suffix ? <span className="shrink-0 text-meta text-muted-foreground">{suffix}</span> : null}
         </span>
         {below ? (
-          <span className="truncate text-xs/4 text-muted-foreground">{below}</span>
+          <span className="truncate text-meta text-muted-foreground">{below}</span>
         ) : null}
       </span>
     </span>

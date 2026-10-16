@@ -222,7 +222,7 @@ export function BulkBar({
       // `role="status"` so the count is announced as it changes: a keyboard
       // user ticking rows gets no other signal that the bar exists.
       role="status"
-      className="flex items-center justify-end gap-3 text-xs text-muted-foreground"
+      className="flex items-center justify-end gap-3 text-meta text-muted-foreground"
     >
       <span>{label}</span>
       <Button type="button" variant="ghost" size="sm" onClick={onClear}>

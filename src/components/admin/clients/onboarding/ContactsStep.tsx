@@ -494,7 +494,7 @@ function RoleSummary({
   if (filled.length === 0) return null;
 
   return (
-    <p className="text-muted-foreground text-sm">
+    <p className="text-muted-foreground text-body">
       Marked for the attention of {filled[0]}.
     </p>
   );

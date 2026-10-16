@@ -43,14 +43,14 @@ import { cn } from "@/lib/utils"
  * so stay compact.
  */
 const FORM_GROUP_INHERIT =
-  "group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:py-1 group-data-[size=form]/field-group:text-sm"
+  "group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:py-1 group-data-[size=form]/field-group:text-body"
 const inputVariants = cva(
   "w-full min-w-0 rounded-md border border-input bg-background transition-colors outline-none file:inline-flex file:border-0 file:bg-transparent file:font-medium file:text-foreground placeholder:text-placeholder focus-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
   {
     variants: {
       size: {
-        default: `h-8 px-2 py-0.5 text-sm file:h-6 file:text-xs/relaxed md:text-xs/relaxed ${FORM_GROUP_INHERIT} group-data-[size=form]/field-group:md:text-sm group-data-[size=form]/field-group:file:h-7`,
-        form: "h-9 px-3 py-1 text-sm file:h-7 file:text-sm",
+        default: `h-8 px-2 py-0.5 text-body file:h-6 file:text-meta ${FORM_GROUP_INHERIT} group-data-[size=form]/field-group:text-body group-data-[size=form]/field-group:file:h-7`,
+        form: "h-9 px-3 py-1 text-body file:h-7 file:text-body",
       },
     },
     defaultVariants: {

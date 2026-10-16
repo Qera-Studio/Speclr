@@ -648,7 +648,7 @@ function ClauseDrawer({
         <p
           role="status"
           aria-live="polite"
-          className="px-4 py-2 text-xs text-muted-foreground tabular-nums empty:hidden"
+          className="px-4 py-2 text-meta text-muted-foreground tabular-nums empty:hidden"
         >
           {autosave.state === 'saving'
             ? 'Saving…'

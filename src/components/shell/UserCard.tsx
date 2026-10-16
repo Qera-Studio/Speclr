@@ -40,7 +40,7 @@ export default function UserCard({ user }: { user: UserCardUser }) {
   const { isMobile } = useSidebar();
 
   const avatar = (size: 'sm' | 'md') => (
-    <Avatar className={cn('rounded-md', size === 'sm' ? 'size-6 text-[10px]' : 'size-8')}>
+    <Avatar className={cn('rounded-md', size === 'sm' ? 'size-6 text-caption' : 'size-8')}>
       {user.imageUrl ? <AvatarImage src={user.imageUrl} alt="" className="rounded-md" /> : null}
       <AvatarFallback className="rounded-md bg-accent font-medium text-foreground">
         {initials(user.name, user.email)}
@@ -108,11 +108,11 @@ export default function UserCard({ user }: { user: UserCardUser }) {
               ? {}
               : { sideOffset: RAIL_POPUP_GAP, alignOffset: RAIL_POPUP_ALIGN_OFFSET })}
           >
-            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-body">
               {avatar('md')}
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-left text-body ">
                 <span className="truncate font-medium">{user.name || user.email}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                <span className="truncate text-meta text-muted-foreground">{user.email}</span>
               </div>
             </div>
             <DropdownMenuSeparator />

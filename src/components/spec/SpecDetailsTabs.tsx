@@ -29,7 +29,7 @@ export default function SpecDetailsTabs({ tabs }: { tabs: DetailTab[] }) {
           </TabsTrigger>
         ))}
       </TabsList>
-      <div className="h-16 overflow-y-auto px-1 text-xs/relaxed text-foreground">
+      <div className="h-16 overflow-y-auto px-1 text-body text-foreground">
         {current?.content}
       </div>
     </Tabs>

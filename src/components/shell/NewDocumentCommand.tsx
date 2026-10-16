@@ -245,7 +245,7 @@ function NewDocumentCommand({
         showCloseButton={false}
         aria-label="New document"
       >
-        <DialogTitle className="border-b px-4 py-3 text-sm font-medium">New document</DialogTitle>
+        <DialogTitle className="border-b px-4 py-3 text-body font-medium">New document</DialogTitle>
         <DialogDescription className="sr-only">
           Choose a document type to open a blank editor.
         </DialogDescription>
@@ -327,12 +327,12 @@ function NewDocumentCommand({
                 ) : (
                   <link.icon className="size-8 text-muted-foreground" aria-hidden="true" />
                 )}
-                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <span className="flex items-center gap-1.5 text-body font-medium text-foreground">
                   {link.label}
                   {link.shortcut ? <Shortcut keys={['alt', link.shortcut]} /> : null}
                 </span>
                 {sample ? (
-                  <span className="text-xs text-balance text-muted-foreground">{sample.blurb}</span>
+                  <span className="text-meta text-balance text-muted-foreground">{sample.blurb}</span>
                 ) : null}
               </button>
             );
@@ -342,7 +342,7 @@ function NewDocumentCommand({
         {/* The key is a keycap, the gloss is text. Run together as plain glyphs
             ("↑↓ to move") the two read as one string and the arrows stop
             looking pressable — `Kbd` is the same cap the cards already use. */}
-        <div className="flex items-center gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 border-t px-3 py-2 text-meta text-muted-foreground">
           <span className="flex items-center gap-1">
             <KbdGroup>
               <Kbd>↑</Kbd>

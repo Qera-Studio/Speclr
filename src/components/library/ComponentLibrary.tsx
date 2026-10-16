@@ -74,7 +74,7 @@ export default function ComponentLibrary() {
         {/* Sentence case at 12px muted, not small caps. The hierarchy is
             carried by colour, which is how every other group heading in the app
             says "this is a name, not a value" (§1.4, enforced). */}
-        <h2 className="px-2 pt-1 pb-2 text-xs font-medium text-muted-foreground">
+        <h2 className="px-2 pt-1 pb-2 text-meta font-medium text-muted-foreground">
           Components
         </h2>
         {CATALOGUE.map((item) => {
@@ -93,7 +93,7 @@ export default function ComponentLibrary() {
               */
               aria-current={current || undefined}
               className={cn(
-                "rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+                "rounded-md px-2 py-1.5 text-left text-meta transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                 current
                   ? "bg-sidebar-active font-medium text-sidebar-accent-foreground"
@@ -120,8 +120,8 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
   return (
     <article className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <header className="flex flex-col gap-2">
-        <h1 className="text-xl font-semibold">{entry.name}</h1>
-        <p className="text-sm text-muted-foreground">{entry.blurb}</p>
+        <h1 className="text-title">{entry.name}</h1>
+        <p className="text-body text-muted-foreground">{entry.blurb}</p>
         {/*
           The two ways out of this page: the file to edit, and the rule that
           governs it. Both as text rather than links: the source is a repo path
@@ -129,7 +129,7 @@ function EntryPane({ entry }: { entry: LibraryEntry }) {
           beside it. A link that went nowhere would be worse than a path that
           can be pasted into a search.
         */}
-        <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
+        <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-meta text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <dt className="sr-only">Source</dt>
             <dd className="font-mono">{entry.source}</dd>
@@ -292,7 +292,7 @@ function DrawerSpecimen() {
             <label
               key={option}
               className={cn(
-                "cursor-pointer rounded-md px-2 py-1 text-xs transition-colors",
+                "cursor-pointer rounded-md px-2 py-1 text-meta transition-colors",
                 style === option
                   ? "bg-sidebar-active font-medium text-sidebar-accent-foreground"
                   : "text-muted-foreground hover:bg-sidebar-hover",
@@ -407,7 +407,7 @@ function DrawerSpecimen() {
             <p
               role="status"
               aria-live="polite"
-              className="px-4 py-2 text-xs text-muted-foreground empty:hidden"
+              className="px-4 py-2 text-meta text-muted-foreground empty:hidden"
             >
               {state === "unsaved"
                 ? "Unsaved changes"
@@ -418,7 +418,7 @@ function DrawerSpecimen() {
           ) : (
             <>
               <p
-                className="mr-auto text-xs text-muted-foreground"
+                className="mr-auto text-meta text-muted-foreground"
                 role="status"
               >
                 {dirty ? "Unsaved changes" : "Nothing to save"}
@@ -458,7 +458,7 @@ function DrawerSpecimen() {
         {/* Enough to scroll, because a body that fits says nothing about the
             one property this frame is built around: the header and footer
             stay put while this column moves. */}
-        <div className="flex flex-col gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-col gap-3 text-meta text-muted-foreground">
           {Array.from({ length: 14 }, (_, i) => (
             <p key={i}>
               Paragraph {i + 1}. Placeholder body copy, here to give the drawer

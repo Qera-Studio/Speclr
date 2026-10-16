@@ -177,7 +177,7 @@ export default function ServiceEditDialog({
     >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-base">
+          <DialogTitle className="text-section">
             {service ? (
               <>
                 <span className="mr-2 text-muted-foreground tabular-nums">{service.code}</span>

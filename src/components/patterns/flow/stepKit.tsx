@@ -162,7 +162,7 @@ export function StepForm({
       className="flex flex-col gap-4"
     >
       {allOptional ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Nothing here is required. Fill in what you have and carry on; the rest
           can wait.
         </p>

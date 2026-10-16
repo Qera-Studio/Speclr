@@ -199,7 +199,7 @@ export default function FilterBar<F extends string>({
       onValueChange={(value) => setDateAt(row, index, value)}
       placeholder="Pick a date"
       aria-label={label}
-      className={cn(SEGMENT, 'w-auto gap-2 rounded-none bg-transparent text-xs')}
+      className={cn(SEGMENT, 'w-auto gap-2 rounded-none bg-transparent text-meta')}
     />
   );
 
@@ -291,7 +291,7 @@ export default function FilterBar<F extends string>({
               key={row.id}
               role="group"
               aria-label={`${name} filter`}
-              className="flex h-7 shrink-0 items-center rounded-md border border-border bg-background text-xs whitespace-nowrap"
+              className="flex h-7 shrink-0 items-center rounded-md border border-border bg-background text-meta whitespace-nowrap"
             >
               <span className="flex items-center gap-1.5 px-2.5 font-medium text-muted-foreground">
                 <Icon className="size-3.5" aria-hidden="true" />

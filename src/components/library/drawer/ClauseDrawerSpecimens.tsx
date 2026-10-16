@@ -251,7 +251,7 @@ function ClauseDrawer({
         because its buttons carry their own inset, which puts the glyphs on the
         same line.
       */
-      headerClassName="gap-0.5 px-5 pt-3 pb-4 [&_[data-slot=sheet-title]]:text-lg [&_[data-slot=sheet-title]]:font-semibold"
+      headerClassName="gap-0.5 px-5 pt-3 pb-4 [&_[data-slot=sheet-title]]:text-section [&_[data-slot=sheet-title]]:font-medium"
       /*
         The save state sits beside the title it is about, as a badge: amber
         while there are changes not yet written, quiet grey while saving and

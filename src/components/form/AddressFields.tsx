@@ -471,7 +471,7 @@ export default function AddressFields<T extends FieldValues>({
             data that produced it rather than reassurance about it.
           */}
           {options.length ? (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               This postcode covers {options.length} localities. The first is
               filled in; choose another if it is wrong.
             </p>

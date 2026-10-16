@@ -39,7 +39,7 @@ export function DerivedNote({
   return (
     <p
       data-slot="derived-note"
-      className={cn("text-xs/relaxed text-muted-foreground", className)}
+      className={cn("text-body text-muted-foreground", className)}
     >
       {children}
     </p>

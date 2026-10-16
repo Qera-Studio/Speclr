@@ -244,7 +244,7 @@ export default function DocumentsBrowser({
             // one segment and the segments are adjacent by construction, so
             // the air between the labels is the segments' own padding.
             "relative z-10 inline-flex h-full items-center justify-center gap-1.5 rounded-sm px-3",
-            "text-xs whitespace-nowrap",
+            "text-meta whitespace-nowrap",
             segmentLabel,
             "focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
             "aria-pressed:text-foreground",

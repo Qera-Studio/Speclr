@@ -277,8 +277,8 @@ export default function CommercialStep({
                     onChange={() => field.onChange(type)}
                     onBlur={field.onBlur}
                   />
-                  <span className="text-sm font-medium">{ENGAGEMENT_TYPE_INFO[type].title}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-body font-medium">{ENGAGEMENT_TYPE_INFO[type].title}</span>
+                  <span className="text-meta text-muted-foreground">
                     {ENGAGEMENT_TYPE_INFO[type].hint}
                   </span>
                 </label>
@@ -498,7 +498,7 @@ function DayOfMonthPicker({
         id={id}
         onBlur={onBlur}
         data-empty={value == null ? '' : undefined}
-        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-placeholder"
+        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-body whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-placeholder"
       >
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
@@ -523,7 +523,7 @@ function DayOfMonthPicker({
                 setOpen(false);
               }}
               className={cn(
-                'size-8 rounded-md text-sm tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none',
+                'size-8 rounded-md text-body tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none',
                 day === value && 'bg-primary text-primary-foreground hover:bg-primary',
               )}
             >
@@ -531,7 +531,7 @@ function DayOfMonthPicker({
             </button>
           ))}
         </div>
-        <p className="mt-2 max-w-56 text-xs text-muted-foreground">
+        <p className="mt-2 max-w-56 text-meta text-muted-foreground">
           A month with no such day is billed on its last one, so the 31st becomes the 28th in
           February.
         </p>

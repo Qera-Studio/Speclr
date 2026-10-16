@@ -26,7 +26,7 @@ export default function TotalsPanel({
     <section
       aria-label="Totals"
       aria-live="polite"
-      className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-4 text-sm"
+      className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-4 text-body"
     >
       <div className="flex justify-between">
         <span className="text-muted-foreground">Subtotal</span>
@@ -38,11 +38,11 @@ export default function TotalsPanel({
           {gstRatePercent > 0 ? formatINR(totals.gstPaise) : NIL}
         </span>
       </div>
-      <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold">
+      <div className="mt-1 flex justify-between border-t border-border pt-2 font-medium">
         <span>Total</span>
         <span className="tabular-nums">{formatINR(totals.totalPaise)}</span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{amountInWords(totals.totalPaise)}</p>
+      <p className="mt-1 text-meta text-muted-foreground">{amountInWords(totals.totalPaise)}</p>
     </section>
   );
 }

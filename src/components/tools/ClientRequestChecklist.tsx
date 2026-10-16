@@ -215,7 +215,7 @@ export default function ClientRequestChecklist() {
             key={group.heading}
             className="flex break-inside-avoid flex-col gap-3 pb-6"
           >
-            <legend className="text-sm font-medium">{group.heading}</legend>
+            <legend className="text-body font-medium">{group.heading}</legend>
             {group.items
               .filter((item) => !item.only || item.only === scope)
               .map(({ text }) => (
@@ -233,7 +233,7 @@ export default function ClientRequestChecklist() {
                       )
                     }
                   />
-                  <Label htmlFor={idOf(text)} className="font-normal leading-snug">
+                  <Label htmlFor={idOf(text)} className="font-normal ">
                     {text}
                     {optional.includes(text) && (
                       <span className="text-muted-foreground"> (optional)</span>

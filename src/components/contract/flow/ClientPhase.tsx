@@ -115,7 +115,10 @@ export default function ClientPhase({
           />
         </Field>
 
-        <Field>
+        {/* Declared, not content-sized: a `fit` row would size this cell from
+            its label's metrics, and a tracking change once moved the row's end
+            5px off the combobox above it. 192 is what the label needs. */}
+        <Field className="w-48">
           <FieldInfo
             htmlFor="con-term-months"
             label="Term in months"
@@ -164,8 +167,9 @@ export default function ClientPhase({
  * `w-fit` and `w-max` both collapse the pair to the padding alone. See
  * `FlowShell`'s `width`.
  *
- * Checked by measurement, not by this arithmetic: `e2e/contract-flow.spec.ts`
- * asserts the combobox and the row below it end together, which is the thing
- * actually worth holding.
+ * The sum, for the record: 240 + 16 + 240 + 16 + 192 for the row, plus 80 of
+ * panel padding. Checked by measurement, not by this arithmetic:
+ * `e2e/contract-flow.spec.ts` asserts the combobox and the row below it end
+ * together, which is the thing actually worth holding.
  */
-export const CLIENT_PHASE_WIDTH = 'max-w-[788px]';
+export const CLIENT_PHASE_WIDTH = 'max-w-[784px]';

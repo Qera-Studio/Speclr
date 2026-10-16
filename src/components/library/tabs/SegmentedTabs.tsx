@@ -94,7 +94,7 @@ export default function SegmentedTabs({
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                'flex h-8 items-center gap-1.5 rounded-sm px-5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                'flex h-8 items-center gap-1.5 rounded-sm px-5 text-body outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 segmentLabel,
               )}
             >

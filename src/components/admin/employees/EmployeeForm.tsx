@@ -457,19 +457,19 @@ export default function EmployeeForm({
         */}
         {isEmployee && payPreview ? (
           <div className="rounded-lg border border-border p-3">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
+            <p className="mb-2 text-meta font-medium text-muted-foreground">
               Per month, as the pay slip will show it
             </p>
             <dl className="m-0 flex flex-col gap-1">
               {payPreview.rows.map(({ label, paise }) => (
                 <div key={label} className="flex items-baseline justify-between gap-4">
-                  <dt className="text-sm text-muted-foreground">{label}</dt>
-                  <dd className="m-0 text-sm tabular-nums">{formatINR(paise)}</dd>
+                  <dt className="text-body text-muted-foreground">{label}</dt>
+                  <dd className="m-0 text-body tabular-nums">{formatINR(paise)}</dd>
                 </div>
               ))}
               <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-border pt-2 font-medium">
-                <dt className="text-sm">Gross per month</dt>
-                <dd className="m-0 text-sm tabular-nums">{formatINR(payPreview.monthlyPaise)}</dd>
+                <dt className="text-body">Gross per month</dt>
+                <dd className="m-0 text-body tabular-nums">{formatINR(payPreview.monthlyPaise)}</dd>
               </div>
             </dl>
           </div>

@@ -103,13 +103,13 @@ function Stack({
     <span className={cn(CELL_BOX, right && 'items-end text-right')}>
       <span
         className={cn(
-          'block max-w-full truncate text-[0.8125rem]/5 text-foreground',
+          'block max-w-full truncate text-body text-foreground',
           anchor && 'font-medium',
         )}
       >
         {primary}
       </span>
-      <span className="block max-w-full truncate text-xs/4 text-muted-foreground">
+      <span className="block max-w-full truncate text-meta text-muted-foreground">
         {secondary ?? NIL}
       </span>
     </span>
@@ -146,7 +146,7 @@ function ClientAvatar({ name }: { name: string }) {
   return (
     <Avatar className={cn(MARK, 'rounded-md after:rounded-md')}>
       <AvatarFallback
-        className={cn('rounded-md text-[0.6875rem] font-medium', ACCENT_TINTS[accentFor(name)])}
+        className={cn('rounded-md text-caption font-medium', ACCENT_TINTS[accentFor(name)])}
       >
         {initialsOf(name)}
       </AvatarFallback>
@@ -175,11 +175,11 @@ function ValueCell({ row, rates }: { row: RichClientRow; rates: DayRates | null 
     );
   }
   return (
-    <span className={cn(CELL_BOX, 'text-[0.8125rem]/5 tabular-nums')}>
+    <span className={cn(CELL_BOX, 'text-body tabular-nums')}>
       <AmountCell
         minor={row.valuePaise}
         currency="INR"
-        chipClassName={cn(CHIP, 'text-[0.8125rem]')}
+        chipClassName={cn(CHIP, 'text-body')}
         suffix={row.monthly ? '/mo' : undefined}
         below={`Since ${since}`}
         local={
@@ -286,7 +286,7 @@ function columnsFor(rates: DayRates | null): RecordColumn<RichClientRow>[] {
         const code = (row.country || 'IN').toUpperCase();
         return (
           <span className="flex min-w-0 items-center gap-2.5">
-            <RaisedChip label={countryName(code)} className={cn(CHIP, 'text-lg')}>
+            <RaisedChip label={countryName(code)} className={cn(CHIP, 'text-section')}>
               {flagOf(code) ?? '🏳'}
             </RaisedChip>
             <span className="min-w-0 flex-1">
@@ -323,9 +323,9 @@ function columnsFor(rates: DayRates | null): RecordColumn<RichClientRow>[] {
       className: 'max-w-0',
       sortable: false,
       cell: (row) => (
-        <span className={cn(CELL_BOX, 'gap-0.5 text-[0.8125rem]/5')}>
+        <span className={cn(CELL_BOX, 'gap-0.5 text-body')}>
           <PersonCell name={row.lead} />
-          <span className="flex h-4 items-center text-xs/4">
+          <span className="flex h-4 items-center text-meta">
             <PeopleCell names={row.team} size="xs" />
           </span>
         </span>
