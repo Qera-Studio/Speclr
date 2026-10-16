@@ -27,6 +27,7 @@ export function Specimen({
   empty = false,
   fill = false,
   stage = 'background',
+  trial = false,
   children,
 }: {
   name: string;
@@ -55,6 +56,12 @@ export function Specimen({
    * band it never sits on (`e2e/component-library.spec.ts` measures it).
    */
   stage?: 'background' | 'sidebar';
+  /**
+   * The looser frame being tried on the Specimen entry only (16 October
+   * 2026): no border on the stage, twice the card padding. Lands everywhere
+   * or is deleted; never set it elsewhere while it is being judged.
+   */
+  trial?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -73,7 +80,7 @@ export function Specimen({
         reasoning behind each variant and `catalogue.ts` is where that belongs.
         Bring it back by rendering `note` here.
       */}
-      <div className="px-1 pt-2 pb-2">
+      <div className={trial ? "px-3 pt-4 pb-3" : "px-1 pt-2 pb-2"}>
         <h3 className="text-body font-medium">{name}</h3>
       </div>
       {/*
@@ -104,7 +111,8 @@ export function Specimen({
             // already `w-full` and doing the right thing: what was wrong was
             // the box being asked to contain it. It costs nothing to a specimen
             // whose content fits, which is every other one on this page.
-            "mx-0.5 mb-0.5 flex min-h-14 min-w-0 items-center gap-4 rounded-sm border border-border px-4 py-3",
+            "flex min-h-14 min-w-0 items-center gap-4 rounded-sm",
+            trial ? "mx-1 mb-1 px-6 py-4" : "mx-0.5 mb-0.5 border border-border px-4 py-3",
             stage === "sidebar" ? "bg-sidebar" : "bg-background",
             fill ? "justify-start" : "justify-between",
           )}

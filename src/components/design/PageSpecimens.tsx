@@ -109,18 +109,18 @@ export function PageSpecimens({ entry }: { entry: LibraryEntry }) {
     // Specimen holding a Specimen: the frame is the subject here.
     return (
       <>
-        <Specimen name={v[0].name} note={v[0].note}>
+        <Specimen name={v[0].name} note={v[0].note} trial>
           <Button>The subject</Button>
         </Specimen>
-        <Specimen name={v[1].name} note={v[1].note} fill>
+        <Specimen name={v[1].name} note={v[1].note} fill trial>
           <Button variant="primary">One</Button>
           <Button>Two</Button>
           <Button variant="ghost">Three</Button>
         </Specimen>
-        <Specimen name={v[2].name} note={v[2].note} stage="sidebar">
+        <Specimen name={v[2].name} note={v[2].note} stage="sidebar" trial>
           <LivePager pageCount={3} />
         </Specimen>
-        <Specimen name={v[3].name} note={v[3].note} empty>
+        <Specimen name={v[3].name} note={v[3].note} empty trial>
           {null}
         </Specimen>
       </>
