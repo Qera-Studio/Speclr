@@ -1,6 +1,7 @@
 "use client";
 
-import { Filter, ArrowUpDown, Plus, Search, Box } from "lucide-react";
+import { Filter, ArrowUpDown, Plus, Search, Box, CloudDownload } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,11 +19,20 @@ import { formatINR } from "@/lib/domain/money";
  *   edge-to-edge kanban columns
  * - hairlines at half strength, title at 500
  * - a near-black primary instead of the blue one
- * - one card shape: icon, name, two lines of description, a quiet footer
+ * - one card shape: icon, name, two lines of description, the code as a
+ *   chip and the price
+ * - hover that strengthens ink and hairline rather than adding a fill
  *
  * The controls are static. If this lands, the board is rewritten; if not,
  * this file is deleted. It is never imported by the product.
  */
+/**
+ * Quiet controls: no fill on hover, the ink and the hairline go to full
+ * strength instead. The trial's answer to "a grey wash says nothing".
+ */
+const QUIET =
+  "border-border/50 text-muted-foreground hover:border-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
+
 export function ServiceCatalogueTrial({ services }: { services: ContractService[] }) {
   return (
     <div className="mx-auto flex w-full max-w-[980px] flex-col gap-9 pt-12 pb-16">
@@ -33,8 +43,11 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
             <p className="text-lead font-normal text-muted-foreground">Everything the studio sells, by Schedule</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button>Import</Button>
-            <Button className="bg-foreground text-background hover:bg-foreground/90">
+            <Button className={`${QUIET} text-foreground/70`}>
+              <CloudDownload aria-hidden />
+              Import
+            </Button>
+            <Button variant="primary" className="bg-foreground text-background hover:bg-foreground/85">
               <Plus aria-hidden />
               Add service
             </Button>
@@ -42,7 +55,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
         </div>
         <div className="flex items-center justify-between gap-4">
           <Tabs defaultValue="active">
-            <TabsList>
+            <TabsList size="sm" className="p-1 group-data-horizontal/tabs:h-8">
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="archived">Archived</TabsTrigger>
             </TabsList>
@@ -50,13 +63,13 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
           <div className="flex items-center gap-3">
             <div className="relative w-56">
               <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search" className="h-7 border-border/50 pl-8" />
+              <Input placeholder="Search" className="h-7 border-border/50 pl-8 hover:border-foreground" />
             </div>
-            <Button size="sm" className="border-border/50 text-muted-foreground">
+            <Button size="sm" className={QUIET}>
               <Filter aria-hidden />
               Filter
             </Button>
-            <Button size="sm" className="border-border/50 text-muted-foreground">
+            <Button size="sm" className={QUIET}>
               <ArrowUpDown aria-hidden />
               Sort
             </Button>
@@ -70,7 +83,7 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
           return (
             <section key={schedule.key} aria-label={schedule.name} className="flex flex-col gap-4">
               <h2 className="text-lead font-normal text-muted-foreground">{schedule.name}</h2>
-              <ul className="grid grid-cols-3 gap-8">
+              <ul className="grid grid-cols-3 gap-4">
                 {mine.map((service) => (
                   <li
                     key={service.code}
@@ -86,21 +99,22 @@ export function ServiceCatalogueTrial({ services }: { services: ContractService[
                           size="sm"
                           icon
                           aria-label={`Add ${service.name} to a contract`}
-                          className="size-6 border-border/50 text-muted-foreground"
+                          className={`size-6 ${QUIET}`}
                         >
                           <Plus aria-hidden />
                         </Button>
                       </div>
-                      <p className="line-clamp-2 text-body text-muted-foreground">
-                        {service.overview[0] ?? `${service.items?.length ?? 0} items under the ${schedule.name} Schedule.`}
+                      {/* `min-h-10` holds two lines, so a short description does not
+                          pull the footer up and break the row's baseline. */}
+                      <p className="line-clamp-2 min-h-10 text-body text-muted-foreground">
+                        {service.blurb ?? service.overview[0]}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between gap-2 text-meta text-muted-foreground tabular-nums">
-                      <span>
+                    <div className="flex items-center justify-between gap-2 text-meta tabular-nums">
+                      <Badge variant="secondary" className="rounded-sm text-muted-foreground">
                         {service.code}
-                        {service.sacCode ? ` · SAC ${service.sacCode}` : ""}
-                      </span>
-                      <span className="text-foreground">
+                      </Badge>
+                      <span className={service.ratePaise === undefined ? "text-muted-foreground" : "text-foreground"}>
                         {service.ratePaise === undefined
                           ? "Quoted"
                           : service.scheduleKey === "retainer"

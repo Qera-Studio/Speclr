@@ -6,7 +6,7 @@
  * this file disagrees with the source tree, which is what stops the gallery
  * quietly going stale.
  *
- * 129 icons across the app.
+ * 130 icons across the app.
  */
 
 /** `[name, how many files import it]`. */
@@ -50,6 +50,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['CircleHelp', 1],
   ['ClipboardCheck', 1],
   ['Clock', 1],
+  ['CloudDownload', 1],
   ['Coins', 1],
   ['Columns3', 2],
   ['Contact', 1],
