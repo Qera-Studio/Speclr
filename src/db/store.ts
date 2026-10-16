@@ -282,6 +282,14 @@ export async function archiveService(code: string): Promise<void> {
     .where(eq(services.code, code));
 }
 
+/** Brings an archived Service back into the catalogue and the new-contract picker. */
+export async function restoreService(code: string): Promise<void> {
+  await db
+    .update(services)
+    .set({ archived: false, updatedAt: new Date() })
+    .where(eq(services.code, code));
+}
+
 // ─── MSA clauses ──────────────────────────────────────────────────────────────
 
 /**

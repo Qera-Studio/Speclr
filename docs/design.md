@@ -1682,6 +1682,18 @@ In order:
 
 ## 6. Change log
 
+- **16 October 2026, the quiet style, on the service catalogue first.** A
+  trial approved on a preview page replaced the services board
+  (`admin/services/ServiceCatalogue`). What it introduces, on that page only
+  until another page takes it: a centred 980px column; hairlines at half
+  strength (`border-border/50`); controls that strengthen ink and hairline on
+  hover instead of filling (`hover:border-muted-foreground`); an ink primary
+  (`bg-foreground`) instead of the blue one; colour only on the code chip, from
+  the Schedule's own accent; prices in muted ink, "Quoted" one shade quieter.
+  The card is the link to its Service's page and the corner square is its
+  menu. Two views of one list, cards by section and a board by column. The
+  documents board still carries the old look and should follow it.
+
 - **16 October 2026, `/design`.** The component library grew into the design
   system's own page: eight sections, the tokens read from the stylesheet, a
   specimen for every foundation, the atoms and patterns, the states, the

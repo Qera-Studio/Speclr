@@ -6,7 +6,7 @@
  * this file disagrees with the source tree, which is what stops the gallery
  * quietly going stale.
  *
- * 129 icons across the app.
+ * 128 icons across the app.
  */
 
 /** `[name, how many files import it]`. */
@@ -14,7 +14,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['AlertCircle', 1],
   ['AlertTriangle', 1],
   ['Archive', 9],
-  ['ArchiveRestore', 3],
+  ['ArchiveRestore', 4],
   ['ArrowDown', 1],
   ['ArrowLeft', 6],
   ['ArrowRight', 4],
@@ -49,7 +49,6 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['CircleHelp', 1],
   ['ClipboardCheck', 1],
   ['Clock', 1],
-  ['CloudDownload', 1],
   ['Coins', 1],
   ['Columns3', 3],
   ['Contact', 1],
@@ -79,7 +78,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['Info', 2],
   ['Layers', 2],
   ['LayoutDashboard', 2],
-  ['LayoutGrid', 3],
+  ['LayoutGrid', 2],
   ['List', 1],
   ['ListChecks', 1],
   ['ListFilter', 1],
@@ -98,13 +97,13 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['Moon', 1],
   ['MoreHorizontal', 4],
   ['Network', 1],
-  ['Package', 4],
+  ['Package', 3],
   ['PanelLeft', 1],
   ['PanelLeftIcon', 1],
   ['Paperclip', 1],
   ['Pencil', 9],
   ['Phone', 1],
-  ['Plus', 14],
+  ['Plus', 13],
   ['Printer', 3],
   ['Receipt', 1],
   ['ReceiptIndianRupee', 2],
@@ -112,7 +111,7 @@ export const ICON_USES: ReadonlyArray<readonly [string, number]> = [
   ['RefreshCw', 1],
   ['Repeat', 1],
   ['RotateCcw', 1],
-  ['Rows3', 2],
+  ['Rows3', 1],
   ['Scale', 1],
   ['ScrollText', 1],
   ['Search', 7],

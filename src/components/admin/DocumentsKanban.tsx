@@ -18,15 +18,18 @@ import type { DocStatus, DocTypeCode } from "@/lib/domain/types";
  * the card itself is literally the card view's, so the three cannot drift about
  * what a document looks like.
  *
- * **This is `services/ServiceCards`' board, and every visual decision here is
- * that component's** — the bordered `bg-muted` column, the `px-3 py-2` header
+ * **This was `services/ServiceCards`' board, and every visual decision here
+ * was that component's**: the bordered `bg-muted` column, the `px-3 py-2` header
  * with its name and count, the column's own scroll with the heading parked
  * outside it, the cards on their own fill inside. The app has one board and it
  * had already been tuned; a second one drawn from scratch is how a design system
- * becomes a suggestion. Change one of these and change both.
+ * becomes a suggestion. **That board was redrawn on 16 October 2026** in the
+ * quiet style (`services/ServiceCatalogue`: flat columns, half-strength
+ * hairlines, ink on hover), and this one has not followed yet. It should, in
+ * the same pass that brings the documents page to that style.
  *
- * The single departure is the axis, and the column count forces it. `ServiceCards`
- * can hardcode a four-column grid because there are exactly four Schedules;
+ * The single departure is the axis, and the column count forces it. The old
+ * services board could hardcode a four-column grid because there are exactly four Schedules;
  * there are five document types per profile and any number of months. So the
  * width of four of that grid's columns is written out instead, and the row
  * scrolls past the fourth: a column is the same size on both boards whether it
@@ -59,13 +62,13 @@ export default function DocumentsKanban({
   // props, no hooks, server-renderable. One board per page, and the grouped
   // values are unique within it, so the pair is unique on the page.
   //
-  // `aria-labelledby` rather than `ServiceCards`' `aria-label`, because a status
+  // `aria-labelledby` rather than a plain `aria-label`, because a status
   // column is named by a `StatusBadge` and the plain word would be a second
   // place to disagree about what "finalized" is called (`CONTEXT.md` §5e).
   const headingId = (key: string) => `doc-board-${groupBy}-${key}`;
 
   return (
-    // The column width is `ServiceCards`' four-column grid, written out: the
+    // The column width is the old services board's four-column grid, written out: the
     // page's own width less its three gaps, quartered. `max()` keeps a floor
     // under it on a narrow window, where a quarter of the page is unreadable
     // and scrolling is the better answer.

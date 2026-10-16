@@ -18,6 +18,7 @@ const saveService = jest.fn((_s: ContractService) => Promise.resolve());
 const insertService = jest.fn((_s: ContractService) => Promise.resolve());
 const listServices = jest.fn(() => Promise.resolve([] as ContractService[]));
 const archiveService = jest.fn((_code: string) => Promise.resolve());
+const restoreServiceRow = jest.fn((_code: string) => Promise.resolve());
 
 jest.mock('../authGate', () => ({ authorized: () => authorized() }));
 jest.mock('@/db/store', () => ({
@@ -26,6 +27,7 @@ jest.mock('@/db/store', () => ({
   insertService: (...a: unknown[]) => insertService(a[0] as ContractService),
   listServices: (...a: unknown[]) => listServices(...(a as [])),
   archiveService: (...a: unknown[]) => archiveService(a[0] as string),
+  restoreService: (...a: unknown[]) => restoreServiceRow(a[0] as string),
 }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
@@ -33,6 +35,7 @@ import {
   archiveServiceItem,
   createService,
   removeService,
+  restoreService,
   saveServiceItem,
   saveServiceSection,
 } from '../services';
@@ -244,6 +247,27 @@ describe('removeService', () => {
     const result = await removeService('not-a-code');
     expect(result.success).toBe(false);
     expect(archiveService).not.toHaveBeenCalled();
+  });
+});
+
+describe('restoreService', () => {
+  it('brings an archived service back', async () => {
+    const result = await restoreService('06');
+    expect(result).toEqual({ success: true });
+    expect(restoreServiceRow).toHaveBeenCalledWith('06');
+  });
+
+  it('refuses a signed-out caller', async () => {
+    authorized.mockResolvedValue(null);
+    const result = await restoreService('06');
+    expect(result).toEqual({ success: false, error: 'Unauthorized.' });
+    expect(restoreServiceRow).not.toHaveBeenCalled();
+  });
+
+  it('refuses a malformed code', async () => {
+    const result = await restoreService('not-a-code');
+    expect(result.success).toBe(false);
+    expect(restoreServiceRow).not.toHaveBeenCalled();
   });
 });
 

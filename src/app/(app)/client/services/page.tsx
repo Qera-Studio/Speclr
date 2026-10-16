@@ -2,8 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listServices } from '@/db/store';
-import ServiceCards from '@/components/admin/services/ServiceCards';
-import { PageBody } from '@/components/patterns/Page';
+import ServiceCatalogue from '@/components/admin/services/ServiceCatalogue';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -32,13 +31,8 @@ export default async function ServiceCataloguePage() {
     redirect(reason === 'UNAUTHORIZED' ? '/no-access' : '/sign-in');
   }
 
-  const services = await listServices();
+  // Archived included: the catalogue's Archived tab reads them.
+  const services = await listServices(true);
 
-  return (
-    // `h-full` so the board can fill the inset and scroll inside its columns
-    // rather than making the whole page scroll for one long Schedule.
-    <PageBody className="h-full min-h-0">
-      <ServiceCards services={services} />
-    </PageBody>
-  );
+  return <ServiceCatalogue services={services} />;
 }

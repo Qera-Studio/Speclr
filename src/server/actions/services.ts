@@ -11,7 +11,14 @@ import {
 } from '@/lib/domain/service';
 import { assignItemIds, serviceItemsSchema } from '@/lib/domain/serviceItem';
 import type { ActionResult } from '@/lib/domain/types';
-import { archiveService, getService, insertService, listServices, saveService } from '@/db/store';
+import {
+  archiveService,
+  getService,
+  insertService,
+  listServices,
+  restoreService as restoreServiceRow,
+  saveService,
+} from '@/db/store';
 import { logger } from '@/lib/logger';
 import { authorized } from './authGate';
 
@@ -465,6 +472,28 @@ export async function removeService(code: unknown): Promise<ActionResult> {
   } catch (err) {
     logger.error({ action: 'removeService', event: 'archive_failed', error: err });
     return { success: false, error: 'Failed to archive the service.' };
+  }
+
+  revalidatePath('/', 'layout');
+  return { success: true };
+}
+
+/**
+ * Undoes `removeService`. Archiving is reversible by design (the row is kept
+ * so the code stays taken), and this is the way back: the catalogue's
+ * Archived tab offers it on every card.
+ */
+export async function restoreService(code: unknown): Promise<ActionResult> {
+  if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
+
+  const parsed = serviceCode.safeParse(code);
+  if (!parsed.success) return { success: false, error: 'Invalid service code.' };
+
+  try {
+    await restoreServiceRow(parsed.data);
+  } catch (err) {
+    logger.error({ action: 'restoreService', event: 'restore_failed', error: err });
+    return { success: false, error: 'Failed to restore the service.' };
   }
 
   revalidatePath('/', 'layout');

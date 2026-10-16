@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, ClipboardCheck, Hammer, Plus, RefreshCw, Settings2, X } from 'lucide-react';
+import { Check, Plus, X } from 'lucide-react';
+import { SCHEDULE_ICONS } from '@/components/contract/scheduleIcons';
 import { SCHEDULES, type ScheduleKey } from '@/lib/domain/contract/schedules';
 import { cn } from '@/lib/utils';
 import type { ContractService } from '@/lib/domain/service';
@@ -17,13 +18,6 @@ import type { ClientRecord, ContractData } from '@/lib/domain/types';
  * it. Nothing here is decorative: these four are the only tiles on the screen,
  * so each one is carrying the distinction on its own.
  */
-/** One icon per Schedule. The catalogue trial reads it too. */
-export const SCHEDULE_ICONS: Record<ScheduleKey, typeof Hammer> = {
-  setup: Settings2,
-  build: Hammer,
-  retainer: RefreshCw,
-  audit: ClipboardCheck,
-};
 
 /**
  * What the contract covers, seeded from the client record.
