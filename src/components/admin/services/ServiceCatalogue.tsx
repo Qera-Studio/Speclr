@@ -60,7 +60,9 @@ import { cn } from "@/lib/utils";
  * a black box around every control under the pointer.
  */
 const QUIET =
-  "border-border/50 text-muted-foreground hover:border-muted-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
+  // `tab-label`, two shades under muted text: as light as a label can go and
+  // still clear 4.5:1 (measured in `contrast.test.ts`).
+  "border-border/50 text-tab-label hover:border-muted-foreground hover:bg-transparent hover:text-foreground dark:bg-transparent";
 
 /** The page's one filled action. Ink rather than the blue primary, on trial here. */
 const INK = "bg-foreground text-background hover:bg-foreground/85";
@@ -189,7 +191,7 @@ export default function ServiceCatalogue({
             <div className="relative w-56">
               <Search
                 aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-tab-label"
               />
               <Input
                 type="search"

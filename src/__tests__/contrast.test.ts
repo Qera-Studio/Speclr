@@ -162,6 +162,8 @@ const TEXT_PAIRS: Array<[string, string]> = [
   // An inactive tab's label, and an inactive page number, on the trough
   // both rest on.
   ['tab-label', 'muted'],
+  // A quiet toolbar control's label, on the page (the service catalogue).
+  ['tab-label', 'background'],
 ];
 
 /**
