@@ -40,6 +40,7 @@ import type { ContractService } from "@/lib/domain/service";
 import { formatQuote } from "@/lib/domain/quotation";
 import { accentBadge, type Accent } from "@/lib/accent";
 import { cn } from "@/lib/utils";
+import { INK, QUIET } from "./quiet";
 
 /**
  * The service catalogue: everything the studio sells, by Schedule.
@@ -55,19 +56,6 @@ import { cn } from "@/lib/utils";
  * be both a link and an add button, and the page is what a card is about.
  */
 
-/**
- * Quiet controls: no fill on hover, the ink and the hairline strengthen
- * instead. Hairline to `muted-foreground` rather than full ink, which read as
- * a black box around every control under the pointer.
- */
-const QUIET =
-  // `tab-label`, two shades under muted text: as light as a label can go and
-  // still clear 4.5:1 (measured in `contrast.test.ts`). Hover is one step,
-  // to muted text and a label-grey hairline, never to full ink.
-  "border-border/50 text-tab-label hover:border-tab-label/50 hover:bg-transparent hover:text-muted-foreground dark:bg-transparent";
-
-/** The page's one filled action. Ink rather than the blue primary, on trial here. */
-const INK = "bg-foreground text-background hover:bg-foreground/85";
 
 const VIEWS = [
   { key: "cards", label: "Cards", icon: LayoutGrid },
@@ -457,7 +445,7 @@ function ServiceCard({
         {/* `min-h-10` holds two lines, so a short description does not pull
             the footer up and break the row's baseline. */}
         <p className="line-clamp-2 min-h-10 text-body text-muted-foreground">
-          {service.blurb ?? service.overview[0]}
+          {service.blurb || service.overview[0]}
         </p>
       </div>
       <div className="flex items-center justify-between gap-2 text-meta tabular-nums">

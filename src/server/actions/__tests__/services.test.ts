@@ -85,6 +85,25 @@ describe('saveServiceSection', () => {
   });
 
   /**
+   * The description section: the one sentence the catalogue and the
+   * quotation print, and nothing else about the row.
+   */
+  it('saves the description alone', async () => {
+    const result = await saveServiceSection('06', 'description', { blurb: 'Built in code.' });
+    expect(result).toEqual({ success: true });
+    expect(saveService).toHaveBeenCalledWith({ ...existing, blurb: 'Built in code.' });
+  });
+
+  /** Clearing is sending empty, since a key left out is a key kept. */
+  it('clears the description when sent empty, and refuses it missing', async () => {
+    await saveServiceSection('06', 'description', { blurb: '' });
+    expect(saveService).toHaveBeenCalledWith({ ...existing, blurb: '' });
+
+    const missing = await saveServiceSection('06', 'description', {});
+    expect(missing.success).toBe(false);
+  });
+
+  /**
    * The items section: new items get ids, kept items keep theirs, and every
    * field the form never showed (the twelve inclusions, the rate, the name)
    * is exactly as it was.

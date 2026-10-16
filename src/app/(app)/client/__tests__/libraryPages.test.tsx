@@ -19,7 +19,7 @@ jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: (...a: unknown[]) => requireAuthorizedUser(...a),
 }));
 jest.mock('@/db/store', () => ({
-  listServices: () => listServices(),
+  listServices: (...a: unknown[]) => listServices(...(a as [])),
   listClauses: () => listClauses(),
   getService: (...a: unknown[]) => getService(...a),
   listExclusions: (...a: unknown[]) => listExclusions(...(a as [])),
@@ -64,11 +64,14 @@ beforeEach(() => {
 describe('Service page', () => {
   const params = Promise.resolve({ code: '06' });
 
-  it('shows the service with its three sections', async () => {
+  it('shows the service with its price list and its terms', async () => {
     render(await ServiceDetailPage({ params }));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Custom web build' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Items' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Price list' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contract terms' })).toBeInTheDocument();
+    // Archived rows included: the terms a service names are archived rows.
+    expect(listServices).toHaveBeenCalledWith(true);
     expect(listExclusions).toHaveBeenCalledWith(true);
     expect(listClientInputs).toHaveBeenCalledWith(true);
   });

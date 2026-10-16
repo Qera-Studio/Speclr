@@ -1,4 +1,13 @@
-import { serviceContentSchema } from '../service';
+import {
+  hasOwnTerms,
+  serviceContentSchema,
+  servicePageData,
+  termsOf,
+  termsUsers,
+  type ContractService,
+} from '../service';
+import { SERVICES } from '../seed/services';
+import { PARTS } from '../seed/parts';
 
 /**
  * A Service's items, as the **content schema** sees them.
@@ -137,5 +146,35 @@ describe("a service's blurb and part codes", () => {
       expect(parsed.data.blurb).toBeUndefined();
       expect(parsed.data.partCodes).toBeUndefined();
     }
+  });
+});
+
+describe('the service page data', () => {
+  const all: ContractService[] = [...SERVICES, ...PARTS];
+
+  it('finds the terms a service names, in its own order', () => {
+    expect(termsOf(SERVICES.find((s) => s.code === 'SOC')!, all).map((t) => t.code)).toEqual([
+      '15',
+      '16',
+      '17',
+    ]);
+  });
+
+  it('finds the services that use a set of terms', () => {
+    expect(termsUsers('10', all).map((s) => s.code)).toEqual(['DSGN', 'APP']);
+    expect(termsUsers('WEB', all)).toEqual([]);
+  });
+
+  /** Every sold service carries none of its own; every Part carries some. */
+  it('tells a row with terms of its own from one without', () => {
+    expect(SERVICES.some(hasOwnTerms)).toBe(false);
+    expect(PARTS.every(hasOwnTerms)).toBe(true);
+  });
+
+  it('names, for each set of terms, the other services sharing it', () => {
+    const data = servicePageData('DSGN', all)!;
+    expect(data.terms.map((t) => t.code)).toEqual(['10']);
+    expect(data.sharedWith['10'].map((s) => s.code)).toEqual(['APP']);
+    expect(servicePageData('NOPE', all)).toBeNull();
   });
 });

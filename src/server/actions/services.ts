@@ -235,6 +235,12 @@ const SECTION_SCHEMAS = {
     fee: true,
   }),
   libraries: serviceContentSchema.pick({ exclusionIds: true, clientInputIds: true }),
+  /**
+   * The one sentence the catalogue card and the quotation print, edited in
+   * place on the service page. Sent as `''` to clear, never omitted: a key the
+   * payload leaves out is a key this save keeps, so omission could not clear it.
+   */
+  description: serviceContentSchema.pick({ blurb: true }).required(),
 } as const;
 
 export type ServiceSection = keyof typeof SECTION_SCHEMAS;
