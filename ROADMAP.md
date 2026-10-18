@@ -84,14 +84,70 @@ the first three phases turned up.
 
 When 0 to 4 are done, the app can issue real documents from this laptop
 against the free database, with the Phase 1 backup run after every finalize
-and every issued PDF kept. That starts *What "ready" means* without waiting for
+and every issued PDF kept. **Only from a production build** (`npm run build &&
+npm start`), never `npm run dev`: `DEV_UNLIMITED` is "not production", so under
+the dev server every finalize claims a fake clock-based serial
+(`db/counter.ts`) and a finalized document can be deleted (`deleteDraft`).
+Found by the gate dry run on 18 October 2026. That starts *What "ready" means* without waiting for
 money. Whether to do it is a decision for the founder, not the assistant.
 Launch day then adds the paid tiers, the production Clerk instance and the
 domain, and nothing else.
 
+### The gate dry run, 18 October 2026
+
+Three read-only reviews of `dev/master-launch-readiness-gate.md` against the
+code, each finding checked before it was written here.
+
+**Decisions for the founder** (numbering, immutability and money: proposals
+only, nothing changed):
+
+1. **Finalize is not atomic, and a double finalize can overwrite an issued
+   document.** `saveDocument` reads the status, then upserts unconditionally
+   (`db/store.ts`), and finalize is three or four separate HTTP statements
+   (claim, studio read, save) because the Neon HTTP driver has no interactive
+   transaction. Two finalizes racing, or a finalize racing an autosave, can
+   burn a number, re-finalize under a second one, or flip an issued row back
+   to draft. A failure after the claim burns the number and the message says
+   it "was not used". **Proposed:** one SQL statement that claims the serial
+   and writes the row `WHERE id = $1 AND status = 'draft'`, returning
+   "already finalized" when it matches nothing, plus a database trigger that
+   refuses any UPDATE or DELETE of a finalized row. This is the guarantee
+   `CONTEXT.md` §4 already claims to make.
+2. **A credit note is not checked against the invoice it reduces.** The number,
+   date, rate and amount are trusted from the form, so a note can credit more
+   than was billed, at a rate the invoice never charged. **Proposed:** at CRN
+   finalize, when `againstInvoiceId` is set, require the same client, a
+   finalized invoice, the same rate, and a credited total no greater than the
+   invoice's.
+3. **The money columns are 32-bit.** `total_paise` and `pay_amount_paise` cap
+   at about ₹2.14 crore, while the schemas accept far more, and a larger
+   document fails on insert after its number has been claimed. **Proposed:**
+   move them to `bigint`, or cap the schemas at the column's range.
+4. **Accepted risks to record or refuse:** no Postgres RLS (single tenant, no
+   client-side database key, the gate on every action stands in for it); no
+   rate limit on PDF rendering and the sitemap fetch (allowlisted users only);
+   Clerk session tokens stay valid for their short life after sign-out.
+5. **A privacy notice and a retention schedule** for the third-party personal
+   data held (DPDP Act 2023), which can live outside the app.
+
+**The assistant fixes** (security, error handling, accessibility, performance;
+logged in *Progress* as each lands): the PDF route returning raw error text;
+the print URL trusting the request's Host header; a pagination timeout that
+stores a half-rendered PDF; concurrent attachment uploads losing a row; the
+unbounded list queries; the resize handle's weak focus ring and two faded text
+colours; an `npm run db:migrate` that backs up first; an axe scan in `e2e/`.
+
+**Launch day:** a rehearsed rollback, a post-deploy smoke test, live header and
+logged-out checks against the real domain, and a restore rehearsed into a fresh
+Neon branch.
+
 ### Waiting on Shivanshu
 
 Free tasks only the founder can do, plus decisions the work needs:
+
+- **Decide the five items under *The gate dry run* above.** Item 1 matters
+  most: it is the difference between "issued documents are immutable" being
+  true and being likely.
 
 - **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
   blockers*).
@@ -114,6 +170,11 @@ Free tasks only the founder can do, plus decisions the work needs:
   onboarding tabs); `0019_lead_stages` applied (20 migrations recorded, both
   leads moved); `CONTEXT.md` §5h and §5m and `docs/design.md` brought up to
   date.
+- 18 October 2026, Phase 1: CI workflow (`d0b5d95`, runs once pushed);
+  attachments upload straight to Blob (`7a64f85`); free backup and restore,
+  which found and fixed two copy-script bugs (`2d8d592`); the gate dry run
+  (above). Phase 3: every document type measured at real A4 (`82f95d8`).
+  Next.js 16.4.2 and a clean audit (`fcebb2b`).
 
 ---
 
