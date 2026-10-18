@@ -10,6 +10,7 @@ import {
   documents,
   employees,
   exclusions,
+  leads,
   services,
   studioSettings,
 } from './schema';
@@ -22,6 +23,8 @@ import type { AdminDocument, ClientRecord, DocTypeCode } from '@/lib/domain/type
 import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import type { ClauseInput, MsaClause } from '@/lib/domain/contract/msa';
 import type { EmployeeRecord } from '@/lib/domain/employee';
+import type { Lead } from '@/lib/domain/lead';
+import { localDateToISO } from '@/lib/domain/dates';
 
 /**
  * Persistence for speclr documents, clients, employees, and service templates,
@@ -697,4 +700,41 @@ export async function searchEverything(
     employees: employeeHits.map(employeeFromRow),
     services: serviceHits.map(serviceFromRow),
   };
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+
+/** Every lead, newest first. */
+export async function listLeads(): Promise<Lead[]> {
+  return listLeadsWhere();
+}
+
+async function listLeadsWhere(where?: ReturnType<typeof eq>): Promise<Lead[]> {
+  const rows = await db.select().from(leads).where(where).orderBy(desc(leads.createdAt));
+  return rows.map((r) => ({
+    ...r.details,
+    id: r.id,
+    name: r.name,
+    stage: r.stage,
+    createdAt: localDateToISO(r.createdAt),
+  }));
+}
+
+/** One lead by id, or null. */
+export async function getLead(id: string): Promise<Lead | null> {
+  return (await listLeadsWhere(eq(leads.id, id)))[0] ?? null;
+}
+
+/** Inserts or replaces one lead; `createdAt` is kept from the first insert. */
+export async function saveLead(lead: Omit<Lead, 'createdAt'>): Promise<void> {
+  const { id, name, stage, ...details } = lead;
+  await db
+    .insert(leads)
+    .values({ id, name, stage, details })
+    .onConflictDoUpdate({ target: leads.id, set: { name, stage, details, updatedAt: new Date() } });
+}
+
+/** Removes the row outright: a lead's contact details are erased, not flagged. */
+export async function deleteLead(id: string): Promise<void> {
+  await db.delete(leads).where(eq(leads.id, id));
 }

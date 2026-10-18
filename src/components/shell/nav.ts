@@ -3,6 +3,7 @@ import {
   Calculator,
   LayoutDashboard,
   Users,
+  UserPlus,
   IdCard,
   Image,
   Network,
@@ -178,7 +179,11 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
     // were different words for one thing, so the rail, the breadcrumb and the
     // h1 disagreed on what you were looking at. The client side holds exactly
     // one kind of record, so the grouping name bought nothing.
-    records: [{ href: '/client/clients', label: 'Clients', icon: Users, jump: 'C' }],
+    // Leads sit beside clients: a lead is who a client was before onboarding.
+    records: [
+      { href: '/client/clients', label: 'Clients', icon: Users, jump: 'C' },
+      { href: '/client/leads', label: 'Leads', icon: UserPlus, jump: 'P' },
+    ],
     documents: [
       { href: '/client/docs/contract', label: 'Contract', icon: FileSignature, shortcut: 'C' },
       { href: '/client/docs/invoice', label: 'Invoice', icon: ReceiptIndianRupee, shortcut: 'I' },

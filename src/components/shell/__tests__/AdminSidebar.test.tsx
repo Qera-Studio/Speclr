@@ -128,7 +128,7 @@ describe('AdminSidebar', () => {
      * so an earlier version of this test passed either way round, which is why
      * it queries both roles together.
      */
-    it('shows eight rows, in order, and nothing else', () => {
+    it('shows nine rows, in order, and nothing else', () => {
       renderSidebar({ profile: 'client' });
       const labels = Array.from(
         liveNav('client').querySelectorAll('[data-slot="sidebar-menu-item"]'),
@@ -137,6 +137,7 @@ describe('AdminSidebar', () => {
         'Dashboard',
         'Documents',
         'Clients',
+        'Leads',
         // The create row carries its own ⌘D hint.
         'New documentCtrlD',
         'Service catalogue',
