@@ -95,6 +95,9 @@ Free tasks only the founder can do, plus decisions the work needs:
 
 - **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
   blockers*).
+- **Try one attachment upload** in onboarding, ideally a scan over 5 MB. The
+  new direct upload is tested in Jest, but a real round trip writes to your
+  live store and client record, which the assistant does not do unasked.
 - **Create a Clerk production instance** (free plan) for `speclr.qera.studio`,
   whenever DNS access is to hand. It sits unused until launch day.
 - **A compact board card was found uncommitted** in `ServiceCatalogue.tsx`,
@@ -927,12 +930,11 @@ real documents exist.
   `vercel env pull .env.local`, and restart dev. Nothing is exposed until the
   store holds real client files, which is why this is a blocker rather than an
   incident.
-- **Attachments over 4.5 MB will fail on Vercel.** They upload through a Server
-  Action, and Vercel's serverless functions reject a request body over 4.5 MB
-  before Next runs, so `serverActions.bodySizeLimit: '26mb'` only buys the
-  25 MB limit in local dev. The fix is a client-direct upload: a route that
-  hands out a one-shot token, the browser PUTs to Blob, and the action records
-  the resulting URL. Same private store, same `requireAuthorizedUser`, same
-  byte-sniffing on the way in. Until then a large scan silently fails in
-  production.
+- ~~**Attachments over 4.5 MB will fail on Vercel.**~~ Closed 18 October 2026.
+  The browser now uploads straight to the private Blob store on a token from
+  `/api/clients/[id]/files/upload` (signed-in caller, a client that exists, a
+  path that is that client's prefix and a uuid, the size cap and three types,
+  no overwrite), and `recordClientAttachment` reads the bytes back, sniffs
+  them, and deletes anything that is not what it claims before writing the
+  row.
 - **Run `dev/master-launch-readiness-gate.md`** before any production deploy.

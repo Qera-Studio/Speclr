@@ -1,14 +1,15 @@
 'use server';
 
-import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { del, put } from '@vercel/blob';
+import { del, get } from '@vercel/blob';
 import {
   ATTACHMENT_EXTENSIONS,
   ATTACHMENT_KIND_LABELS,
   ATTACHMENT_KINDS,
   ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_BYTES,
+  attachmentKey,
   isSlotKind,
   type AttachmentKind,
   type ClientAttachment,
@@ -43,89 +44,104 @@ import { authorized } from './authGate';
  * which sends whoever is standing at the form to inspect a perfectly good PDF.
  * A missing environment variable is an operator problem and should say so.
  */
+/** What the browser reports after an upload: which id, which slot, its name. */
+const recordInput = z.object({
+  id: z.string().uuid(),
+  kind: z.enum(ATTACHMENT_KINDS),
+  filename: z.string().min(1).max(255),
+});
+
 const STORAGE_UNCONFIGURED =
   'File storage is not configured — BLOB_READ_WRITE_TOKEN is not set on this environment.';
 
 /**
+ * Records an attachment the browser has just uploaded to its own path.
+ *
+ * The bytes arrive straight from the browser to private storage (see
+ * `/api/clients/[id]/files/upload`, which issued the token), because Vercel
+ * refuses a function body over 4.5 MB. So the checks that used to run on the
+ * way in now run on the way back: the stored bytes are read here, sized and
+ * **sniffed**, and anything that is not what it claims is deleted before a row
+ * ever points at it.
+ *
  * `encrypted` rides back on the result because only this side has the bytes:
  * the browser would have to read the whole file again to learn the same thing,
  * and the card has to show the lock before anything refetches the row.
  */
-export async function uploadClientAttachment(
+export async function recordClientAttachment(
   clientId: unknown,
-  formData: unknown,
+  input: unknown,
 ): Promise<ActionResult & { encrypted?: boolean }> {
   if (!(await authorized())) return { success: false, error: 'Unauthorized.' };
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return { success: false, error: STORAGE_UNCONFIGURED };
   }
 
-  if (typeof clientId !== 'string' || clientId.length === 0) {
+  const parsed = recordInput.safeParse(input);
+  if (typeof clientId !== 'string' || clientId.length === 0 || !parsed.success) {
     return { success: false, error: 'Invalid input.' };
   }
-  if (!(formData instanceof FormData)) {
-    return { success: false, error: 'Invalid input.' };
-  }
-
-  const file = formData.get('file');
-  const kind = String(formData.get('kind') ?? '');
-  if (!(file instanceof File)) return { success: false, error: 'No file was attached.' };
-  if (!(ATTACHMENT_KINDS as readonly string[]).includes(kind)) {
-    return { success: false, error: 'Invalid input.' };
-  }
-
-  if (file.size === 0) return { success: false, error: 'That file is empty.' };
-  if (file.size > MAX_ATTACHMENT_BYTES) {
-    return {
-      success: false,
-      error: `That file is larger than ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB.`,
-    };
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const sniffed = sniffMimeType(bytes.slice(0, 16));
-  if (!sniffed || !(ATTACHMENT_MIME_TYPES as readonly string[]).includes(sniffed)) {
-    return { success: false, error: 'Only PDF, PNG and JPEG files can be attached.' };
-  }
+  const { id, kind, filename: uploadedName } = parsed.data;
+  const key = attachmentKey(clientId, id);
 
   const client = await getClient(clientId);
-  if (!client) return { success: false, error: 'Client not found.' };
+  if (!client) {
+    await del(key).catch(() => undefined);
+    return { success: false, error: 'Client not found.' };
+  }
+  // Recording the same upload twice would put two rows on one blob, and
+  // deleting either would strand the other.
+  if (client.attachments?.some((a) => a.id === id)) {
+    return { success: false, error: 'That file is already attached.' };
+  }
 
-  const id = randomUUID();
+  let bytes: Uint8Array;
+  try {
+    const stored = await get(key, { access: 'private' });
+    if (!stored || stored.statusCode !== 200) {
+      return { success: false, error: 'The upload did not arrive. Try again.' };
+    }
+    bytes = new Uint8Array(await new Response(stored.stream).arrayBuffer());
+  } catch (err) {
+    logger.error({ action: 'recordClientAttachment', event: 'get_failed', error: err });
+    return { success: false, error: 'Failed to read the upload.' };
+  }
+
+  // Refused files are deleted, not left: an identity document nothing points
+  // at is one nobody can find to erase.
+  const refuse = async (error: string) => {
+    await del(key).catch(() => undefined);
+    return { success: false as const, error };
+  };
+  if (bytes.length === 0) return refuse('That file is empty.');
+  if (bytes.length > MAX_ATTACHMENT_BYTES) {
+    return refuse(`That file is larger than ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)} MB.`);
+  }
+  const sniffed = sniffMimeType(bytes.slice(0, 16));
+  if (!sniffed || !(ATTACHMENT_MIME_TYPES as readonly string[]).includes(sniffed)) {
+    return refuse('Only PDF, PNG and JPEG files can be attached.');
+  }
+
   // A slot document is named by the slot, not by whatever the scanner called
   // it: "Clayora - GST registration certificate.pdf" is the same shape for
   // every client, which is what makes a folder of these readable three years
   // later. The extension comes from the sniffed type, so the name cannot
-  // disagree with the bytes. Extras keep their own name — several purchase
-  // orders would otherwise all be called the same thing.
-  const filename = isSlotKind(kind as AttachmentKind)
+  // disagree with the bytes. Extras keep their own name, since several
+  // purchase orders would otherwise all be called the same thing.
+  const filename = isSlotKind(kind)
     ? safeFilename(
-        `${client.companyName || client.name} - ${ATTACHMENT_KIND_LABELS[kind as AttachmentKind]}${ATTACHMENT_EXTENSIONS[sniffed] ?? ''}`,
+        `${client.companyName || client.name} - ${ATTACHMENT_KIND_LABELS[kind]}${ATTACHMENT_EXTENSIONS[sniffed] ?? ''}`,
       )
-    : safeFilename(file.name);
-  // The id is in the path so two uploads of "pan.pdf" cannot collide, and
-  // `addRandomSuffix` is off so the stored key is exactly what we can delete.
-  const key = `clients/${clientId}/${id}-${filename}`;
-
-  try {
-    await put(key, Buffer.from(bytes), {
-      access: 'private',
-      addRandomSuffix: false,
-      contentType: sniffed,
-    });
-  } catch (err) {
-    logger.error({ action: 'uploadClientAttachment', event: 'put_failed', error: err });
-    return { success: false, error: 'Failed to upload the file.' };
-  }
+    : safeFilename(uploadedName);
 
   const encrypted = sniffed === 'application/pdf' && isEncryptedPdf(bytes);
 
   const attachment: ClientAttachment = {
     id,
-    kind: kind as ClientAttachment['kind'],
+    kind,
     filename,
     mime: sniffed,
-    size: file.size,
+    size: bytes.length,
     key,
     uploadedAt: Date.now(),
     ...(encrypted ? { encrypted } : {}),
@@ -135,7 +151,7 @@ export async function uploadClientAttachment(
   // row is rewritten first and the old blob deleted after: the other order
   // leaves the record pointing at bytes that are already gone if the save then
   // fails, and an orphaned blob is the recoverable half of that pair.
-  const superseded = isSlotKind(kind as AttachmentKind)
+  const superseded = isSlotKind(kind)
     ? (client.attachments ?? []).filter((a) => a.kind === kind)
     : [];
 
@@ -149,20 +165,17 @@ export async function uploadClientAttachment(
       updatedAt: Date.now(),
     });
   } catch (err) {
-    // The blob is written but the row is not. Remove it rather than leaving an
-    // orphaned identity document in storage that nothing references and nobody
-    // can find to delete.
     await del(key).catch(() => undefined);
-    logger.error({ action: 'uploadClientAttachment', event: 'save_failed', error: err });
+    logger.error({ action: 'recordClientAttachment', event: 'save_failed', error: err });
     return { success: false, error: 'Failed to save the attachment.' };
   }
 
   for (const old of superseded) {
     // Logged rather than surfaced: the replacement is stored and recorded, and
-    // failing the upload now would be a lie about what happened. A blob nothing
-    // points at is a cleanup job, not an error for whoever is standing here.
+    // failing now would be a lie about what happened. A blob nothing points at
+    // is a cleanup job, not an error for whoever is standing here.
     await del(old.key).catch((err) =>
-      logger.error({ action: 'uploadClientAttachment', event: 'replace_del_failed', error: err }),
+      logger.error({ action: 'recordClientAttachment', event: 'replace_del_failed', error: err }),
     );
   }
 

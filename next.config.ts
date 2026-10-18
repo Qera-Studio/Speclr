@@ -72,7 +72,9 @@ const CLERK = "https://*.clerk.accounts.dev https://*.clerk.com https://clerk.sp
  *   pull its second stage from an attacker's domain.
  * - **`connect-src`** — and this is the one that matters most here. Exfiltration
  *   needs somewhere to send the data. A client's PAN, GSTIN and registered
- *   address cannot be POSTed anywhere but us and Clerk.
+ *   address cannot be POSTed anywhere but us and Clerk. The one other origin
+ *   is Vercel Blob's upload API, path-scoped, which attachments PUT to on a
+ *   token our server issued for exactly one path in our own private store.
  * - **`base-uri 'self'`** — an injected `<base>` silently repoints every
  *   relative URL on the page, form posts included. Most often omitted, and it
  *   is what turns a small injection into a credential redirect.
@@ -121,7 +123,7 @@ const CSP = (frameAncestors: string) => [
   // `blob:` for the object URLs that tool creates before a download.
   "img-src 'self' data: blob: https://img.clerk.com",
   "font-src 'self' data:",
-  `connect-src 'self' ${CLERK}`,
+  `connect-src 'self' ${CLERK} https://vercel.com/api/blob/`,
   // Clerk's bot-protection challenge renders in a Turnstile frame.
   `frame-src 'self' ${CLERK} https://challenges.cloudflare.com`,
   "worker-src 'self' blob:",
@@ -253,16 +255,11 @@ const nextConfig: NextConfig = {
     '/**/docs/**': ['./node_modules/@sparticuz/chromium/bin/**'],
   },
   experimental: {
-    // Attachments upload through a Server Action, and the default cap is 1 MB,
-    // well under the 25 MB `MAX_ATTACHMENT_BYTES` allows, so a real MSA failed
-    // at the framework before the size check ever saw it. Set just above that
-    // limit, for the multipart envelope and the other form fields riding along.
-    // The real check stays server-side in `uploadClientAttachment`.
-    //
-    // This is the *framework's* limit, not the platform's: Vercel's serverless
-    // functions reject a request body over 4.5 MB before Next runs. Uploading
-    // a 25 MB file in production needs a client-direct upload to Blob, which
-    // `ROADMAP.md` records.
+    // Raised when attachments uploaded through a Server Action (default 1 MB).
+    // They no longer do: since 18 October 2026 the browser uploads straight to
+    // Blob on a token from `/api/clients/[id]/files/upload`, because Vercel
+    // rejects a function body over 4.5 MB whatever this says. Kept rather than
+    // lowered so no large document save starts failing as a side effect.
     serverActions: { bodySizeLimit: '26mb' },
     // And the *second* limit, which is the one that actually truncated an MSA.
     // `src/proxy.ts` runs on every request, so Next clones each body for it

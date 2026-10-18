@@ -24,8 +24,10 @@ const uploadClientAttachment = jest.fn();
 const deleteClientAttachment = jest.fn();
 
 jest.mock('@/server/actions/attachments', () => ({
-  uploadClientAttachment: (...a: unknown[]) => uploadClientAttachment(...a),
   deleteClientAttachment: (...a: unknown[]) => deleteClientAttachment(...a),
+}));
+jest.mock('../uploadAttachment', () => ({
+  uploadClientAttachment: (...a: unknown[]) => uploadClientAttachment(...a),
 }));
 
 const onSaved = jest.fn();
@@ -125,8 +127,7 @@ test('a file lands in the slot it was dropped on, with no type to set first', as
   await user.upload(screen.getByLabelText(/Add PAN card/i), pdf('scan001.pdf'));
 
   await waitFor(() => expect(uploadClientAttachment).toHaveBeenCalled());
-  const form = uploadClientAttachment.mock.calls[0][1] as FormData;
-  expect(form.get('kind')).toBe('pan');
+  expect(uploadClientAttachment.mock.calls[0][2]).toBe('pan');
 });
 
 test('the card fills while the upload is in flight, before the server answers', async () => {
@@ -237,7 +238,7 @@ test('a second file picked mid-upload waits its turn rather than being refused',
   resolvers[0]({ success: true, id: 'new' });
   // And the backlog drains on its own.
   await waitFor(() => expect(uploadClientAttachment).toHaveBeenCalledTimes(2));
-  expect((uploadClientAttachment.mock.calls[1][1] as FormData).get('kind')).toBe('pan');
+  expect(uploadClientAttachment.mock.calls[1][2]).toBe('pan');
 });
 
 test('a delete says it is happening while the round trip runs', async () => {
@@ -306,9 +307,7 @@ describe('the “anything else” picker', () => {
     await user.upload(input, pdf('PO-4417.pdf'));
 
     await waitFor(() => expect(uploadClientAttachment).toHaveBeenCalled());
-    expect((uploadClientAttachment.mock.calls[0][1] as FormData).get('kind')).toBe(
-      'purchase_order',
-    );
+    expect(uploadClientAttachment.mock.calls[0][2]).toBe('purchase_order');
   });
 
   test('a file dropped on the box is uploaded once its kind is chosen', async () => {
@@ -322,9 +321,8 @@ describe('the “anything else” picker', () => {
     // opens a second picker.
     await user.click(await screen.findByRole('button', { name: /^Non-disclosure agreement/ }));
     await waitFor(() => expect(uploadClientAttachment).toHaveBeenCalled());
-    const form = uploadClientAttachment.mock.calls[0][1] as FormData;
-    expect(form.get('kind')).toBe('nda');
-    expect((form.get('file') as File).name).toBe('nda.pdf');
+    expect(uploadClientAttachment.mock.calls[0][2]).toBe('nda');
+    expect((uploadClientAttachment.mock.calls[0][1] as File).name).toBe('nda.pdf');
   });
 });
 

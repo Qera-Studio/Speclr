@@ -780,6 +780,15 @@ export const ATTACHMENT_EXTENSIONS: Record<string, string> = {
 /** 25 MB. A signed MSA scanned at full resolution is tens of pages. */
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
+/**
+ * Where an attachment's bytes live: under its client, named by its id alone.
+ * The browser uploads to this path and the server records it, so both build it
+ * here and cannot disagree. The display name is `filename`, kept on the row.
+ */
+export function attachmentKey(clientId: string, attachmentId: string): string {
+  return `clients/${clientId}/${attachmentId}`;
+}
+
 export interface ClientAttachment {
   id: string;
   kind: (typeof ATTACHMENT_KINDS)[number];

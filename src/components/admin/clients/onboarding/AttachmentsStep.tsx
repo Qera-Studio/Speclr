@@ -29,10 +29,8 @@ import {
   type ClientAttachment,
 } from "@/lib/domain/client";
 import AttachmentTypeDialog from "./AttachmentTypeDialog";
-import {
-  deleteClientAttachment,
-  uploadClientAttachment,
-} from "@/server/actions/attachments";
+import { deleteClientAttachment } from "@/server/actions/attachments";
+import { uploadClientAttachment } from "./uploadAttachment";
 import type { ClientRecord } from "@/lib/domain/types";
 import { StepForm, type StepProps } from "./stepKit";
 
@@ -156,17 +154,13 @@ export default function AttachmentsStep({
     if (!client || !head || pending || started.current === head.id) return;
     started.current = head.id;
 
-    const data = new FormData();
-    data.set("file", head.file);
-    data.set("kind", head.kind);
-
     startTransition(async () => {
       // A Server Action that never returns (the request cut off, the network
       // dropped) rejects, and an uncaught rejection here takes the whole step
       // down with it. The file did not upload either way; say so and leave the
       // rest of the form standing.
-      const result = await uploadClientAttachment(client.id, data).catch(
-        (cause) => {
+      const result = await uploadClientAttachment(client.id, head.file, head.kind).catch(
+        (cause: unknown) => {
           // The operator gets the sentence, and whoever is debugging gets the
           // reason. Which leg failed is infrastructure detail: it tells anyone
           // watching where the seams are, and does not tell the operator
