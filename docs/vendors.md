@@ -417,6 +417,15 @@ whatever happens to be in Neon.
 interaction tests stay in Jest, where they are faster and where roles are
 already the idiom. Anything that is not a *measurement* does not belong here.
 
+### 6.1b axe-core (`@axe-core/playwright`)
+
+| | |
+|---|---|
+| **Why** | The launch gate asks for an automated accessibility scan, and nothing here could run one. `e2e/a11y.spec.ts` scans six working screens against WCAG 2.1 A and AA and fails on critical or serious violations. Added 18 October 2026; seen to fail on the dev gallery's unnamed button before it was trusted. Dev only. |
+| **Industry substitute** | **Lighthouse** (its accessibility audit is axe underneath), **Pa11y**, or **WAVE**. Paid: **Deque axe DevTools Pro**. |
+| **Cost** | **Free** (MPL 2.0). axe DevTools Pro is **about $40/month per seat**. |
+| **Beats its two closest competitors** | vs **Lighthouse**: the same rules engine, but Lighthouse scores a page rather than failing a test, so a regression shows as a number dropping instead of a red build. vs **Pa11y**: a second browser driver and runner beside Playwright, for checks this suite can already run in the browser it has. |
+
 ### 6.2 drizzle-kit, tsx, ts-node, dotenv
 
 | | |
