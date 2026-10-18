@@ -64,7 +64,7 @@ export default function ClientAxes({
   const flag = COUNTRY_SEED.find((c) => c.iso2 === country)?.flag;
 
   return (
-    <div className="mb-4 flex items-center justify-center gap-1.5 text-meta text-muted-foreground">
+    <div className="flex items-center gap-1.5 text-meta text-muted-foreground">
       <DropdownMenu>
         <DropdownMenuTrigger render={<button type="button" className={TRIGGER} />}>
           <span className="sr-only">Type: </span>

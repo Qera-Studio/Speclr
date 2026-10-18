@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { FlowStep } from "@/components/patterns/flow/steps";
 
@@ -45,6 +46,7 @@ export default function FlowShell<R>({
   anchor = "center",
   fill = false,
   chrome = true,
+  nav = "steps",
   children,
 }: {
   steps: readonly FlowStep<R>[];
@@ -143,6 +145,12 @@ export default function FlowShell<R>({
    */
   chrome?: boolean;
   /** Which way the last move went, so the step slides in from where it came. */
+  /**
+   * How the steps are drawn. `steps` is the spread track; `tabs` is the shared
+   * tab strip, left-aligned to the form's own edge (client onboarding, from
+   * 17 October 2026). Same buttons, same locks, same ticks either way.
+   */
+  nav?: "steps" | "tabs";
   children: ReactNode;
 }) {
   const step = steps[active];
@@ -183,12 +191,24 @@ export default function FlowShell<R>({
       <header
         className={cn(
           "mx-auto w-full shrink-0",
-          chrome && "max-w-5xl px-16 py-8",
+          chrome && nav === "steps" && "max-w-5xl px-16 py-8",
+          // Tabs share the form panel's width, so the strip's left edge is
+          // the panel's left edge rather than a centred track of its own.
+          chrome && nav === "tabs" && cn("flex flex-col gap-4 pt-8 pb-6", width ?? "max-w-6xl"),
         )}
       >
         <h1 className="sr-only">{title}</h1>
         {chrome ? lead : null}
-        {chrome ? (
+        {chrome && nav === "tabs" ? (
+          <StepTabs
+            steps={steps}
+            active={active}
+            record={record}
+            finishing={finishing}
+            onSelect={onSelect}
+          />
+        ) : null}
+        {chrome && nav === "steps" ? (
           <StepNav
             steps={steps}
             active={active}
@@ -279,7 +299,9 @@ export default function FlowShell<R>({
                     // `my-auto` centres a short step in the band, which is
                     // right for a form that does not change height. A step
                     // that grows as it is used must not: see `anchor`.
-                    anchor === "top" ? "mb-auto" : "my-auto",
+                    // Tabs sit directly on what they switch, so a tabbed
+                    // flow always anchors to the top.
+                    anchor === "top" || nav === "tabs" ? "mb-auto" : "my-auto",
                   ),
               fill ? undefined : (width ?? "max-w-6xl"),
             )}
@@ -467,6 +489,46 @@ function StepNav<R>({
         })}
       </ol>
     </nav>
+  );
+}
+
+/**
+ * The steps as the shared tab strip. One tab per step; a step that needs a
+ * saved record is disabled until there is one, and a finished step carries a
+ * tick, said in words to assistive tech as well.
+ */
+function StepTabs<R>({
+  steps,
+  active,
+  record,
+  finishing,
+  onSelect,
+}: {
+  steps: readonly FlowStep<R>[];
+  active: number;
+  record: R | null;
+  finishing: boolean;
+  onSelect: (index: number) => void;
+}) {
+  return (
+    <Tabs value={String(active)} onValueChange={(v) => onSelect(Number(v))}>
+      <TabsList aria-label="Steps" className="max-w-full overflow-x-auto">
+        {steps.map((step, index) => {
+          const complete = finishing || (record ? step.isComplete(record) : false);
+          return (
+            <TabsTrigger
+              key={step.key}
+              value={String(index)}
+              disabled={(step.needsRecord && !record) || finishing}
+            >
+              {complete ? <Check aria-hidden /> : null}
+              {step.short}
+              {complete ? <span className="sr-only">(complete)</span> : null}
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
   );
 }
 

@@ -379,6 +379,7 @@ export default function ClientOnboarding({
           onCountryChange={changeCountry}
         />
       }
+      nav="tabs"
       onSelect={(index) => goTo(index)}
       onActionsSlot={setActions}
       rightAction={

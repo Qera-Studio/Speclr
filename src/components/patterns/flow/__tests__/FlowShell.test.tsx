@@ -31,6 +31,7 @@ function Harness({
   finishing = false,
   fill = false,
   chrome = true,
+  nav,
   back,
   onSelect = () => {},
 }: {
@@ -39,6 +40,7 @@ function Harness({
   finishing?: boolean;
   fill?: boolean;
   chrome?: boolean;
+  nav?: 'steps' | 'tabs';
   back?: { label: string; go: () => void };
   onSelect?: (index: number) => void;
 }) {
@@ -56,6 +58,7 @@ function Harness({
       onActionsSlot={setActions}
       fill={fill}
       chrome={chrome}
+      nav={nav}
     >
       <StepActionsSlot.Provider value={actions}>
         <StepForm
@@ -293,5 +296,33 @@ describe('FlowShell', () => {
     await user.click(screen.getByRole('button', { name: 'Move' }));
 
     expect(screen.getByLabelText('A field')).toHaveValue('');
+  });
+});
+
+/** Client onboarding draws its steps as the shared tab strip. */
+describe('the tabs mode', () => {
+  it('draws one tab per step, the current one selected', () => {
+    render(<Harness nav="tabs" active={0} />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual(['One', 'Two', 'Three']);
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('locks a step that needs a saved record until there is one', () => {
+    render(<Harness nav="tabs" />);
+    expect(screen.getByRole('tab', { name: 'Two' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('moves to a step when its tab is chosen', async () => {
+    const user = userEvent.setup();
+    const onSelect = jest.fn();
+    render(<Harness nav="tabs" record={{ named: true }} onSelect={onSelect} />);
+    await user.click(screen.getByRole('tab', { name: 'Three' }));
+    expect(onSelect).toHaveBeenCalledWith(2);
+  });
+
+  it('says a finished step is complete', () => {
+    render(<Harness nav="tabs" record={{ named: true }} />);
+    expect(screen.getByRole('tab', { name: /One.*\(complete\)/ })).toBeInTheDocument();
   });
 });
