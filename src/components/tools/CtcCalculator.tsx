@@ -75,9 +75,9 @@ function Row({
     >
       <span className={total ? 'text-body' : 'text-body text-muted-foreground'}>
         {label}
-        {note ? <span className="ml-1.5 text-meta text-muted-foreground/70">{note}</span> : null}
+        {note ? <span className="ml-1.5 text-meta text-tab-label">{note}</span> : null}
       </span>
-      <span className="w-12 text-right text-meta tabular-nums text-muted-foreground/70">
+      <span className="w-12 text-right text-meta tabular-nums text-tab-label">
         {total || share === undefined ? '' : pct(Math.abs(paise), share)}
       </span>
       <span className="text-body tabular-nums">

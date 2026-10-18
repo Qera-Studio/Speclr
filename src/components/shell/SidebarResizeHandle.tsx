@@ -208,11 +208,13 @@ export default function SidebarResizeHandle({
         Shown on hover, on keyboard focus (centred, since there is no pointer
         to follow) and for the whole drag via the body mark, because the
         pointer leaves this strip the moment the rail moves.
+        Twice as wide on keyboard focus: a 1px line was too faint to serve as
+        the focus indicator WCAG 2.4.7 asks for (launch gate, 18 October 2026).
       */}
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-y-0 w-px opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100 [body[data-resizing]_&]:opacity-100',
+          'pointer-events-none absolute inset-y-0 w-px opacity-0 transition-opacity group-hover/resize:opacity-100 group-focus-visible/resize:w-0.5 group-focus-visible/resize:opacity-100 [body[data-resizing]_&]:opacity-100',
           side === 'right' ? 'left-[3px]' : 'left-[2px]',
         )}
         style={{

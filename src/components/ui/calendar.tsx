@@ -58,7 +58,7 @@ function Calendar({
         selected:
           "[&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:hover:bg-primary [&>button]:hover:text-primary-foreground",
         today: "[&>button]:ring-1 [&>button]:ring-border",
-        outside: "[&>button]:text-muted-foreground/50",
+        outside: "[&>button]:text-tab-label",
         disabled: "[&>button]:pointer-events-none [&>button]:opacity-40",
         hidden: "invisible",
         ...classNames,

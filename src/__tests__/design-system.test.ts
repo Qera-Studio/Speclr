@@ -695,6 +695,14 @@ const ARBITRARY_SHADOW = /\bshadow-(?:\[[^\]]*\]|2?xs\b|sm\b|md\b|lg\b|xl\b|2xl\
  * indicator; the audit found rings at 30%, 40%, 50% and solid, and one
  * control (`InfoTip`) with none. §1.8.
  */
+/**
+ * A neutral text colour faded with an opacity modifier. `contrast.test.ts`
+ * measures the tokens, not what an opacity does to them, so a `/50` puts text
+ * under 4.5:1 where nothing can see it. The quiet answer is `text-tab-label`,
+ * which is measured. Found by the launch gate, 18 October 2026.
+ */
+const FADED_TEXT = /\btext-(?:foreground|muted-foreground|tab-label)\/\d+\b/g;
+
 const OWN_FOCUS_RING = /focus-visible:ring-(?!destructive|0\b)[\w/[\]]+|\bring-ring\b/g;
 
 /**
@@ -745,6 +753,7 @@ const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
   ['RADIUS', [], [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
   ['SHADOW', [], [ARBITRARY_SHADOW], []],
   ['RING', [], [OWN_FOCUS_RING], []],
+  ['FADED_TEXT', [], [FADED_TEXT], []],
   ['EASING', [], [OWN_EASING], []],
   ['INLINE_TRANSITION', [], [INLINE_TRANSITION], []],
   ['Z', [], [RAW_Z], []],
@@ -1107,6 +1116,10 @@ describe('design system', () => {
 
   it('takes the focus ring from focus-ring, never drawing its own', () => {
     expect(outstanding('RING')).toEqual([]);
+  });
+
+  it('never fades neutral text with opacity, where the contrast test cannot see it', () => {
+    expect(outstanding('FADED_TEXT')).toEqual([]);
   });
 
   it('uses the one easing and never an inline transition', () => {

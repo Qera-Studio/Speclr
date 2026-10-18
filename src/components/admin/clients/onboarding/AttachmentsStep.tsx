@@ -257,7 +257,7 @@ export default function AttachmentsStep({
       <div className="flex h-full items-center justify-center bg-muted">
         <FileLock2
           aria-hidden
-          className="size-10 stroke-[1.25] text-muted-foreground/40"
+          className="size-10 stroke-[1.25] text-tab-label"
         />
         <span className="sr-only">
           {attachment.filename} is password-protected, so it cannot be
