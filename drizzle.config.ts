@@ -1,4 +1,9 @@
 import { defineConfig } from 'drizzle-kit';
+import { config } from 'dotenv';
+
+// Next keeps the connection string in .env.local, which drizzle-kit does not
+// read on its own; without this every migrate needed the env sourced by hand.
+config({ path: '.env.local' });
 
 // Migrations are generated from src/db/schema.ts into src/db/migrations.
 // DATABASE_URL comes from .env.local (pulled from Vercel/Neon; gitignored).

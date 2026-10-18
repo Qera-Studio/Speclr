@@ -14,7 +14,7 @@
  *
  * **The schema is not this script's job.** Run the Drizzle migrations against
  * the target first (`DATABASE_URL=<target> npx drizzle-kit migrate`), so the
- * target's shape comes from the same 16 migration files as production rather
+ * target's shape comes from the same migration files as production rather
  * than from whatever this script inferred. This copies data into a schema that
  * already exists.
  *
