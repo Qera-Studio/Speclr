@@ -17,6 +17,7 @@ import {
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -26,13 +27,15 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { InfoTip } from '@/components/patterns/FieldInfo';
+import { INK, QUIET } from './quiet';
+import RupeeInput from './RupeeInput';
 import { SacField } from '@/components/form/fields';
-import { numericField } from '@/components/form/inputFilters';
+import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import { sacSchema } from '@/lib/domain/fields';
 import { multilineSchema, textSchema } from '@/lib/domain/text';
 import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import { SCHEDULES, type ScheduleKey } from '@/lib/domain/contract/schedules';
-import { rateUnitOf, type ContractService } from '@/lib/domain/service';
+import { rateUnitOf, serviceCodeSchema, type ContractService } from '@/lib/domain/service';
 import { createService, updateServiceDetails } from '@/server/actions/services';
 
 /**
@@ -45,7 +48,7 @@ import { createService, updateServiceDetails } from '@/server/actions/services';
 const formSchema = z.object({
   name: textSchema(200, { required: 'A service name is required.' }),
   scheduleKey: z.enum(['build', 'retainer', 'setup', 'audit']),
-  overview: multilineSchema(4000),
+  blurb: multilineSchema(1000),
   sacCode: sacSchema(),
   rateRupees: z
     .string()
@@ -53,6 +56,8 @@ const formSchema = z.object({
       (v) => v.trim() === '' || /^\d+(\.\d{1,2})?$/.test(v.trim()),
       'Enter an amount like 45000 or 45000.50.',
     ),
+  /** Typed when adding; blank assigns the next free number. Read only when adding. */
+  code: z.union([z.literal(''), serviceCodeSchema]),
   /** A service code, or `NONE`. Read only when adding. */
   cloneFrom: z.string(),
 });
@@ -80,9 +85,11 @@ const NONE = 'NONE';
  * Mounted only while open and keyed on the Service, so it always opens from
  * what the catalogue currently holds rather than from the last thing typed.
  *
- * **Adding is the same five fields, and the code is not one of them.** A code
- * is the primary key and is cited by every contract that used it, so the server
- * assigns it; there is nothing here for a person to get wrong. Everything else a
+ * **Adding asks for a code; editing never changes one.** A code is the primary
+ * key and is cited by every contract, client record and invoice line that used
+ * it, so renaming one would orphan those. Typed codes are upper-cased as typed
+ * and refused by the server if any row, archived included, already holds it;
+ * a blank one is assigned the next free number. Everything else a
  * Service carries starts empty, **or is copied from the Service it starts
  * from**: a genuinely new kind of work is usually a near copy of one that
  * exists, and naming it is what makes adding one a two-minute form. The rest
@@ -118,12 +125,12 @@ export default function ServiceEditDialog({
     defaultValues: {
       name: service?.name ?? '',
       scheduleKey: service?.scheduleKey ?? scheduleKey ?? SCHEDULES[0].key,
-      // One paragraph per line. `overview` is an array because the sheet prints
-      // each as its own paragraph; a textarea is how a person edits a short
-      // list of paragraphs without a list editor being built for three of them.
-      overview: service?.overview.join('\n') ?? '',
+      // The sentence the card, the service page and the quotation print. Not
+      // `overview`: that is contract wording a sold service takes from its terms.
+      blurb: service?.blurb ?? '',
       sacCode: service?.sacCode ?? '',
       rateRupees: service?.ratePaise === undefined ? '' : paiseToRupees(service.ratePaise),
+      code: '',
       cloneFrom: NONE,
     },
   });
@@ -131,6 +138,7 @@ export default function ServiceEditDialog({
   // The unit is derived from the Schedule, not stored, so it follows the
   // dropdown as soon as it changes rather than after a save.
   const activeSchedule = watch('scheduleKey');
+  const monthly = rateUnitOf(activeSchedule) === 'per month';
 
   const submit = handleSubmit((values) =>
     startTransition(async () => {
@@ -138,10 +146,7 @@ export default function ServiceEditDialog({
       const payload = {
         name: values.name,
         scheduleKey: values.scheduleKey,
-        overview: values.overview
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean),
+        blurb: values.blurb.trim(),
         sacCode: values.sacCode,
         ratePaise: rate === '' ? null : rupeesToPaise(rate),
       };
@@ -149,6 +154,7 @@ export default function ServiceEditDialog({
         ? await updateServiceDetails({ ...payload, code: service.code })
         : await createService({
             ...payload,
+            ...(values.code ? { code: values.code } : {}),
             ...(values.cloneFrom === NONE ? {} : { cloneFrom: values.cloneFrom }),
           });
 
@@ -156,7 +162,9 @@ export default function ServiceEditDialog({
         // On the name, because it is the first field and the one a message can
         // be read next to. A dialog-level banner would be a second error
         // surface for the same failure.
-        setError('name', { message: result.error ?? 'Failed to save.' });
+        // A taken code is said on the code field instead.
+        const onCode = !!values.code && !!result.error?.startsWith(values.code);
+        setError(onCode ? 'code' : 'name', { message: result.error ?? 'Failed to save.' });
         return;
       }
       router.refresh();
@@ -175,35 +183,123 @@ export default function ServiceEditDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="gap-6 bg-background p-6 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-section">
+          <DialogTitle className="flex items-center gap-2 text-section font-normal">
+            {service ? 'Edit service' : 'Add service'}
             {service ? (
-              <>
-                <span className="mr-2 text-muted-foreground tabular-nums">{service.code}</span>
-                Edit service
-              </>
-            ) : (
-              'Add service'
-            )}
+              <Badge variant="secondary" className="font-normal text-muted-foreground">
+                {service.code}
+              </Badge>
+            ) : null}
           </DialogTitle>
-          <DialogDescription>
-            {service
-              ? 'Changes reach the next contract. Anything already drafted or signed keeps its own copy.'
-              : 'Its code is assigned on save. Scope, limits and exclusions are filled in from the spec.'}
-          </DialogDescription>
+          {service ? (
+            <DialogDescription className="text-tab-label">
+              Changes reach the next quotation and contract. Anything already sent keeps its own copy.
+            </DialogDescription>
+          ) : null}
         </DialogHeader>
 
-        <form onSubmit={submit} className="flex flex-col gap-4">
-          {/* Adding only. First, because it seeds everything the fields below
-              do not ask for. An existing Service has nothing to start from. */}
+        {/* Every label quiet, set once here so a shared field (`SacField`)
+            cannot come out darker than the ones written in this file. */}
+        <form
+          onSubmit={submit}
+          className="flex flex-col gap-4 **:data-[slot=field-label]:text-muted-foreground"
+        >
+          {/* Explicit columns override `FieldRow`'s container query, which
+              needs a `field-group` this dialog lacks. */}
+          <FieldRow className={service ? 'grid-cols-1' : 'grid-cols-[3fr_1fr]'}>
+            <Field>
+              <FieldLabel htmlFor="service-name">Name</FieldLabel>
+              <Input id="service-name" size="form" placeholder="Newsletter design" {...register('name')} />
+              <FieldError errors={[errors.name]} />
+            </Field>
+            {service ? null : (
+              <Field>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="service-code">Code</FieldLabel>
+                  <InfoTip
+                    label="About the code"
+                    info="Two to six capitals or digits, like WEB or SEO. Contracts and invoices cite it, so it cannot be changed later. Leave it empty for the next number."
+                  />
+                </div>
+                <Input
+                  id="service-code"
+                  size="form"
+                  placeholder="NEWS"
+                  maxLength={6}
+                  autoComplete="off"
+                  {...uppercaseField(register('code'))}
+                />
+                <FieldError errors={[errors.code]} />
+              </Field>
+            )}
+          </FieldRow>
+
+          <Field>
+            <FieldLabel htmlFor="service-overview">Description</FieldLabel>
+            <Textarea
+              id="service-overview"
+              placeholder="What this is and what the client ends up with."
+              {...register('blurb')}
+            />
+            <FieldError errors={[errors.blurb]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="service-schedule">Section</FieldLabel>
+            <Controller
+              control={control}
+              name="scheduleKey"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                  <SelectTrigger id="service-schedule" size="form" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent size="form">
+                    {SCHEDULES.map((schedule) => (
+                      <SelectItem key={schedule.key} value={schedule.key}>
+                        {schedule.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FieldError errors={[errors.scheduleKey]} />
+          </Field>
+
+          <FieldRow className="grid-cols-2 gap-x-8 gap-y-4">
+            <Field>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="service-rate">
+                  {/* Only a Retainer names its unit: "per month" changes what
+                      the number means; "fixed" read as a setting to new users. */}
+                  {monthly ? 'List price, per month' : 'List price'}
+                </FieldLabel>
+                <InfoTip
+                  label="About the list price"
+                  info="What this work is quoted from. It is not the contract's Fee, which is agreed per engagement. Leave it empty for work quoted case by case."
+                />
+              </div>
+              <RupeeInput
+                id="service-rate"
+                placeholder="Quoted"
+                {...numericField(register('rateRupees'), 'money')}
+              />
+              <FieldError errors={[errors.rateRupees]} />
+            </Field>
+            <SacField control={control} name="sacCode" id="service-sac" />
+          </FieldRow>
+
+          {/* Adding only: a shortcut most new services skip. */}
           {!service && startFrom && startFrom.length > 0 ? (
             <Field>
               <div className="flex items-center gap-1.5">
                 <FieldLabel htmlFor="service-clone">Start from</FieldLabel>
                 <InfoTip
                   label="What starting from a service does"
-                  info="Copies its scope, limits, exclusions, client inputs and menu onto the new service. The fields below replace the copy's own. Edit the rest on the new service's page."
+                  info="Copies its items, terms and libraries onto the new service. The fields above replace the copy's own."
                 />
               </div>
               <Controller
@@ -214,11 +310,11 @@ export default function ServiceEditDialog({
                     <SelectTrigger id="service-clone" size="form" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent size="form">
                       <SelectItem value={NONE}>Nothing, start empty</SelectItem>
                       {startFrom.map((s) => (
                         <SelectItem key={s.code} value={s.code}>
-                          {s.code} {s.name}
+                          {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -228,79 +324,11 @@ export default function ServiceEditDialog({
             </Field>
           ) : null}
 
-          {/* 35/65 rather than an even split: a Section is one of four short
-              words, a Title is a sentence fragment. The explicit columns also
-              override `FieldRow`'s container query, which needs a
-              `field-group` container this dialog does not have. */}
-          <FieldRow className="grid-cols-[35fr_65fr]">
-            <Field>
-              <FieldLabel htmlFor="service-schedule">Section</FieldLabel>
-              <Controller
-                control={control}
-                name="scheduleKey"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
-                    <SelectTrigger id="service-schedule" size="form" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SCHEDULES.map((schedule) => (
-                        <SelectItem key={schedule.key} value={schedule.key}>
-                          {schedule.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <FieldError errors={[errors.scheduleKey]} />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="service-name">Title</FieldLabel>
-              <Input id="service-name" size="form" {...register('name')} />
-              <FieldError errors={[errors.name]} />
-            </Field>
-          </FieldRow>
-
-          <Field>
-            <div className="flex items-center gap-1.5">
-              <FieldLabel htmlFor="service-overview">Description</FieldLabel>
-              <InfoTip
-                label="What the description is for"
-                info="Two or three sentences: what this is and what the Client ends up with. It prints at the head of the Part. One paragraph per line."
-              />
-            </div>
-            <Textarea id="service-overview" rows={4} {...register('overview')} />
-            <FieldError errors={[errors.overview]} />
-          </Field>
-
-          <FieldRow className="grid-cols-2">
-            <Field>
-              <div className="flex items-center gap-1.5">
-                <FieldLabel htmlFor="service-rate">Rate</FieldLabel>
-                <InfoTip
-                  label="About the rate"
-                  info="The list price this work is quoted from, in rupees. It is not the contract's Fee: that is negotiated per engagement and still filled in on the contract. Leave it empty for work quoted case by case."
-                />
-              </div>
-              <Input
-                id="service-rate"
-                size="form"
-                placeholder={`₹, ${rateUnitOf(activeSchedule)}`}
-                {...numericField(register('rateRupees'), 'money')}
-              />
-              <FieldError errors={[errors.rateRupees]} />
-            </Field>
-
-            <SacField control={control} name="sacCode" id="service-sac" />
-          </FieldRow>
-
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="secondary" className={QUIET} onClick={onClose} disabled={pending}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" pending={pending}>
+            <Button type="submit" variant="primary" className={INK} pending={pending}>
               {service ? 'Save service' : 'Add service'}
             </Button>
           </DialogFooter>

@@ -149,6 +149,18 @@ export interface ServiceContent {
  * Service's price is monthly by construction, and a second field saying so
  * would be a second place for the record to disagree with itself.
  */
+/**
+ * A service code.
+ *
+ * Two digits was the shape while the catalogue was the 22 Parts. The sales
+ * catalogue uses letters (`WEB`, `DSGN`, `AIOP`), so the rule is now what a code
+ * has always actually been: a short, stable, opaque key. It is never reassigned,
+ * because every contract that used one cites it.
+ */
+export const serviceCodeSchema = z
+  .string()
+  .regex(/^[A-Z0-9]{2,6}$/, 'A service code is two to six capitals or digits.');
+
 export function rateUnitOf(scheduleKey: ScheduleKey): string {
   return scheduleKey === 'retainer' ? 'per month' : 'fixed';
 }

@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SCHEDULE_BY_KEY } from '@/lib/domain/contract/schedules';
 import { hasOwnTerms, type ContractService, type LibraryLine } from '@/lib/domain/service';
-import { formatQuote } from '@/lib/domain/quotation';
 import { accentBadge } from '@/lib/accent';
 import { cn } from '@/lib/utils';
 import { removeService, restoreService, saveServiceSection } from '@/server/actions/services';
@@ -117,7 +116,7 @@ export default function ServicePage({
           <span className={accentBadge(schedule.accent, 'h-4 px-1', true)}>{service.code}</span>
           {(isTerms
             ? ['Contract terms', schedule.name]
-            : [schedule.name, service.sacCode && `SAC ${service.sacCode}`, rangeOf(service), live.length > 0 && `${live.length} ${live.length === 1 ? 'item' : 'items'}`]
+            : [schedule.name, service.sacCode && `SAC ${service.sacCode}`]
           )
             .filter(Boolean)
             .map((part, i) => (
@@ -233,18 +232,6 @@ export default function ServicePage({
       ) : null}
     </div>
   );
-}
-
-/** The cheapest and dearest list prices among live items, or nothing. */
-function rangeOf(service: ContractService): string | null {
-  const rates = (service.items ?? [])
-    .filter((item) => !item.archived)
-    .flatMap((item) => [item.ratePaise, item.rateMaxPaise])
-    .filter((r): r is number => r !== undefined);
-  if (rates.length === 0) return null;
-  const low = Math.min(...rates);
-  const high = Math.max(...rates);
-  return low === high ? formatQuote(low) : `${formatQuote(low)} to ${formatQuote(high)}`;
 }
 
 /** How many points each section of a set of terms holds, in a line. */

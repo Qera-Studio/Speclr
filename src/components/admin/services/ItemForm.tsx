@@ -27,6 +27,8 @@ import { paiseToRupees, rupeesToPaise } from '@/lib/domain/money';
 import { multilineSchema, textSchema } from '@/lib/domain/text';
 import type { ItemUnit, ServiceItem } from '@/lib/domain/serviceItem';
 import { removeServiceGroup, saveServiceItem } from '@/server/actions/services';
+import { INK, QUIET } from './quiet';
+import RupeeInput from './RupeeInput';
 
 const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'fixed', label: 'Fixed' },
@@ -211,7 +213,12 @@ export default function ItemForm({
   });
 
   return (
-    <form onSubmit={submit} noValidate>
+    // Every label quiet, set once so a shared field (`SacField`) matches.
+    <form
+      onSubmit={submit}
+      noValidate
+      className="flex min-h-full flex-col gap-6 **:data-[slot=field-label]:text-muted-foreground"
+    >
       {/*
         `FieldGroup`, not a bare flex column, and it is load-bearing rather than
         tidy. `FieldRow` pairs its children through an `@2xs/field-group`
@@ -248,10 +255,9 @@ export default function ItemForm({
 
       <FieldRow columns={2}>
         <Field>
-          <FieldLabel htmlFor="item-rate">Rate (₹)</FieldLabel>
-          <Input
+          <FieldLabel htmlFor="item-rate">Price</FieldLabel>
+          <RupeeInput
             id="item-rate"
-            size="form"
             placeholder="Quoted"
             {...numericField(register('rupees'), 'money')}
           />
@@ -260,10 +266,9 @@ export default function ItemForm({
         {/* A band, for a retainer quoted as a range. Blank means the rate is
             exact, which is every one-off piece of work. */}
         <Field>
-          <FieldLabel htmlFor="item-rate-max">Up to (₹)</FieldLabel>
-          <Input
+          <FieldLabel htmlFor="item-rate-max">Up to</FieldLabel>
+          <RupeeInput
             id="item-rate-max"
-            size="form"
             placeholder="Exact"
             {...numericField(register('rupeesMax'), 'money')}
           />
@@ -380,11 +385,12 @@ export default function ItemForm({
         </Alert>
       ) : null}
 
-      <div className="mt-5 flex items-center justify-end gap-2">
-        <Button type="button" variant="secondary" onClick={onDone} disabled={pending}>
+      {/* At the foot of the panel, wherever the fields end. */}
+      <div className="mt-auto flex items-center justify-end gap-2">
+        <Button type="button" variant="secondary" className={QUIET} onClick={onDone} disabled={pending}>
           Cancel
         </Button>
-        <Button variant="primary" type="submit" pending={pending}>
+        <Button variant="primary" type="submit" className={INK} pending={pending}>
           {item ? 'Save item' : 'Create item'}
         </Button>
       </div>

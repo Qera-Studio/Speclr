@@ -43,12 +43,13 @@ const show = (code: string) =>
 beforeEach(() => jest.clearAllMocks());
 
 describe('a sold service', () => {
-  it('is titled by the service, with its code, schedule, range and count', () => {
+  /** The count lives on the price list; the range was dropped (16 October 2026). */
+  it('is titled by the service, with its code and schedule', () => {
     show('WEB');
     expect(screen.getByRole('heading', { level: 1, name: 'Custom Website' })).toBeInTheDocument();
     expect(screen.getByText('WEB')).toBeInTheDocument();
-    expect(screen.getByText('₹ 4,000 to ₹ 2,00,000')).toBeInTheDocument();
-    expect(screen.getByText('52 items')).toBeInTheDocument();
+    expect(screen.queryByText('₹ 4,000 to ₹ 2,00,000')).not.toBeInTheDocument();
+    expect(screen.queryByText('52 items')).not.toBeInTheDocument();
   });
 
   /**

@@ -203,7 +203,7 @@ describe('createService', () => {
   const details = {
     name: 'Three.js experience',
     scheduleKey: 'build' as const,
-    overview: ['A 3D scene.'],
+    blurb: 'A 3D scene.',
     sacCode: '998314',
     ratePaise: 80_000_00,
   };
@@ -231,13 +231,34 @@ describe('createService', () => {
     const inserted = insertService.mock.calls[0][0];
     expect(inserted.code).toBe('23');
     expect(inserted.name).toBe('Three.js experience');
-    expect(inserted.overview).toEqual(['A 3D scene.']);
+    expect(inserted.blurb).toBe('A 3D scene.');
+    expect(inserted.overview).toEqual(existing.overview);
     expect(inserted.included).toEqual(existing.included);
     expect(inserted.limits).toEqual(existing.limits);
     expect(inserted.exclusionIds).toEqual(existing.exclusionIds);
     expect(inserted.items).toEqual(existing.items);
     expect(inserted.itemSeq).toBe(existing.itemSeq);
     expect(inserted.archived).toBe(false);
+  });
+
+  it('files the service under a typed code', async () => {
+    const result = await createService({ ...details, code: 'THREE' });
+    expect(result).toEqual({ success: true });
+    expect(insertService.mock.calls[0][0].code).toBe('THREE');
+  });
+
+  /** A retired code is never handed to different work. */
+  it('refuses a typed code any row already holds, archived included', async () => {
+    const archived = PARTS.find((p) => p.archived) ?? PARTS[0];
+    const result = await createService({ ...details, code: archived.code });
+    expect(result.success).toBe(false);
+    expect(insertService).not.toHaveBeenCalled();
+  });
+
+  it('refuses a code that is not two to six capitals or digits', async () => {
+    const result = await createService({ ...details, code: 'web' });
+    expect(result.success).toBe(false);
+    expect(insertService).not.toHaveBeenCalled();
   });
 
   it('refuses a clone source that does not exist', async () => {

@@ -226,7 +226,7 @@ describe('editing one item', () => {
     await openItem(user, 'Core website setup (5 pages)');
 
     expect(screen.getByLabelText('Name')).toHaveValue('Core website setup (5 pages)');
-    expect(screen.getByLabelText('Rate (₹)')).toHaveValue('25000.00');
+    expect(screen.getByLabelText('Price')).toHaveValue('25000.00');
   });
 
   /**
@@ -238,8 +238,8 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.clear(screen.getByLabelText('Rate (₹)'));
-    await user.type(screen.getByLabelText('Rate (₹)'), '28000');
+    await user.clear(screen.getByLabelText('Price'));
+    await user.type(screen.getByLabelText('Price'), '28000');
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     expect(saveServiceItem).toHaveBeenCalledWith(
@@ -306,7 +306,7 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.clear(screen.getByLabelText('Rate (₹)'));
+    await user.clear(screen.getByLabelText('Price'));
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     const posted = (saveServiceItem as jest.Mock).mock.calls[0][1];
@@ -318,7 +318,7 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.type(screen.getByLabelText('Up to (₹)'), '8000');
+    await user.type(screen.getByLabelText('Up to'), '8000');
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     expect(saveServiceItem).not.toHaveBeenCalled();

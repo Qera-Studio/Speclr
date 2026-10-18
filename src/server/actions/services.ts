@@ -6,6 +6,7 @@ import { sacSchema } from '@/lib/domain/fields';
 import { codeSchema, multilineSchema, textSchema } from '@/lib/domain/text';
 import {
   EMPTY_PART_CONTENT,
+  serviceCodeSchema,
   serviceContentSchema,
   type ServiceContent,
 } from '@/lib/domain/service';
@@ -37,8 +38,13 @@ import { authorized } from './authGate';
 const detailFields = {
   name: textSchema(200, { required: 'A service name is required.' }),
   scheduleKey: z.enum(['build', 'retainer', 'setup', 'audit']),
-  /** One paragraph per line, as typed. Empty lines are dropped on the way in. */
-  overview: z.array(multilineSchema(4000)).max(10),
+  /**
+   * The client-facing sentence the catalogue card, the service page and the
+   * quotation print. Blank is its absence. It replaced `overview` here on
+   * 16 October 2026: that is contract wording, which a sold service takes from
+   * its terms, so a description typed into it never showed anywhere.
+   */
+  blurb: multilineSchema(1000),
   sacCode: sacSchema(),
   /**
    * Integer paise, or null for "quoted per engagement".
@@ -50,17 +56,7 @@ const detailFields = {
   ratePaise: z.number().int().min(0).max(10_000_000_000).nullable(),
 };
 
-/**
- * A service code.
- *
- * Two digits was the shape while the catalogue was the 22 Parts. The sales
- * catalogue uses letters (`WEB`, `DSGN`, `AIOP`), so the rule is now what a code
- * has always actually been: a short, stable, opaque key. It is never reassigned,
- * because every contract that used one cites it.
- */
-const serviceCode = z
-  .string()
-  .regex(/^[A-Z0-9]{2,6}$/, 'A service code is two to six capitals or digits.');
+const serviceCode = serviceCodeSchema;
 
 const serviceDetailsSchema = z.object({ code: serviceCode, ...detailFields });
 
@@ -68,7 +64,12 @@ const serviceDetailsSchema = z.object({ code: serviceCode, ...detailFields });
  * The same five fields, minus the code, which the server assigns, plus the
  * Service to start from, if any: see `createService`.
  */
-const newServiceSchema = z.object({ ...detailFields, cloneFrom: serviceCode.optional() });
+const newServiceSchema = z.object({
+  ...detailFields,
+  /** Typed when adding; absent means the next free number is assigned. */
+  code: serviceCode.optional(),
+  cloneFrom: serviceCode.optional(),
+});
 
 /**
  * Edits a Service in the catalogue.
@@ -87,7 +88,7 @@ export async function updateServiceDetails(data: unknown): Promise<ActionResult>
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid service.' };
   }
-  const { code, name, scheduleKey, overview, sacCode, ratePaise } = parsed.data;
+  const { code, name, scheduleKey, blurb, sacCode, ratePaise } = parsed.data;
 
   try {
     const existing = await getService(code);
@@ -118,7 +119,7 @@ export async function updateServiceDetails(data: unknown): Promise<ActionResult>
       name,
       scheduleKey,
       sortOrder,
-      overview,
+      blurb: blurb || undefined,
       // Both columns are optional, and blank is their absence rather than an
       // empty string. For the rate, "not priced" is absence rather than a zero:
       // zero is a real rate and means the work is given away.
@@ -159,7 +160,7 @@ export async function createService(data: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid service.' };
   }
-  const { name, scheduleKey, overview, sacCode, ratePaise, cloneFrom } = parsed.data;
+  const { code, name, scheduleKey, blurb, sacCode, ratePaise, cloneFrom } = parsed.data;
 
   try {
     let base: ServiceContent = EMPTY_PART_CONTENT;
@@ -186,17 +187,23 @@ export async function createService(data: unknown): Promise<ActionResult> {
     const numbered = all.map((s) => Number(s.code)).filter(Number.isFinite);
     const next = Math.max(0, ...numbered) + 1;
     // 99 services is far past the point where a catalogue wants another screen.
-    if (next > 99) return { success: false, error: 'The catalogue is full.' };
+    if (!code && next > 99) return { success: false, error: 'The catalogue is full.' };
+    // A typed code is checked against every row, archived ones included: a
+    // retired code is never handed to different work.
+    if (code && all.some((s) => s.code === code)) {
+      return { success: false, error: `${code} is already taken. A code is never reused, archived services included.` };
+    }
 
     const siblings = all.filter((s) => s.scheduleKey === scheduleKey);
     await insertService({
       ...base,
-      code: String(next).padStart(2, '0'),
+      code: code ?? String(next).padStart(2, '0'),
       name,
       scheduleKey,
       sortOrder: Math.max(0, ...siblings.map((s) => s.sortOrder)) + 1,
       archived: false,
-      overview,
+      // A blank keeps the copied service's own description.
+      blurb: blurb || base.blurb,
       sacCode: sacCode || undefined,
       ratePaise: ratePaise ?? undefined,
     });

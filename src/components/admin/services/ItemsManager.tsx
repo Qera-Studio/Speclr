@@ -13,6 +13,7 @@ import { ArchiveButton } from '@/components/patterns/RowActions';
 import ItemForm from './ItemForm';
 import { archiveServiceItem, saveServiceItem } from '@/server/actions/services';
 import { formatQuote } from '@/lib/domain/quotation';
+import { Badge } from '@/components/ui/badge';
 import { rupeesToPaise } from '@/lib/domain/money';
 import { itemRateUnit, type ServiceItem } from '@/lib/domain/serviceItem';
 import type { ContractService } from '@/lib/domain/service';
@@ -119,7 +120,9 @@ export default function ItemsManager({
         <h2 id="price-list-heading" className="text-lead font-normal text-muted-foreground">
           Price list
         </h2>
-        <span className="text-meta text-tab-label tabular-nums">{live}</span>
+        <Badge variant="secondary" className="font-normal text-muted-foreground tabular-nums">
+          {live}
+        </Badge>
         {all.length > 0 ? (
           <div className="ml-auto flex items-center gap-3">
             <div className="relative w-56">
@@ -168,12 +171,7 @@ export default function ItemsManager({
         <div className="flex flex-col gap-6">
           {sections.map(({ group, items }) => (
             <div key={group || 'other'} className="flex flex-col gap-2">
-              {grouped ? (
-                <h3 className="flex items-center gap-2 px-1 text-meta text-tab-label">
-                  {group || 'Other'}
-                  <span className="tabular-nums">{items.length}</span>
-                </h3>
-              ) : null}
+              {grouped ? <h3 className="px-1 text-meta text-tab-label">{group || 'Other'}</h3> : null}
               <ul className="divide-y divide-border/50 rounded-lg border border-border/50">
                 {items.map((item) => (
                   <li key={item.id}>
@@ -198,6 +196,7 @@ export default function ItemsManager({
             if (!next) onEditingChange(null);
           }}
           float
+          className="bg-background"
           title={editing ? editing.name : 'Add item'}
           toolbar={
             <DrawerToolbar

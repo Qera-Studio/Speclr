@@ -56,7 +56,7 @@ describe('ServiceCatalogue', () => {
     const sac = screen.getByLabelText('SAC');
     await user.clear(sac);
     await user.type(sac, '998314');
-    await user.type(screen.getByLabelText('Rate'), '45000.50');
+    await user.type(screen.getByLabelText('List price'), '45000.50');
     await user.click(screen.getByRole('button', { name: 'Save service' }));
 
     expect(updateServiceDetails).toHaveBeenCalledWith(
@@ -74,7 +74,7 @@ describe('ServiceCatalogue', () => {
 
     const retainer = screen.getByRole('region', { name: 'Retainer' });
     await user.click(within(retainer).getByRole('button', { name: 'Add to Retainer' }));
-    await user.type(screen.getByLabelText('Title'), 'Newsletter operation');
+    await user.type(screen.getByLabelText('Name'), 'Newsletter operation');
     await user.click(screen.getByRole('button', { name: 'Add service' }));
 
     expect(createService).toHaveBeenCalledWith(
@@ -93,12 +93,63 @@ describe('ServiceCatalogue', () => {
     await user.click(screen.getByRole('button', { name: 'Add service' }));
     await user.click(screen.getByRole('combobox', { name: 'Start from' }));
     await user.click(await screen.findByRole('option', { name: /Custom web build/ }));
-    await user.type(screen.getByLabelText('Title'), 'Three.js experience');
+    await user.type(screen.getByLabelText('Name'), 'Three.js experience');
     await user.click(screen.getByRole('button', { name: 'Add service' }));
 
     expect(createService).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Three.js experience', cloneFrom: '06' }),
     );
+  });
+
+  /** Base UI prints the raw value unless told the labels; ui/select.tsx tells it. */
+  it('shows each choice by its label, not its stored value', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCatalogue services={SERVICES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+    expect(screen.getByRole('combobox', { name: 'Start from' })).toHaveTextContent('Nothing, start empty');
+    expect(screen.getByRole('combobox', { name: 'Section' })).not.toHaveTextContent(/^(build|setup|retainer|audit)$/);
+  });
+
+  /** The sentence the card and the page print, not the contract's overview. */
+  it('posts the description as the blurb', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCatalogue services={SERVICES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+    await user.type(screen.getByLabelText('Name'), 'Newsletter design');
+    await user.type(screen.getByLabelText('Description'), 'A newsletter, designed.');
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+
+    expect(createService).toHaveBeenCalledWith(
+      expect.objectContaining({ blurb: 'A newsletter, designed.' }),
+    );
+    expect(createService).toHaveBeenCalledWith(expect.not.objectContaining({ overview: expect.anything() }));
+  });
+
+  /** A code types the way it is written: upper case, as typed. */
+  it('upper-cases a typed code and posts it', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCatalogue services={SERVICES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+    await user.type(screen.getByLabelText('Name'), 'Newsletter design');
+    const code = screen.getByLabelText('Code');
+    await user.type(code, 'news');
+    expect(code).toHaveValue('NEWS');
+    await user.click(screen.getByRole('button', { name: 'Add service' }));
+
+    expect(createService).toHaveBeenCalledWith(expect.objectContaining({ code: 'NEWS' }));
+  });
+
+  /** Contracts and invoices cite a code, so an existing one never changes. */
+  it('offers no code field when editing', async () => {
+    const user = userEvent.setup();
+    render(<ServiceCatalogue services={SERVICES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Shopify storefront' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Quick edit' }));
+    expect(screen.queryByLabelText('Code')).not.toBeInTheDocument();
   });
 
   it('offers nothing to start from when editing', async () => {
