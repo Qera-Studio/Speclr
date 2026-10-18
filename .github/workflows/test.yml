@@ -1,0 +1,31 @@
+# The standard says a task is not done until `npm test` passes; this makes the
+# repository say it too. Type-check and the Jest suite on every push and pull
+# request. The suite is hermetic (Next's jest transform skips `.env.local`), so
+# no secret is needed here and none should be added.
+#
+# Playwright is deliberately not run: browser installs are the expensive part
+# of the free minutes, and the e2e suite is run locally before any change to a
+# sheet or a page frame (AGENTS.md, testing rules). Add it when minutes allow.
+name: test
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test -- --ci
