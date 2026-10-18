@@ -391,6 +391,12 @@ Tailwind's `shadow-sm` … `shadow-2xl` fail the build.
   visible `<Label>`; that is written down in `contrast.test.ts` rather than
   silently skipped.
 
+**Layers** (`--z-*` in `globals.css`): sticky 10, rail 20, modal 30,
+overlay 40, toast 50. **Overlay sits above modal**, because a select, menu or
+tooltip is opened from something already on screen, which is often a dialog
+or a drawer. The other order hid every dropdown in every dialog behind the
+dialog itself until 16 October 2026; `e2e/popup.spec.ts` measures it.
+
 ### 1.7a Popups anchored to a control — **enforced**
 
 Every surface that hangs off a field or a button (dropdown menu, submenu,
@@ -1067,6 +1073,10 @@ written anywhere else fails the build.
 | **Not found** | `(app)/not-found.tsx`, inside the shell: a dead link lands on a page that still has the nav and the way back. |
 | **Pending** | `Button pending`: a spinner in front of a label that never changes. Enforced on every submit, primary and destructive. |
 
+The empty panel is lifted by `shadow-raised`, carries a 40px icon, and sets
+its one action 48px below the copy, at `lg`, so the button reads as the next
+step rather than a fourth line of text (17 October 2026).
+
 ### 2.6 Feedback
 
 **The ladder, lowest to highest:** a field error (inline, `FieldError`, on
@@ -1526,6 +1536,10 @@ them. Only the middle band scrolls.
   the honest state rather than a link that fails on arrival.
 - **`fill` drops the centred column** for a phase that is its own layout: a
   preview beside a rail, a ledger of cards.
+- **`nav="tabs"` draws the steps as the shared tab strip** instead of the
+  spread track, left-aligned to the form panel's edge, with the step anchored
+  directly under it. Client onboarding uses it (17 October 2026); the
+  contract flow keeps the track.
 
 **Enforced** (`design-system.test.ts`): `aria-current="step"` outside
 `components/patterns/flow/` fails the build. It is the attribute that marks which step of
@@ -1681,6 +1695,16 @@ In order:
 ---
 
 ## 6. Change log
+
+- **17 October 2026, the quiet style reaches forms and a second page.** The
+  service dialog, the item panel and the leads pages take it: labels muted
+  once at the form (`**:data-[slot=field-label]:text-muted-foreground`) so a
+  shared field cannot come out darker; white surfaces for a dialog and a
+  panel; quiet Cancel, ink primary, buttons at the foot. Prices are typed into
+  `RupeeInput` (₹ inside the field, a unit in the label where one matters).
+  `Select` now shows an option's label rather than its stored value, fixed in
+  the atom for all eight callers. `quiet.ts` still lives under
+  `admin/services/` and should move to `patterns/` now that other pages use it.
 
 - **16 October 2026, the quiet style, on the service catalogue first.** A
   trial approved on a preview page replaced the services board

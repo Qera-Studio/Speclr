@@ -719,8 +719,17 @@ removed; a rule that matches nothing is a test that passes forever.
 ### 5h. A Service carries its SAC and its list price
 
 The catalogue at `/client/services` is editable now: a pencil on each card opens
-a dialog of five fields (section, title, description, rate, SAC). Four things
-about it are decisions rather than defaults.
+a dialog of five fields (name, description, section, list price, SAC), plus a
+code when adding. Four things about it are decisions rather than defaults.
+
+**The dialog's description is the `blurb`** (changed 16 October 2026): the one
+sentence the catalogue card, the service page and the quotation print. It used
+to write `overview`, which is contract wording a sold service takes from its
+terms, so what was typed there showed nowhere. **A code may be typed when
+adding** (upper-cased as typed, `serviceCodeSchema`), and `createService`
+refuses one any row already holds, archived included; blank still takes the
+next number. An existing code never changes: it is the key every contract,
+client record and invoice line cites.
 
 **The dialog posts five fields; the server reads the row.** A Service also
 carries sixty-odd lines of scope, exclusions and client inputs that this screen
@@ -1253,6 +1262,25 @@ on every quote, with nothing deriving it and nothing checking it.
 `paymentPhases` is absent on an untouched document, seeded from the band when
 it is not, and refused at finalize unless it bills 100%. A field that starts
 empty and one that starts correct are different fields.
+
+### 5m. A lead is not a client, and becomes one by signing
+
+Added 17 October 2026 (`lib/domain/lead.ts`, `/client/leads`). A lead is a
+name and a first conversation: company, email, phone, where they came from,
+which services they asked about, notes. **It is deliberately not a client
+record.** A client is onboarded once and every document derives from it
+(§5d); a lead has no legal name, no address and no tax identity, and asking
+for them up front is the onboarding flow's weight on someone who may never
+buy anything.
+
+Three rules. **Deleting a lead erases the row**, because it holds a third
+party's contact details, which is the DPDP Act 2023 reading §5d applies to
+attachments. **The stages are a fixed list** (New, Reached out, Discovery
+session, Quotation sent, Quotation approved, Contract sent, Lost), and there
+is no "won": a signed lead becomes a client. **The document stages are typed
+by hand for now** and are meant to be derived from the quotation and the
+contract once those link to a lead (`ROADMAP.md` §12), at which point they
+stop being editable.
 
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
