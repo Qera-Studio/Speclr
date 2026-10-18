@@ -7,7 +7,38 @@ import { cn } from "@/lib/utils"
 import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+/**
+ * Base UI's `Select.Value` prints the raw value ("setup", "NONE") unless the
+ * root is handed an `items` map. Every caller would have to repeat its options
+ * twice to get the label, so the map is read off the `SelectItem` children
+ * instead. A caller may still pass `items` itself.
+ */
+function Select<Value, Multiple extends boolean | undefined = false>({
+  items,
+  children,
+  ...props
+}: SelectPrimitive.Root.Props<Value, Multiple>) {
+  return (
+    <SelectPrimitive.Root items={items ?? itemsOf(children)} {...props}>
+      {children}
+    </SelectPrimitive.Root>
+  )
+}
+
+function itemsOf(node: React.ReactNode): Record<string, React.ReactNode> {
+  const found: Record<string, React.ReactNode> = {}
+  const walk = (n: React.ReactNode) =>
+    React.Children.forEach(n, (child) => {
+      if (!React.isValidElement<{ value?: unknown; children?: React.ReactNode }>(child)) return
+      if (child.type === SelectItem && typeof child.props.value === "string") {
+        found[child.props.value] = child.props.children
+      } else {
+        walk(child.props.children)
+      }
+    })
+  walk(node)
+  return found
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (

@@ -136,15 +136,18 @@ function EmptyState({
 }) {
   const { Icon, title } = PRESETS[preset];
   return (
-    <Empty className={className}>
+    // A faint lift, a larger icon, and the action set well apart from the
+    // copy: 16px of gap plus `pt-8` is 48px, so the button reads as the next
+    // step rather than a fourth line of text (17 October 2026).
+    <Empty className={cn("shadow-raised", className)}>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant="icon" className="size-10 [&_svg:not([class*='size-'])]:size-5">
           <Icon aria-hidden="true" />
         </EmptyMedia>
         <EmptyTitle>{title(noun)}</EmptyTitle>
         {description ? <EmptyDescription>{description}</EmptyDescription> : null}
       </EmptyHeader>
-      {action ? <EmptyContent>{action}</EmptyContent> : null}
+      {action ? <EmptyContent className="pt-8">{action}</EmptyContent> : null}
     </Empty>
   );
 }

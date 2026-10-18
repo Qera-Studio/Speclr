@@ -167,3 +167,23 @@ test.describe('a popup keeps its distance and never comes out narrower', () => {
     expect(gap).toBeLessThanOrEqual(MAX_GAP);
   });
 });
+
+/**
+ * A popup opened inside a dialog draws over the dialog. With `--z-overlay`
+ * below `--z-modal` every select in every dialog opened behind it: the list
+ * was there, expanded and focusable, and invisible (fixed 16 October 2026).
+ * Measured by asking the browser what is on top at the option's centre.
+ */
+test('a select inside a dialog opens above the dialog', async ({ page }) => {
+  await page.goto('/preview/services');
+  await page.getByRole('button', { name: 'Add service' }).first().click();
+  await page.getByRole('dialog').getByRole('combobox', { name: 'Section' }).click();
+  const option = page.getByRole('option').first();
+  await expect(option).toBeVisible();
+  const box = (await option.boundingBox())!;
+  const onTop = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('[role="option"]') !== null,
+    { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+  );
+  expect(onTop).toBe(true);
+});

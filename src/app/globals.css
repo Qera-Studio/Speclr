@@ -418,11 +418,14 @@
   --elevation-overlay: 0 4px 12px oklch(0 0 0 / 0.1), 0 1px 2px oklch(0 0 0 / 0.06);
   --elevation-modal: 0 16px 48px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.08);
   /* The stacking order, named. A bare `z-50` says nothing about what it is
-     above; `z-(--z-overlay)` does. Five layers, and a sixth is a question. */
+     above; `z-(--z-overlay)` does. Five layers, and a sixth is a question.
+     Overlay sits ABOVE modal: a select, menu or tooltip opened inside a dialog
+     or drawer must draw over it. The other order hid every dropdown in every
+     dialog behind the dialog itself (fixed 16 October 2026). */
   --z-sticky: 10;
   --z-rail: 20;
-  --z-overlay: 30;
-  --z-modal: 40;
+  --z-modal: 30;
+  --z-overlay: 40;
   --z-toast: 50;
   /* The page's own ground, deliberately, matching dark mode where the rail and
      the page have always shared --gray-950. The rail was a step down the ramp
