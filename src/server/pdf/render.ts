@@ -155,6 +155,13 @@ export async function renderPdf(url: string, cookie: string): Promise<Buffer> {
       // A sheet that never paginates (invoice, receipt, slip, letter) renders
       // no such marker and is ready as soon as it loaded.
       .catch(() => undefined);
+    // But a contract or quotation still showing its un-paginated flow timed
+    // out mid-measure. Printing it would store one enormous page as the issued
+    // copy, so this fails instead: the caller logs it and the download route
+    // renders afresh (launch gate, 18 October 2026).
+    if (await page.$('[data-paginated="pending"]')) {
+      throw new Error(`Pagination did not finish within 15s for ${url}`);
+    }
 
     const bytes = await page.pdf({
       ...A4,

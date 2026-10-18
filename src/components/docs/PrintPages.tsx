@@ -221,6 +221,9 @@ export default function PrintPages({
     return (
       <div
         ref={flowRef}
+        // Present only until pagination lands, so the PDF renderer can tell a
+        // contract that never paginated from a sheet that never needed to.
+        data-paginated="pending"
         // Measured at full page width; a column block carries its own — see
         // `DocumentPreview`.
         className={`paginatorPage w-[794px] box-border flex flex-col [&>*]:shrink-0 ${
