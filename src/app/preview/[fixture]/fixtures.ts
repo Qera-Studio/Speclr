@@ -1,7 +1,9 @@
 import { contractDoc } from "@/lib/domain/contract/__tests__/fixture";
 import { STUDIO_INFO } from "@/lib/domain/studio";
+import { defaultLetterContent } from "@/lib/domain/hrContent";
 import type {
   AdminDocument,
+  LetterDocument,
   LineItem,
   QuotationDocument,
   SlipDocument,
@@ -421,6 +423,106 @@ const quotationOverflow = (): QuotationDocument => {
  * Every fixture the preview route serves, and the only ones it will serve: the
  * segment is looked up here rather than parsed, so there is nothing to traverse.
  */
+/**
+ * A receipt against the domestic invoice: the same lines and tax, plus the
+ * PAYMENT block a receipt alone carries. Fixed A4 frame, so it can clip.
+ */
+const receipt = (): AdminDocument =>
+  ({
+    ...invoice(),
+    id: "rec-1",
+    type: "REC",
+    number: "QS-REC-2627-001",
+    issueDate: "2026-06-20",
+    dueDate: undefined,
+    payment: {
+      date: "2026-06-20",
+      method: "Bank Transfer",
+      reference: "UTR HDFCN52026062012345678",
+      againstInvoiceNumber: "QS-INV-2627-001",
+      againstInvoiceId: "inv-1",
+    },
+  }) as unknown as AdminDocument;
+
+/**
+ * A credit note against the same invoice, with the Rule 53(1A)(f) reference
+ * and a reason: the two rows the invoice does not have.
+ */
+const creditNote = (): AdminDocument =>
+  ({
+    ...invoice(),
+    id: "crn-1",
+    type: "CRN",
+    number: "QS-CRN-2627-001",
+    issueDate: "2026-07-02",
+    dueDate: undefined,
+    lineItems: [
+      { description: "Photography direction, one shoot day not delivered", ratePaise: 3000000, qty: 1, sacCode: "998386" },
+    ],
+    discountPercent: undefined,
+    against: { invoiceNumber: "QS-INV-2627-001", invoiceDate: "2026-06-10", invoiceId: "inv-1" },
+    reason: "Deficiency in service: the second shoot day was cancelled and not rescheduled.",
+  }) as unknown as AdminDocument;
+
+/** The intern's stipend slip: one stipend line, no statutory deductions. */
+const stipendSlip = (): SlipDocument =>
+  ({
+    ...paySlip(0, 0),
+    id: "stp-1",
+    type: "STP",
+    number: "QS-STP-2627-001",
+    lineItems: [line("Monthly stipend", 1500000), line("Travel reimbursement", 120000)],
+    deductions: [],
+    employeeSnapshot: {
+      ...paySlip(0, 0).employeeSnapshot,
+      name: "Rohan Mehta",
+      role: "Design Intern",
+      engagementType: "intern",
+      pronoun: "he",
+      joiningDate: "2026-05-01",
+      endDate: "2026-10-31",
+      payroll: {},
+    },
+    deductionsNote: "No statutory deductions (PF, ESI, TDS) are applicable.",
+  }) as unknown as SlipDocument;
+
+/**
+ * A letter carrying the wording the editor seeds for a fresh draft
+ * (`defaultLetterContent`), to a given engagement. A letter stores its body,
+ * so an empty one prints blank; finalize refuses that, and this measures the
+ * real thing.
+ */
+const letter = (
+  type: LetterDocument["type"],
+  engagementType: "employee" | "intern",
+): LetterDocument => {
+  const seeded = defaultLetterContent(type, engagementType, {
+    role: engagementType === "intern" ? "Design Intern" : "Senior Designer",
+    payText: engagementType === "intern" ? "₹ 15,000.00" : "₹ 10,80,000.00",
+    startDate: "1st April 2025",
+    endDate: "31st October 2026",
+    pronoun: { subject: "she", object: "her", possessive: "her" },
+  });
+  return ({
+    id: `${type.toLowerCase()}-${engagementType}`,
+    type,
+    status: "finalized",
+    issueDate: "2026-06-01",
+    gstRatePercent: 0,
+    lineItems: [],
+    employeeId: "emp-1",
+    employeeSnapshot: {
+      ...paySlip(0, 0).employeeSnapshot,
+      engagementType,
+      role: engagementType === "intern" ? "Design Intern" : "Senior Designer",
+      endDate: "2026-10-31",
+    },
+    bodyParagraphs: seeded.bodyParagraphs,
+    bulletSections: seeded.bulletSections,
+    payAmountPaise: engagementType === "intern" ? 1500000 : 9000000,
+  }) as unknown as LetterDocument;
+};
+
 export const FIXTURES = {
   /** The density the pay slip is drawn for. Must fit on one page. */
   "pay-slip": () => paySlip(6, 5),
@@ -437,6 +539,14 @@ export const FIXTURES = {
   "quotation-plain": quotationPlain,
   /** Twelve deliverables against a limit of 8, with add-ons on the same page. */
   "quotation-overflow": quotationOverflow,
+  receipt,
+  "credit-note": creditNote,
+  "stipend-slip": stipendSlip,
+  "offer-employee": () => letter("OFR", "employee"),
+  "offer-intern": () => letter("OFR", "intern"),
+  "experience-letter": () => letter("EXP", "employee"),
+  "exit-employee": () => letter("EXIT", "employee"),
+  "exit-intern": () => letter("EXIT", "intern"),
 } as const;
 
 export type FixtureName = keyof typeof FIXTURES;
