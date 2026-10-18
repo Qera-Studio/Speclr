@@ -175,6 +175,19 @@ Free tasks only the founder can do, plus decisions the work needs:
   which found and fixed two copy-script bugs (`2d8d592`); the gate dry run
   (above). Phase 3: every document type measured at real A4 (`82f95d8`).
   Next.js 16.4.2 and a clean audit (`fcebb2b`).
+- 18 October 2026, the gate fixes the assistant owns: the print URL only
+  renders from hosts this app is served on (`9cf0c11`); a contract whose
+  pagination timed out is never stored as the issued PDF (`28d2985`); a 2px
+  focus line on the resize handle and no faded text, with a design rule
+  against it (`6ba13a4`); `npm run db:migrate` backs up first (`becc50a`); an
+  axe scan of six screens, all clean (`df7c090`). **Kept on purpose:** the
+  PDF route's error text, which only an authorized caller entitled to that
+  document can see. **Recorded, not built:** concurrent attachment uploads
+  across two tabs can drop a row (every client save shares that
+  read-then-write shape; one operator, uploads already queued one at a time);
+  and the list queries are unbounded, which stays fast for years at about 30
+  documents a month, so paging waits until a list passes roughly 2,000 rows,
+  since a hard cap would hide old financial records instead.
 
 ---
 

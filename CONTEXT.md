@@ -1472,7 +1472,7 @@ speclr holds sensitive financial/legal documents. Access is defence-in-depth:
 
 ## Known issues / watch-list
 
-- **npm audit** flags transitive `postcss`/`sharp` advisories bundled inside Next.js. **Do NOT `audit fix --force`** — it downgrades Next 16 → 9.3.3 (catastrophic). Resolve by upgrading Next when a patch lands.
+- **npm audit**: `npm audit --omit=dev` is at 0 since Next 16.4.2 (18 October 2026). The dev-only tree (drizzle-kit, the shadcn CLI) still reports advisories that never ship. **Do NOT `audit fix --force`**: it downgrades Next 16 to 9.3.3 (catastrophic). Plain `npm audit fix` is safe.
 - **Clerk keys are `pk_test_` (dev instance)** — they only work on `localhost`. Production login needs a Clerk *production instance* + the `speclr.qera.studio` domain configured. A go-live task, not done yet.
 - **`SPECLR_ALLOWED_EMAILS` in Vercel** must be kept in sync with `.env.local` (currently `shivanshu@qera.studio,ops@qera.studio`).
 
