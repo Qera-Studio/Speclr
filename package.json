@@ -11,7 +11,8 @@
     "test:int": "RUN_INTEGRATION=1 jest --runInBand integration",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "backup": "tsx scripts/backup.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
