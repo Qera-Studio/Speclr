@@ -74,7 +74,11 @@ export interface StudioInfo {
     accountName?: string;
     swift?: string;
     iban?: string;
-    /** The branch address a correspondent bank wants, as printed lines. */
+    /**
+     * The branch's address. Printed nowhere since 19 October 2026: SWIFT and
+     * IFSC identify the branch, and no transfer form requires it. Kept in the
+     * type and schema so settings saved with one still load.
+     */
     bankAddress?: string;
   };
 }
@@ -111,7 +115,6 @@ export const STUDIO_INFO: StudioInfo = {
     upiId: 'qera.studio@kotak',
     accountName: 'Qera Private Limited',
     swift: 'KKBKINBBCPC',
-    bankAddress: 'C-77, RDC Raj Nagar, Ghaziabad 201002',
   },
 };
 

@@ -53,12 +53,13 @@ function PayRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
     <div className="flex">
-      <dt className="text-black text-[8px] font-medium min-w-[100px]">
+      <dt className="text-black text-[10px] font-medium min-w-[100px]">
         {label}
       </dt>
-      {/* The same size and weight as the label, and as TERMS beside it: the
-          bank details read as one block at the size of the rest of the foot. */}
-      <dd className="m-0 text-black text-[8px] font-medium whitespace-pre-line">
+      {/* The same size and weight as the label, so the bank details read as
+          one block. 10px rather than the 8px TERMS use, because these are
+          retyped into a bank form and a misread digit sends money astray. */}
+      <dd className="m-0 text-black text-[10px] font-medium whitespace-pre-line">
         {value}
       </dd>
     </div>
@@ -670,7 +671,7 @@ export default function DocumentSheet({
         <div
           className={
             doc.type === "INV"
-              ? "grid grid-cols-[1.3fr_auto_1fr] gap-[12px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
+              ? "grid grid-cols-[1fr_auto_1.5fr] gap-[12px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
               : "grid grid-cols-[1fr_1.3fr] gap-[8px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
           }
         >
@@ -708,10 +709,6 @@ export default function DocumentSheet({
                       <PayRow label="IFSC code" value={studio.bank.ifsc} />
                       <PayRow label="IBAN" value={studio.bank.iban} />
                       <PayRow label="Branch" value={studio.bank.branch} />
-                      <PayRow
-                        label="Branch address"
-                        value={studio.bank.bankAddress}
-                      />
                     </>
                   ) : (
                     <>

@@ -344,16 +344,6 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               <FieldError errors={[errors.bank?.iban]} />
             </Field>
           </FieldRow>
-          <Field>
-            <FieldLabel htmlFor="studio-bank-address">Branch address</FieldLabel>
-            <Textarea
-              id="studio-bank-address"
-              rows={3}
-              autoComplete="off"
-              {...register('bank.bankAddress')}
-            />
-            <FieldError errors={[errors.bank?.bankAddress]} />
-          </Field>
         </FieldSet>
 
         <FieldSeparator />

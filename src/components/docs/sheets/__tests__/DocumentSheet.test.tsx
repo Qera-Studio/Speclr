@@ -126,15 +126,17 @@ describe("DocumentSheet", () => {
     expect(screen.queryByText("Beneficiary address")).toBeNull();
   });
 
-  it("prints the branch on an export, and no beneficiary address row", () => {
+  it("prints the branch on an export, and no address rows", () => {
     const doc = {
       ...baseInvoice,
       gstRatePercent: 0,
       placeOfSupplyStateCode: "96",
     } as unknown as InvoiceDocument;
     render(<DocumentSheet doc={doc} />);
-    expect(screen.getByText("C-77, RDC Raj Nagar, Ghaziabad 201002")).toBeInTheDocument();
-    // The beneficiary's address is the "from:" block's; it is not repeated.
+    expect(screen.getByText("Branch")).toBeInTheDocument();
+    // SWIFT and IFSC identify the branch, and the beneficiary's address is the
+    // "from:" block's, so neither address is repeated here.
+    expect(screen.queryByText("Branch address")).toBeNull();
     expect(screen.queryByText("Beneficiary address")).toBeNull();
   });
 
