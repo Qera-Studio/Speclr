@@ -15,8 +15,8 @@ export default defineConfig({
   dialect: 'postgresql',
   dbCredentials: {
     // Migrations change the schema, so they run as the owner. The app's own
-    // DATABASE_URL becomes a restricted role once row-level security is on
-    // (`src/db/pending/README.md`); until then the two are the same login.
+    // DATABASE_URL is the restricted `speclr_app` role (migration 0025), which
+    // cannot alter a table. Falls back for a checkout that has only one URL.
     url: (process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL)!,
   },
   strict: true,

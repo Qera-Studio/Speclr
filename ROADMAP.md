@@ -301,12 +301,16 @@ Free tasks only the founder can do, plus decisions the work needs:
     `44cc6d1`.
   - The pay slip row limit, 8 earnings and 7 deductions (measured): `9eb3582`.
   - The wage register: `091e780`.
-  - Row-level security prepared, waiting on step 1 of
-    `src/db/pending/README.md`: `d65090f`.
   - The two dead `QTN` drafts deleted after a backup.
-- **Create the `speclr_app` role in Neon** and swap the two connection
-  strings: the three steps in `src/db/pending/README.md`. Then say so, and
-  row-level security goes on.
+- **Row-level security is on** (19 October 2026, migration 0025). The app
+  connects as `speclr_app`, created with SQL by `scripts/create-app-role.ts`,
+  because a role made in the Neon console joins `neon_superuser` and bypasses
+  RLS. It has been seen to be refused on dropping or truncating a table,
+  disabling the immutability trigger or RLS, creating a role, and editing an
+  issued document; every integration test passes as it. Migrations and
+  backups run as `DATABASE_URL_OWNER`. **Founder's step:** copy
+  `DATABASE_URL` and `DATABASE_URL_OWNER` from `.env.local` into Vercel. A
+  table added later needs RLS and a policy in the migration that creates it.
 - **Contract acceptance** built the same day, on the founder's yes:
   - The execution statement now says the agreement takes effect when the
     Client accepts it: by signature, by email, or through the approval link.

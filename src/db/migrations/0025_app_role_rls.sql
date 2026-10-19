@@ -1,6 +1,6 @@
 -- Row-level security with a restricted app role (founder's decision,
--- 19 October 2026). NOT YET IN THE JOURNAL: it needs the role `speclr_app` to
--- exist, which is created in the Neon console (README.md beside this file).
+-- 19 October 2026). The role `speclr_app` was created first, with SQL, by
+-- `scripts/create-app-role.ts`.
 --
 -- What it buys, honestly. speclr has one tenant and the browser never talks
 -- to the database, so a policy cannot hide one customer's rows from another.
