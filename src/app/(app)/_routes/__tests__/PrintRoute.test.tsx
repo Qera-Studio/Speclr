@@ -89,3 +89,37 @@ describe('/docs/[id]/print', () => {
     await expect(PrintPage({ params: Promise.resolve({ id: 'doc-1' }), profile: 'client' })).rejects.toThrow('NOT_FOUND');
   });
 });
+
+/** Rule 48(1): the supplier's copy of an issued invoice, rendered and never stored. */
+describe('the supplier copy', () => {
+  const page = (copy?: string) =>
+    PrintPage({
+      params: Promise.resolve({ id: 'doc-1' }),
+      searchParams: Promise.resolve(copy ? { copy } : {}),
+      profile: 'client',
+    });
+
+  beforeEach(() => {
+    requireAuthorizedUser.mockResolvedValue({ email: 'ops@qera.studio' });
+    getDocument.mockResolvedValue(invoice);
+  });
+
+  it('marks the invoice as the duplicate for the supplier', async () => {
+    render(await page('supplier'));
+    expect(screen.getByText('DUPLICATE FOR SUPPLIER')).toBeInTheDocument();
+    expect(screen.queryByText('ORIGINAL FOR RECIPIENT')).not.toBeInTheDocument();
+  });
+
+  it('prints the original otherwise, and offers the supplier copy beside it', async () => {
+    render(await page());
+    expect(screen.getByText('ORIGINAL FOR RECIPIENT')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Supplier's copy" })).toBeInTheDocument();
+  });
+
+  it('does not offer it on a receipt', async () => {
+    getDocument.mockResolvedValue({ ...invoice, type: 'REC', payment: { date: '2026-06-10', method: 'UPI' } });
+    render(await page('supplier'));
+    expect(screen.queryByText('DUPLICATE FOR SUPPLIER')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Supplier's copy" })).not.toBeInTheDocument();
+  });
+});

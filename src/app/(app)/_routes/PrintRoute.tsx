@@ -4,6 +4,7 @@ import { profileOfDocType, type Profile } from '@/lib/profile';
 import { getDocument, getStudioSettings } from '@/db/store';
 import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import { docFilename } from '@/lib/domain/docFilename';
+import { SUPPLIER_COPY_MARKING } from '@/lib/domain/docContent';
 import type { AdminDocument, LetterDocument } from '@/lib/domain/types';
 import DocumentSheet from '@/components/docs/sheets/DocumentSheet';
 import { ContractPrint } from '@/components/docs/ContractPages';
@@ -25,9 +26,11 @@ function isLetter(doc: AdminDocument): doc is LetterDocument {
 
 export default async function PrintRoute({
   params,
+  searchParams,
   profile,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ copy?: string | string[] }>;
   profile: Profile;
 }) {
   try {
@@ -50,9 +53,18 @@ export default async function PrintRoute({
   // none yet, so it prints the live settings — matching what the editor preview
   // showed. The cast restores the discriminated union that the spread widens;
   // the shape is unchanged, only one optional field is filled in.
-  const doc: AdminDocument = stored.studioSnapshot
+  const withStudio: AdminDocument = stored.studioSnapshot
     ? stored
     : ({ ...stored, studioSnapshot: await getStudioSettings() } as AdminDocument);
+  // `?copy=supplier`: the same issued invoice marked as the supplier's copy
+  // (Rule 48(1)). Only in this render; nothing is written.
+  const supplierCopy =
+    (await searchParams)?.copy === 'supplier' &&
+    withStudio.type === 'INV' &&
+    withStudio.status === 'finalized';
+  const doc: AdminDocument = supplierCopy
+    ? ({ ...withStudio, content: { ...withStudio.content, copyMarking: SUPPLIER_COPY_MARKING } } as AdminDocument)
+    : withStudio;
 
   const spec = DOC_TYPES[doc.type];
   const finalized = doc.status === 'finalized';
@@ -76,6 +88,7 @@ export default async function PrintRoute({
         docId={doc.id}
         finalized={finalized}
         isSlip={isSlip(doc)}
+        supplierCopy={doc.type === 'INV' && finalized}
       />
       <div className="doc-sheet-wrap">{sheet}</div>
     </main>

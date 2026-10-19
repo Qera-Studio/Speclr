@@ -38,6 +38,8 @@ export default function FinalizedActions({
   onPrint,
   onDownload,
   downloading = false,
+  onDownloadSupplierCopy,
+  downloadingSupplierCopy = false,
   actionsOnly = false,
   sealedCard,
 }: {
@@ -52,6 +54,12 @@ export default function FinalizedActions({
   onPrint?: () => void;
   onDownload?: () => void;
   downloading?: boolean;
+  /**
+   * An issued invoice's duplicate, marked for the supplier (Rule 48(1)). The
+   * stored PDF stays the recipient's original; this is rendered on request.
+   */
+  onDownloadSupplierCopy?: () => void;
+  downloadingSupplierCopy?: boolean;
   /**
    * Render the buttons without the sealed card, for a caller that places the
    * two in different parts of the page.
@@ -149,6 +157,17 @@ export default function FinalizedActions({
               <Button variant="primary" type="button" onClick={onDownload} pending={downloading}>
                 <Download aria-hidden="true" />
                 Download PDF
+              </Button>
+            ) : null}
+            {onDownloadSupplierCopy ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onDownloadSupplierCopy}
+                pending={downloadingSupplierCopy}
+              >
+                <Download aria-hidden="true" />
+                Supplier&apos;s copy
               </Button>
             ) : null}
             <Button type="button" variant="secondary" onClick={onPrint}>

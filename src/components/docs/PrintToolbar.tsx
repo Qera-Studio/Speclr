@@ -36,12 +36,15 @@ export default function PrintToolbar({
   docId,
   finalized = false,
   isSlip = false,
+  supplierCopy = false,
 }: {
   fileName: string;
   /** Needed only for the finalized actions; a draft's toolbar is Print alone. */
   docId?: string;
   finalized?: boolean;
   isSlip?: boolean;
+  /** An issued invoice, which also offers the supplier's copy (Rule 48(1)). */
+  supplierCopy?: boolean;
 }) {
   // The browser's "Save as PDF" filename comes from document.title. We keep the
   // tab title deliberately bland to hide the tool, so swap in the document's
@@ -71,6 +74,7 @@ export default function PrintToolbar({
   }, [auto, handlePrint]);
 
   const { download, downloading } = useDownloadPdf(docId ?? '', fileName);
+  const supplier = useDownloadPdf(docId ?? '', fileName, 'supplier');
 
   /**
    * How tall the locked band is, published to the page it sits on.
@@ -147,6 +151,8 @@ export default function PrintToolbar({
             onPrint={handlePrint}
             onDownload={download}
             downloading={downloading}
+            onDownloadSupplierCopy={supplierCopy ? supplier.download : undefined}
+            downloadingSupplierCopy={supplier.downloading}
             actionsOnly
           />
         </div>

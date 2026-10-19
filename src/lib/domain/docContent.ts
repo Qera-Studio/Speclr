@@ -262,6 +262,14 @@ function defaultExportEndorsement(doc: ContentSource): string {
 }
 
 /**
+ * Rule 48(1)'s other copy: the one the supplier keeps under CGST s.36. Never
+ * stored. The print view puts it in place of the recipient's marking when
+ * asked for the supplier's copy, and that rendering is never saved, so the
+ * issued document stays the original (founder's decision, 19 October 2026).
+ */
+export const SUPPLIER_COPY_MARKING = 'DUPLICATE FOR SUPPLIER';
+
+/**
  * CGST Rule 48(1): an invoice for a *supply of services* is prepared in
  * duplicate, the original for the recipient and the duplicate for the supplier,
  * and each copy is marked as such. (Goods want triplicate; Qera supplies

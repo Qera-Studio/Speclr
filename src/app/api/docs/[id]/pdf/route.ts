@@ -5,6 +5,7 @@ import { docFilename } from '@/lib/domain/docFilename';
 import { logger } from '@/lib/logger';
 import { pdfKey, renderAndStorePdf } from '@/server/pdf/store';
 import { printUrlFor } from '@/server/pdf/url';
+import { renderPdf } from '@/server/pdf/render';
 import { headers } from 'next/headers';
 
 /**
@@ -38,7 +39,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const notFound = new Response('Not found', { status: 404 });
@@ -78,7 +79,10 @@ export async function GET(
   // Not 403: a draft's PDF genuinely does not exist.
   if (doc.status !== 'finalized') return notFound;
 
-  const filename = `${docFilename(doc)}.pdf`;
+  // Rule 48(1)'s duplicate: an issued invoice marked for the supplier. Rendered
+  // every time and never stored, so the stored PDF stays the original.
+  const supplierCopy = new URL(request.url).searchParams.get('copy') === 'supplier' && doc.type === 'INV';
+  const filename = `${docFilename(doc)}${supplierCopy ? ' (supplier copy)' : ''}.pdf`;
 
   // `attachment` rather than `inline`: this is a download, and the browser
   // saves it under this name with no dialog. That is the whole feature — a
@@ -99,6 +103,21 @@ export async function GET(
     });
 
   // `get` is null when the blob is gone and a 304 shape when nothing changed.
+  if (supplierCopy) {
+    try {
+      const cookie = (await headers()).get('cookie') ?? '';
+      const url = new URL(await printUrlFor(doc));
+      url.searchParams.set('copy', 'supplier');
+      return serve(new Uint8Array(await renderPdf(url.toString(), cookie)));
+    } catch (err) {
+      logger.error({ action: 'downloadPdf', event: 'supplier_copy_failed', documentId: id, error: err });
+      return new Response('Could not render the supplier copy.\n', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+      });
+    }
+  }
+
   if (stored && stored.statusCode === 200) return serve(stored.stream);
 
   // The fallback: finalize's render failed, or this document was finalized

@@ -9,6 +9,12 @@ export const metadata: Metadata = {
 // Session cookie + live document must be read on every request.
 export const dynamic = 'force-dynamic';
 
-export default function Page({ params }: { params: Promise<{ id: string }> }) {
-  return PrintRoute({ params, profile: 'client' });
+export default function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ copy?: string | string[] }>;
+}) {
+  return PrintRoute({ params, searchParams, profile: 'client' });
 }

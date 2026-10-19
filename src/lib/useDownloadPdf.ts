@@ -20,13 +20,18 @@ import { toast } from 'sonner';
  * The object URL is revoked immediately: the blob is a client's tax document
  * held in memory, and an un-revoked URL keeps it alive for the life of the tab.
  */
-export function useDownloadPdf(docId: string, fileName?: string | null) {
+export function useDownloadPdf(
+  docId: string,
+  fileName?: string | null,
+  /** An invoice's Rule 48(1) duplicate, rendered on request and never stored. */
+  copy?: 'supplier',
+) {
   const [downloading, setDownloading] = useState(false);
 
   const download = useCallback(async () => {
     setDownloading(true);
     try {
-      const response = await fetch(`/api/docs/${docId}/pdf`);
+      const response = await fetch(`/api/docs/${docId}/pdf${copy ? `?copy=${copy}` : ''}`);
       if (!response.ok) {
         // The route sends a plain-text reason on a render failure, and 'Not
         // found' on anything else. Either is more use than a saved file.
@@ -41,7 +46,7 @@ export function useDownloadPdf(docId: string, fileName?: string | null) {
       link.href = url;
       // The server's Content-Disposition already names the file; this is what
       // names it when the bytes come from an object URL, which has no headers.
-      link.download = `${fileName ?? docId}.pdf`;
+      link.download = `${fileName ?? docId}${copy ? ' (supplier copy)' : ''}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -51,7 +56,7 @@ export function useDownloadPdf(docId: string, fileName?: string | null) {
     } finally {
       setDownloading(false);
     }
-  }, [docId, fileName]);
+  }, [docId, fileName, copy]);
 
   return { download, downloading };
 }
