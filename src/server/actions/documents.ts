@@ -627,6 +627,10 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     {
       type: existing.type,
       content: existing.content,
+      // The Rule 46 statements default from these. Left out, an export froze
+      // the domestic wording.
+      gstRatePercent: existing.gstRatePercent,
+      placeOfSupplyStateCode: (existing as InvoiceDocument).placeOfSupplyStateCode,
       studioSnapshot,
       deductionsNote: (existing as SlipDocument).deductionsNote,
       employeeSnapshot,

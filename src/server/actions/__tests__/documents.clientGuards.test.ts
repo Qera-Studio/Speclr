@@ -118,6 +118,20 @@ describe('the LUT guard on a zero-rated invoice', () => {
     expect((await finalizeDocument('doc-1')).success).toBe(true);
   });
 
+  /**
+   * The Rule 46 statements are defaulted from the place of supply, and
+   * finalize freezes them. Resolved without it, an export froze the domestic
+   * wording: no export endorsement and the reverse-charge line without its
+   * export sentence, on a document that may never change again.
+   */
+  it('freezes the export wording, not the domestic', async () => {
+    getStudioSettings.mockResolvedValue(STUDIO_INFO);
+    await finalizeDocument('doc-1');
+    const frozen = saveDocument.mock.calls[0][0];
+    expect(frozen.content?.exportEndorsement).toMatch(/SUPPLY MEANT FOR EXPORT/);
+    expect(frozen.content?.reverseChargeLine).toMatch(/own jurisdiction/);
+  });
+
   it('refuses with no LUT recorded, and claims no number', async () => {
     getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutArn: undefined });
     const result = await finalizeDocument('doc-1');
