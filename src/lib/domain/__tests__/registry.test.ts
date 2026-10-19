@@ -130,9 +130,14 @@ describe("DOC_TYPES registry", () => {
     }
   });
 
-  it("the invoice carries the 6-clause terms set, the receipt the 4-clause set", () => {
+  it("the invoice carries the 6-clause terms set, the receipt the 5-clause set", () => {
     expect(DOC_TYPES.INV.fixedTerms).toHaveLength(6);
-    expect(DOC_TYPES.REC.fixedTerms).toHaveLength(4);
+    expect(DOC_TYPES.REC.fixedTerms).toHaveLength(5);
+  });
+
+  /** It is raised against an issued invoice, and must not read as a second one. */
+  it("the receipt opens by saying it is not a tax invoice", () => {
+    expect(DOC_TYPES.REC.fixedTerms[0].title).toMatch(/It is not a tax invoice/);
   });
 
   /**
@@ -341,8 +346,20 @@ describe("invoice schemas", () => {
 describe("receipt schemas", () => {
   const validReceiptFields = {
     ...validInvoiceFields,
-    payment: { date: "2026-06-21", method: "UPI", reference: "126634570908" },
+    payment: {
+      date: "2026-06-21",
+      method: "UPI",
+      reference: "126634570908",
+      againstInvoiceNumber: "QS-INV-2627-001",
+    },
   };
+
+  it("finalize requires the invoice the payment was made against", () => {
+    const { againstInvoiceNumber: _, ...payment } = validReceiptFields.payment;
+    expect(
+      receiptFinalizeSchema.safeParse({ ...validReceiptFields, payment }).success,
+    ).toBe(false);
+  });
 
   it("finalize accepts a complete receipt", () => {
     expect(receiptFinalizeSchema.safeParse(validReceiptFields).success).toBe(

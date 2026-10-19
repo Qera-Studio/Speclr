@@ -642,7 +642,11 @@ export default function DocumentSheet({
             a return reads it. Labelling it "due" would read as a second bill.
           */}
               <span className="text-black text-[14px] font-medium">
-                {doc.type === "CRN" ? "TOTAL CREDITED" : "TOTAL DUE"}
+                {doc.type === "CRN"
+                  ? "TOTAL CREDITED"
+                  : doc.type === "REC"
+                    ? "AMOUNT RECEIVED"
+                    : "TOTAL DUE"}
               </span>
               <span className="text-black text-[14px] font-medium [font-variant-numeric:tabular-nums] text-right">
                 {money(totals.totalPaise)}

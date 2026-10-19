@@ -271,7 +271,10 @@ describe('the purchase-order guard', () => {
   it('does not apply to a receipt', async () => {
     getClient.mockResolvedValue(client({ commercial: { poRequired: true } }));
     getDocument.mockResolvedValue(
-      invoice({ type: 'REC', payment: { date: '2026-06-10', method: 'Bank Transfer' } } as Partial<AdminDocument>),
+      invoice({
+        type: 'REC',
+        payment: { date: '2026-06-10', method: 'Bank Transfer', againstInvoiceNumber: 'QS-INV-2627-001' },
+      } as Partial<AdminDocument>),
     );
 
     const result = await finalizeDocument('doc-1');

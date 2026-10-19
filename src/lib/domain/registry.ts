@@ -378,7 +378,12 @@ export const creditNoteFinalizeSchema = baseFinalizeSchema
 
 export const receiptFinalizeSchema = baseFinalizeSchema
   .extend({
-    payment: paymentSchema,
+    // A receipt acknowledges payment against an invoice, so it names one.
+    payment: paymentSchema.extend({
+      againstInvoiceNumber: codeSchema(40, {
+        required: "Name the invoice this payment was made against.",
+      }),
+    }),
   })
   .superRefine(requirePlaceOfSupplyWithGst)
   .superRefine(oneDiscount)
@@ -877,9 +882,20 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
       payment: { date: "", method: "Bank Transfer", reference: "" },
     }),
     fixedTerms: [
+      /*
+        A receipt is only raised against an issued invoice, and printed the
+        tax computation exactly as one does. This says what it is, so it is not
+        read as a second tax invoice for the same supply. Wording approved by
+        the founder, 19 October 2026 (format freeze audit).
+      */
+      {
+        title:
+          "This acknowledges payment against the tax invoice named above. It is not a tax invoice; the tax shown was charged on that invoice.",
+        body: "",
+      },
       {
         title: "Ownership.",
-        body: "Payment having been received in full, all deliverables, designs, code and IP are hereby transferred to the client.",
+        body: "On receipt of payment in full for a Part, ownership of its deliverables passes to the client as provided in the parties' agreement.",
       },
       {
         title: "Costs & taxes.",

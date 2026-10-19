@@ -15,7 +15,7 @@ import { SHEET_HEIGHT, worstClip } from './paper';
 const SHEET = '.print-sheet';
 
 for (const [fixture, mustShow] of [
-  ['receipt', ['QS-INV-2627-001', 'UTR HDFCN52026062012345678']],
+  ['receipt', ['QS-INV-2627-001', 'UTR HDFCN52026062012345678', 'AMOUNT RECEIVED', 'It is not a tax invoice']],
   ['credit-note', ['TOTAL CREDITED', 'Deficiency in service']],
   ['stipend-slip', ['Monthly stipend', 'Travel reimbursement']],
 ] as const) {
