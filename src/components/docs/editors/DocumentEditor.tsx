@@ -560,6 +560,29 @@ export default function DocumentEditor({
   ]);
 
   /**
+   * Keep an invoice's currency equal to the client record's, the same way the
+   * place of supply is kept. It is read-only on the document, so a draft
+   * opened after the record was corrected (a foreign client saved as INR, then
+   * set to AUD) has to follow it, or the rate field never appears. Invoices
+   * only: a credit note or a receipt takes its currency from the invoice it
+   * names. An already-entered rate is kept, and seeded lines are not
+   * re-converted: amounts already typed are the operator's.
+   */
+  const recordCurrency =
+    selectedClient &&
+    placeOfSupplyOf(selectedClient).source === "export" &&
+    selectedClient.commercial?.currency &&
+    selectedClient.commercial.currency !== "INR"
+      ? selectedClient.commercial.currency
+      : "";
+  useEffect(() => {
+    if (typeCode !== "INV" || !selectedClient) return;
+    if (values.currency !== recordCurrency) {
+      setValue("currency", recordCurrency, { shouldDirty: true });
+    }
+  }, [recordCurrency, selectedClient, setValue, typeCode, values.currency]);
+
+  /**
    * Keep the tax fields equal to the derived treatment while it is locked.
    *
    * The read-only inputs below show the derived answer, but showing is not

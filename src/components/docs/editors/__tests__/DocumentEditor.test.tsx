@@ -607,6 +607,30 @@ describe("DocumentEditor (existing draft)", () => {
     );
   });
 
+  /**
+   * A foreign client saved as INR, the draft written, then the record set to
+   * AUD. The draft follows the record, so the rate field appears.
+   */
+  it("follows a client record whose currency changed after the draft", async () => {
+    const abroad = [
+      {
+        ...clients[0],
+        addressParts: { line1: "2 Crab Apple Lane", city: "Rouse Hill", state: "NSW", pincode: "2155", country: "AU" },
+        commercial: { currency: "AUD" },
+      },
+    ] as ClientRecord[];
+    render(
+      <DocumentEditor
+        typeCode="INV"
+        clients={abroad}
+        doc={{ ...draft, gstRatePercent: 0, placeOfSupplyStateCode: "96" } as typeof draft}
+        title="Edit invoice draft"
+      />,
+    );
+
+    expect(await screen.findByLabelText("₹ per A$1")).toBeInTheDocument();
+  });
+
   it("will not finalize on a single click", async () => {
     const u = userEvent.setup();
     render(
