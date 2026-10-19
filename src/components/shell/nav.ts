@@ -5,6 +5,7 @@ import {
   Users,
   UserPlus,
   IdCard,
+  ScrollText,
   Image,
   Network,
   ListChecks,
@@ -151,7 +152,11 @@ const ADMIN_TOOLS: NavLink[] = [
   { href: '/design', label: 'Design system', icon: SwatchBook },
 ];
 
-const ADMIN_RECORDS: NavLink[] = [{ href: '/admin/employees', label: 'Employees', icon: IdCard, jump: 'E' }];
+const ADMIN_RECORDS: NavLink[] = [
+  { href: '/admin/employees', label: 'Employees', icon: IdCard, jump: 'E' },
+  // Derived from the issued pay slips (`domain/wageRegister.ts`), 19 October 2026.
+  { href: '/admin/wage-register', label: 'Wage register', icon: ScrollText },
+];
 
 export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
   client: {

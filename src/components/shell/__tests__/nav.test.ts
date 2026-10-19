@@ -49,7 +49,7 @@ describe('nav model', () => {
    */
   it('gives each profile the records it is about', () => {
     expect(NAV_BY_PROFILE.client.records.map((r) => r.href)).toEqual(['/client/clients', '/client/leads']);
-    expect(NAV_BY_PROFILE.admin.records.map((r) => r.href)).toEqual(['/admin/employees']);
+    expect(NAV_BY_PROFILE.admin.records.map((r) => r.href)).toEqual(['/admin/employees', '/admin/wage-register']);
   });
 
   /**
