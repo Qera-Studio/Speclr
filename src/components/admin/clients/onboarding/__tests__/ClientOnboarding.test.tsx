@@ -37,6 +37,9 @@ jest.mock('@/server/actions/attachments', () => ({
   uploadClientAttachment: jest.fn(),
   removeClientAttachment: jest.fn(),
 }));
+// Same step, other half: the browser upload imports `@vercel/blob/client`,
+// whose ESM `jose` dependency Jest cannot parse.
+jest.mock('../uploadAttachment', () => ({ uploadClientAttachment: jest.fn() }));
 
 import ClientOnboarding from '../ClientOnboarding';
 
