@@ -43,10 +43,10 @@ describe('ClientRequestChecklist', () => {
     const user = userEvent.setup();
     render(<ClientRequestChecklist />);
 
-    await user.click(screen.getByRole('checkbox', { name: 'Signed contract or MSA' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Signed contract' }));
     await user.click(screen.getByRole('tab', { name: /outside india/i }));
 
-    expect(screen.getByRole('checkbox', { name: 'Signed contract or MSA' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Signed contract' })).toBeChecked();
   });
 
   it('keeps ticks across a remount, in sessionStorage only', async () => {

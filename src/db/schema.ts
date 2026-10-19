@@ -15,6 +15,7 @@
 
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   date,
   index,
@@ -206,14 +207,14 @@ export const employees = pgTable(
     joiningDate: date("joining_date").notNull(),
     endDate: date("end_date"),
     /** Monthly. Derived from `annual_salary_paise` when there is one. */
-    payAmountPaise: integer("pay_amount_paise").notNull(),
+    payAmountPaise: bigint("pay_amount_paise", { mode: "number" }).notNull(),
     /**
      * An employee's salary as quoted. A real column, not part of a JSONB group:
      * "what do we pay out a year" is a question worth asking of the table.
      * Null for interns, who are paid a monthly stipend, and for rows written
      * before this existed.
      */
-    annualSalaryPaise: integer("annual_salary_paise"),
+    annualSalaryPaise: bigint("annual_salary_paise", { mode: "number" }),
     /** Record-keeping only — documents still print INR. Null means INR. */
     payCurrency: text("pay_currency"),
     /** { bankName, accountNo, ifsc, upiId?, upiQrDataUrl? } */
@@ -299,7 +300,7 @@ export const exclusions = pgTable("exclusions", {
 });
 
 /**
- * The Master Service Agreement's clauses, editable at `/client/clauses`.
+ * The Contract Agreement's clauses, editable at `/client/clauses`.
  *
  * These lived in code (`domain/contract/msa.ts`) until the library was built,
  * on the argument that they change ~never and need review as one package by a
@@ -498,7 +499,8 @@ export const documents = pgTable(
     employeeId: text("employee_id").references(() => employees.id),
     gstRatePercent: integer("gst_rate_percent").notNull().default(0),
     placeOfSupplyStateCode: text("place_of_supply_state_code"),
-    totalPaise: integer("total_paise").notNull().default(0),
+    // bigint since 0021: int4 capped a document at about ₹2.14 crore.
+    totalPaise: bigint("total_paise", { mode: "number" }).notNull().default(0),
 
     // Variable payload + frozen party snapshot (client OR employee).
     data: jsonb("data").notNull().$type<DocumentData>(),

@@ -1011,7 +1011,7 @@ export const DOC_TYPES: Record<DocTypeCode, DocTypeSpec> = {
     accent: "amber",
     // What the cover prints. Editable per document like every other masthead —
     // the sheet reads `content.masthead`, it does not hardcode the title.
-    masthead: "Master Service Agreement",
+    masthead: "Contract Agreement",
     kind: "contract",
     hasPayment: false,
     hasDueDate: false,

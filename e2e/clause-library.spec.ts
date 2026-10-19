@@ -133,7 +133,7 @@ test.describe('the clause library', () => {
   });
 
   /**
-   * The longest clause in the Master Agreement, which is what makes this the
+   * The longest clause in the Contract Agreement, which is what makes this the
    * measurement rather than a formality: clause 1 is a page of definitions,
    * and it is now a page of *rows*, each its own textarea.
    *

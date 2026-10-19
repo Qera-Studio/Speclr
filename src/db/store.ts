@@ -296,7 +296,7 @@ export async function restoreService(code: string): Promise<void> {
 // ─── MSA clauses ──────────────────────────────────────────────────────────────
 
 /**
- * The Master Agreement's clauses, in numbered order.
+ * The Contract Agreement's clauses, in numbered order.
  *
  * Ordering is the store's job, not a caller's: the numbers are the clause's
  * identity and the text cross-references them, so any list that showed 11 after

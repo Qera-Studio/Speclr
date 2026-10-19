@@ -626,7 +626,7 @@ describe('the clause description', () => {
 /**
  * Before `scripts/seed-contract.ts` has run, the page shows the code copy. If
  * the first save wrote only the clause that was edited, the table would end up
- * holding one row — and `listClauses()` would then answer "the Master Agreement
+ * holding one row — and `listClauses()` would then answer "the Contract Agreement
  * has one clause", both on this page and on every contract drafted afterwards.
  */
 describe('ClauseLibrary against an unseeded table', () => {

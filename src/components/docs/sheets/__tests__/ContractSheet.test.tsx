@@ -14,7 +14,7 @@ const renderContract = (doc: ContractDocument) =>
 describe("contractBlocks", () => {
   it("renders the cover with the agreement title and the client", () => {
     renderContract(contractDoc());
-    expect(screen.getByText("Master Service Agreement")).toBeInTheDocument();
+    expect(screen.getByText("Contract Agreement")).toBeInTheDocument();
     expect(
       screen.getAllByText("Clayora Private Limited").length,
     ).toBeGreaterThan(0);
@@ -26,7 +26,7 @@ describe("contractBlocks", () => {
     expect(screen.queryByText("Clayora")).not.toBeInTheDocument();
   });
 
-  it("renders the Master Agreement clauses", () => {
+  it("renders the Contract Agreement clauses", () => {
     renderContract(contractDoc());
     expect(
       screen.getByText("1. Definitions and Interpretation"),

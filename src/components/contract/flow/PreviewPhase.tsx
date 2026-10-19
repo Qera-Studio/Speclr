@@ -130,7 +130,7 @@ export default function PreviewPhase({
           title="Clauses"
           // This contract's own count, not the constant's: it may carry a clause
           // the library has since added, or predate one.
-          subtitle={`${resolved.clauses.length} clauses of the Master Agreement`}
+          subtitle={`${resolved.clauses.length} clauses of the Contract Agreement`}
           onOpen={() => setClausesOpen(true)}
         />
 

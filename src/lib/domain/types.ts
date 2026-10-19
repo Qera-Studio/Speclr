@@ -482,7 +482,7 @@ export interface ReceiptDocument extends ClientDocument, BilledInCurrency {
  * own id list. There is no separate selection structure: the copy *is* the
  * selection, and what the Part holds is what the contract prints.
  *
- * The Master Agreement and the Schedule bodies are not stored here. They
+ * The Contract Agreement and the Schedule bodies are not stored here. They
  * resolve from code on a draft and are frozen onto the document by
  * `materialiseContent` at finalize, exactly as every other document's wording
  * is (CONTEXT.md §5b).

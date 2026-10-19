@@ -29,7 +29,7 @@ import { PageHeader } from '@/components/patterns/Page';
 import RecordTable from '@/components/patterns/RecordTable';
 
 /**
- * The Master Agreement's clause library: a table of every clause, and a drawer
+ * The Contract Agreement's clause library: a table of every clause, and a drawer
  * holding the one you are reading.
  *
  * **A list of 28 collapsibles was the wrong shape.** The question this page
@@ -62,7 +62,7 @@ export default function ClauseLibrary({
    *
    * It decides how much the first save writes. Saving only the edited clause
    * into an empty table would leave the table holding one row — and
-   * `listClauses()` would then answer "the Master Agreement has one clause",
+   * `listClauses()` would then answer "the Contract Agreement has one clause",
    * both here and on every contract drafted afterwards. So the first save
    * writes the lot; every save after it writes only what changed.
    */
@@ -171,7 +171,7 @@ export default function ClauseLibrary({
         rows={clauses}
         id={(clause) => String(clause.number)}
         noun="clause"
-        caption="Every clause of the Master Agreement, in number order"
+        caption="Every clause of the Contract Agreement, in number order"
         // The drawer is the way in, so the row opens it rather than a URL.
         open={(clause) => ({ onClick: () => setOpen(clause.number) })}
         rowLabel={(clause) => clause.heading}

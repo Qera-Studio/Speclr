@@ -16,7 +16,7 @@ import type { BlankScope } from '@/lib/domain/contract/completeness';
  * the 384px rail, where they were a scroll of unlabelled boxes under everything
  * else.
  *
- * Grouped the way the document is: the Master Agreement first, then each
+ * Grouped the way the document is: the Contract Agreement first, then each
  * Schedule the contract actually includes, in printing order. A Schedule with no
  * Part does not appear, because `contractScopes` does not yield it.
  *
@@ -65,7 +65,7 @@ export default function TermsForm({
         <section key={group} className="flex flex-col gap-4">
           {/* The Agreement's own figures come first and need no label — the page
               title already says which document they belong to. The Schedules do. */}
-          {group === 'Master Agreement' ? null : (
+          {group === 'Contract Agreement' ? null : (
             <div className="flex items-center gap-3">
               <h3 className="shrink-0 text-body font-medium">{group}</h3>
               <span className="h-px min-w-0 flex-1 bg-border" />

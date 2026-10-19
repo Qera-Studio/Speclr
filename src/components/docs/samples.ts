@@ -99,7 +99,7 @@ export interface DocSample {
  */
 export const DOC_SAMPLES: Record<string, DocSample> = {
   contract: {
-    blurb: 'The Master Service Agreement, with a Schedule for each service.',
+    blurb: 'The Contract Agreement, with a Schedule for each service.',
     doc: {
       ...base,
       id: 'sample-contract',

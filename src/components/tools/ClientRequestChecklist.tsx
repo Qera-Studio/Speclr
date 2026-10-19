@@ -115,7 +115,7 @@ const CHECKLIST: readonly { heading: string; items: readonly Item[] }[] = [
       { text: 'Certificate of incorporation, or local equivalent', only: 'foreign' },
       { text: 'Their tax registration certificate', only: 'foreign' },
       { text: 'A W-9, from a US client that has one', only: 'foreign' },
-      { text: 'Signed contract or MSA' },
+      { text: 'Signed contract' },
       { text: 'Purchase order' },
       { text: "The signatory's signature" },
       { text: 'FIRC / FIRA from our bank, once the payment lands', only: 'foreign' },

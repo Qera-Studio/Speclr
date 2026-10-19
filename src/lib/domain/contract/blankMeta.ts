@@ -529,7 +529,7 @@ export const ROW_META: Record<string, BlankMeta> = {
 
 /** Keyed by blank key, for figures written into a sentence. */
 export const PROSE_META: Record<string, BlankMeta> = {
-  // Master Service Agreement
+  // Contract Agreement
   'msa.8#0': {
     title: 'Payment period',
     help: 'How long the Client has to pay an invoice that states no period of its own.',

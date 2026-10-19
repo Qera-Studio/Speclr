@@ -70,7 +70,7 @@ describe('libraryMarkdown', () => {
 
   it('opens with a title and writes every clause in number order', () => {
     const md = libraryMarkdown([OTHER, CLAUSE]);
-    expect(md.startsWith('# Master Service Agreement')).toBe(true);
+    expect(md.startsWith('# Contract Agreement')).toBe(true);
     expect(md.indexOf('## 4.')).toBeLessThan(md.indexOf('## 11.'));
   });
 

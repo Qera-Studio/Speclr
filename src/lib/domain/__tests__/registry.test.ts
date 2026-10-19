@@ -585,7 +585,7 @@ describe("CON registry entry", () => {
     expect(DOC_TYPES.CON.kind).toBe("contract");
     expect(DOC_TYPES.CON.slug).toBe("contract");
     // What the cover prints, and what the editor's Masthead field defaults to.
-    expect(DOC_TYPES.CON.masthead).toBe("Master Service Agreement");
+    expect(DOC_TYPES.CON.masthead).toBe("Contract Agreement");
     expect(DOC_TYPE_BY_SLUG["contract"].code).toBe("CON");
   });
   it("marks invoice and receipt as financial", () => {

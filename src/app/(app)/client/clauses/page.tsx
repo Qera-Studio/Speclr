@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /**
- * The Master Agreement's clause library.
+ * The Contract Agreement's clause library.
  *
  * On the client side rather than among the admin tools: these are the words a
  * contract is built from, so they belong beside the contracts.

@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
 import { authorized } from './authGate';
 
 /**
- * The Master Agreement's clause library.
+ * The Contract Agreement's clause library.
  *
  * Editing here is safe *because* a contract carries its own copy: a draft seeds
  * the clause list when it is created, and finalize freezes the resolved content

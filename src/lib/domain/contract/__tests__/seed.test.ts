@@ -14,7 +14,7 @@ import { serviceInputSchema } from '../../service';
 import { CLIENT_INPUTS, EXCLUSIONS } from '../seed/libraries';
 import { PARTS } from '../../seed/parts';
 
-describe('the Master Service Agreement', () => {
+describe('the Contract Agreement', () => {
   it('carries 28 clauses numbered 1 to 28', () => {
     expect(MSA_CLAUSES.map((c) => c.number)).toEqual(
       Array.from({ length: 28 }, (_, i) => i + 1),

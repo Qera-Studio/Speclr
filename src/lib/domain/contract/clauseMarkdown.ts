@@ -32,7 +32,7 @@ export function clauseMarkdown(clause: ClauseInput): string {
 export function libraryMarkdown(clauses: ClauseInput[]): string {
   const ordered = [...clauses].sort((a, b) => a.number - b.number);
   return [
-    '# Master Service Agreement',
+    '# Contract Agreement',
     // The page's own warning, which is the one sentence that has to travel with
     // the text: a file is read a long way from the screen that qualified it.
     '> Nothing here has been reviewed by a lawyer. Clause numbers are cited by the text itself, so a number is never reused.',

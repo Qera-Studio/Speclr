@@ -45,7 +45,7 @@ export interface ContractDraft {
 
 export type ContractPhase = FlowStep<ContractDraft>;
 
-/** The standing terms: the Master Agreement and each Schedule in play. */
+/** The standing terms: the Contract Agreement and each Schedule in play. */
 function termsUnfilled(draft: ContractDraft): number {
   return contractScopes(draft.contract)
     .filter((scope) => !scope.scope.startsWith('part.'))

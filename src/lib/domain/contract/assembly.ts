@@ -89,7 +89,7 @@ export function withLetter(text: string, letter: string): string {
   return text.replaceAll('{L}', letter);
 }
 
-/** The blank scope for a Master Agreement clause. */
+/** The blank scope for a Contract Agreement clause. */
 export function msaScope(clauseNumber: number): string {
   return `msa.${clauseNumber}`;
 }

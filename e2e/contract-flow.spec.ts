@@ -139,7 +139,7 @@ test.describe('the contract builder', () => {
   /**
    * The divider removal, measured as rows rather than asserted as a class.
    *
-   * The Master Agreement's thirteen figures sat in seven sections, two of which
+   * The Contract Agreement's thirteen figures sat in seven sections, two of which
    * spent a heading, a separator and a whole row on a single input. What the
    * change is worth is the row count, and nothing but a browser can count rows.
    */

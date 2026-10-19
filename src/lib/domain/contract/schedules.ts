@@ -74,15 +74,15 @@ const TRANSCRIBED: Schedule[] = [
     name: 'Build',
     accent: 'violet',
     preamble:
-      'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client, and governs work delivered as a defined project for a one-time fee.',
+      'This Schedule forms part of the Contract Agreement between Qera Private Limited and the Client, and governs work delivered as a defined project for a one-time fee.',
     clauses: [
       {
         number: 1,
         heading: 'Application',
         body: [
           '{L}1.1 The Parts appended to this Schedule specify the work to be performed. This Schedule specifies the terms upon which such work is paid for, approved, delivered and owned.',
-          '{L}1.2 This Schedule shall be read together with the Master Service Agreement, which governs the mutual obligations of the Parties, feedback and approval, Revisions, third-party costs, Retained Materials and attribution.',
-          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Master Service Agreement.',
+          '{L}1.2 This Schedule shall be read together with the Contract Agreement, which governs the mutual obligations of the Parties, feedback and approval, Revisions, third-party costs, Retained Materials and attribution.',
+          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Contract Agreement.',
         ],
       },
       {
@@ -107,7 +107,7 @@ const TRANSCRIBED: Schedule[] = [
         number: 4,
         heading: 'Revisions',
         body: [
-          '{L}4.1 Each Part includes [3] rounds of Revision, as defined in the Master Service Agreement.',
+          '{L}4.1 Each Part includes [3] rounds of Revision, as defined in the Contract Agreement.',
           '{L}4.2 Revision rounds shall be consolidated, such that a single round addresses all changes required by the Client at that stage. Feedback submitted piecemeal across separate occasions shall be counted as separate rounds.',
         ],
       },
@@ -136,7 +136,7 @@ const TRANSCRIBED: Schedule[] = [
         body: [
           '{L}7.1 Title to and all intellectual property rights in the final approved Deliverables shall pass to the Client upon payment in full of the fee for the applicable Part, and not before. Until such payment, the Deliverables shall remain the property of Qera Private Limited.',
           '{L}7.2 Each Part specifies the materials the Client shall receive upon handover. Handover shall take place promptly upon receipt of final payment.',
-          '{L}7.3 Retained Materials, and the licence granted to the Client in respect of them, are governed by clause 11 of the Master Service Agreement.',
+          '{L}7.3 Retained Materials, and the licence granted to the Client in respect of them, are governed by clause 11 of the Contract Agreement.',
         ],
       },
       {
@@ -178,15 +178,15 @@ const TRANSCRIBED: Schedule[] = [
     name: 'Retainer',
     accent: 'green',
     preamble:
-      'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs all work delivered on a recurring monthly basis for a recurring fee.',
+      'This Schedule forms part of the Contract Agreement between Qera Private Limited and the Client. It governs all work delivered on a recurring monthly basis for a recurring fee.',
     clauses: [
       {
         number: 1,
         heading: 'What this Schedule covers',
         body: [
           '{L}1.1 The Parts appended to this Schedule describe what is delivered each month. This Schedule describes how that work is billed, approved, paused, owned and ended.',
-          '{L}1.2 This Schedule shall be read together with the Master Service Agreement, which governs the mutual obligations of the Parties, feedback and approval, Revisions, third-party costs, Retained Materials and attribution.',
-          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Master Service Agreement.',
+          '{L}1.2 This Schedule shall be read together with the Contract Agreement, which governs the mutual obligations of the Parties, feedback and approval, Revisions, third-party costs, Retained Materials and attribution.',
+          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Contract Agreement.',
         ],
       },
       {
@@ -239,7 +239,7 @@ const TRANSCRIBED: Schedule[] = [
         number: 7,
         heading: 'Revisions',
         body: [
-          '{L}7.1 Each Part includes reasonable Revision within the approved direction and plan, as defined in the Master Service Agreement.',
+          '{L}7.1 Each Part includes reasonable Revision within the approved direction and plan, as defined in the Contract Agreement.',
           "{L}7.2 The reworking of any item following publication shall constitute Additional Work, the original having been delivered and used. Where any item has been published containing an error attributable to Qera Private Limited, such error shall be corrected at Qera Private Limited's own cost.",
         ],
       },
@@ -270,7 +270,7 @@ const TRANSCRIBED: Schedule[] = [
           '- remove its own access from every platform in scope;',
           '- deliver all final approved content produced and paid for under the engagement, including content produced but not yet published; and',
           '- deliver the final assets connected to those deliverables.',
-          '{L}10.2 Where the Client requires working files, unused concepts or planning material, Qera Private Limited shall supply such materials as it reasonably can. Materials incorporating Retained Materials shall be governed by clause 11 of the Master Service Agreement, and in no circumstances shall the Client be left without the materials necessary to continue its own operations.',
+          '{L}10.2 Where the Client requires working files, unused concepts or planning material, Qera Private Limited shall supply such materials as it reasonably can. Materials incorporating Retained Materials shall be governed by clause 11 of the Contract Agreement, and in no circumstances shall the Client be left without the materials necessary to continue its own operations.',
         ],
       },
       {
@@ -298,15 +298,15 @@ const TRANSCRIBED: Schedule[] = [
     name: 'Setup',
     accent: 'cyan',
     preamble:
-      'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs configuration of accounts, domains and infrastructure that are set up once and then operated by the Client.',
+      'This Schedule forms part of the Contract Agreement between Qera Private Limited and the Client. It governs configuration of accounts, domains and infrastructure that are set up once and then operated by the Client.',
     clauses: [
       {
         number: 1,
         heading: 'What this Schedule covers',
         body: [
           '{L}1.1 The Parts appended to this Schedule describe what is set up. This Schedule describes how that work is paid for, who owns the resulting accounts, when access transfers, and the limits of responsibility.',
-          '{L}1.2 This Schedule shall be read together with the Master Service Agreement.',
-          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Master Service Agreement.',
+          '{L}1.2 This Schedule shall be read together with the Contract Agreement.',
+          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Contract Agreement.',
           '{L}1.4 This Schedule covers configuration only. It does not create any ongoing administration, monitoring or support obligation.',
         ],
       },
@@ -322,7 +322,7 @@ const TRANSCRIBED: Schedule[] = [
         number: 3,
         heading: 'Third-Party Costs',
         body: [
-          '{L}3.1 Third-party costs are governed by clause 9 of the Master Service Agreement. For the avoidance of doubt, domain registration and renewal, platform subscriptions and licences shall be paid by the Client.',
+          '{L}3.1 Third-party costs are governed by clause 9 of the Contract Agreement. For the avoidance of doubt, domain registration and renewal, platform subscriptions and licences shall be paid by the Client.',
           "{L}3.2 Where the Client's own payment method is required for a subscription — including any service requiring ongoing payment, such as a workspace or email plan — the Client provides it before setup begins. Qera Private Limited does not hold or maintain a payment method on the Client's behalf.",
           "{L}3.3 Where Qera Private Limited pays a third-party cost on the Client's behalf, it is reimbursed at cost plus any transfer charges. Any such cost included within a Build advance is stated in the approved Proposal.",
         ],
@@ -405,15 +405,15 @@ const TRANSCRIBED: Schedule[] = [
     name: 'Audit',
     accent: 'orange',
     preamble:
-      'This Schedule forms part of the Master Service Agreement between Qera Private Limited and the Client. It governs engagements where the deliverable is analysis, recommendation or strategy rather than implementation.',
+      'This Schedule forms part of the Contract Agreement between Qera Private Limited and the Client. It governs engagements where the deliverable is analysis, recommendation or strategy rather than implementation.',
     clauses: [
       {
         number: 1,
         heading: 'What this Schedule covers',
         body: [
           '{L}1.1 The Parts appended to this Schedule describe what is analysed and what is delivered. This Schedule describes how that work is paid for, what it is and is not, and the limits of responsibility.',
-          '{L}1.2 This Schedule shall be read together with the Master Service Agreement.',
-          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Master Service Agreement.',
+          '{L}1.2 This Schedule shall be read together with the Contract Agreement.',
+          '{L}1.3 In the event of inconsistency, the applicable Part shall prevail over this Schedule, and this Schedule shall prevail over the Contract Agreement.',
         ],
       },
       {

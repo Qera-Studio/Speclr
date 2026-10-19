@@ -26,7 +26,7 @@ import type { ScheduleKey } from './schedules';
 /** One addressable group of blanks — a clause, or a section of a Part. */
 export interface BlankScope {
   scope: string;
-  /** Where the editor files it: 'Master Agreement', 'Schedule A', 'Part A-1'. */
+  /** Where the editor files it: 'Contract Agreement', 'Schedule A', 'Part A-1'. */
   group: string;
   /** What the editor calls it: 'Fees, Invoicing and Payment', 'Limits'. The
    * clause number is the document's own numbering and changes with what the
@@ -137,7 +137,7 @@ function partScopes(part: ContractPart, group: string): BlankScope[] {
 }
 
 /**
- * Every scope in a contract: the Master Agreement, each Schedule it actually
+ * Every scope in a contract: the Contract Agreement, each Schedule it actually
  * includes, and each Part.
  *
  * Only the Schedules with a Part appear, which is the same rule the document
@@ -148,7 +148,7 @@ export function contractScopes(contract: ContractShape): BlankScope[] {
   const msa = MSA_CLAUSES.map((clause) =>
     scopeOf(
       msaScope(clause.number),
-      'Master Agreement',
+      'Contract Agreement',
       clause.heading,
       clause.body,
     ),

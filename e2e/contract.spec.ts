@@ -69,7 +69,7 @@ test.describe('contract pagination', () => {
    */
   test('gives the cover its own page', async ({ page }) => {
     const cover = pagesOf(page).first();
-    await expect(cover.getByText('Master Service Agreement')).toBeVisible();
+    await expect(cover.getByText('Contract Agreement')).toBeVisible();
     await expect(cover.getByText('1. Definitions and Interpretation')).toHaveCount(0);
   });
 });

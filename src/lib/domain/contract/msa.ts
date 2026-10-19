@@ -1,5 +1,5 @@
 /**
- * The Master Service Agreement — 28 numbered clauses, identical for every
+ * The Contract Agreement — 28 numbered clauses, identical for every
  * client. Transcribed from `docs/contract-content.md` §2.
  *
  * Content §2's clause 29 (Execution) is deliberately absent: it is a signature
@@ -89,7 +89,7 @@ export const CONTRACT_INTRO =
 
 /** Sentence introducing the two-party block on the parties page. */
 export const AGREEMENT_PREAMBLE =
-  'This Service Agreement (“Agreement”) is entered into between:';
+  'This Contract Agreement (“Agreement”) is entered into between:';
 
 /** The statement printed above the signature blocks (content §2, clause 29). */
 export const EXECUTION_STATEMENT =
@@ -102,7 +102,7 @@ export const MSA_CLAUSES: MsaClause[] = [
     body: [
       '1.1 In this Agreement, unless the context otherwise requires:',
       '"Additional Work" means any work not expressly specified within an approved Part or Proposal.',
-      '"Agreement" means this Master Service Agreement together with all Schedules, Parts, Proposals and written amendments executed by the Parties.',
+      '"Agreement" means this Contract Agreement together with all Schedules, Parts, Proposals and written amendments executed by the Parties.',
       '"Client Inputs" means the information, materials, assets, credentials, approvals and access which the Client is required to supply under an applicable Part.',
       '"Deliverables" means the final approved outputs specified in an applicable Part.',
       '"Part" means a service specification appended to a Schedule, describing the scope of a particular service.',

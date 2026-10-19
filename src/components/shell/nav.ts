@@ -197,7 +197,7 @@ export const NAV_BY_PROFILE: Record<Profile, ProfileNav> = {
       { href: '/client/docs/credit-note', label: 'Credit note', icon: Undo2, shortcut: 'N' },
     ],
     // Contract *source material*: the Services a contract pulls in as Parts,
-    // and the clauses of the Master Agreement it is built from. They belong
+    // and the clauses of the Contract Agreement it is built from. They belong
     // beside the contracts they feed. The label is unused — the client rail
     // renders no section headings — but the group is what keeps them together
     // below the records row.
