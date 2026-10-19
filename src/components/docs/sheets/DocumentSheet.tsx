@@ -56,7 +56,10 @@ function PayRow({ label, value }: { label: string; value?: string }) {
       <dt className="text-black/70 text-[12px] font-normal min-w-[100px]">
         {label}
       </dt>
-      <dd className="m-0 text-black text-[13px] font-medium whitespace-pre-line">
+      {/* The same size and weight as the label: a table of bank details
+          reads as one block, and the bold value column outweighed TERMS
+          beside it. */}
+      <dd className="m-0 text-black/70 text-[12px] font-normal whitespace-pre-line">
         {value}
       </dd>
     </div>
