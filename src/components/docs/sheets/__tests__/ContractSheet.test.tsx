@@ -162,9 +162,24 @@ describe("contractBlocks", () => {
   it("still prints blank rules for a contract frozen before signatories existed", () => {
     renderContract(contractDoc());
     const execution = screen.getByLabelText("Execution");
-    // Two blanks: the client's name and designation. The studio's half is
-    // filled from the document's own content.
-    expect(within(execution).getAllByText(/________________/)).toHaveLength(2);
+    // Three blanks: the client's name, designation and date of acceptance.
+    // The studio's half is filled from the document's own content.
+    expect(within(execution).getAllByText(/________________/)).toHaveLength(3);
+  });
+
+  /** Acceptance, not signature, and dated when it happens (19 October 2026). */
+  it("asks the client to accept, and leaves the date to the day they do", () => {
+    renderContract(contractDoc());
+    const execution = screen.getByLabelText("Execution");
+    expect(within(execution).getByText(/takes effect on the date the Client accepts it/)).toBeInTheDocument();
+    expect(within(execution).getByText("Accepted for and on behalf of")).toBeInTheDocument();
+    expect(within(execution).getByText("Date: ________________")).toBeInTheDocument();
+    expect(within(execution).getByText("Signature, if accepting by signing")).toBeInTheDocument();
+  });
+
+  it("keeps the witness clause on a contract issued before acceptance existed", () => {
+    renderContract({ ...contractDoc(), status: "finalized", content: { preamble: "x" } });
+    expect(within(screen.getByLabelText("Execution")).getByText(/IN WITNESS WHEREOF/)).toBeInTheDocument();
   });
 
   it("renders both execution blocks from the record", () => {

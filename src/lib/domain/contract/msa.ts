@@ -91,8 +91,20 @@ export const CONTRACT_INTRO =
 export const AGREEMENT_PREAMBLE =
   'This Contract Agreement (“Agreement”) is entered into between:';
 
-/** The statement printed above the signature blocks (content §2, clause 29). */
+/**
+ * The statement printed above the execution blocks (content §2, clause 29).
+ *
+ * Acceptance rather than signature (founder's decision, 19 October 2026):
+ * most clients will agree by email, or later through the approval link, and
+ * not sign a PDF. An offer accepted by email or by a click is a contract under
+ * the Contract Act read with IT Act s.10A. Frozen per contract as the
+ * `executionStatement` content key.
+ */
 export const EXECUTION_STATEMENT =
+  "This Agreement takes effect on the date the Client accepts it, whether by signature below, by email from the Client's address set out at the head of this Agreement confirming acceptance, or by approval through the link Qera provides. Each of these is the Client's acceptance of this Agreement.";
+
+/** What contracts issued before 19 October 2026 printed, and must keep printing. */
+export const LEGACY_EXECUTION_STATEMENT =
   'IN WITNESS WHEREOF the Parties have executed this Agreement on the date first written above.';
 
 export const MSA_CLAUSES: MsaClause[] = [

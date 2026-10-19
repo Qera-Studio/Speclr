@@ -1,6 +1,6 @@
 # Pending: row-level security
 
-`0024_app_role_rls.sql` is written and reviewed but not applied, because it
+`0025_app_role_rls.sql` is written and reviewed but not applied, because it
 needs a database role that only the founder can create. It is free.
 
 1. Neon console, project speclr, **Roles**: create a role named `speclr_app`.

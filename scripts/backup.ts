@@ -48,9 +48,22 @@ async function main() {
   const dir = join(process.env.BACKUP_DIR ?? join(homedir(), 'speclr-backups'), stamp);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 
+  // A table the schema declares but the database does not have yet is one a
+  // pending migration is about to create, which is exactly when this runs
+  // (`npm run db:migrate`). Nothing is in it to lose, so it is skipped.
+  const existing = new Set(
+    ((await sql.query(`select table_name from information_schema.tables where table_schema = 'public'`)) as {
+      table_name: string;
+    }[]).map((r) => r.table_name),
+  );
+
   const counts: Record<string, number> = {};
   for (const table of tablesOf(schema)) {
     const name = getTableName(table);
+    if (!existing.has(name)) {
+      console.log(`  ${name}: not created yet, skipped`);
+      continue;
+    }
     // Raw rows, database column names and all, so `migrate-region.ts` can
     // restore a folder exactly as it copies a live database.
     const rows = await sql.query(`select * from "${name}"`);

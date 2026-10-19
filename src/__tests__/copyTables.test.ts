@@ -22,6 +22,8 @@ it('inserts parents before children', () => {
   const at = (t: string) => TABLES.indexOf(t as (typeof TABLES)[number]);
   // clients.lead_employee_id -> employees (0017)
   expect(at('employees')).toBeLessThan(at('clients'));
-  // documents.client_id, documents.employee_id
-  expect(at('documents')).toBe(TABLES.length - 1);
+  // documents.client_id, documents.employee_id: after every parent
+  for (const parent of ['employees', 'clients', 'counters']) expect(at(parent)).toBeLessThan(at('documents'));
+  // contract_acceptances.document_id -> documents (0024)
+  expect(at('documents')).toBeLessThan(at('contract_acceptances'));
 });

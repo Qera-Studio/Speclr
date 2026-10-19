@@ -3,6 +3,7 @@ import 'server-only';
 import { and, desc, eq, getTableColumns, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from './index';
 import {
+  contractAcceptances,
   clauses,
   clientInputs,
   clients,
@@ -24,6 +25,7 @@ import type { ContractService, LibraryLine } from '@/lib/domain/service';
 import type { ClauseInput, MsaClause } from '@/lib/domain/contract/msa';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 import type { Lead } from '@/lib/domain/lead';
+import type { AcceptanceInput, ContractAcceptance } from '@/lib/domain/contract/acceptance';
 import { localDateToISO } from '@/lib/domain/dates';
 
 /**
@@ -863,4 +865,37 @@ export async function saveLead(lead: Omit<Lead, 'createdAt'>): Promise<void> {
 /** Removes the row outright: a lead's contact details are erased, not flagged. */
 export async function deleteLead(id: string): Promise<void> {
   await db.delete(leads).where(eq(leads.id, id));
+}
+
+// ─── Contract acceptance ─────────────────────────────────────────────────────
+
+/** The client's acceptance of an issued contract, or null while it awaits one. */
+export async function getContractAcceptance(documentId: string): Promise<ContractAcceptance | null> {
+  const rows = await db.select().from(contractAcceptances).where(eq(contractAcceptances.documentId, documentId)).limit(1);
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    documentId: r.documentId,
+    acceptedOn: r.acceptedOn,
+    method: r.method,
+    acceptedByName: r.acceptedByName,
+    acceptedByDesignation: r.acceptedByDesignation ?? undefined,
+    reference: r.reference ?? undefined,
+    recordedAt: r.recordedAt.getTime(),
+  };
+}
+
+/** Records it, or corrects a record already made. The contract is not touched. */
+export async function saveContractAcceptance(documentId: string, input: AcceptanceInput, recordedBy: string): Promise<void> {
+  const row = {
+    documentId,
+    acceptedOn: input.acceptedOn,
+    method: input.method,
+    acceptedByName: input.acceptedByName,
+    acceptedByDesignation: input.acceptedByDesignation ?? null,
+    reference: input.reference ?? null,
+    recordedBy,
+    recordedAt: new Date(),
+  };
+  await db.insert(contractAcceptances).values(row).onConflictDoUpdate({ target: contractAcceptances.documentId, set: row });
 }

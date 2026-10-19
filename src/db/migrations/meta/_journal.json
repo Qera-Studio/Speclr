@@ -169,6 +169,13 @@
       "when": 1790380800000,
       "tag": "0023_contract_definitions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790467200000,
+      "tag": "0024_contract_acceptances",
+      "breakpoints": true
     }
   ]
 }

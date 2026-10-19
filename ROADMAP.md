@@ -307,9 +307,18 @@ Free tasks only the founder can do, plus decisions the work needs:
 - **Create the `speclr_app` role in Neon** and swap the two connection
   strings: the three steps in `src/db/pending/README.md`. Then say so, and
   row-level security goes on.
-- **Contract acceptance in place of the client's signature** is still
-  unanswered: the proposed acceptance record and execution clause are in the
-  conversation of 19 October 2026, and need a yes, a change or a lawyer.
+- **Contract acceptance** built the same day, on the founder's yes:
+  - The execution statement now says the agreement takes effect when the
+    Client accepts it: by signature, by email, or through the approval link.
+    It is frozen per contract; contracts issued earlier keep the witness
+    clause.
+  - The client's block reads "Accepted for and on behalf of", with the date
+    left for the day they accept.
+  - Acceptance is recorded beside the issued contract (who, when, how, where
+    the evidence is) in `contract_acceptances`, migration 0024.
+  - The approval link (§12) is what will write that record without a person
+    doing it. The lawyer question stands: stamp duty on an agreement accepted
+    by email, and keeping the email as evidence.
 
 **Accepted risks** (founder, 19 October 2026):
 - A Clerk session token stays valid for at most about a minute after sign-out.

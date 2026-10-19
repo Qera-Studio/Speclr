@@ -358,6 +358,26 @@ export const clientInputs = pgTable("client_inputs", {
 // ─── Studio settings ──────────────────────────────────────────────────────────
 
 /**
+ * A client's acceptance of an issued contract (19 October 2026).
+ *
+ * Its own table because the contract is immutable once issued and acceptance
+ * comes after: by email, through the approval link, or a signed copy
+ * (`domain/contract/acceptance.ts`). One row per contract.
+ */
+export const contractAcceptances = pgTable("contract_acceptances", {
+  documentId: text("document_id")
+    .primaryKey()
+    .references(() => documents.id),
+  acceptedOn: date("accepted_on").notNull(),
+  method: text("method").notNull().$type<"email" | "link" | "signature">(),
+  acceptedByName: text("accepted_by_name").notNull(),
+  acceptedByDesignation: text("accepted_by_designation"),
+  reference: text("reference"),
+  recordedBy: text("recorded_by"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Leads: people who might become clients, kept apart from `clients` because a
  * client is a full onboarded record that documents derive from, and a lead is
  * a name and a first conversation (`domain/lead.ts`).

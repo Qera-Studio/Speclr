@@ -16,6 +16,7 @@ jest.mock('@/lib/auth/session', () => ({
 }));
 jest.mock('@/db/store', () => ({
   getDocument: (...a: unknown[]) => getDocument(...a),
+  getContractAcceptance: () => Promise.resolve(null),
   // The routes read the studio's live details for a draft's preview; the real
   // constant is the fallback these documents printed before settings existed.
   getStudioSettings: () => STUDIO_INFO,
@@ -29,6 +30,7 @@ jest.mock('next/navigation', () => ({
 }));
 // The toolbar carries `FinalizedActions` now, which reaches the Server Actions
 // module — stub it so this file doesn't drag a DB connection in.
+jest.mock('@/server/actions/contractAcceptance', () => ({ recordContractAcceptance: jest.fn() }));
 jest.mock('@/server/actions/documents', () => ({
   duplicateDocument: jest.fn(),
   copySlipForNextMonth: jest.fn(),

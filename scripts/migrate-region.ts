@@ -70,6 +70,8 @@ export const TABLES = [
   'studio_settings',
   'counters',
   'documents',
+  // After documents: each row names the contract it accepts.
+  'contract_acceptances',
 ] as const;
 
 const APPLY = process.argv.includes('--apply');

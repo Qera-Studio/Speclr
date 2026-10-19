@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { profileOfDocType, type Profile } from '@/lib/profile';
-import { getDocument, getStudioSettings } from '@/db/store';
+import { getContractAcceptance, getDocument, getStudioSettings } from '@/db/store';
+import ContractAcceptancePanel from '@/components/docs/contract/ContractAcceptancePanel';
 import { DOC_TYPES, isSlip } from '@/lib/domain/registry';
 import { docFilename } from '@/lib/domain/docFilename';
 import { SUPPLIER_COPY_MARKING } from '@/lib/domain/docContent';
@@ -100,7 +101,22 @@ export default async function PrintRoute({
   if (isLetter(doc)) return shell(<LetterSheet doc={doc} />);
   // The contract prints the same packed pages the preview shows — same blocks,
   // same measuring, same packer — so paper and screen cannot break differently.
-  if (doc.type === 'CON') return shell(<ContractPrint doc={doc} />);
+  if (doc.type === 'CON') {
+    // Acceptance comes after issue, so only an issued contract has one to show.
+    const acceptance = finalized ? await getContractAcceptance(doc.id) : null;
+    return shell(
+      <>
+        {finalized ? (
+          <ContractAcceptancePanel
+            docId={doc.id}
+            acceptance={acceptance}
+            signatory={doc.clientSnapshot.signatory}
+          />
+        ) : null}
+        <ContractPrint doc={doc} />
+      </>,
+    );
+  }
   if (doc.type === 'SQ') return shell(<QuotationPrint doc={doc} />);
   return shell(<DocumentSheet doc={doc} />);
 }

@@ -24,7 +24,8 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'clauses', 'client_inputs', 'clients', 'counters', 'documents',
-    'employees', 'exclusions', 'leads', 'services', 'studio_settings'
+    'contract_acceptances', 'employees', 'exclusions', 'leads', 'services',
+    'studio_settings'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     -- Single tenant: the app role is the whole of who may touch a row, so the

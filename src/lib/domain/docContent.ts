@@ -2,7 +2,13 @@ import { z } from 'zod';
 import { multilineSchema, personNameSchema, textSchema } from './text';
 import { flattenAddress } from './address';
 import { exitMasthead, payslipTerms, stipendTerms } from './hrContent';
-import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_CLAUSES, type MsaClause } from './contract/msa';
+import {
+  AGREEMENT_PREAMBLE,
+  CONTRACT_INTRO,
+  EXECUTION_STATEMENT,
+  MSA_CLAUSES,
+  type MsaClause,
+} from './contract/msa';
 import { studioOf, type StudioInfo } from './studio';
 import {
   EXPORT_ENDORSEMENT,
@@ -87,6 +93,7 @@ export const docContentSchema = z.object({
   // Contract
   intro: multilineSchema(4000).optional(),
   preamble: multilineSchema(2000).optional(),
+  executionStatement: multilineSchema(1000).optional(),
   clauses: z.array(clauseSchema).max(60).optional(),
 });
 
@@ -136,6 +143,7 @@ export interface ResolvedContent {
   website: string;
   intro: string;
   preamble: string;
+  executionStatement: string;
   clauses: MsaClause[];
 }
 
@@ -334,6 +342,7 @@ export function contentOf(doc: ContentSource, spec: ContentSpec): ResolvedConten
 
     intro: c.intro ?? CONTRACT_INTRO,
     preamble: c.preamble ?? AGREEMENT_PREAMBLE,
+    executionStatement: c.executionStatement ?? EXECUTION_STATEMENT,
     clauses: c.clauses ?? MSA_CLAUSES,
   };
 }
@@ -364,6 +373,7 @@ export function materialiseContent(doc: ContentSource, spec: ContentSpec): DocCo
     website: r.website,
     intro: r.intro,
     preamble: r.preamble,
+    executionStatement: r.executionStatement,
     clauses: r.clauses,
   };
 }

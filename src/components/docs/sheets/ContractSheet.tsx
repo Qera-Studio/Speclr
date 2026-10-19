@@ -10,7 +10,7 @@ import {
   partSectionLabel,
   type BlankScope,
 } from "@/lib/domain/contract/completeness";
-import { EXECUTION_STATEMENT } from "@/lib/domain/contract/msa";
+import { LEGACY_EXECUTION_STATEMENT } from "@/lib/domain/contract/msa";
 import { contentOf } from "@/lib/domain/docContent";
 import { DOC_TYPES } from "@/lib/domain/registry";
 import { studioOf } from "@/lib/domain/studio";
@@ -566,9 +566,12 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
       <div className="grid grid-cols-2 gap-[48px] mt-[32px]">
         {[
           {
+            heading: "For and on behalf of",
             party: studio.legalName,
             name: text.signatoryName,
             designation: text.signatoryTitle,
+            date: displayDate,
+            line: "Signature",
           },
           {
             /*
@@ -581,11 +584,17 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
             party: clientName || "—",
             name: doc.clientSnapshot.signatory?.name ?? "",
             designation: doc.clientSnapshot.signatory?.designation ?? "",
+            // Accepted, not necessarily signed, and on the day the Client
+            // accepts: the issue date here made a client who agreed a week
+            // later look as if they signed on the day it was sent.
+            heading: "Accepted for and on behalf of",
+            date: "",
+            line: "Signature, if accepting by signing",
           },
         ].map((block, i) => (
           <div key={i} className="[break-inside:avoid]">
             <p className="text-black/70 text-[12px] font-normal mb-[2px]">
-              For and on behalf of
+              {block.heading}
             </p>
             <p className="text-black text-[14px] font-bold mb-[12px]">
               {block.party}
@@ -597,11 +606,11 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
               Designation: {block.designation || "________________"}
             </p>
             <p className="text-black text-[14px] font-normal mb-[2px]">
-              Date: {displayDate}
+              Date: {block.date || "________________"}
             </p>
             <div className="border-b border-black h-[32px] mt-[16px]" />
             <p className="text-black/70 text-[12px] font-normal mt-[6px]">
-              Signature
+              {block.line}
             </p>
           </div>
         ))}
@@ -888,7 +897,15 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
     cover,
     parties,
     ...clauses,
-    signatures("signatures", "Execution", EXECUTION_STATEMENT),
+    signatures(
+      "signatures",
+      "Execution",
+      // A contract issued before the key existed froze no statement, and
+      // printed the witness clause; it keeps printing that.
+      doc.status === "finalized" && !doc.content?.executionStatement
+        ? LEGACY_EXECUTION_STATEMENT
+        : text.executionStatement,
+    ),
     ...scheduleBlocks,
   ];
 }
