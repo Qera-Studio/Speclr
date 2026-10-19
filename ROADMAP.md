@@ -141,6 +141,132 @@ colours; an `npm run db:migrate` that backs up first; an axe scan in `e2e/`.
 logged-out checks against the real domain, and a restore rehearsed into a fresh
 Neon branch.
 
+### The format freeze audit, 19 October 2026
+
+Four read-only reviews, one per document family, each against its statute and
+each finding checked in the code. Nothing here is legal advice. The items
+marked *for a CA* or *for a lawyer* are questions to take to one.
+
+**Fixed** (`5599b33`, `a060b65`), each refused before a number is claimed:
+
+- An export's place of supply is checked at **every rate**. A zero-rated
+  export stored under a domestic code used to issue as a domestic invoice,
+  with no endorsement and a UPI QR.
+- A zero-rated invoice must carry its Rule 46 endorsement (it is a content key
+  and could be cleared).
+- An invoice to a GST-registered client needs a SAC on every line (Rule 46(g),
+  Notification 78/2020-CT). The sheet printed NIL.
+- A contract needs the client's signatory, or it issues with the blank rule
+  `CONTEXT.md` §5d removed.
+- An exit letter needs the last working day, or it prints the joining date as
+  the day they left.
+- The contract prints its `QS-CON` number in the running header, and both
+  parties' CIN, GSTIN and, failing those, PAN or company number. Measured in
+  the browser.
+
+**Proposals for the founder.** Each is legal wording, or a change to an
+invoice whose layout is still being styled:
+
+1. **The receipt reads as a second tax invoice.** It is only ever raised
+   against an issued invoice, yet it prints "TOTAL DUE", the full tax
+   computation, the reverse-charge line and the Rule 46(q) clause, from its own
+   GST-style series. Proposed: the total reads "AMOUNT RECEIVED"; add "This
+   acknowledges payment against the tax invoice named above. It is not a tax
+   invoice; the tax shown was charged on that invoice."; drop the
+   reverse-charge line on REC; and require the invoice link at finalize. Its
+   Ownership term ("Payment having been received in full, all deliverables...
+   transferred") also prints on a part payment. Proposed: "On receipt of
+   payment in full for a Part, ownership of its deliverables passes to the
+   client as provided in the parties' agreement."
+2. **An IGST-paid export prints the LUT endorsement.** The default follows
+   place of supply 96 alone, so an export charged IGST says "WITHOUT PAYMENT
+   OF INTEGRATED TAX" beside an IGST line. Proposed: with IGST, print the
+   third proviso's other sentence, "SUPPLY MEANT FOR EXPORT ON PAYMENT OF
+   INTEGRATED TAX", and no LUT line.
+3. **No taxable-value row when there is a discount** (Rule 46(k)). The figure
+   GST is charged on has to be worked out by the reader. Proposed: one
+   "Taxable value" row under the discount, re-measured in
+   `e2e/invoice.spec.ts`.
+4. **The retained copy reprints as ORIGINAL** (Rule 48(1)). Proposed: a
+   print-time "Duplicate for supplier" option, not a stored change.
+5. **Credit note checks.** Over-credit is item 2 of the gate dry run. Add:
+   warn at finalize when the note falls after 30 November following the
+   invoice's financial year (s.34(2)), and require `creditReason`.
+6. **Contract wording.**
+   - The preamble says "This Service Agreement"; the masthead says "Master
+     Service Agreement". "Qera", "the Client" and "Third-Party Costs" are
+     used but never defined. Proposed preamble: 'This Master Service Agreement
+     ("Agreement") is entered into on [date] at Ghaziabad, Uttar Pradesh,
+     between ... ("Qera") and ... ("the Client"), each a "Party".'
+   - Clause 5.3 sends notices to addresses "stated in the applicable
+     Schedule", and no Schedule states one. Proposed: the addresses set out
+     against each Party at the head of the Agreement.
+   - Clause 29's "first written above" points at a date the body never
+     states.
+   - MSA 8.2 says fees exclude GST, while the quotation says its prices
+     include it.
+   - The invoice, receipt and credit note name the Ghaziabad courts, while the
+     MSA sends disputes to arbitration first. Proposed: "Subject to the
+     dispute resolution clause of any agreement between the parties, and
+     otherwise...".
+   - Both signature blocks print the issue date, so the client appears to sign
+     on the day the contract was issued.
+7. **HR wording.**
+   - The intern offer reads "During the first month ... a stipend of X per
+     month". Proposed: "for the duration of the internship".
+   - The intern offer hard-codes "three months".
+   - Offers name the brand, not Qera Private Limited.
+   - The employee offer's notice clause points at policies that may not
+     exist.
+   - The employee exit letter assumes a resignation, and "We confirm
+     acceptance on the terms and conditions stipulated therein" may bind the
+     company to the resignation letter's terms.
+   - The experience letter seeds one real person's duties as everyone's
+     default.
+   - The pay slip claims it "forms part of the wage register", which speclr
+     does not keep.
+   - The exit masthead derives live from the snapshot while the body is prose
+     seeded once, so a reclassified person gets a "RELIEVING LETTER" over
+     internship text.
+8. **Printed em dashes.** The signatory title puts one between "Co-founder"
+   and "Qera Studio" on every letter and contract. Another appears in the
+   offer subjects and in the "Execution" heading of each Schedule. Proposed: "Co-founder and Authorised
+   Signatory, Qera Private Limited", "Offer of Internship as {role}" and
+   "Execution of Schedule {letter}".
+9. **A stipend slip may name an employee.** A test pins this as deliberate.
+   `CONTEXT.md` §6a says the finalize guard is the enforcement. Keep it, or
+   refuse it the way PAY refuses an intern?
+10. **The pay slip** prints no rate of wages and no payment date separate from
+    the issue date. It also accepts 20 rows a side at finalize, while the page
+    holds about 9 against 7 and clips the rest silently. Not urgent while no
+    pay slip is issued.
+
+**For a CA:**
+
+- Whether a computer-generated statement satisfies Rule 46(q), Rule 50(k) and
+  Rule 53(1A)(h) without a DSC.
+- Whether the masthead should read "TAX INVOICE".
+- Whether restating tax on a payment receipt is wise.
+- Whether no catalogue service is an intermediary under IGST s.13(8).
+- Whether an INR-billed export still qualifies (s.2(6)).
+- The e-invoicing thresholds.
+- That a back-dated draft numbered out of date order is acceptable.
+- The stipend slip's "no TDS" default.
+
+**For a lawyer:**
+
+- **Stamp duty under the UP schedule.** Nothing in the app mentions it, and an
+  unstamped agreement is not admissible until duty and penalty are paid
+  (Stamp Act s.35). Once the rate is known, a slot for the e-stamp
+  certificate is a structural change.
+- Clause 26.2 has "a competent court" appoint the arbitrator, where s.11 names
+  the High Court, or the Supreme Court for a foreign client.
+- Electronic execution: is a scanned signature enough, or are Aadhaar eSign or
+  a DSC needed?
+- UP wage-slip particulars: father's or spouse's name, Shops Act registration
+  number, an overtime row.
+- Offer letter probation and place of work.
+
 ### Waiting on Shivanshu
 
 Free tasks only the founder can do, plus decisions the work needs:
@@ -148,6 +274,10 @@ Free tasks only the founder can do, plus decisions the work needs:
 - **Decide the five items under *The gate dry run* above.** Item 1 matters
   most: it is the difference between "issued documents are immutable" being
   true and being likely.
+- **Read the ten proposals under *The format freeze audit*.** One word each
+  (yes, no, change) is enough to build them. Then take the CA and lawyer
+  questions to one when you can; none blocks using the app for real, but the
+  receipt wording should be settled before the first receipt.
 
 - **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
   blockers*).
@@ -188,6 +318,12 @@ Free tasks only the founder can do, plus decisions the work needs:
   and the list queries are unbounded, which stays fast for years at about 30
   documents a month, so paging waits until a list passes roughly 2,000 rows,
   since a hard cap would hide old financial records instead.
+- 19 October 2026: the branch merged into `latest` (PR #1; CI and the Vercel
+  build green on GitHub). Phase 2 done as far as code can take it: four
+  audits, five finalize refusals (`5599b33`), the contract's number and
+  registration numbers (`a060b65`), and ten proposals plus the CA and lawyer
+  questions under *The format freeze audit*. The LUT landed earlier the same
+  day (`fd249f6`).
 
 ---
 
@@ -920,6 +1056,10 @@ for the freeze; a correction is an edit to the catalogue and reaches the next
 invoice.
 
 ### The audit still to run, per document type
+
+**Run on 19 October 2026**: the findings, the fixes and the open questions are
+under *The format freeze audit* at the top of this file. The list below is kept
+as what was checked.
 
 Nobody should assume the list above is complete. It is what one grep found.
 
