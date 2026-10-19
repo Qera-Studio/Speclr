@@ -670,7 +670,7 @@ export default function DocumentSheet({
         <div
           className={
             doc.type === "INV"
-              ? "grid grid-cols-[1fr_auto_1.5fr] gap-[24px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
+              ? "grid grid-cols-[1.3fr_auto_1fr] gap-[12px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
               : "grid grid-cols-[1fr_1.3fr] gap-[8px] items-start border-t border-[#d9d9d9] pt-[8px] mb-[8px]"
           }
         >
