@@ -122,24 +122,26 @@ export const CALENDAR_WIDTH = "w-60";
 /**
  * The same width, for the **field** that opens a calendar.
  *
- * A **floor and a ceiling**, never a width, and each is there for its own
- * reason:
+ * A width with a ceiling, and both halves are load-bearing:
  *
- * `min-w-60` is what makes the field 240px. A plain `w-60` is emitted, valid
- * and silently beaten, because `Field`'s vertical orientation sets `*:w-full`
- * on its children (`ui/field.tsx`) and a child selector outranks a width
- * utility on the child itself. `min-width` wins that fight, and it is also the
- * only one of the three that contributes to a `max-content` grid track, which
- * is what lets `FieldRow fit` size a column to the calendar rather than to the
- * placeholder text inside it.
+ * `w-60!` makes the field 240px. A plain `w-60` is emitted, valid and silently
+ * beaten, because `Field`'s vertical orientation sets `*:w-full` on its
+ * children (`ui/field.tsx`) and a child selector outranks a width utility on
+ * the child itself; the `!` wins that fight. A definite width is also what a
+ * `max-content` grid track reads, which is what lets `FieldRow fit` size a
+ * column to the calendar rather than to the placeholder inside it.
  *
- * `max-w-60` stops a stretching parent pulling it back open, and `max-w-full`
- * lets a column narrower than a calendar shrink the field rather than
- * overflow. The floor loses to the ceiling there, which is the right order:
- * `min-width` beats `max-width` in CSS, so `max-w-full` is expressed at the
- * call site where the container is known.
+ * `max-w-full` lets a column narrower than a calendar shrink the field. This
+ * was a `min-w-60` floor once, and `min-width` beats `max-width` in CSS, so
+ * nothing could shrink it: two date fields side by side in the editor rail
+ * (144px columns) pushed the row 190px past the rail, which scrolled sideways
+ * and dragged every field with it. A percentage floor fixed that and broke
+ * the `fit` rows instead, because a percentage contributes nothing to a
+ * content-sized track. `e2e/popup.spec.ts` measures the narrow row and
+ * `e2e/contract-flow.spec.ts` the fitted ones; each fails on one of the two
+ * earlier versions.
  */
-export const CALENDAR_FIELD_WIDTH = "min-w-60 max-w-60";
+export const CALENDAR_FIELD_WIDTH = "w-60! max-w-full";
 
 /** At least as wide as the anchor, growing to its content. */
 export const POPUP_WIDTH = "w-max min-w-(--anchor-width) max-w-(--available-width)";

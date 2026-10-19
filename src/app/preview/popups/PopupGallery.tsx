@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Field, FieldLabel } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { FieldRow } from '@/components/ui/field-row';
 import {
   Select,
   SelectContent,
@@ -84,6 +85,26 @@ export default function PopupGallery() {
           <FieldLabel htmlFor="probe-date">Date</FieldLabel>
           <DatePicker id="probe-date" value={date} onValueChange={setDate} />
         </Field>
+      </div>
+
+      {/*
+        The editor rail: 304px of content, an issue date and a due date side by
+        side. Each column is 144px, narrower than a calendar, so the fields
+        have to give way to the column rather than the row overflowing it.
+      */}
+      <div data-probe="date-row" className="w-[304px]">
+        <FieldGroup size="form">
+          <FieldRow>
+            <Field>
+              <FieldLabel htmlFor="probe-issue">Issue date</FieldLabel>
+              <DatePicker id="probe-issue" size="form" value={date} onValueChange={setDate} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="probe-due">Due date</FieldLabel>
+              <DatePicker id="probe-due" size="form" value={date} onValueChange={setDate} />
+            </Field>
+          </FieldRow>
+        </FieldGroup>
       </div>
 
       <div data-probe="menu" className="w-96">

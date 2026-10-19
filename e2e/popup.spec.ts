@@ -92,7 +92,7 @@ test.describe('a popup keeps its distance and never comes out narrower', () => {
    * stretched to the field.
    */
   test('the calendar clears its date field and keeps its own width', async ({ page }) => {
-    await page.locator('[data-slot="date-picker-trigger"]').click();
+    await page.locator('#probe-date').click();
     const popup = page.locator('[data-slot="popover-content"]');
     await expect(popup).toBeVisible();
 
@@ -120,8 +120,21 @@ test.describe('a popup keeps its distance and never comes out narrower', () => {
    * rule for, and then `w-60`, which `Field`'s `*:w-full` outranks. Both left
    * the markup looking correct and the field 264px wide.
    */
+  /**
+   * Two date fields side by side in the editor rail. Each column is narrower
+   * than a calendar, and a 240px floor on each pushed the row 190px past the
+   * rail, which scrolled the whole rail sideways. The field gives way instead.
+   */
+  test('two date fields in a narrow row stay inside it', async ({ page }) => {
+    const row = await boxOf(page.locator('[data-probe="date-row"]'));
+    for (const id of ['#probe-issue', '#probe-due']) {
+      const field = await boxOf(page.locator(id));
+      expect(field.x + field.width).toBeLessThanOrEqual(row.x + row.width + 0.5);
+    }
+  });
+
   test('the date field is exactly as wide as the calendar it opens', async ({ page }) => {
-    const trigger = page.locator('[data-slot="date-picker-trigger"]');
+    const trigger = page.locator('#probe-date');
     const field = await boxOf(trigger);
 
     await trigger.click();
