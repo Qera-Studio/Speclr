@@ -82,6 +82,8 @@ export const lineItemSchema = z.object({
   sacCode: sacSchema().optional(),
   /** The Service the line bills, by catalogue code. See `LineItem.serviceCode`. */
   serviceCode: codeSchema(6).optional(),
+  /** Outside the document's discount. See `LineItem.discountExempt`. */
+  discountExempt: z.literal(true).optional(),
 });
 
 /** Draft line items may be half-filled — only shape/limits are enforced. */
@@ -95,6 +97,7 @@ export const draftLineItemSchema = z.object({
   }),
   sacCode: sacSchema().optional(),
   serviceCode: codeSchema(6).optional(),
+  discountExempt: z.literal(true).optional(),
 });
 
 export const clientInputSchema = z.object({

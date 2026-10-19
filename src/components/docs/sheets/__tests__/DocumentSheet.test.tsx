@@ -76,6 +76,50 @@ describe("DocumentSheet", () => {
     expect(screen.getByText("₹ 2,124.00")).toBeInTheDocument();
   });
 
+  /**
+   * Hosting passed through at cost is not discounted with the build. The
+   * reduction is recorded against the lines it reduced, and the exempt line
+   * follows the group, so each figure can be checked from the page.
+   */
+  it("records a discount against only the lines it reached", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+      lineItems: [
+        { description: "Website", ratePaise: 100000, qty: 1 },
+        { description: "Hosting", ratePaise: 5000, qty: 1, discountExempt: true },
+      ],
+      discountPercent: 35,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText("discount (35%)")).toBeInTheDocument();
+    // 35% of ₹1,000, never of ₹1,050.
+    expect(screen.getByText("-₹ 350.00")).toBeInTheDocument();
+    expect(screen.getByText("after discount")).toBeInTheDocument();
+    expect(screen.getAllByText("₹ 650.00").length).toBeGreaterThan(0);
+    // The total sums the discounted group and the exempt line.
+    expect(screen.getAllByText("₹ 700.00").length).toBeGreaterThan(0);
+    // The discount is printed once, in the group, not again in the totals.
+    expect(screen.getAllByText(/^discount/)).toHaveLength(1);
+    // The exempt line prints after the group.
+    const rows = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    const group = rows.findIndex((t) => t.includes("after discount"));
+    expect(rows.findIndex((t) => t.includes("Website"))).toBeLessThan(group);
+    expect(rows.findIndex((t) => t.includes("Hosting"))).toBeGreaterThan(group);
+  });
+
+  it("prints the table as one group when the discount reaches every line", () => {
+    const doc = {
+      ...baseInvoice,
+      lineItems: [{ description: "Design", ratePaise: 200000, qty: 1 }],
+      discountPercent: 10,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.queryByText("after discount")).toBeNull();
+  });
+
   it("prints no discount row when there is none", () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.queryByText(/^discount/)).toBeNull();

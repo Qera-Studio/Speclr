@@ -29,6 +29,8 @@ export interface LineItemFormValues {
    * to save. Absent on a typed line.
    */
   serviceCode?: string;
+  /** Outside the document's discount (`LineItem.discountExempt`). Toggled, never typed. */
+  discountExempt?: boolean;
   /**
    * The Service Quotation's sub-line, collected behind `showDetail` and left
    * empty everywhere else. On the shape rather than a separate quotation-only
@@ -106,6 +108,7 @@ function defaultsFor(
         qty: String(item.qty),
         sacCode: item.sacCode ?? "",
         serviceCode: item.serviceCode,
+        discountExempt: item.discountExempt,
       })),
       gstRatePercent: String(doc.gstRatePercent),
       gstLabel: doc.gstLabel ?? "",
@@ -180,6 +183,7 @@ export function toPayload(
       qty: Number(item.qty) || 0,
       sacCode: item.sacCode || undefined,
       serviceCode: item.serviceCode || undefined,
+      discountExempt: item.discountExempt ? (true as const) : undefined,
     })),
     gstRatePercent: Number(values.gstRatePercent) || 0,
     gstLabel: values.gstLabel || undefined,

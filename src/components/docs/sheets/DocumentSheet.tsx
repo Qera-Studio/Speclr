@@ -6,6 +6,7 @@ import { PLACE_OF_SUPPLY_EXPORT } from "@/lib/domain/placeOfSupply";
 import { taxIdType } from "@/lib/domain/taxIds/foreign";
 import {
   computeTotals,
+  discountablePaiseOf,
   formatINR,
   lineAmountPaise,
   splitGST,
@@ -16,6 +17,7 @@ import { contentOf } from "@/lib/domain/docContent";
 import type {
   CreditNoteDocument,
   InvoiceDocument,
+  LineItem,
   ReceiptDocument,
 } from "@/lib/domain/types";
 import { NIL } from "@/lib/utils";
@@ -33,6 +35,18 @@ import QeraMark from "./QeraMark";
  * wire fields are optional on the studio record, and a labelled blank on a tax
  * invoice reads as a detail that failed to render rather than one nobody has.
  */
+/** One figure in the discounted group under the lines it reduced. */
+function SplitRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-[16px] py-[2px]">
+      <span className="text-black/70 text-[12px] font-normal">{label}</span>
+      <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function PayRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
@@ -59,6 +73,52 @@ export default function DocumentSheet({
   // frozen copy once finalized.
   const text = contentOf(doc, spec);
   const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
+  // A discount that skips some lines prints in two groups; one that reaches
+  // every line (or no discount at all) prints the table exactly as before.
+  const discountablePaise = discountablePaiseOf(doc.lineItems);
+  const splitDiscount =
+    totals.discountPaise > 0 && doc.lineItems.some((item) => item.discountExempt);
+  const discounted = splitDiscount
+    ? doc.lineItems.filter((item) => !item.discountExempt)
+    : doc.lineItems;
+  const exempt = doc.lineItems.filter((item) => item.discountExempt);
+  const lineRow = (item: LineItem, index: number) => (
+              <tr key={index}>
+                {/*
+                  A line prints its description and nothing else, which is now
+                  true of every document here rather than of the slips alone
+                  (`SlipSheet`'s `ItemsTable` says the same).
+
+                  Rule 46(g) asks for the description of the service; the
+                  quantity, the rate and the SAC are the columns beside it. The
+                  sub-line under it was a second, longer restatement of the
+                  first, seeded from the catalogue Service's overview, and
+                  nothing in the rules asks for it domestic or export. Two
+                  descriptions of one supply is one more thing that can
+                  disagree with the other on a document retained 72 months.
+                */}
+                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
+                  <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
+                    {item.description || "—"}
+                  </span>
+                </td>
+                {/* `NIL` rather than blank: a missing classification is a gap
+                    somebody has to close, and an empty cell reads as a column
+                    that failed to render. */}
+                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+                  {item.sacCode || NIL}
+                </td>
+                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+                  {formatINR(item.ratePaise)}
+                </td>
+                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+                  {item.qty}
+                </td>
+                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+                  {formatINR(lineAmountPaise(item))}
+                </td>
+              </tr>
+  );
   /* Joined rather than rendered as two spans: either may be cleared, and a
      stray separator on a line with one sentence left is the tell. */
   const declarations = [text.reverseChargeLine, text.currencyLine]
@@ -341,45 +401,37 @@ export default function DocumentSheet({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {doc.lineItems.map((item, index) => (
-              <tr key={index}>
-                {/*
-                  A line prints its description and nothing else, which is now
-                  true of every document here rather than of the slips alone
-                  (`SlipSheet`'s `ItemsTable` says the same).
-
-                  Rule 46(g) asks for the description of the service; the
-                  quantity, the rate and the SAC are the columns beside it. The
-                  sub-line under it was a second, longer restatement of the
-                  first, seeded from the catalogue Service's overview, and
-                  nothing in the rules asks for it domestic or export. Two
-                  descriptions of one supply is one more thing that can
-                  disagree with the other on a document retained 72 months.
-                */}
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
-                  <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
-                    {item.description || "—"}
-                  </span>
-                </td>
-                {/* `NIL` rather than blank: a missing classification is a gap
-                    somebody has to close, and an empty cell reads as a column
-                    that failed to render. */}
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {item.sacCode || NIL}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {formatINR(item.ratePaise)}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {item.qty}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {formatINR(lineAmountPaise(item))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody>{discounted.map(lineRow)}</tbody>
+          {/*
+            The discount reached only some lines, so it is recorded against
+            them: their own subtotal, the discount and what is left, before the
+            lines it did not touch. The total below then sums the two, and the
+            reduction can be read off the page against exactly what it reduced
+            (CGST s.15(3)(a), Rule 46's "taking into account discount").
+          */}
+          {splitDiscount ? (
+            <>
+              <tbody>
+                <tr>
+                  <td colSpan={2} className="border-b-2 border-[#d9d9d9]" />
+                  <td colSpan={3} className="py-[8px] border-b-2 border-[#d9d9d9]">
+                    <SplitRow label="subtotal" value={formatINR(discountablePaise)} />
+                    <SplitRow
+                      label={`discount${doc.discountPercent !== undefined ? ` (${doc.discountPercent}%)` : ""}`}
+                      value={`-${formatINR(totals.discountPaise)}`}
+                    />
+                    <div className="mt-[4px] border-t border-[#d9d9d9] pt-[4px]">
+                      <SplitRow
+                        label="after discount"
+                        value={formatINR(discountablePaise - totals.discountPaise)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody>{exempt.map(lineRow)}</tbody>
+            </>
+          ) : null}
         </table>
       </div>
 
@@ -431,7 +483,9 @@ export default function DocumentSheet({
               subtotal
             </span>
             <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-              {formatINR(totals.subtotalPaise)}
+              {formatINR(
+                splitDiscount ? totals.taxablePaise : totals.subtotalPaise,
+              )}
             </span>
           </div>
           {/*
@@ -445,7 +499,7 @@ export default function DocumentSheet({
             typed, for the same reason the GST rate does: a reader checking the
             arithmetic should not have to divide to find out what was agreed.
           */}
-          {totals.discountPaise > 0 ? (
+          {totals.discountPaise > 0 && !splitDiscount ? (
             <div className="flex justify-between gap-[16px] py-[3px]">
               <span className="text-black/70 text-[12px] font-normal">
                 discount

@@ -29,7 +29,7 @@ export interface Discount {
 }
 
 /**
- * What the discount comes to in paise, clamped to the subtotal.
+ * What the discount comes to in paise, clamped to the base it applies to.
  *
  * The clamp is not defensive tidiness: a taxable value below zero would put a
  * negative through the GST arithmetic and print a tax invoice charging tax on
@@ -48,6 +48,18 @@ export function discountPaiseOf(
   return Math.min(Math.max(raw, 0), subtotalPaise);
 }
 
+/**
+ * The part of the subtotal a discount reaches: every line not marked
+ * `discountExempt`. A percentage is a percentage of this, and an amount is
+ * clamped to it, so a pass-through cost billed at cost is never discounted.
+ */
+export function discountablePaiseOf(lineItems: LineItem[]): number {
+  return lineItems.reduce(
+    (sum, item) => (item.discountExempt ? sum : sum + lineAmountPaise(item)),
+    0,
+  );
+}
+
 export function computeTotals(
   lineItems: LineItem[],
   gstRatePercent: number,
@@ -57,7 +69,7 @@ export function computeTotals(
     (sum, item) => sum + lineAmountPaise(item),
     0,
   );
-  const discountPaise = discountPaiseOf(subtotalPaise, discount);
+  const discountPaise = discountPaiseOf(discountablePaiseOf(lineItems), discount);
   const taxablePaise = subtotalPaise - discountPaise;
   const gstPaise = roundHalfUp((taxablePaise * gstRatePercent) / 100);
   return {

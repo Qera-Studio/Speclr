@@ -1119,6 +1119,18 @@ it copies the rate: it reverses tax that was actually charged, and a note
 crediting the undiscounted figure would credit more than the invoice ever
 billed.
 
+**A line can sit outside the discount** (`LineItem.discountExempt`, added 19
+October 2026). Hosting passed through at cost is the case: a discount agreed on
+the work should not come off a third party's bill. The percentage is a
+percentage of the lines without the flag, an amount is clamped to them
+(`discountablePaiseOf`), and the sheet prints those lines first under their own
+subtotal, discount and "after discount" rows, then the exempt lines, so the
+reduction is recorded against exactly what it reduced. The totals band then
+starts at the taxable value and does not repeat the discount. The switch is on
+each row's header, outside the lock, and appears only while a discount is
+entered. A credit note and a receipt copy the flag with the lines, or the note
+would credit a discount the invoice never gave.
+
 ### 5l. The Service Quotation is a fixed-page document, and it clips
 
 Rebuilt 31 August 2026 from the design actually sent to clients. It is the one

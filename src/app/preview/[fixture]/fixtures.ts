@@ -159,6 +159,30 @@ const invoiceExport = (): AdminDocument =>
       taxId: "GB123456789",
       registrationNumber: "09876543",
     },
+    // The Clayora shape: a discount on the work, hosting passed through at cost
+    // and exempt from it, which prints the line table in two groups.
+    lineItems: [
+      {
+        description: "Social Media Management",
+        ratePaise: 4095000,
+        qty: 1,
+        sacCode: "998361",
+      },
+      {
+        description: "Website Development, 50% advance",
+        ratePaise: 5225000,
+        qty: 1,
+        sacCode: "998314",
+      },
+      {
+        description: "Hosting (billed at cost, no margin)",
+        ratePaise: 287000,
+        qty: 1,
+        sacCode: "998315",
+        discountExempt: true,
+      },
+    ],
+    discountPercent: 35,
     gstRatePercent: 0,
     gstLabel: "Export of services under LUT, IGST not charged.",
     placeOfSupplyStateCode: "96",

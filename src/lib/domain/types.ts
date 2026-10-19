@@ -163,6 +163,17 @@ export interface LineItem {
    * the rest of the line at finalize. Nothing prints it.
    */
   serviceCode?: string;
+  /**
+   * Set when the document's discount does not reach this line.
+   *
+   * Hosting billed at cost is the case it exists for: a discount on the build
+   * should not come off a third party's invoice passed through. The discount
+   * is computed on the lines without the flag, and the sheet prints those
+   * first with their own discount row, so the reduction is recorded against
+   * exactly what it reduced (CGST s.15(3)(a)). Absent on every line written
+   * before it, which is every line the discount always reached.
+   */
+  discountExempt?: true;
 }
 
 /** 'void' is reserved for Phase 2 — not reachable in Phase 1 UI. */

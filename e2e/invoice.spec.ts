@@ -55,6 +55,10 @@ test.describe("the invoice fits its page", () => {
 
     await expect(sheet).toContainText("KKBKINBBCPC");
     await expect(sheet).toContainText("GB29NWBK60161331926819");
+
+    // A discount that skips the hosting line prints its own group above it.
+    await expect(sheet).toContainText("discount (35%)");
+    await expect(sheet).toContainText("after discount");
     await expect(sheet).toContainText(
       "Raj Nagar Extension, Ghaziabad 201017, India",
     );

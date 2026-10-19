@@ -1,6 +1,7 @@
 import {
   computeTotals,
   discountPaiseOf,
+  discountablePaiseOf,
   formatINR,
   groupRupeeInput,
   lineAmountPaise,
@@ -137,6 +138,41 @@ describe("computeTotals with a discount", () => {
 
   it("is absent, not zero-shaped, when nothing is passed", () => {
     expect(computeTotals([item(100000, 1)], 18).discountPaise).toBe(0);
+  });
+});
+
+/**
+ * A line the discount does not reach, as on the Clayora export invoice:
+ * 35% off the build and the retainer, hosting passed through at cost.
+ */
+describe("computeTotals with a discount-exempt line", () => {
+  const lines = [
+    item(61486, 1),
+    item(78453, 1),
+    { ...item(4309, 1), discountExempt: true as const },
+  ];
+
+  it("takes the percentage of the discounted lines only", () => {
+    expect(discountablePaiseOf(lines)).toBe(139939);
+    expect(computeTotals(lines, 0, { discountPercent: 35 })).toEqual({
+      subtotalPaise: 144248,
+      // 35% of 1,399.39, not of 1,442.48.
+      discountPaise: 48979,
+      taxablePaise: 95269,
+      gstPaise: 0,
+      totalPaise: 95269,
+    });
+  });
+
+  it("clamps an amount to the discounted lines, never into the exempt one", () => {
+    const totals = computeTotals(lines, 18, { discountPaise: 10000000 });
+    expect(totals.discountPaise).toBe(139939);
+    expect(totals.taxablePaise).toBe(4309);
+  });
+
+  it("discounts nothing when every line is exempt", () => {
+    const allExempt = lines.map((l) => ({ ...l, discountExempt: true as const }));
+    expect(computeTotals(allExempt, 18, { discountPercent: 50 }).discountPaise).toBe(0);
   });
 });
 

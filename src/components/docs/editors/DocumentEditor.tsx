@@ -719,6 +719,8 @@ export default function DocumentEditor({
         qty: String(item.qty),
         sacCode: item.sacCode ?? "",
         serviceCode: item.serviceCode,
+        // The note credits the discount only where the invoice applied it.
+        discountExempt: item.discountExempt,
       })),
     );
   };
@@ -889,6 +891,9 @@ export default function DocumentEditor({
             showSac
             lockNames
             presets={linePresets}
+            discountToggle={Boolean(
+              previewDoc.discountPercent || previewDoc.discountPaise,
+            )}
           />
 
           {/*
