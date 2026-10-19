@@ -506,6 +506,19 @@ export default function SlipSheet({ doc }: { doc: SlipDocument }) {
               */}
               {isPay ? (
                 <>
+                  {/* The rate beside what was earned: with loss of pay the two
+                      differ, and a wage slip states both. Frozen in the
+                      snapshot, so a later raise does not rewrite it. */}
+                  {emp.payAmountPaise !== undefined ? (
+                    <div className="flex justify-between gap-[16px]">
+                      <dt className="text-black/70 text-[12px] font-normal">
+                        Rate of wages
+                      </dt>
+                      <dd className="m-0 text-black text-[12px] font-medium text-right [font-variant-numeric:tabular-nums]">
+                        {money(emp.payAmountPaise)} per month
+                      </dd>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between gap-[16px]">
                     <dt className="text-black/70 text-[12px] font-normal">
                       Days paid

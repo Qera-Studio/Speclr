@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { isISODate } from './dates';
 import { addressPartsSchema, type AddressParts } from './address';
 import { CURRENCY_CODES, DEFAULT_CURRENCY, type CurrencyCode } from './currency';
-import type { EngagementType, PayrollIds, PronounKey } from './types';
+import type { EmployeeSnapshot, EngagementType, PayrollIds, PronounKey } from './types';
 
 export interface EmployeeRecord {
   id: string;
@@ -183,4 +183,33 @@ const PRONOUNS: Record<PronounKey, { subject: string; object: string; possessive
 };
 export function pronounSet(p: PronounKey) {
   return PRONOUNS[p];
+}
+
+/**
+ * The employee as frozen onto an HR document.
+ *
+ * One builder for the finalize action and both editors' previews. There were
+ * three copies, and a comment on one recorded that they had already disagreed
+ * about which fields to carry, so the preview showed a slip without the
+ * identifiers the issued one would have (`PRINCIPLES.md` rule 1).
+ *
+ * Carries `bank.upiQrDataUrl` and `payroll` deliberately: the slip prints the
+ * QR and the statutory identifiers, and an issued slip must keep showing the
+ * ones current when it was issued.
+ */
+export function employeeSnapshotOf(e: EmployeeRecord): EmployeeSnapshot {
+  return {
+    name: e.name,
+    address: e.address,
+    email: e.email,
+    phone: e.phone,
+    role: e.role,
+    engagementType: e.engagementType,
+    pronoun: e.pronoun,
+    joiningDate: e.joiningDate,
+    endDate: e.endDate,
+    bank: e.bank,
+    payroll: e.payroll,
+    payAmountPaise: e.payAmountPaise,
+  };
 }

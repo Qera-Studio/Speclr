@@ -42,7 +42,7 @@ import {
   type SlipDocument,
   type Actor,
 } from "@/lib/domain/types";
-import type { EmployeeRecord } from "@/lib/domain/employee";
+import { employeeSnapshotOf, type EmployeeRecord } from "@/lib/domain/employee";
 import { claimSerial } from "@/db/counter";
 import {
   deleteDraft as storeDeleteDraft,
@@ -58,34 +58,6 @@ import {
 import { DEV_UNLIMITED } from "@/lib/devMode";
 import { logger } from "@/lib/logger";
 import { authorized } from "./authGate";
-
-function employeeSnapshotOf(employee: EmployeeRecord): EmployeeSnapshot {
-  return {
-    name: employee.name,
-    address: employee.address,
-    email: employee.email,
-    phone: employee.phone,
-    role: employee.role,
-    engagementType: employee.engagementType,
-    pronoun: employee.pronoun,
-    joiningDate: employee.joiningDate,
-    endDate: employee.endDate,
-    /**
-     * Carries `bank.upiQrDataUrl` deliberately. The QR prints on the stipend
-     * slip, so a slip issued today must keep showing the QR that was current
-     * today, even if the employee changes bank next year — that is what the
-     * snapshot is for. This runs at finalize and writes the permanent record,
-     * so the inclusion is intentional, not incidental.
-     */
-    bank: employee.bank,
-    /**
-     * Frozen for the same reason: a pay slip is a statutory wage record, and
-     * the PAN/UAN it was issued under must not change when the employee record
-     * is corrected later.
-     */
-    payroll: employee.payroll,
-  };
-}
 
 /**
  * Identity/status fields carried into a document, plus exactly one subject:

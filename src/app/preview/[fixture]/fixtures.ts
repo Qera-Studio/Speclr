@@ -81,6 +81,7 @@ const paySlip = (earnings: number, deductions: number): SlipDocument =>
         pan: "ABCPR1234F",
         uan: "101234567890",
       },
+      payAmountPaise: 6_000_000,
     },
     stipendMonth: "2026-06",
     stipendPeriodStart: "2026-06-01",

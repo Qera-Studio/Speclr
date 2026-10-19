@@ -30,7 +30,7 @@ import {
   type CurrencyCode,
 } from "@/lib/domain/currency";
 import { paiseToRupees, rupeesToPaise } from "@/lib/domain/money";
-import type { EmployeeRecord } from "@/lib/domain/employee";
+import { employeeSnapshotOf, type EmployeeRecord } from "@/lib/domain/employee";
 import type {
   EmployeeSnapshot,
   LineItem,
@@ -80,34 +80,6 @@ const EMPTY_SNAPSHOT: EmployeeSnapshot = {
   joiningDate: "",
   bank: { bankName: "", accountNo: "", ifsc: "" },
 };
-
-function snapshotOf(e: EmployeeRecord): EmployeeSnapshot {
-  return {
-    name: e.name,
-    address: e.address,
-    email: e.email,
-    phone: e.phone,
-    role: e.role,
-    engagementType: e.engagementType,
-    pronoun: e.pronoun,
-    joiningDate: e.joiningDate,
-    endDate: e.endDate,
-    /**
-     * Includes `upiQrDataUrl` deliberately: the QR prints on the slip, so an
-     * issued slip has to keep showing the QR that was current at issue time,
-     * even if the employee later changes bank. That is the whole point of the
-     * snapshot. The uploader caps the image so this stays small.
-     */
-    bank: e.bank,
-    /**
-     * The pay slip prints these, so the preview has to carry them or the
-     * editor shows a slip missing the identifiers the issued one will have.
-     * Must stay in step with `employeeSnapshotOf` in the finalize action —
-     * this used to be the one field the two copies disagreed about.
-     */
-    payroll: e.payroll,
-  };
-}
 
 /**
  * Form state. Inputs are strings (what `<input>` produces); `toPayload`
@@ -328,7 +300,7 @@ export default function SlipEditor({
    */
   const internOnPaySlip = isPay && employee?.engagementType === "intern";
   const employeeSnapshot: EmployeeSnapshot = employee
-    ? snapshotOf(employee)
+    ? employeeSnapshotOf(employee)
     : (doc?.employeeSnapshot ?? EMPTY_SNAPSHOT);
 
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";

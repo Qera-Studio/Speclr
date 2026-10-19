@@ -40,7 +40,7 @@ test.describe('pay slip', () => {
     await page.goto('/preview/pay-slip');
 
     const bottom = (await sheet(page).boundingBox())!.y + SHEET_HEIGHT;
-    for (const text of ['Performance incentive', 'Group medical premium', 'NET PAY']) {
+    for (const text of ['Rate of wages', 'Performance incentive', 'Group medical premium', 'NET PAY']) {
       const row = page.getByText(text, { exact: false }).first();
       await expect(row).toBeVisible();
       const box = (await row.boundingBox())!;

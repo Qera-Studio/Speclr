@@ -13,7 +13,7 @@ import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from "@/lib/domain/registry";
 import type { StudioInfo } from "@/lib/domain/studio";
 import { defaultLetterContent } from "@/lib/domain/hrContent";
 import { contentOf, type DocContent } from "@/lib/domain/docContent";
-import { pronounSet, type EmployeeRecord } from "@/lib/domain/employee";
+import { employeeSnapshotOf, pronounSet, type EmployeeRecord } from "@/lib/domain/employee";
 import { formatINR } from "@/lib/domain/money";
 import type { EmployeeSnapshot, LetterDocument } from "@/lib/domain/types";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -54,21 +54,6 @@ const EMPTY_SNAPSHOT: EmployeeSnapshot = {
   joiningDate: "",
   bank: { bankName: "", accountNo: "", ifsc: "" },
 };
-
-function snapshotOf(e: EmployeeRecord): EmployeeSnapshot {
-  return {
-    name: e.name,
-    address: e.address,
-    email: e.email,
-    phone: e.phone,
-    role: e.role,
-    engagementType: e.engagementType,
-    pronoun: e.pronoun,
-    joiningDate: e.joiningDate,
-    endDate: e.endDate,
-    bank: e.bank,
-  };
-}
 
 /** A blank line separates paragraphs; runs of blank lines collapse to one. */
 function splitParagraphs(text: string): string[] {
@@ -172,7 +157,7 @@ export default function LetterEditor({
   const employee = employees.find((e) => e.id === employeeId);
   const heading = workspaceTitle(title, DOC_TYPES[type].label, employee?.name);
   const employeeSnapshot: EmployeeSnapshot = employee
-    ? snapshotOf(employee)
+    ? employeeSnapshotOf(employee)
     : (doc?.employeeSnapshot ?? EMPTY_SNAPSHOT);
 
   /**

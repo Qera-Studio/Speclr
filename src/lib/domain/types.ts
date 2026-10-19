@@ -653,6 +653,12 @@ export interface EmployeeSnapshot {
    * Optional — slips issued before this existed, and every intern, have none.
    */
   payroll?: PayrollIds;
+  /**
+   * Monthly pay as at issue. The pay slip prints it as the rate of wages, which
+   * a wage slip states beside what was earned (format freeze audit, 19 October
+   * 2026). Optional: slips issued before it existed have none.
+   */
+  payAmountPaise?: number;
 }
 
 /**
