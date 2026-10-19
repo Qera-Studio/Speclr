@@ -35,6 +35,7 @@ import { CURRENCY_CODES, type CurrencyCode } from "./currency";
 import { slipTotals } from "./money";
 import type {
   ContractData,
+  FxRate,
   AdminDocument,
   DocTypeCode,
   LineItem,
@@ -239,6 +240,14 @@ const baseFieldsShape = {
    */
   discountPercent: z.number().min(0).max(100).optional(),
   discountPaise: z.number().int().min(0).optional(),
+  /** An export's billing currency and rate. See `BilledInCurrency` in `types.ts`. */
+  currency: z.enum(CURRENCY_CODES).optional(),
+  fxRate: z
+    .object({
+      inrPerUnit4: z.number().int().positive().max(1e9),
+      asOf: isoDate,
+    })
+    .optional(),
   notes: multilineSchema(2000).optional(),
   // Legacy — terms are now fixed per doc type (fixedTerms below); the field
   // remains accepted so pre-existing drafts still parse.
@@ -261,6 +270,40 @@ function oneDiscount(
       code: "custom",
       message: "A discount is either a percentage or an amount, not both.",
       path: ["discountPaise"],
+    });
+  }
+}
+
+/**
+ * A foreign currency only on an export that charges no tax, and never without
+ * the rate. GST on a supply must be shown in rupees and the CGST/SGST split is
+ * rupee-shaped (`currency.ts`), so a taxed or domestic document in another
+ * currency would print a tax figure nobody can file. An export is zero-rated,
+ * which is what leaves no tax line to show.
+ */
+function foreignCurrency(
+  data: {
+    currency?: string;
+    fxRate?: { inrPerUnit4: number };
+    gstRatePercent: number;
+    placeOfSupplyStateCode?: string;
+  },
+  ctx: z.RefinementCtx,
+): void {
+  if (!data.currency || data.currency === "INR") return;
+  if (data.placeOfSupplyStateCode !== "96" || data.gstRatePercent > 0) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "Only a zero-rated export can be billed in another currency. A taxed or domestic supply is billed in INR.",
+      path: ["currency"],
+    });
+  }
+  if (!data.fxRate) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Enter the bank's TT buying rate for ${data.currency} on the issue date, so the INR equivalent can be stated.`,
+      path: ["fxRate"],
     });
   }
 }
@@ -296,7 +339,8 @@ export const invoiceFinalizeSchema = baseFinalizeSchema
     dueDate: isoDate.optional(),
   })
   .superRefine(requirePlaceOfSupplyWithGst)
-  .superRefine(oneDiscount);
+  .superRefine(oneDiscount)
+  .superRefine(foreignCurrency);
 export const invoiceDraftSchema = baseDraftSchema.extend({
   dueDate: isoDate.optional(),
 });
@@ -329,14 +373,16 @@ export const creditNoteFinalizeSchema = baseFinalizeSchema
     againstInvoiceDate: isoDate,
   })
   .superRefine(requirePlaceOfSupplyWithGst)
-  .superRefine(oneDiscount);
+  .superRefine(oneDiscount)
+  .superRefine(foreignCurrency);
 
 export const receiptFinalizeSchema = baseFinalizeSchema
   .extend({
     payment: paymentSchema,
   })
   .superRefine(requirePlaceOfSupplyWithGst)
-  .superRefine(oneDiscount);
+  .superRefine(oneDiscount)
+  .superRefine(foreignCurrency);
 export const receiptDraftSchema = baseDraftSchema.extend({
   payment: paymentSchema.extend({
     // Drafts may not have a payment date yet.
@@ -674,6 +720,8 @@ export interface DocFields {
   againstInvoiceDate?: string;
   againstInvoiceId?: string;
   creditReason?: string;
+  /** An export's rate. See `FxRate`. `currency` below serves both. */
+  fxRate?: FxRate;
   contract?: ContractData;
   // HR — the slips (stipend + pay)
   employeeId?: string;

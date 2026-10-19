@@ -1131,6 +1131,31 @@ each row's header, outside the lock, and appears only while a discount is
 entered. A credit note and a receipt copy the flag with the lines, or the note
 would credit a discount the invoice never gave.
 
+### 5k-i. An export can be billed in the client's currency
+
+Added 19 October 2026 (`PRINCIPLES.md`, logged deviations). A zero-rated export
+carries `currency` (from `commercial.currency`, read-only on the document) and
+`fxRate` (`inrPerUnit4`, the bank's TT buying rate ×10,000, and `asOf`, the issue
+date). Every amount on it is in that currency's minor units, and the sheet
+states the rate, its source (`{bankName} TT buying rate`, derived) and the INR
+equivalent. Four rules:
+
+- **Only a zero-rated export**, refused otherwise at finalize, because GST is
+  shown in rupees.
+- **`total_paise` is the INR equivalent**, so lists and reports stay in rupees.
+- **The client record's rates are rupees.** A line seeded from them converts at
+  the rate typed on the document and stays blank until there is one. A rupee
+  figure in a dollar column is off by the rate and looks plausible.
+- **A credit note and a receipt carry the invoice's currency, rate and date.**
+
+**The export sheet holds four lines, not more,** with a split discount and the
+three exchange-rate lines below. The notes column widens on this case alone
+(the rate lines were wrapping in 210px and took the line table's room). A
+fifth line is clipped off the bottom with nothing to say so; that is the fixed
+frame's standing limit, measured in `e2e/invoice.spec.ts`, and the day a real
+export needs five, the invoice goes through the `Paginator` as the contract
+does.
+
 ### 5l. The Service Quotation is a fixed-page document, and it clips
 
 Rebuilt 31 August 2026 from the design actually sent to clients. It is the one

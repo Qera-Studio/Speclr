@@ -2,7 +2,13 @@
 
 import { useFieldArray, useForm } from "react-hook-form";
 import { todayISO } from "@/lib/domain/dates";
-import { paiseToRupees, rupeesToPaise } from "@/lib/domain/money";
+import {
+  formatRate4,
+  paiseToRupees,
+  parseRate4,
+  rupeesToPaise,
+} from "@/lib/domain/money";
+import type { CurrencyCode } from "@/lib/domain/currency";
 import { DOC_TYPES, type DocFields } from "@/lib/domain/registry";
 import type {
   AdminDocument,
@@ -54,6 +60,15 @@ export interface EditorFormValues {
    */
   discountPercent: string;
   discountAmount: string;
+  /**
+   * An export's billing currency, from the client record and never typed; ''
+   * is INR. With it, the bank's TT buying rate as typed ('66.60') and, on a
+   * credit note or a receipt, the date of the invoice's rate it carries over.
+   * See `BilledInCurrency` in `types.ts`.
+   */
+  currency: string;
+  fxRate: string;
+  fxAsOf: string;
   placeOfSupplyStateCode: string;
   /**
    * Why the place of supply is not the one derived from the client.
@@ -98,6 +113,11 @@ function defaultsFor(
   doc?: AdminDocument | null,
 ): EditorFormValues {
   if (doc) {
+    // Only the money documents carry a billing currency.
+    const billed =
+      doc.type === "INV" || doc.type === "REC" || doc.type === "CRN"
+        ? doc
+        : undefined;
     return {
       clientId: doc.clientId ?? "",
       issueDate: doc.issueDate,
@@ -116,6 +136,9 @@ function defaultsFor(
         doc.discountPercent !== undefined ? String(doc.discountPercent) : "",
       discountAmount:
         doc.discountPaise !== undefined ? paiseToRupees(doc.discountPaise) : "",
+      currency: billed?.currency ?? "",
+      fxRate: billed?.fxRate ? formatRate4(billed.fxRate.inrPerUnit4) : "",
+      fxAsOf: billed?.fxRate?.asOf ?? "",
       placeOfSupplyStateCode: doc.placeOfSupplyStateCode ?? "",
       placeOfSupplyOverrideReason: doc.placeOfSupplyOverrideReason ?? "",
       gstOverrideReason: doc.gstOverrideReason ?? "",
@@ -151,6 +174,9 @@ function defaultsFor(
     gstLabel: fields.gstLabel ?? "",
     discountPercent: "",
     discountAmount: "",
+    currency: "",
+    fxRate: "",
+    fxAsOf: "",
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode ?? "",
     placeOfSupplyOverrideReason: "",
     gstOverrideReason: "",
@@ -162,6 +188,32 @@ function defaultsFor(
     againstInvoiceId: "",
     againstInvoiceDate: "",
     creditReason: "",
+  };
+}
+
+/**
+ * The currency and rate, or nothing for INR. An invoice's rate is for its own
+ * issue date (CGST Rule 34(2)); a credit note or a receipt keeps the date of
+ * the invoice rate it carried over, and falls back to its own date only when
+ * the rate was typed on it directly.
+ */
+function billedIn(
+  typeCode: DocTypeCode,
+  values: EditorFormValues,
+): Pick<DocFields, "currency" | "fxRate"> {
+  if (!values.currency || values.currency === "INR") return {};
+  const inrPerUnit4 = parseRate4(values.fxRate);
+  return {
+    currency: values.currency as CurrencyCode,
+    fxRate: inrPerUnit4
+      ? {
+          inrPerUnit4,
+          asOf:
+            typeCode === "INV"
+              ? values.issueDate
+              : values.fxAsOf || values.issueDate,
+        }
+      : undefined,
   };
 }
 
@@ -194,6 +246,7 @@ export function toPayload(
     discountPaise: values.discountPercent
       ? undefined
       : rupeesToPaise(values.discountAmount) || undefined,
+    ...billedIn(typeCode, values),
     placeOfSupplyStateCode: values.placeOfSupplyStateCode || undefined,
     placeOfSupplyOverrideReason:
       values.placeOfSupplyOverrideReason || undefined,

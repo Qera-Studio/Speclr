@@ -159,24 +159,27 @@ const invoiceExport = (): AdminDocument =>
       taxId: "GB123456789",
       registrationNumber: "09876543",
     },
-    // The Clayora shape: a discount on the work, hosting passed through at cost
-    // and exempt from it, which prints the line table in two groups.
+    // The Clayora shape: billed in AUD at the bank's rate, a discount on the
+    // work, hosting passed through at cost and exempt from it. The tallest the
+    // export sheet gets: two line groups and the three exchange-rate lines.
+    currency: "AUD",
+    fxRate: { inrPerUnit4: 666000, asOf: "2026-06-10" },
     lineItems: [
       {
         description: "Social Media Management",
-        ratePaise: 4095000,
+        ratePaise: 61486,
         qty: 1,
         sacCode: "998361",
       },
       {
         description: "Website Development, 50% advance",
-        ratePaise: 5225000,
+        ratePaise: 78453,
         qty: 1,
         sacCode: "998314",
       },
       {
         description: "Hosting (billed at cost, no margin)",
-        ratePaise: 287000,
+        ratePaise: 4309,
         qty: 1,
         sacCode: "998315",
         discountExempt: true,

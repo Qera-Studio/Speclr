@@ -157,6 +157,37 @@ describe("DocumentSheet", () => {
     expect(screen.queryByText(/LUT ARN/)).toBeNull();
   });
 
+  /**
+   * An export billed in the client's currency: every figure in it, the words
+   * in it, and the rupee equivalent stated at the rate and date the invoice
+   * carries, with the bank whose rate it is.
+   */
+  it("bills an export in the client's currency and states the rupees", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+      currency: "AUD",
+      fxRate: { inrPerUnit4: 666000, asOf: "2026-09-03" },
+      lineItems: [{ description: "Website", ratePaise: 95269, qty: 1 }],
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getAllByText("A$ 952.69").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/₹ 952\.69/)).toBeNull();
+    expect(screen.getByText(/Fifty-Two Dollars and Sixty-Nine Cents Only/)).toBeInTheDocument();
+    expect(screen.getByText(/Exchange rate: A\$ 1\.00 = ₹ 66\.60/)).toBeInTheDocument();
+    expect(screen.getByText("Source: Kotak Mahindra Bank TT buying rate")).toBeInTheDocument();
+    // 952.69 × 66.60, to the paisa: not rounded to the rupee.
+    expect(screen.getByText(/INR equivalent: ₹ 63,449\.15/)).toBeInTheDocument();
+    expect(screen.getByText(/All amounts are in Australian Dollar \(AUD\)\./)).toBeInTheDocument();
+  });
+
+  it("prints no exchange rate on an invoice billed in rupees", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.queryByText(/Exchange rate/)).toBeNull();
+  });
+
   it("prints no discount row when there is none", () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.queryByText(/^discount/)).toBeNull();

@@ -754,6 +754,53 @@ describe("DocumentEditor (line items from the client record)", () => {
    * seed to save so the documents list can say which Schedule the invoice
    * bills without matching its description back to the catalogue.
    */
+  /**
+   * An export to a client who agreed to be billed in their own currency. The
+   * agreed rates on the record are rupees, so a seeded line waits for the rate
+   * rather than printing ₹20,000 as A$20,000.
+   */
+  it("bills an export in the client's currency at the typed rate", async () => {
+    const u = userEvent.setup();
+    const abroad = [
+      {
+        ...engaged[0],
+        addressParts: {
+          line1: "2 Crab Apple Lane",
+          city: "Rouse Hill",
+          state: "NSW",
+          pincode: "2155",
+          country: "AU",
+        },
+        commercial: { ...engaged[0].commercial, currency: "AUD" },
+      },
+    ] as ClientRecord[];
+    render(
+      <DocumentEditor
+        typeCode="INV"
+        clients={abroad}
+        services={services}
+        title="New invoice"
+      />,
+    );
+
+    await selectComboboxOption(u, "Client", "Acme Co.");
+
+    expect(await screen.findByDisplayValue("AUD · Australian Dollar")).toBeInTheDocument();
+    expect(screen.queryByText(/20,000\.00/)).toBeNull();
+
+    await u.type(screen.getByLabelText("₹ per A$1"), "66.60");
+    await autosaved(createDraft);
+
+    expect(createDraft).toHaveBeenLastCalledWith(
+      "INV",
+      "c1",
+      expect.objectContaining({
+        currency: "AUD",
+        fxRate: expect.objectContaining({ inrPerUnit4: 666000 }),
+      }),
+    );
+  });
+
   it("saves which Service a seeded line bills", async () => {
     const u = userEvent.setup();
     render(

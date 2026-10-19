@@ -7,7 +7,9 @@ import { taxIdType } from "@/lib/domain/taxIds/foreign";
 import {
   computeTotals,
   discountablePaiseOf,
-  formatINR,
+  formatMoney,
+  formatRate4,
+  inrPaiseOf,
   lineAmountPaise,
   splitGST,
 } from "@/lib/domain/money";
@@ -73,6 +75,11 @@ export default function DocumentSheet({
   // frozen copy once finalized.
   const text = contentOf(doc, spec);
   const totals = computeTotals(doc.lineItems, doc.gstRatePercent, doc);
+  // An export may be billed in the client's currency; everything else is INR,
+  // and `formatMoney` prints INR exactly as `formatINR` always has.
+  const currency = doc.currency ?? "INR";
+  const money = (minor: number) => formatMoney(minor, currency);
+  const fx = currency !== "INR" ? doc.fxRate : undefined;
   // A discount that skips some lines prints in two groups; one that reaches
   // every line (or no discount at all) prints the table exactly as before.
   const discountablePaise = discountablePaiseOf(doc.lineItems);
@@ -99,7 +106,7 @@ export default function DocumentSheet({
                 */}
                 <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
                   <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
-                    {item.description || "—"}
+                    {item.description || NIL}
                   </span>
                 </td>
                 {/* `NIL` rather than blank: a missing classification is a gap
@@ -109,13 +116,13 @@ export default function DocumentSheet({
                   {item.sacCode || NIL}
                 </td>
                 <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {formatINR(item.ratePaise)}
+                  {money(item.ratePaise)}
                 </td>
                 <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
                   {item.qty}
                 </td>
                 <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {formatINR(lineAmountPaise(item))}
+                  {money(lineAmountPaise(item))}
                 </td>
               </tr>
   );
@@ -415,15 +422,15 @@ export default function DocumentSheet({
                 <tr>
                   <td colSpan={2} className="border-b-2 border-[#d9d9d9]" />
                   <td colSpan={3} className="py-[8px] border-b-2 border-[#d9d9d9]">
-                    <SplitRow label="subtotal" value={formatINR(discountablePaise)} />
+                    <SplitRow label="subtotal" value={money(discountablePaise)} />
                     <SplitRow
                       label={`discount${doc.discountPercent !== undefined ? ` (${doc.discountPercent}%)` : ""}`}
-                      value={`-${formatINR(totals.discountPaise)}`}
+                      value={`-${money(totals.discountPaise)}`}
                     />
                     <div className="mt-[4px] border-t border-[#d9d9d9] pt-[4px]">
                       <SplitRow
                         label="after discount"
-                        value={formatINR(discountablePaise - totals.discountPaise)}
+                        value={money(discountablePaise - totals.discountPaise)}
                       />
                     </div>
                   </td>
@@ -451,8 +458,19 @@ export default function DocumentSheet({
         second one down, and it does so whether or not the first is there, which
         is the domestic case.
       */}
-      <div className="mt-auto flex items-stretch gap-[96px] mb-[8px]">
-        <div className="min-w-0 flex-1 flex flex-col max-w-[300px]">
+      {/*
+        A foreign-currency export carries three more statements on the left (the
+        rate, its source, the rupee figure), and at the domestic proportions
+        they wrapped in a 210px column until the band took the line table's
+        room and clipped a row off the bottom. So that one case gives the notes
+        more width and the sums less; the figures still fit on one line each.
+      */}
+      <div
+        className={`mt-auto flex items-stretch mb-[8px] ${fx ? "gap-[40px]" : "gap-[96px]"}`}
+      >
+        <div
+          className={`min-w-0 flex-1 flex flex-col ${fx ? "" : "max-w-[300px]"}`}
+        >
           {/*
             Rule 46's third proviso prescribes these exact words in capitals,
             and it is what a refund claim under IGST s.16(3) is read against.
@@ -477,6 +495,27 @@ export default function DocumentSheet({
             </p>
           ) : null}
           {/*
+            An export billed in the client's currency states what it comes to
+            in rupees, at which rate, on which date, from where: the figure a
+            return reports and a refund claim reconciles against the FIRC. The
+            rate is the bank's TT buying rate on the date of supply (CGST
+            Rule 34(2)), and the source names the bank the account is held at,
+            because that is whose rate the remittance is credited at.
+          */}
+          {fx ? (
+            <div className="mb-2 text-black/70 text-[11px] font-normal leading-[1.4]">
+              <p>
+                Exchange rate: {money(100)} = ₹ {formatRate4(fx.inrPerUnit4)}{" "}
+                (as on {formatDisplayDate(fx.asOf)})
+              </p>
+              <p>Source: {studio.bank.bankName} TT buying rate</p>
+              <p>
+                INR equivalent:{" "}
+                {formatMoney(inrPaiseOf(totals.totalPaise, fx.inrPerUnit4), "INR")}
+              </p>
+            </div>
+          ) : null}
+          {/*
             The LUT the zero-rating rests on, wherever the endorsement says the
             supply went out without IGST: an export and an SEZ supply alike.
             Read from the studio snapshot, so a finalized invoice keeps the LUT
@@ -488,13 +527,13 @@ export default function DocumentSheet({
             </p>
           ) : null}
         </div>
-        <div className="w-[60%] shrink-0">
+        <div className={`${fx ? "w-[52%]" : "w-[60%]"} shrink-0`}>
           <div className="flex justify-between gap-[16px] py-[3px]">
             <span className="text-black/70 text-[12px] font-normal">
               subtotal
             </span>
             <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-              {formatINR(
+              {money(
                 splitDiscount ? totals.taxablePaise : totals.subtotalPaise,
               )}
             </span>
@@ -519,7 +558,7 @@ export default function DocumentSheet({
                   : ""}
               </span>
               <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-                -{formatINR(totals.discountPaise)}
+                -{money(totals.discountPaise)}
               </span>
             </div>
           ) : null}
@@ -531,7 +570,7 @@ export default function DocumentSheet({
                     CGST ({doc.gstRatePercent / 2}%)
                   </span>
                   <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-                    {formatINR(cgstPaise)}
+                    {money(cgstPaise)}
                   </span>
                 </div>
                 <div className="flex justify-between gap-[16px] py-[3px]">
@@ -539,7 +578,7 @@ export default function DocumentSheet({
                     SGST ({doc.gstRatePercent / 2}%)
                   </span>
                   <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-                    {formatINR(sgstPaise)}
+                    {money(sgstPaise)}
                   </span>
                 </div>
               </>
@@ -549,7 +588,7 @@ export default function DocumentSheet({
                   IGST ({doc.gstRatePercent}%)
                 </span>
                 <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
-                  {formatINR(totals.gstPaise)}
+                  {money(totals.gstPaise)}
                 </span>
               </div>
             )
@@ -586,11 +625,11 @@ export default function DocumentSheet({
               {doc.type === "CRN" ? "TOTAL CREDITED" : "TOTAL DUE"}
             </span>
             <span className="text-black text-[14px] font-medium [font-variant-numeric:tabular-nums] text-right">
-              {formatINR(totals.totalPaise)}
+              {money(totals.totalPaise)}
             </span>
           </div>
           <p className="text-right text-black/70 text-[12px] font-normal">
-            {amountInWords(totals.totalPaise)}
+            {amountInWords(totals.totalPaise, currency)}
           </p>
           {/*
           A memo, and only a memo. TDS is the *payer's* deduction under Chapter
@@ -604,7 +643,7 @@ export default function DocumentSheet({
           {tds ? (
             <p className="text-right text-black/70 text-[12px] font-normal pt-[4px]">
               TDS @{tds.ratePercent}% u/s {tds.section} deductible by recipient
-              — net payable {formatINR(netOfTds)}
+              — net payable {money(netOfTds)}
             </p>
           ) : null}
         </div>

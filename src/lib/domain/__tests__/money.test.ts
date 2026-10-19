@@ -2,6 +2,10 @@ import {
   computeTotals,
   discountPaiseOf,
   discountablePaiseOf,
+  foreignMinorOf,
+  formatRate4,
+  inrPaiseOf,
+  parseRate4,
   formatINR,
   groupRupeeInput,
   lineAmountPaise,
@@ -341,5 +345,38 @@ describe("slipTotals", () => {
 
   it("treats absent deductions as none", () => {
     expect(slipTotals([item(100000, 1)], undefined).netPaise).toBe(100000);
+  });
+});
+
+/** An export's rupee figure, at the rate stated on it, never via a float. */
+describe("export conversion", () => {
+  it("states the INR equivalent at the stated rate", () => {
+    // A$952.69 at ₹66.60.
+    expect(inrPaiseOf(95269, 666000)).toBe(6344915);
+  });
+
+  it("survives an amount and rate whose product passes 2^53", () => {
+    expect(inrPaiseOf(9_000_000_000_00, 9_999_999)).toBe(899_999_910_000_000);
+  });
+
+  it("converts a rupee price on the client record into the billing currency", () => {
+    // ₹40,950 at ₹66.60 is the A$614.86 on the Clayora invoice.
+    expect(foreignMinorOf(4095000, 666000)).toBe(61486);
+  });
+
+  it("reads a typed rate to four places, and nothing else", () => {
+    expect(parseRate4("66.60")).toBe(666000);
+    expect(parseRate4("66.6025")).toBe(666025);
+    expect(parseRate4("66")).toBe(660000);
+    expect(parseRate4("66.60251")).toBeNull();
+    expect(parseRate4("0")).toBeNull();
+    expect(parseRate4("abc")).toBeNull();
+  });
+
+  it("prints a rate with at least two places and no trailing noise", () => {
+    expect(formatRate4(666000)).toBe("66.60");
+    expect(formatRate4(666025)).toBe("66.6025");
+    expect(formatRate4(660000)).toBe("66.00");
+    expect(formatRate4(666500)).toBe("66.65");
   });
 });

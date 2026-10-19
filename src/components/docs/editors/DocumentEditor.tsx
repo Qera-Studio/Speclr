@@ -60,7 +60,13 @@ import {
 } from "./ContentFields";
 import InvoicePicker from "./InvoicePicker";
 // import TotalsPanel from './TotalsPanel';
-import { paiseToRupees } from "@/lib/domain/money";
+import {
+  foreignMinorOf,
+  formatRate4,
+  paiseToRupees,
+  parseRate4,
+} from "@/lib/domain/money";
+import { currencyByCode, type CurrencyCode } from "@/lib/domain/currency";
 import type { InvoiceOption, PaymentMethod } from "@/lib/domain/types";
 import type { StudioInfo } from "@/lib/domain/studio";
 import {
@@ -84,6 +90,21 @@ const EMPTY_SNAPSHOT: ClientSnapshot = {
   email: "",
   phone: "",
 };
+
+/**
+ * A rupee rate from the client record, as the line's typed value in the
+ * document's currency. Blank for a foreign currency with no rate yet; an
+ * absent rate stays blank, because absent means "quoted per engagement".
+ */
+function seedRate(
+  paise: number | undefined,
+  currency: CurrencyCode,
+  inrPerUnit4: number | null,
+): string {
+  if (paise === undefined) return "";
+  if (currency === "INR") return paiseToRupees(paise);
+  return inrPerUnit4 ? paiseToRupees(foreignMinorOf(paise, inrPerUnit4)) : "";
+}
 
 function buildPreviewDoc(
   typeCode: FinancialTypeCode,
@@ -116,6 +137,8 @@ function buildPreviewDoc(
     gstLabel: fields.gstLabel,
     discountPercent: fields.discountPercent,
     discountPaise: fields.discountPaise,
+    currency: fields.currency,
+    fxRate: fields.fxRate,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     notes: fields.notes,
     content: fields.content,
@@ -348,6 +371,14 @@ export default function DocumentEditor({
    * blank line. That case already exists: `ServicesStep` drops it from its own
    * summary the same way.
    */
+  /*
+    The rates on the client record are rupees. An export billed in their
+    currency converts each at the rate typed for this document, and leaves it
+    blank until there is one: a rupee figure in a dollar column is off by the
+    exchange rate and looks perfectly plausible.
+  */
+  const billCurrency = (values.currency || "INR") as CurrencyCode;
+  const billRate4 = parseRate4(values.fxRate);
   const engagedRows = allEngagedLines(
     selectedClient?.commercial?.services,
     services,
@@ -364,7 +395,7 @@ export default function DocumentEditor({
       // `!== undefined`, not a truthiness test: an agreed rate of zero is a
       // real rate meaning the work is given away, and `0 ? … : ""` would blank
       // it and quietly ask the operator to re-type a figure they had set.
-      rate: line.ratePaise !== undefined ? paiseToRupees(line.ratePaise) : "",
+      rate: seedRate(line.ratePaise, billCurrency, billRate4),
       qty: "1",
       sacCode: line.sacCode ?? "",
       // Which Service the line bills, so a list can say what this document
@@ -455,17 +486,17 @@ export default function DocumentEditor({
      * `SlipEditor`'s earnings seed, for the same reason.
      */
     /**
-     * An agreed billing currency is worth saying, and it is still not a second
-     * currency in the arithmetic. A GST document shows tax in INR whatever was
-     * agreed (`currency.ts`), so this states both facts instead of pretending
-     * to convert between them.
+     * An export is billed in the currency the client record agreed, and every
+     * other supply in rupees: GST is shown in INR and the CGST/SGST split is
+     * rupee-shaped, so only a zero-rated export may carry another currency
+     * (`foreignCurrency` in the registry refuses the rest at finalize).
      */
     const agreed = selectedClient.commercial?.currency;
-    if (agreed && agreed !== "INR") {
-      patchContent({
-        currencyLine: `All amounts are in Indian Rupees (INR). The agreed billing currency is ${agreed}.`,
-      });
-    }
+    const billIn =
+      placeOfSupplyOf(selectedClient).source === "export" && agreed
+        ? agreed
+        : "INR";
+    setValue("currency", billIn === "INR" ? "" : billIn, { shouldDirty: true });
 
     const retainers = engagedRows.filter(
       (r) => r.service.scheduleKey === "retainer",
@@ -475,7 +506,15 @@ export default function DocumentEditor({
     );
     if (retainers.length > 0 && blank && !spec.creditsInvoice) {
       pulseSeeding();
-      lineItems.replace(retainers.map((r) => r.item));
+      const rate4 = parseRate4(values.fxRate);
+      lineItems.replace(
+        retainers.map((r) => ({
+          ...r.item,
+          // Converted with the currency just decided, not the one this render
+          // was computed under.
+          rate: seedRate(r.line.ratePaise, billIn, rate4),
+        })),
+      );
     }
   }, [
     engagedRows,
@@ -487,6 +526,7 @@ export default function DocumentEditor({
     spec.creditsInvoice,
     spec.hasDueDate,
     values.dueDate,
+    values.fxRate,
     values.issueDate,
     values.lineItems,
   ]);
@@ -712,6 +752,15 @@ export default function DocumentEditor({
         : "",
       { shouldDirty: true },
     );
+    // In the invoice's currency at the invoice's rate, so the note reverses,
+    // or the receipt settles, the figure that was billed.
+    setValue("currency", invoice.currency ?? "", { shouldDirty: true });
+    setValue(
+      "fxRate",
+      invoice.fxRate ? formatRate4(invoice.fxRate.inrPerUnit4) : "",
+      { shouldDirty: true },
+    );
+    setValue("fxAsOf", invoice.fxRate?.asOf ?? "", { shouldDirty: true });
     lineItems.replace(
       invoice.lineItems.map((item) => ({
         description: item.description,
@@ -883,6 +932,48 @@ export default function DocumentEditor({
             ) : null}
           </FieldRow>
 
+          {/*
+            An export billed in the client's currency: which one (from their
+            record, so read-only) and the rate its rupee equivalent is stated
+            at. Above the lines because it decides what unit their rates are
+            typed in, and a rate entered here converts the client's agreed
+            rupee prices as lines are added.
+          */}
+          {billCurrency !== "INR" ? (
+            <FieldSet className="border-t border-border pt-4">
+              <FieldRow>
+                <Field>
+                  <FieldInfo
+                    htmlFor="doc-currency"
+                    label="Billed in"
+                    info="The billing currency on the client record. Only a zero-rated export can be billed in another currency; anything taxed is billed in INR."
+                    infoLabel="Where does the currency come from?"
+                  />
+                  <Input
+                    id="doc-currency"
+                    size="form"
+                    readOnly
+                    value={`${billCurrency} · ${currencyByCode(billCurrency)?.name ?? ""}`}
+                  />
+                </Field>
+                <Field>
+                  <FieldInfo
+                    htmlFor="doc-fx-rate"
+                    label={`₹ per ${currencyByCode(billCurrency)?.symbol ?? billCurrency}1`}
+                    info="The bank's TT buying rate on the invoice date, from its published rate card. CGST Rule 34(2) takes the rate on the date of supply, and the invoice states the INR equivalent at it."
+                    infoLabel="Which rate goes here?"
+                  />
+                  <Input
+                    id="doc-fx-rate"
+                    size="form"
+                    placeholder="66.60"
+                    {...numericField(register("fxRate"), "rate")}
+                  />
+                </Field>
+              </FieldRow>
+            </FieldSet>
+          ) : null}
+
           <LineItemsEditor
             className="border-t border-border pt-6"
             control={control}
@@ -891,6 +982,7 @@ export default function DocumentEditor({
             showSac
             lockNames
             presets={linePresets}
+            currency={billCurrency}
             discountToggle={Boolean(
               previewDoc.discountPercent || previewDoc.discountPaise,
             )}
@@ -931,7 +1023,7 @@ export default function DocumentEditor({
               </Field>
               <Field>
                 <FieldLabel htmlFor="doc-discount-amount">
-                  Discount (₹)
+                  Discount ({currencyByCode(billCurrency)?.symbol ?? "₹"})
                 </FieldLabel>
                 <Input
                   id="doc-discount-amount"

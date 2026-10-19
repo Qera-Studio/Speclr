@@ -31,21 +31,33 @@ import { normalizeRupeeInput } from '@/lib/domain/money';
  * - `money`   — digits and one decimal point, at most two places, via
  *               `normalizeRupeeInput`. Never a minus: no amount on any document
  *               here may be negative.
+ * - `rate`:   digits and one decimal point, at most four places: an exchange
+ *               rate as a bank's rate card prints it (66.6025).
  */
 export function numericField(
   registration: UseFormRegisterReturn,
-  mode: 'integer' | 'money' = 'integer',
+  mode: 'integer' | 'money' | 'rate' = 'integer',
 ): UseFormRegisterReturn & { inputMode: 'numeric' | 'decimal' } {
   return {
     ...registration,
-    inputMode: mode === 'money' ? 'decimal' : 'numeric',
+    inputMode: mode === 'integer' ? 'numeric' : 'decimal',
     onChange: (event: { target: { value?: string } }) => {
       const raw = String(event.target.value ?? '');
       event.target.value =
-        mode === 'money' ? normalizeRupeeInput(raw) : raw.replace(/\D/g, '');
+        mode === 'money'
+          ? normalizeRupeeInput(raw)
+          : mode === 'rate'
+            ? normalizeRateInput(raw)
+            : raw.replace(/\D/g, '');
       return registration.onChange(event);
     },
   };
+}
+
+/** Digits and the first decimal point, cut to four places after it. */
+function normalizeRateInput(raw: string): string {
+  const [whole, ...rest] = raw.replace(/[^\d.]/g, '').split('.');
+  return rest.length ? `${whole}.${rest.join('').slice(0, 4)}` : whole;
 }
 
 /**

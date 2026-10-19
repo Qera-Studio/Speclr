@@ -18,7 +18,7 @@ import {
   isSlip,
   type DocFields,
 } from "@/lib/domain/registry";
-import { computeTotals } from "@/lib/domain/money";
+import { totalPaiseOf } from "@/lib/domain/documentQuery";
 import { placeOfSupplyOf } from "@/lib/domain/placeOfSupply";
 import {
   gstTreatmentMismatch,
@@ -162,6 +162,8 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     gstLabel: fields.gstLabel,
     discountPercent: fields.discountPercent,
     discountPaise: fields.discountPaise,
+    currency: fields.currency,
+    fxRate: fields.fxRate,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     placeOfSupplyOverrideReason: fields.placeOfSupplyOverrideReason,
     gstOverrideReason: fields.gstOverrideReason,
@@ -571,7 +573,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
 
   // Freeze the studio's own identity block too. The details are editable, so
   // without this a later address change would silently rewrite the "from:" block
-  // of every invoice already filed — which CGST s.36 (72-month unaltered
+  // of every invoice already filed, which CGST s.36 (72-month unaltered
   // retention) and Rule 46 (supplier address as at issue) do not allow.
   // Read before the number is claimed, because the LUT check below can refuse
   // and a refusal after the claim would burn a serial.
@@ -631,6 +633,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       // the domestic wording.
       gstRatePercent: existing.gstRatePercent,
       placeOfSupplyStateCode: (existing as InvoiceDocument).placeOfSupplyStateCode,
+      currency: (existing as InvoiceDocument).currency,
       studioSnapshot,
       deductionsNote: (existing as SlipDocument).deductionsNote,
       employeeSnapshot,
@@ -905,6 +908,10 @@ export async function createReceiptForInvoice(
     // invoice's discount with the lines it discounted.
     discountPercent: invoice.discountPercent,
     discountPaise: invoice.discountPaise,
+    // And in the invoice's currency at the invoice's rate: a receipt settles
+    // the figure that was billed.
+    currency: invoice.currency,
+    fxRate: invoice.fxRate,
     placeOfSupplyStateCode: invoice.placeOfSupplyStateCode,
     notes: invoice.notes,
     payment: {
@@ -959,14 +966,16 @@ export async function listInvoicesForClient(
           id: doc.id,
           number: doc.number,
           issueDate: doc.issueDate,
-          totalPaise: computeTotals(doc.lineItems, doc.gstRatePercent, doc)
-            .totalPaise,
+          // In rupees, whatever the invoice was billed in.
+          totalPaise: totalPaiseOf(doc) ?? 0,
           lineItems: doc.lineItems,
           gstRatePercent: doc.gstRatePercent,
           placeOfSupplyStateCode: doc.placeOfSupplyStateCode,
           gstLabel: doc.gstLabel,
           discountPercent: doc.discountPercent,
           discountPaise: doc.discountPaise,
+          currency: doc.currency,
+          fxRate: doc.fxRate,
         },
       ];
     });

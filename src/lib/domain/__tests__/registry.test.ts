@@ -156,6 +156,45 @@ describe("DOC_TYPES registry", () => {
   });
 });
 
+/**
+ * A foreign currency is for a zero-rated export only, and never without the
+ * rate its rupee equivalent is stated at.
+ */
+describe("an invoice in the client's currency", () => {
+  const exportInvoice = {
+    ...validInvoiceFields,
+    placeOfSupplyStateCode: "96",
+    currency: "AUD",
+    fxRate: { inrPerUnit4: 666000, asOf: "2026-07-21" },
+  };
+
+  it("finalizes as a zero-rated export with its rate", () => {
+    expect(invoiceFinalizeSchema.safeParse(exportInvoice).success).toBe(true);
+  });
+
+  it("refuses one with no rate, asking for the bank's", () => {
+    const result = invoiceFinalizeSchema.safeParse({ ...exportInvoice, fxRate: undefined });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/TT buying rate for AUD/);
+  });
+
+  it("refuses a domestic supply in another currency", () => {
+    const result = invoiceFinalizeSchema.safeParse({
+      ...exportInvoice,
+      placeOfSupplyStateCode: "09",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("refuses a taxed export in another currency", () => {
+    const result = invoiceFinalizeSchema.safeParse({
+      ...exportInvoice,
+      gstRatePercent: 18,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe("invoice schemas", () => {
   it("finalize accepts a complete invoice", () => {
     expect(invoiceFinalizeSchema.safeParse(validInvoiceFields).success).toBe(

@@ -405,20 +405,49 @@ export interface BaseDocument {
   finalizedBy?: Actor;
 }
 
+/**
+ * The rate an export was converted to rupees at, for the INR equivalent the
+ * invoice states and the return reports.
+ *
+ * Integer, never a float: rupees per one unit of the foreign currency, times
+ * 10,000, so four decimal places survive exactly (66.60 is 666000). `asOf` is
+ * the date the rate is for: the invoice's issue date, because CGST Rule 34(2)
+ * takes the rate on the date of supply for a service, and a credit note or a
+ * receipt carries the invoice's own rate and date, so it reverses or settles
+ * at the figure that was charged.
+ */
+export interface FxRate {
+  inrPerUnit4: number;
+  asOf: string;
+}
+
+/**
+ * What an export may be billed in. Absent `currency` is INR, which is every
+ * document written before this and every domestic one for ever: a supply with
+ * GST on it shows that tax in rupees, so a foreign currency is refused unless
+ * the place of supply is outside India and no tax is charged. On such a
+ * document every amount, line rates and a typed discount included, is in minor
+ * units of `currency`, exactly as a stipend slip's are.
+ */
+interface BilledInCurrency {
+  currency?: CurrencyCode;
+  fxRate?: FxRate;
+}
+
 /** Documents about a billed client always carry the client fields. */
 interface ClientDocument extends BaseDocument {
   clientId: string;
   clientSnapshot: ClientSnapshot;
 }
 
-export interface InvoiceDocument extends ClientDocument {
+export interface InvoiceDocument extends ClientDocument, BilledInCurrency {
   type: "INV";
   dueDate?: string;
 }
 
 export type PaymentMethod = "Bank Transfer" | "UPI" | "Cash" | "Card" | "Other";
 
-export interface ReceiptDocument extends ClientDocument {
+export interface ReceiptDocument extends ClientDocument, BilledInCurrency {
   type: "REC";
   payment: {
     date: string;
@@ -535,7 +564,7 @@ export interface ContractDocument extends ClientDocument {
  * positive and the document's *nature* is what makes them a reduction, which is
  * how a credit note is read and how s.34 describes it.
  */
-export interface CreditNoteDocument extends ClientDocument {
+export interface CreditNoteDocument extends ClientDocument, BilledInCurrency {
   type: "CRN";
   /**
    * The invoice being credited. Rule 53(1A)(f) requires the serial number *and
@@ -761,6 +790,9 @@ export interface InvoiceOption {
   /** Carried so a credit note reverses the tax that was actually charged. */
   discountPercent?: number;
   discountPaise?: number;
+  /** Carried so a credit note or a receipt settles at the invoice's own rate. */
+  currency?: CurrencyCode;
+  fxRate?: FxRate;
 }
 
 export interface DocTotals {

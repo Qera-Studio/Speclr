@@ -957,7 +957,7 @@ Indian export invoice. This is not N jurisdictions. It is six additions:
 | **LUT number and date printed on the invoice** | Done 19 October 2026: on studio settings, inside `studioSnapshot`, printed on every zero-rated invoice, and finalize refuses one dated after it lapses. |
 | Recipient's foreign tax ID | Collected (`taxIds/foreign.ts`), prints in the billed-to block |
 | Place of supply for an export of services (IGST s.13(2), location of recipient) | `placeOfSupplyOf` covers the domestic case; the export case needs confirming |
-| INR conversion at the **CBIC notified rate** (Rule 34), not a market rate | Not built. Separate from `currency.ts`, which correctly keeps invoices in INR. |
+| INR conversion at a GAAP rate on the date of supply (Rule 34(2), for services; the CBIC notified rate is Rule 34(1), for goods), not a market rate | Done 19 October 2026: an export is billed in the client's currency, the bank's TT buying rate is typed per invoice, and the INR equivalent prints at it. No API: none publishes a compliant rate for AUD. |
 | FIRC / BRC as proof of realisation | Already an attachment kind |
 
 The **contract** has a global dimension that is commercial rather than
