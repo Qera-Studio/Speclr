@@ -177,7 +177,7 @@ export default function LineItemsEditor<T extends FieldValues>({
   discountToggle = false,
   className,
 }: LineItemsEditorProps<T>) {
-  const { fields, append, remove } = fieldArray;
+  const { fields, append, remove, replace } = fieldArray;
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   // The summaries have to track what is typed. `fields` holds the values the
@@ -221,6 +221,14 @@ export default function LineItemsEditor<T extends FieldValues>({
   };
 
   const removeAt = (index: number) => {
+    // The last line of a document that needs one is cleared rather than
+    // refused: a seeded line nobody wants (a retainer not billed this month)
+    // has to be removable, and a blank row is what the form starts from anyway.
+    if (!allowEmpty && fields.length === 1) {
+      replace([emptyLineItem()] as Parameters<typeof replace>[0]);
+      setRows({});
+      return;
+    }
     remove(index);
     setRows((prev) => {
       const next: Record<number, RowState> = {};
@@ -387,8 +395,8 @@ export default function LineItemsEditor<T extends FieldValues>({
                     )}
                     <RemoveButton
                       label={`Remove ${itemLabel} ${index + 1}`}
+                      confirmTitle={`Remove ${description}`}
                       onConfirm={() => removeAt(index)}
-                      disabled={!allowEmpty && fields.length === 1}
                     />
                   </div>
                 </div>

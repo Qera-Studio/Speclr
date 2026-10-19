@@ -115,15 +115,21 @@ describe('LineItemsEditor', () => {
     expect(rowCount()).toBe(2);
   });
 
-  it('will not let the last line item be removed', async () => {
+  it('clears the last line item, once confirmed, rather than refusing', async () => {
     const user = userEvent.setup();
-    render(<Harness count={1} />);
+    render(<Harness count={1} lockNames />);
 
+    // A seeded line is locked; it still has to be removable once opened.
+    await unlockRow(user, 1);
     await user.click(screen.getByRole('button', { name: 'Remove line item 1' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Remove Item 1')).toBeInTheDocument();
+    await confirmRemoval(user);
 
-    // An invoice with no line items has nothing to bill for.
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    // One blank row left to type into: a document still needs a line.
     expect(rowCount()).toBe(1);
+    expect(screen.queryByText('Item 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Untitled item')).toBeInTheDocument();
   });
 
   it('adds a line item', async () => {
