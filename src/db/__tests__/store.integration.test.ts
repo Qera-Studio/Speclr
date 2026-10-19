@@ -11,7 +11,7 @@
  * so it removes those via a direct DB call in afterAll.
  */
 import { randomUUID } from 'node:crypto';
-import { eq, gte } from 'drizzle-orm';
+import { eq, gte, sql } from 'drizzle-orm';
 import { db } from '../index';
 import { clauses, clients, counters, documents, services } from '../schema';
 import {
@@ -35,17 +35,29 @@ import {
   listFinalizedInvoicesForClient,
   saveClient,
   saveDocument,
+  finalizeStoredDocument,
 } from '../store';
 import { claimSerial } from '../counter';
 import type { InvoiceDocument } from '@/lib/domain/types';
+
+// Run as production: under jest the app is in dev mode, where serials are
+// fake and a finalized row is deletable, which is exactly what this file
+// exists to prove is not so.
+jest.mock('@/lib/devMode', () => ({ DEV_UNLIMITED: false }));
 
 const TEST_FY = '9999';
 const madeClientIds: string[] = [];
 const madeDocIds: string[] = [];
 
 afterAll(async () => {
-  // Direct teardown — bypasses the immutability guard to clean finalized test docs.
-  for (const id of madeDocIds) await db.delete(documents).where(eq(documents.id, id));
+  // Finalized test docs go through the trigger's one exception
+  // (`0022_documents_immutable`), the purge flag, in the same transaction.
+  for (const id of madeDocIds) {
+    await db.batch([
+      db.execute(sql`select set_config('speclr.purge_finalized', 'on', true)`),
+      db.delete(documents).where(eq(documents.id, id)),
+    ]);
+  }
   for (const id of madeClientIds) await db.delete(clients).where(eq(clients.id, id));
   await db.delete(counters).where(eq(counters.fyCode, TEST_FY));
 });
@@ -128,21 +140,21 @@ describe('Postgres store (integration)', () => {
     madeDocIds.push(docId);
     await saveDocument(draftInvoice(docId, clientId));
 
-    const claim = await claimSerial('INV', TEST_FY);
     const draft = draftInvoice(docId, clientId);
-    await saveDocument({
-      ...draft,
-      status: 'finalized',
-      number: claim.number,
-      serial: claim.serial,
-      year: 9999,
-      clientSnapshot: { name: 'Frozen Co', address: 'A', email: 'f@t.co', phone: '1' },
-      finalizedAt: Date.now(),
-    });
+    const claim = await finalizeStoredDocument(
+      {
+        ...draft,
+        status: 'finalized',
+        year: 9999,
+        clientSnapshot: { name: 'Frozen Co', address: 'A', email: 'f@t.co', phone: '1' },
+        finalizedAt: Date.now(),
+      },
+      { claim: { code: 'INV', fyCode: TEST_FY } },
+    );
 
     const got = await getDocument(docId);
     expect(got?.status).toBe('finalized');
-    expect(got?.number).toBe(claim.number);
+    expect(got?.number).toBe(claim?.number);
     expect(got?.clientSnapshot?.name).toBe('Frozen Co');
 
     // Immutability: overwrite and delete must both be refused.
@@ -236,16 +248,12 @@ describe('Postgres store (integration)', () => {
     madeDocIds.push(older, newer, draftId, othersId);
 
     const finalize = async (id: string, owner: string, issueDate: string) => {
-      const claim = await claimSerial('INV', TEST_FY);
-      await saveDocument({
-        ...draftInvoice(id, owner),
-        issueDate,
-        status: 'finalized',
-        number: claim.number,
-        serial: claim.serial,
-        year: 9999,
-        finalizedAt: Date.now(),
-      });
+      const draft = { ...draftInvoice(id, owner), issueDate };
+      await saveDocument(draft);
+      await finalizeStoredDocument(
+        { ...draft, status: 'finalized', year: 9999, finalizedAt: Date.now() },
+        { claim: { code: 'INV', fyCode: TEST_FY } },
+      );
     };
 
     await finalize(older, clientId, '2026-05-01');

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, ilike, inArray, or, sql } from 'drizzle-orm';
 import { db } from './index';
 import {
   clauses,
@@ -463,13 +463,110 @@ export async function saveClientInput(line: LibraryLine): Promise<void> {
  * The finalize transition itself (stored draft → finalized) passes this check
  * because the *existing* row is still a draft at that point.
  */
+/**
+ * Write a draft. **Only a draft**, and the condition is in the statement.
+ *
+ * This used to read the status and then upsert, two round trips with a gap
+ * between them, so an autosave racing a finalize could write a finalized row
+ * back to draft (gate dry run, 18 October 2026). The update now carries
+ * `where status = 'draft'`, so it simply does not happen to a finalized row,
+ * and `0022_documents_immutable` refuses it again underneath. Issuing goes
+ * through `finalizeStoredDocument`, never here.
+ */
 export async function saveDocument(doc: AdminDocument): Promise<void> {
-  const existing = await getDocument(doc.id);
-  if (existing?.status === 'finalized') {
-    throw new Error(`Document ${doc.id} is finalized and immutable.`);
+  if (doc.status !== 'draft') {
+    throw new Error(`Document ${doc.id}: only a draft is saved here; finalize issues it.`);
   }
   const row = toRow(doc);
-  await db.insert(documents).values(row).onConflictDoUpdate({ target: documents.id, set: row });
+  const written = await db
+    .insert(documents)
+    .values(row)
+    .onConflictDoUpdate({ target: documents.id, set: row, where: eq(documents.status, 'draft') })
+    .returning({ id: documents.id });
+  if (written.length === 0) {
+    throw new Error(`Document ${doc.id} is finalized and immutable.`);
+  }
+}
+
+/** How a document is numbered as it is issued. */
+export type Numbering =
+  /** The real series: claimed in the same statement that issues the document. */
+  | { claim: { code: DocTypeCode; fyCode: string } }
+  /** A number already decided: the dev server's obviously fake serial. */
+  | { fixed: { serial: number; number: string } }
+  /** Unnumbered: the HR letters. */
+  | null;
+
+/**
+ * Issue a document: claim its number and write it as finalized, **in one
+ * statement**, and only while it is still a draft.
+ *
+ * Finalize was a claim, then a read, then an upsert, three round trips with
+ * no transaction (the Neon HTTP driver has none that can span them). Two
+ * clicks, or two tabs, could burn two numbers, issue the document under the
+ * second and overwrite the first, and a failure after the claim burned a
+ * number for nothing (gate dry run, 18 October 2026; fixed on the founder's
+ * instruction the next day).
+ *
+ * Now the claim is a data-modifying CTE gated on the draft row, which it locks
+ * (`for update`). A second finalize waits on that lock, finds the row issued
+ * when it gets it, claims nothing and updates nothing. Either the whole thing
+ * happens or none of it does, so a number is burnt by nothing short of a
+ * database that loses a committed write.
+ *
+ * The number is formatted in SQL as `formatDocNumber` formats it, padded to
+ * three digits and growing past 999; `store.integration.test.ts` holds the two
+ * to the same answer.
+ *
+ * Returns the number and serial written, or null when the row was not a draft
+ * (already issued, or gone).
+ */
+export async function finalizeStoredDocument(
+  doc: AdminDocument,
+  numbering: Numbering,
+): Promise<{ number?: string; serial?: number } | null> {
+  const row = toRow({ ...doc, status: 'finalized' });
+  const columns = getTableColumns(documents);
+  const skip = new Set<string>(['id', 'createdAt', ...(numbering && 'claim' in numbering ? ['number', 'serial'] : [])]);
+  const assignments = Object.entries(columns)
+    .filter(([key]) => !skip.has(key))
+    .map(([key, column]) => {
+      const value =
+        numbering && 'fixed' in numbering && (key === 'number' || key === 'serial')
+          ? numbering.fixed[key]
+          : (row as Record<string, unknown>)[key];
+      return sql`${sql.identifier(column.name)} = ${sql.param(value ?? null, column)}`;
+    });
+
+  if (!numbering || 'fixed' in numbering) {
+    const rows = await db.execute<{ number: string | null; serial: number | null }>(sql`
+      update documents set ${sql.join(assignments, sql`, `)}
+      where id = ${doc.id} and status = 'draft'
+      returning number, serial`);
+    const issued = rows.rows[0];
+    return issued ? { number: issued.number ?? undefined, serial: issued.serial ?? undefined } : null;
+  }
+
+  const { code, fyCode } = numbering.claim;
+  const rows = await db.execute<{ number: string; serial: number }>(sql`
+    with claimed as (
+      insert into counters (doc_type, fy_code, last_serial)
+      select ${code}, ${fyCode}, 1
+      where exists (select 1 from documents where id = ${doc.id} and status = 'draft' for update)
+      on conflict (doc_type, fy_code)
+        do update set last_serial = counters.last_serial + 1, updated_at = now()
+      returning last_serial
+    )
+    update documents set
+      ${sql.join(assignments, sql`, `)},
+      serial = claimed.last_serial,
+      number = 'QS-' || ${code} || '-' || ${fyCode} || '-'
+        || lpad(claimed.last_serial::text, greatest(3, length(claimed.last_serial::text)), '0')
+    from claimed
+    where documents.id = ${doc.id} and documents.status = 'draft'
+    returning documents.number, documents.serial`);
+  const issued = rows.rows[0];
+  return issued ? { number: issued.number, serial: Number(issued.serial) } : null;
 }
 
 export async function getDocument(id: string): Promise<AdminDocument | null> {
@@ -574,7 +671,17 @@ export async function deleteDraft(id: string): Promise<void> {
   if (existing.status === 'finalized' && !DEV_UNLIMITED) {
     throw new Error(`Document ${id} is finalized and cannot be deleted.`);
   }
-  await db.delete(documents).where(eq(documents.id, id));
+  if (existing.status === 'finalized') {
+    // Dev only: a sample finalize under a fake serial. The database refuses
+    // to delete a finalized row (`0022_documents_immutable`) unless this
+    // transaction says it is a purge, and nothing else in the app says so.
+    await db.batch([
+      db.execute(sql`select set_config('speclr.purge_finalized', 'on', true)`),
+      db.delete(documents).where(eq(documents.id, id)),
+    ]);
+    return;
+  }
+  await db.delete(documents).where(and(eq(documents.id, id), eq(documents.status, 'draft')));
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────

@@ -22,6 +22,13 @@ jest.mock('../authGate', () => ({ authorized: () => authorized() }));
 jest.mock('@/db/store', () => ({
   getDocument: (...a: unknown[]) => getDocument(...a),
   saveDocument: (...a: unknown[]) => saveDocument(a[0] as AdminDocument),
+  // Finalize issues in one statement; it records through the same spy, so a
+  // test reads what was issued exactly as it reads what was saved.
+  finalizeStoredDocument: async (doc: AdminDocument, numbering: { fixed?: object } | null) => {
+    const fixed = numbering?.fixed ?? {};
+    await saveDocument({ ...doc, ...fixed } as AdminDocument);
+    return fixed;
+  },
   getClient: () => Promise.resolve(null),
   getEmployee: () => Promise.resolve(null),
   getStudioSettings: () => Promise.resolve(undefined),

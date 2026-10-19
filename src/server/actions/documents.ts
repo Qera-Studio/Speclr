@@ -50,9 +50,12 @@ import {
   getDocument,
   getEmployee,
   getStudioSettings,
+  finalizeStoredDocument,
   listFinalizedInvoicesForClient,
   saveDocument,
+  type Numbering,
 } from "@/db/store";
+import { DEV_UNLIMITED } from "@/lib/devMode";
 import { logger } from "@/lib/logger";
 import { authorized } from "./authGate";
 
@@ -666,8 +669,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   // not calendar year, so each FY's sequence stays consecutive as GST Rule 46
   // expects. `year` stores the FY start (e.g. 2025 for FY 2025-26); the number
   // carries the compact FY code (e.g. '2526').
-  let number: string | undefined;
-  let serial: number | undefined;
+  let numbering: Numbering = null;
   let year: number | undefined;
   if (
     spec.kind === "financial" ||
@@ -677,22 +679,13 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   ) {
     year = financialYearStart(existing.issueDate);
     const fyCode = financialYearCodeOfISODate(existing.issueDate);
-
-    // Atomic claim — INCR can never hand out the same number twice. Claimed
-    // only now, so abandoned drafts never burn a serial.
-    try {
-      ({ serial, number } = await claimSerial(existing.type, fyCode));
-    } catch (err) {
-      logger.error({
-        action: "finalizeDocument",
-        event: "serial_claim_failed",
-        error: err,
-      });
-      return {
-        success: false,
-        error: "Failed to claim a document number. Try again.",
-      };
-    }
+    // Claimed in the same statement that issues the document
+    // (`finalizeStoredDocument`), so abandoned drafts never burn a serial and
+    // neither does a second click. Outside production, the obviously fake
+    // serial `claimSerial` hands out instead.
+    numbering = DEV_UNLIMITED
+      ? { fixed: await claimSerial(existing.type, fyCode) }
+      : { claim: { code: existing.type, fyCode } };
   }
 
   // Freeze the words too. The sheets resolve mastheads, TERMS, the MSA clauses
@@ -717,10 +710,10 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
 
   // `existing` is already a well-formed union member; we only refresh the one
   // subject snapshot that applies to its kind.
-  const finalized = {
+  const draftFinalized = {
     ...existing,
     status: "finalized",
-    ...(number ? { number, serial, year } : {}),
+    ...(year !== undefined ? { year } : {}),
     ...(hr ? { employeeSnapshot } : quotation ? {} : { clientSnapshot }),
     studioSnapshot,
     content,
@@ -732,29 +725,25 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     finalizedBy: actor,
   } as AdminDocument;
 
-  // The serial is already reserved — retry the save once before giving up,
-  // and log loudly if the number ends up burned (gap, never a duplicate).
+  // One statement: claim and issue together, or neither. Nothing is burnt by
+  // a failure here, so the message can say so truthfully.
+  let issued: { number?: string; serial?: number } | null;
   try {
-    await saveDocument(finalized);
-  } catch {
-    try {
-      await saveDocument(finalized);
-    } catch (err) {
-      logger.error({
-        action: "finalizeDocument",
-        event: "serial_claimed_but_save_failed",
-        number,
-        // A burned GST serial is an accounting event someone has to reconcile.
-        // The Clerk id, never the email — the logger deliberately carries no PII.
-        actor: actor.userId,
-        error: err,
-      });
-      return {
-        success: false,
-        error: "Failed to save. The claimed number was not used.",
-      };
-    }
+    issued = await finalizeStoredDocument(draftFinalized, numbering);
+  } catch (err) {
+    logger.error({
+      action: "finalizeDocument",
+      event: "finalize_failed",
+      actor: actor.userId,
+      error: err,
+    });
+    return { success: false, error: "Failed to finalize. Nothing was issued; try again." };
   }
+  if (!issued) {
+    return { success: false, error: "This document has already been finalized." };
+  }
+  const { number, serial } = issued;
+  const finalized = { ...draftFinalized, ...(number ? { number, serial } : {}) } as AdminDocument;
 
   logger.info({
     action: "finalizeDocument",
