@@ -671,6 +671,7 @@ const letterBaseShape = {
   employeeId: z.string().min(1),
   bodyParagraphs: z.array(multilineSchema(4000)).max(40),
   bulletSections: z.array(bulletSectionSchema).max(10),
+  writtenFor: z.enum(["intern", "employee"]).optional(),
   payAmountPaise: z.number().int().min(0).max(1e13).optional(),
   content: docContentSchema.optional(),
 };
@@ -757,6 +758,7 @@ export interface DocFields {
   // HR — letters
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
+  writtenFor?: "intern" | "employee";
   payAmountPaise?: number;
   // SQ — the Service Quotation. See `QuotationDocument` in types.ts.
   salutation?: Salutation;

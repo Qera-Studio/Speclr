@@ -21,6 +21,7 @@ import FieldInfo from "@/components/patterns/FieldInfo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
 import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
@@ -153,6 +154,8 @@ export default function LetterEditor({
   const patchContent: ContentPatch = (patch) =>
     setContent((prev) => ({ ...prev, ...patch }));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** Whom the body was seeded for; see `LetterDocument.writtenFor`. */
+  const [writtenFor, setWrittenFor] = useState(doc?.writtenFor);
 
   const employee = employees.find((e) => e.id === employeeId);
   const heading = workspaceTitle(title, DOC_TYPES[type].label, employee?.name);
@@ -186,6 +189,7 @@ export default function LetterEditor({
       setBodyText(seeded.bodyParagraphs.join("\n\n"));
       setBulletSections(seeded.bulletSections);
       patchContent({ subject: seeded.subject });
+      setWrittenFor(e.engagementType);
     }
   };
 
@@ -221,6 +225,7 @@ export default function LetterEditor({
     bodyParagraphs,
     bulletSections,
     payAmountPaise,
+    writtenFor,
     content,
   });
 
@@ -342,6 +347,21 @@ export default function LetterEditor({
                 emptyMessage="No matching employees."
               />
             </Field>
+
+            {employee && writtenFor && writtenFor !== employee.engagementType ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription className="flex flex-col items-start gap-2">
+                  <span>
+                    This letter was written for an {writtenFor}, and {employee.name} is
+                    now an {employee.engagementType}. Its title and its text disagree,
+                    so it cannot be issued until the text is rewritten.
+                  </span>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => onSelectEmployee(employee.id)}>
+                    Rewrite for an {employee.engagementType}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <Field>
               <FieldLabel htmlFor="letter-issue-date">Issue date</FieldLabel>

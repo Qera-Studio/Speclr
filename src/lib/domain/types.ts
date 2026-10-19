@@ -719,6 +719,14 @@ export interface LetterDocument extends BaseDocument {
   bodyParagraphs: string[];
   bulletSections: { heading: string; items: string[] }[];
   payAmountPaise?: number;
+  /**
+   * Whom the body was written for. The masthead follows the person's current
+   * engagement, while the body is prose seeded once, so a person reclassified
+   * after seeding got a "RELIEVING LETTER" over internship text. Finalize
+   * refuses the mismatch and the editor offers the rewrite. Absent on letters
+   * written before it existed, which are not checked.
+   */
+  writtenFor?: EngagementType;
 }
 
 /**

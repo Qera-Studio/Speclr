@@ -210,6 +210,7 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     bodyParagraphs: fields.bodyParagraphs ?? [],
     bulletSections: fields.bulletSections ?? [],
     payAmountPaise: fields.payAmountPaise,
+    writtenFor: fields.writtenFor,
     content: fields.content,
   };
 }
@@ -449,6 +450,16 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       return {
         success: false,
         error: `${employee.name} is now an employee. Issue a pay slip, not a stipend slip.`,
+      };
+    }
+
+    // The masthead follows the person; the body was written once. A letter
+    // whose body was written for the other engagement says two things.
+    const letter = existing as LetterDocument;
+    if (letter.writtenFor && letter.writtenFor !== employee.engagementType) {
+      return {
+        success: false,
+        error: `This letter was written for an ${letter.writtenFor}, and ${employee.name} is now an ${employee.engagementType}. Rewrite it before issuing.`,
       };
     }
 

@@ -243,6 +243,7 @@ export function toRow(doc: AdminDocument): DocumentInsert {
       data.bodyParagraphs = doc.bodyParagraphs;
       data.bulletSections = doc.bulletSections;
       data.payAmountPaise = doc.payAmountPaise;
+      data.writtenFor = doc.writtenFor;
       break;
     case "SQ":
       // Addressed to nobody in particular — no clientId, no snapshot. See
@@ -357,6 +358,7 @@ export function fromRow(row: DocumentRow): AdminDocument {
       bodyParagraphs: row.data.bodyParagraphs ?? [],
       bulletSections: row.data.bulletSections ?? [],
       payAmountPaise: row.data.payAmountPaise,
+      writtenFor: row.data.writtenFor,
     } satisfies LetterDocument;
   }
 

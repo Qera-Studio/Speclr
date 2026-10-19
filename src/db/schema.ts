@@ -467,6 +467,7 @@ export interface DocumentData {
   // Letters
   bodyParagraphs?: string[];
   bulletSections?: { heading: string; items: string[] }[];
+  writtenFor?: "intern" | "employee";
   payAmountPaise?: number;
   // SQ — the Service Quotation. See `QuotationDocument` in domain/types.
   // It is the one type that prices through `services` rather than `lineItems`.

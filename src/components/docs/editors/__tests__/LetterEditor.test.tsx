@@ -177,3 +177,30 @@ describe('LetterEditor rail sections', () => {
     );
   });
 });
+
+/** The title follows the person; the body was written once (19 October 2026). */
+describe('LetterEditor (a body written for the other engagement)', () => {
+  const draft = {
+    id: 'exit-1', type: 'EXIT', status: 'draft', employeeId: 'e1',
+    employeeSnapshot: employees[0], issueDate: '2026-06-30',
+    bodyParagraphs: ['Riya has successfully completed her internship.'], bulletSections: [],
+    writtenFor: 'intern', lineItems: [], gstRatePercent: 0, createdAt: 0, updatedAt: 0,
+  } as unknown as Parameters<typeof LetterEditor>[0]['doc'];
+  const nowEmployed = [{ ...employees[0], engagementType: 'employee' }] as EmployeeRecord[];
+
+  it('says so, and rewrites the text for the engagement they now have', async () => {
+    const u = userEvent.setup();
+    render(<LetterEditor type="EXIT" employees={nowEmployed} doc={draft} title="Exit letter" />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('written for an intern');
+    await u.click(screen.getByRole('button', { name: 'Rewrite for an employee' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect((screen.getByLabelText('Letter body') as HTMLTextAreaElement).value).toMatch(/relieved of/);
+  });
+
+  it('says nothing when they agree', () => {
+    render(<LetterEditor type="EXIT" employees={employees} doc={draft} title="Exit letter" />);
+    expect(screen.queryByText(/written for an/)).not.toBeInTheDocument();
+  });
+});

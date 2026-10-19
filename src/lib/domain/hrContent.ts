@@ -172,11 +172,12 @@ function exitContent(engagement: EngagementType, a: LetterContentArgs): LetterCo
     masthead: exitMasthead('employee'),
     subheading: 'TO WHOMSOEVER IT MAY CONCERN',
     bodyParagraphs: [
-      `With reference to ${a.pronoun.possessive} resignation, please note that the same has been accepted and {name} is relieved from the services of the company with effect from ${effectiveDate}.`,
-      // Employee variant only. "Therein" points at the resignation letter named
-      // above; an intern never resigns, so the intern branch has no referent for
-      // it and must not carry this line (CONTEXT §6).
-      `We confirm acceptance on the terms and conditions stipulated therein.`,
+      // Assumes no reason for leaving: a resignation, a fixed term ending and a
+      // termination all end here. The line accepting "the terms and conditions
+      // stipulated therein" is gone, since it could bind the company to
+      // whatever a resignation letter said (founder's decision, 19 October
+      // 2026). A resignation can still be named by hand.
+      `{name} was employed with Qera Private Limited as ${a.role} from ${a.startDate} to ${effectiveDate}, and has been relieved of ${a.pronoun.possessive} duties with effect from ${effectiveDate}.`,
     ],
     bulletSections: [
       {

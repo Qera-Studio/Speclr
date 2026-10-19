@@ -80,22 +80,19 @@ describe('defaultLetterContent — exit (auto-switching)', () => {
   it('employee exit uses proper relieving language', () => {
     const c = defaultLetterContent('EXIT', 'employee', baseArgs());
     const all = c.bodyParagraphs.join(' ').toLowerCase();
-    expect(all).toMatch(/relieved from the services/);
+    expect(all).toMatch(/has been relieved of his duties with effect from 10th july 2026/);
   });
 
   /**
-   * "Therein" points at the resignation letter named in the paragraph above it.
-   * An intern never resigns, so on an internship completion letter the word
-   * would refer to a document that does not exist.
+   * Founder's decision, 19 October 2026: the letter assumes no reason for
+   * leaving, and no longer accepts "the terms and conditions stipulated
+   * therein", which could bind the company to a resignation letter's terms.
    */
-  it('confirms acceptance of the resignation terms on the employee exit only', () => {
-    const employee = defaultLetterContent('EXIT', 'employee', baseArgs());
-    const intern = defaultLetterContent('EXIT', 'intern', baseArgs());
-
-    expect(employee.bodyParagraphs).toContain(
-      'We confirm acceptance on the terms and conditions stipulated therein.',
-    );
-    expect(intern.bodyParagraphs.join(' ')).not.toMatch(/stipulated therein/);
+  it('assumes no resignation and accepts no terms', () => {
+    for (const engagement of ['employee', 'intern'] as const) {
+      const all = defaultLetterContent('EXIT', engagement, baseArgs()).bodyParagraphs.join(' ');
+      expect(all).not.toMatch(/resignation|stipulated therein/);
+    }
   });
 });
 

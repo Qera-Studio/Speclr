@@ -255,6 +255,13 @@ describe('the exit letter guard', () => {
     expect(result.error).toMatch(/last working day/);
   });
 
+  it('refuses a letter whose text was written for the other engagement', async () => {
+    getDocument.mockResolvedValue({ ...exitLetter, writtenFor: 'intern' });
+    getEmployee.mockResolvedValue(employee({ endDate: '2026-06-30' }));
+    const result = await finalizeDocument('doc-1');
+    expect(result.error).toMatch(/written for an intern/);
+  });
+
   it('issues it once the last working day is recorded', async () => {
     getDocument.mockResolvedValue(exitLetter);
     getEmployee.mockResolvedValue(employee({ endDate: '2026-06-30' }));
