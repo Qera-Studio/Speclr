@@ -18,6 +18,7 @@
  * Client-safe: pure, no framework imports, no database.
  */
 
+import { currencyForCountry, type CurrencyCode } from "./currency";
 import { gstStateCodeByName } from "./gstStates";
 import { gstinStateCode, GSTIN_RE } from "./taxIds/india";
 
@@ -163,4 +164,25 @@ export function zeroRatingLabel(client: {
     return "Supply to an SEZ unit under LUT, zero rated, IGST not charged (IGST Act s.16).";
   }
   return null;
+}
+
+/**
+ * What an invoice to this client is billed in: rupees in India, and abroad the
+ * client's own currency.
+ *
+ * Abroad, the record's billing currency wins when it names one other than
+ * INR; otherwise the currency of the client's country. INR on a foreign
+ * record is not read as a choice, because the onboarding field that wrote it
+ * said invoices always printed INR, so every foreign client onboarded before
+ * exports could be billed abroad carries it by default. A country with no
+ * known currency stays INR, which `foreignCurrency` then simply never sees.
+ */
+export function billingCurrencyOf(client: {
+  addressParts?: { country?: string };
+  commercial?: { currency?: CurrencyCode };
+}): CurrencyCode {
+  const country = client.addressParts?.country?.trim().toUpperCase() || "IN";
+  if (country === "IN") return "INR";
+  const agreed = client.commercial?.currency;
+  return agreed && agreed !== "INR" ? agreed : currencyForCountry(country);
 }

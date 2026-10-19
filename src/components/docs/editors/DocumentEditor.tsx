@@ -14,6 +14,7 @@ import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from "@/lib/domain/registry";
 import { DerivedNote } from "@/components/ui/derived-note";
 import { gstStateName } from "@/lib/domain/gstStates";
 import {
+  billingCurrencyOf,
   placeOfSupplyOf,
   zeroRatingEndorsement,
   zeroRatingLabel,
@@ -491,11 +492,7 @@ export default function DocumentEditor({
      * rupee-shaped, so only a zero-rated export may carry another currency
      * (`foreignCurrency` in the registry refuses the rest at finalize).
      */
-    const agreed = selectedClient.commercial?.currency;
-    const billIn =
-      placeOfSupplyOf(selectedClient).source === "export" && agreed
-        ? agreed
-        : "INR";
+    const billIn = billingCurrencyOf(selectedClient);
     setValue("currency", billIn === "INR" ? "" : billIn, { shouldDirty: true });
 
     const retainers = engagedRows.filter(
@@ -543,7 +540,11 @@ export default function DocumentEditor({
    * finalize as a justification for a departure that is not there.
    */
   useEffect(() => {
-    if (!gstApplies) return;
+    // Whether or not GST is charged: an export charges none and still has to
+    // carry 96, which is what prints "Other Country", swaps the payment panel
+    // for the wire block and permits a foreign currency. Gated on GST, a draft
+    // that opened with GST already off never stored it and printed as domestic.
+    if (!selectedClient) return;
     const next = derivedPlaceOfSupply.code ?? "";
     if (values.placeOfSupplyStateCode !== next) {
       setValue("placeOfSupplyStateCode", next, { shouldDirty: true });
@@ -553,28 +554,36 @@ export default function DocumentEditor({
     }
   }, [
     derivedPlaceOfSupply.code,
-    gstApplies,
+    selectedClient,
     setValue,
     values.placeOfSupplyOverrideReason,
     values.placeOfSupplyStateCode,
   ]);
 
   /**
-   * Keep an invoice's currency equal to the client record's, the same way the
-   * place of supply is kept. It is read-only on the document, so a draft
-   * opened after the record was corrected (a foreign client saved as INR, then
-   * set to AUD) has to follow it, or the rate field never appears. Invoices
+   * An empty GST note on a zero-rated supply is filled with why it is zero.
+   * Seeding it only at the moment of picking missed every draft reopened
+   * after, which then printed "not applicable" on an export: a different legal
+   * statement. Only while empty: an export's note stays the operator's to word.
+   */
+  useEffect(() => {
+    if (gstApplies || !zeroRatedLabel || values.gstLabel) return;
+    setValue("gstLabel", zeroRatedLabel, { shouldDirty: true });
+  }, [gstApplies, setValue, values.gstLabel, zeroRatedLabel]);
+
+  /**
+   * Keep an invoice's currency equal to the client's (`billingCurrencyOf`),
+   * the same way the place of supply is kept. It is read-only on the
+   * document, so a draft has to follow the client rather than remember the
+   * moment it was picked, or the rate field never appears. Invoices
    * only: a credit note or a receipt takes its currency from the invoice it
    * names. An already-entered rate is kept, and seeded lines are not
    * re-converted: amounts already typed are the operator's.
    */
-  const recordCurrency =
-    selectedClient &&
-    placeOfSupplyOf(selectedClient).source === "export" &&
-    selectedClient.commercial?.currency &&
-    selectedClient.commercial.currency !== "INR"
-      ? selectedClient.commercial.currency
-      : "";
+  const derivedCurrency = selectedClient
+    ? billingCurrencyOf(selectedClient)
+    : "INR";
+  const recordCurrency = derivedCurrency === "INR" ? "" : derivedCurrency;
   useEffect(() => {
     if (typeCode !== "INV" || !selectedClient) return;
     if (values.currency !== recordCurrency) {

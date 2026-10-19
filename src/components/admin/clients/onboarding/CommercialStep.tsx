@@ -178,7 +178,7 @@ export default function CommercialStep({
           <FieldInfo
             htmlFor="client-currency"
             label="Billing currency"
-            info="Recorded as what was agreed. Invoices still print INR: a GST document from an Indian entity must show its tax in INR whatever the billing currency, and the CGST/SGST split is rupee-shaped."
+            info="What an export invoice to this client is billed in, with the rupee equivalent stated at the bank's rate. Left as INR for a client abroad, their own country's currency is used. A client in India is always billed in INR."
             infoLabel="Why do invoices still print INR?"
           />
           <Controller

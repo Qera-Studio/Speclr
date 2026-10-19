@@ -631,6 +631,36 @@ describe("DocumentEditor (existing draft)", () => {
     expect(await screen.findByLabelText("₹ per A$1")).toBeInTheDocument();
   });
 
+  /**
+   * The Clayora draft as it was found: an Australian client whose record says
+   * INR (onboarding told the operator invoices always printed INR), and a draft
+   * saved with GST off, no place of supply and an empty GST note. It printed
+   * as a domestic invoice. Opening it has to make it the export it is.
+   */
+  it("makes a foreign client's draft an export in their currency on open", async () => {
+    const abroad = [
+      {
+        ...clients[0],
+        addressParts: { line1: "2 Crab Apple Lane", city: "Rouse Hill", state: "NSW", pincode: "2155", country: "AU" },
+        commercial: { currency: "INR" },
+      },
+    ] as ClientRecord[];
+    render(
+      <DocumentEditor
+        typeCode="INV"
+        clients={abroad}
+        doc={{ ...draft, gstRatePercent: 0, placeOfSupplyStateCode: "", gstLabel: "" } as typeof draft}
+        title="Edit invoice draft"
+      />,
+    );
+
+    expect(await screen.findByLabelText("₹ per A$1")).toBeInTheDocument();
+    expect(await screen.findByText(/Place of supply: Other Country/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Export of services under LUT/).length).toBeGreaterThan(0);
+    // The wire block, not the UPI QR.
+    expect(screen.queryByAltText("UPI payment QR code")).toBeNull();
+  });
+
   it("will not finalize on a single click", async () => {
     const u = userEvent.setup();
     render(

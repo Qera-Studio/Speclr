@@ -374,7 +374,8 @@ bounded:
 
 - **Only a zero-rated export.** `foreignCurrency` in the registry refuses a
   foreign currency on anything with GST or a domestic place of supply.
-- **The currency is the client record's**, read-only on the document (rule 3).
+- **The currency is derived from the client** (`billingCurrencyOf`), read-only
+  on the document (rule 3).
 - **The rate is typed, never fetched**: the bank's TT buying rate on the issue
   date (CGST Rule 34(2)), stored as an integer and frozen with the document.
   The market-rate feed stays on the clients list (the deviation below).

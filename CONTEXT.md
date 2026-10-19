@@ -1134,7 +1134,9 @@ would credit a discount the invoice never gave.
 ### 5k-i. An export can be billed in the client's currency
 
 Added 19 October 2026 (`PRINCIPLES.md`, logged deviations). A zero-rated export
-carries `currency` (from `commercial.currency`, read-only on the document) and
+carries `currency` (`billingCurrencyOf`: the record's billing currency abroad,
+or the client's country's when the record names none or INR, since onboarding
+used to say invoices always printed INR; read-only on the document) and
 `fxRate` (`inrPerUnit4`, the bank's TT buying rate ×10,000, and `asOf`, the issue
 date). Every amount on it is in that currency's minor units, and the sheet
 states the rate, its source (`{bankName} TT buying rate`, derived) and the INR
@@ -1142,6 +1144,11 @@ equivalent. Four rules:
 
 - **Only a zero-rated export**, refused otherwise at finalize, because GST is
   shown in rupees.
+- **A draft follows its client, not the moment it was picked.** Place of
+  supply, the zero-rating note and the currency are kept in step on every
+  open. Place of supply used to sync only while GST applied, so an export
+  draft that opened with GST off never stored 96 and printed as domestic, UPI
+  QR and all.
 - **`total_paise` is the INR equivalent**, so lists and reports stay in rupees.
 - **The client record's rates are rupees.** A line seeded from them converts at
   the rate typed on the document and stays blank until there is one. A rupee

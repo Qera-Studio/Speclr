@@ -1,4 +1,5 @@
 import {
+  billingCurrencyOf,
   PLACE_OF_SUPPLY_EXPORT,
   isIntraState,
   placeOfSupplyOf,
@@ -103,5 +104,26 @@ describe('zeroRatingLabel', () => {
   it('says nothing for an ordinary domestic client', () => {
     expect(zeroRatingLabel({ addressParts: { country: 'IN' } })).toBeNull();
     expect(zeroRatingLabel({})).toBeNull();
+  });
+});
+
+describe("billingCurrencyOf", () => {
+  const au = { addressParts: { country: "AU" } };
+
+  it("bills a client in India in rupees, whatever the record says", () => {
+    expect(billingCurrencyOf({ addressParts: { country: "IN" }, commercial: { currency: "USD" } })).toBe("INR");
+  });
+
+  it("bills a client abroad in their country's currency when the record names none", () => {
+    expect(billingCurrencyOf(au)).toBe("AUD");
+  });
+
+  it("does not read INR on a foreign record as a choice", () => {
+    // Onboarding said invoices always printed INR, so it is the default there.
+    expect(billingCurrencyOf({ ...au, commercial: { currency: "INR" } })).toBe("AUD");
+  });
+
+  it("takes the record's currency abroad when it names one", () => {
+    expect(billingCurrencyOf({ ...au, commercial: { currency: "USD" } })).toBe("USD");
   });
 });
