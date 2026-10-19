@@ -211,3 +211,12 @@ describe('zeroRatingEndorsement', () => {
     expect(zeroRatingLabel(domestic)).toBeNull();
   });
 });
+
+/** Rule 46(p) is the invoice's statement; the receipt does not repeat it (19 October 2026). */
+describe('the reverse charge line', () => {
+  const spec = (type: 'INV' | 'REC'): ContentSpec => DOC_TYPES[type];
+  it('prints on an invoice and not on a receipt', () => {
+    expect(contentOf({ type: 'INV', placeOfSupplyStateCode: '09' }, spec('INV')).reverseChargeLine).toMatch(/reverse charge: No/);
+    expect(contentOf({ type: 'REC', placeOfSupplyStateCode: '09' }, spec('REC')).reverseChargeLine).toBe('');
+  });
+});

@@ -216,7 +216,10 @@ function isTaxDocument(doc: ContentSource): boolean {
  * and the day one of them is notified this is where it gets corrected.
  */
 function defaultReverseChargeLine(doc: ContentSource): string {
-  if (!isTaxDocument(doc)) return '';
+  // The invoice only. A receipt acknowledges payment against an invoice that
+  // already made this statement (removed from REC on the founder's decision,
+  // 19 October 2026).
+  if (doc.type !== 'INV') return '';
   if (doc.placeOfSupplyStateCode === PLACE_OF_SUPPLY_EXPORT) {
     return 'Tax payable on reverse charge: No. Zero-rated export of services; the recipient may be liable to account for tax in their own jurisdiction.';
   }
