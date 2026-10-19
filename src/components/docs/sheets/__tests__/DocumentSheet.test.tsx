@@ -68,6 +68,8 @@ describe("DocumentSheet", () => {
 
     expect(screen.getByText("discount (10%)")).toBeInTheDocument();
     expect(screen.getByText("-₹ 200.00")).toBeInTheDocument();
+    // Rule 46(k): the figure GST is charged on, stated.
+    expect(screen.getByText("taxable value").nextSibling).toHaveTextContent("₹ 1,800.00");
     // The tax follows the discount down. This is the assertion that matters:
     // 18% of 2,000 would be ₹360, and charging that would remit tax on
     // consideration nobody paid. It is an intra-state supply, so the ₹324 comes

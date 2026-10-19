@@ -544,7 +544,9 @@ export default function DocumentSheet({
         <div className={`${fx ? "w-[52%]" : "w-[60%]"} shrink-0 flex flex-col`}>
           <div className="flex justify-between gap-[16px] py-[3px]">
             <span className="text-black/70 text-[12px] font-normal">
-              subtotal
+              {/* With a split discount the band opens on the value GST is
+                  charged on, so it is named as that (Rule 46(k)). */}
+              {splitDiscount ? "taxable value" : "subtotal"}
             </span>
             <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
               {money(
@@ -573,6 +575,18 @@ export default function DocumentSheet({
               </span>
               <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
                 -{money(totals.discountPaise)}
+              </span>
+            </div>
+          ) : null}
+          {/* Rule 46(k): the value GST is charged on, stated rather than left
+              to the reader to work out (founder's decision, 19 October 2026). */}
+          {totals.discountPaise > 0 && !splitDiscount ? (
+            <div className="flex justify-between gap-[16px] py-[3px]">
+              <span className="text-black/70 text-[12px] font-normal">
+                taxable value
+              </span>
+              <span className="text-black/70 text-[12px] font-normal [font-variant-numeric:tabular-nums] text-right">
+                {money(totals.taxablePaise)}
               </span>
             </div>
           ) : null}

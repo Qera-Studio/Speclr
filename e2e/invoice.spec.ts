@@ -29,6 +29,7 @@ test.describe("the invoice fits its page", () => {
     // deducts a discount recorded in the invoice, so a row that fails to print
     // is a discount that legally did not happen.
     await expect(sheet).toContainText("discount (10%)");
+    await expect(sheet).toContainText("taxable value");
 
     // The statements Rule 46 wants in words. Absent before this pass.
     await expect(sheet).toContainText("Tax payable on reverse charge: No.");
