@@ -59,6 +59,7 @@ function completeDraft(overrides: Partial<AdminDocument> = {}): AdminDocument {
     // for the same reason: a domestic recipient's supply is taxed whatever the
     // document says, so a nil rate on one now needs a recorded reason.
     gstRatePercent: 0,
+    placeOfSupplyStateCode: '96',
     createdAt: 1_750_000_000_000,
     updatedAt: 1_750_000_000_000,
     ...overrides,

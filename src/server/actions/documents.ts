@@ -25,7 +25,7 @@ import {
   gstTreatmentOf,
   lutError,
 } from "@/lib/domain/gstTreatment";
-import { materialiseContent } from "@/lib/domain/docContent";
+import { contentOf, materialiseContent } from "@/lib/domain/docContent";
 import {
   clientSnapshotOf,
   type ActionResult,
@@ -462,6 +462,15 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
 
+    // Without an end date the exit letter prints the joining date as the day
+    // they left (`hrContent.ts`, `endDate ?? startDate`).
+    if (existing.type === "EXIT" && !employee.endDate) {
+      return {
+        success: false,
+        error: `Record ${employee.name}'s last working day before issuing this letter.`,
+      };
+    }
+
     employeeSnapshot = employeeSnapshotOf(employee);
   } else if (!quotation) {
     const clientId = (
@@ -486,11 +495,16 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
      * because the derived answer comes from the client record, which the
      * payload cannot see.
      */
-    if (existing.gstRatePercent > 0) {
+    /*
+     * At every rate, not only when GST is charged (19 October 2026, the format
+     * freeze audit). A zero-rated export that reached finalize without 96
+     * stored printed as a domestic invoice: no place of supply, no export
+     * endorsement, and a UPI QR no foreign bank can read.
+     */
+    if (DOC_TYPES[existing.type].kind === "financial") {
       const derived = placeOfSupplyOf(client);
       const stored = existing.placeOfSupplyStateCode;
       if (
-        stored &&
         derived.code &&
         stored !== derived.code &&
         !existing.placeOfSupplyOverrideReason
@@ -504,7 +518,7 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
             that is done or which of the two figures is the one to change.
           */
           error:
-            `This document's place of supply is ${stored}, but ${client.name}'s records give ${derived.code}. ` +
+            `This document's place of supply is ${stored || "not set"}, but ${client.name}'s records give ${derived.code}. ` +
             `${derived.reason} ` +
             `Correct the client's details, or record a reason for the departure before finalizing.`,
         };
@@ -563,12 +577,37 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
 
+    /**
+     * Rule 46(g) with Notification 78/2020-CT: an invoice to a registered
+     * recipient carries the SAC on every line. The sheet prints NIL in a blank
+     * cell, so without this a B2B invoice could issue with no classification.
+     */
+    if (
+      existing.type === "INV" &&
+      client.gstin &&
+      existing.lineItems.some((line) => !line.sacCode)
+    ) {
+      return {
+        success: false,
+        error: `${client.name} is GST-registered, so every line needs a SAC code (Rule 46(g)).`,
+      };
+    }
+
     zeroRatedInvoice =
       existing.type === "INV" &&
       existing.gstRatePercent === 0 &&
       gstTreatmentOf(client).label !== null;
 
     clientSnapshot = clientSnapshotOf(client);
+
+    // The signature block prints this name; without it a contract issues with
+    // the blank rule `CONTEXT.md` §5d exists to remove.
+    if (existing.type === "CON" && !clientSnapshot.signatory?.name) {
+      return {
+        success: false,
+        error: `Name who signs for ${client.name} on their client record before issuing this contract.`,
+      };
+    }
   }
 
   // Freeze the studio's own identity block too. The details are editable, so
@@ -582,6 +621,28 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   if (zeroRatedInvoice) {
     const lut = lutError(existing.issueDate, studioSnapshot);
     if (lut) return { success: false, error: lut };
+
+    // The third proviso's sentence is what a refund claim is checked against,
+    // and it is a content key, so it can be cleared. An SEZ supply's is seeded
+    // by the editor rather than defaulted, so this is also where a missing one
+    // is caught.
+    const { exportEndorsement } = contentOf(
+      {
+        type: existing.type,
+        content: existing.content,
+        gstRatePercent: existing.gstRatePercent,
+        placeOfSupplyStateCode: (existing as InvoiceDocument).placeOfSupplyStateCode,
+        currency: (existing as InvoiceDocument).currency,
+        studioSnapshot,
+      },
+      spec,
+    );
+    if (!exportEndorsement.trim()) {
+      return {
+        success: false,
+        error: "A zero-rated invoice must carry its Rule 46 endorsement. Restore it under the invoice's wording.",
+      };
+    }
   }
 
   // Numbered docs: financial (invoices/receipts), hr-slip (stipend and pay) and

@@ -209,3 +209,34 @@ describe('a pay slip whose deductions exceed gross', () => {
     expect((await finalizeDocument('doc-1')).success).toBe(true);
   });
 });
+
+/** The format freeze audit, 19 October 2026: the exit date. */
+describe('the exit letter guard', () => {
+  const exitLetter = {
+    id: 'doc-1',
+    type: 'EXIT',
+    status: 'draft',
+    employeeId: 'emp-1',
+    issueDate: '2026-06-30',
+    lineItems: [],
+    gstRatePercent: 0,
+    bodyParagraphs: ['Ananya Rao has been relieved.'],
+    bulletSections: [],
+    createdAt: 0,
+    updatedAt: 0,
+  } as unknown as AdminDocument;
+
+  it('refuses an exit letter for someone with no last working day', async () => {
+    getDocument.mockResolvedValue(exitLetter);
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/last working day/);
+  });
+
+  it('issues it once the last working day is recorded', async () => {
+    getDocument.mockResolvedValue(exitLetter);
+    getEmployee.mockResolvedValue(employee({ endDate: '2026-06-30' }));
+    const result = await finalizeDocument('doc-1');
+    expect(result.error).toBeUndefined();
+  });
+});

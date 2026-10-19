@@ -44,6 +44,7 @@ jest.mock('@/server/pdf/url', () => ({
 
 import { finalizeDocument } from '../documents';
 import { STUDIO_INFO } from '@/lib/domain/studio';
+import { SEZ_ENDORSEMENT } from '@/lib/domain/placeOfSupply';
 import { PARTS } from '@/lib/domain/seed/parts';
 import { contractComplete } from '@/lib/domain/contract/completeness';
 
@@ -132,6 +133,15 @@ describe('the LUT guard on a zero-rated invoice', () => {
     expect(frozen.content?.reverseChargeLine).toMatch(/own jurisdiction/);
   });
 
+  it('refuses an export whose endorsement was cleared, and claims no number', async () => {
+    getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutValidTo: '2027-03-31' });
+    getDocument.mockResolvedValue({ ...exportInvoice, content: { exportEndorsement: '' } });
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/endorsement/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+
   it('refuses with no LUT recorded, and claims no number', async () => {
     getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutArn: undefined });
     const result = await finalizeDocument('doc-1');
@@ -189,17 +199,32 @@ describe('the place-of-supply override guard', () => {
     expect(result.success).toBe(true);
   });
 
-  it('does not apply when GST does not apply', async () => {
-    // Overseas, which is what actually makes GST not apply. A *domestic*
-    // recipient's supply is taxed whether or not the document says so, so a nil
-    // rate on one is the tax-treatment guard's business, tested below.
+  /**
+   * This used to say the guard did not apply without GST, and pinned an export
+   * finalizing under a domestic code. That export printed as domestic: no
+   * place of supply, no endorsement, a UPI QR. The format freeze audit
+   * (19 October 2026) found it.
+   */
+  it('refuses an export stored under a domestic code, at a nil rate too', async () => {
     getClient.mockResolvedValue(client({ addressParts: { ...client().addressParts!, country: 'GB' } }));
     getDocument.mockResolvedValue(
       invoice({ gstRatePercent: 0, placeOfSupplyStateCode: '29', gstLabel: 'Export of services' }),
     );
 
     const result = await finalizeDocument('doc-1');
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/96/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+
+  it('refuses an export with no place of supply stored at all', async () => {
+    getClient.mockResolvedValue(client({ addressParts: { ...client().addressParts!, country: 'GB' } }));
+    getDocument.mockResolvedValue(
+      invoice({ gstRatePercent: 0, placeOfSupplyStateCode: undefined }),
+    );
+
+    const result = await finalizeDocument('doc-1');
+    expect(result.error).toMatch(/not set/);
   });
 
   it('does not fire when the client establishes no state to derive from', async () => {
@@ -339,7 +364,11 @@ describe('the tax-treatment guard', () => {
 
   it('does not fire for an SEZ unit, whose nil rate is itself derived', async () => {
     getClient.mockResolvedValue(client({ tax: { sez: true } }));
-    getDocument.mockResolvedValue(invoice({ gstRatePercent: 0 }));
+    // The editor seeds the SEZ endorsement on picking the client; finalize
+    // refuses a zero-rated invoice without one.
+    getDocument.mockResolvedValue(
+      invoice({ gstRatePercent: 0, content: { exportEndorsement: SEZ_ENDORSEMENT } }),
+    );
 
     const result = await finalizeDocument('doc-1');
     expect(result.success).toBe(true);
@@ -377,18 +406,62 @@ describe('the tax-treatment guard', () => {
     const blanks = Object.fromEntries(
       contractComplete({ parts: [part], blanks: {} }).map(({ blank }) => [blank.key, '₹1,50,000']),
     );
-    getDocument.mockResolvedValue(
-      invoice({
-        type: 'CON',
-        gstRatePercent: 0,
-        lineItems: [],
-        contract: { parts: [part], blanks, library: {} },
-      } as Partial<AdminDocument>),
-    );
+    getClient.mockResolvedValue(client({ contacts: SIGNS }));
+    getDocument.mockResolvedValue(contract(part, blanks));
 
     const result = await finalizeDocument('doc-1');
 
     expect(result.success).toBe(true);
     expect(saveDocument).toHaveBeenCalled();
+  });
+
+  it('refuses a contract whose client names nobody to sign', async () => {
+    const part = PARTS.find((s) => !s.archived)!;
+    const blanks = Object.fromEntries(
+      contractComplete({ parts: [part], blanks: {} }).map(({ blank }) => [blank.key, '₹1,50,000']),
+    );
+    getDocument.mockResolvedValue(contract(part, blanks));
+
+    const result = await finalizeDocument('doc-1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/who signs/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+});
+
+const SIGNS = {
+  primary: { name: 'Asha Rao', designation: 'Director' },
+  roles: { signing: 'primary' },
+} as ClientRecord['contacts'];
+
+function contract(part: (typeof PARTS)[number], blanks: Record<string, string>): AdminDocument {
+  return invoice({
+    type: 'CON',
+    gstRatePercent: 0,
+    lineItems: [],
+    contract: { parts: [part], blanks, library: {} },
+  } as Partial<AdminDocument>);
+}
+
+/** Rule 46(g) with Notification 78/2020-CT: a registered recipient gets a SAC on every line. */
+describe('the SAC guard', () => {
+  const registered = client({ gstin: '09AAACC1206D1ZM' });
+
+  it('refuses a line without a SAC for a GST-registered client', async () => {
+    getClient.mockResolvedValue(registered);
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/SAC/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+
+  it('finalizes once every line carries one', async () => {
+    getClient.mockResolvedValue(registered);
+    getDocument.mockResolvedValue(
+      invoice({ lineItems: [{ description: 'Brand system', ratePaise: 150_000, qty: 1, sacCode: '998391' }] }),
+    );
+    const result = await finalizeDocument('doc-1');
+    expect(result.error).toBeUndefined();
   });
 });
