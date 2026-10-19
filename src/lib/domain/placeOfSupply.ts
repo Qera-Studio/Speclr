@@ -125,13 +125,18 @@ export function isIntraState(
  * the statutory endorsement, and it is what a refund claim under IGST s.16(3)
  * is checked against. Both print, because they are two different jobs.
  *
- * Qera exports under a Letter of Undertaking, so it is always the
- * without-payment form. The on-payment variant is not written down here: it
- * would be a sentence nothing in the app can currently produce, and a legal
- * string nobody selects is a legal string nobody maintains.
+ * Qera exports under a Letter of Undertaking, so this is the ordinary form.
+ * An export is not tax-locked, though, and one invoiced with IGST printed this
+ * sentence beside the IGST line. The proviso's other form covers that case
+ * (`EXPORT_ON_PAYMENT_ENDORSEMENT`, added 19 October 2026 on the founder's
+ * instruction).
  */
 export const EXPORT_ENDORSEMENT =
   "SUPPLY MEANT FOR EXPORT UNDER BOND OR LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGRATED TAX";
+
+/** Rule 46, third proviso, for an export on which IGST is paid. */
+export const EXPORT_ON_PAYMENT_ENDORSEMENT =
+  "SUPPLY MEANT FOR EXPORT ON PAYMENT OF INTEGRATED TAX";
 
 /** The same proviso's wording for a supply to an SEZ unit or developer. */
 export const SEZ_ENDORSEMENT =

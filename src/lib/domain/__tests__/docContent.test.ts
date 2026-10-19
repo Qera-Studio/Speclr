@@ -142,6 +142,14 @@ describe('Rule 46 and Rule 48 markings', () => {
     );
   });
 
+  /** An export that pays IGST must not say it went out without it. */
+  it('endorses an IGST-paid export with the on-payment sentence', () => {
+    expect(
+      contentOf({ type: 'INV', placeOfSupplyStateCode: '96', gstRatePercent: 18 }, invoiceSpec)
+        .exportEndorsement,
+    ).toBe('SUPPLY MEANT FOR EXPORT ON PAYMENT OF INTEGRATED TAX');
+  });
+
   /** A domestic supply is not zero-rated, so the endorsement prints nothing. */
   it('endorses nothing on a domestic supply', () => {
     expect(contentOf({ type: 'INV', placeOfSupplyStateCode: '07' }, invoiceSpec).exportEndorsement).toBe('');

@@ -6,6 +6,7 @@ import { AGREEMENT_PREAMBLE, CONTRACT_INTRO, MSA_CLAUSES, type MsaClause } from 
 import { studioOf, type StudioInfo } from './studio';
 import {
   EXPORT_ENDORSEMENT,
+  EXPORT_ON_PAYMENT_ENDORSEMENT,
   PLACE_OF_SUPPLY_EXPORT,
 } from './placeOfSupply';
 import type { DocTypeCode, EngagementType } from './types';
@@ -253,9 +254,8 @@ function defaultCurrencyLine(doc: ContentSource): string {
  */
 function defaultExportEndorsement(doc: ContentSource): string {
   if (!isTaxDocument(doc)) return '';
-  return doc.placeOfSupplyStateCode === PLACE_OF_SUPPLY_EXPORT
-    ? EXPORT_ENDORSEMENT
-    : '';
+  if (doc.placeOfSupplyStateCode !== PLACE_OF_SUPPLY_EXPORT) return '';
+  return (doc.gstRatePercent ?? 0) > 0 ? EXPORT_ON_PAYMENT_ENDORSEMENT : EXPORT_ENDORSEMENT;
 }
 
 /**
