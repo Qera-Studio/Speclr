@@ -274,10 +274,34 @@ Free tasks only the founder can do, plus decisions the work needs:
 - **Decide the five items under *The gate dry run* above.** Item 1 matters
   most: it is the difference between "issued documents are immutable" being
   true and being likely.
-- **Read the ten proposals under *The format freeze audit*.** One word each
-  (yes, no, change) is enough to build them. Then take the CA and lawyer
-  questions to one when you can; none blocks using the app for real, but the
-  receipt wording should be settled before the first receipt.
+- **Answered 19 October 2026, and built the same day:**
+  - Atomic finalize, plus the database rule: `f2e00bc`, migration 0022.
+  - Money columns are bigint: migration 0021.
+  - "Contract Agreement" everywhere: `6d0254b`, migration 0020.
+  - The receipt says "amount received" and that it is not a tax invoice, takes
+    the new ownership clause, and needs its invoice: `2f39076`.
+  - An export that pays IGST carries the on-payment sentence and no LUT:
+    `6543db0`.
+  - A stipend slip cannot go to an employee: `8e39067`.
+  - Offer letters name Qera Private Limited, the internship runs to the end
+    date on record, and the stipend is per month throughout. The employee
+    notice clause is gone, and the em dashes in the signatory title and the
+    execution heading are now hyphens: `b3c0538`.
+  - The pay slip prints the rate of wages: `85b7279`.
+  - The privacy notice will live on the website.
+- **Still open from those answers:**
+  - Row-level security: the version that adds protection needs a second
+    database role and a new `DATABASE_URL`.
+  - Signing-out tokens: Clerk already revokes the session; the remaining
+    window is up to a minute.
+  - Rate limits: judged unnecessary for now.
+  - The credit note checks, the taxable value row, the supplier's copy, the
+    "hereinafter" definitions, the notice clause, contract acceptance in place
+    of a client signature, the exit letter, the pay slip's row ceiling and a
+    wage register. Each is waiting on a reply to the explanation given.
+- **Two dead draft quotations** of type `QTN` (27 August, from before the
+  type was renamed `SQ`) crash any query that reads every document; found by
+  the store integration test. Delete them?
 
 - **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
   blockers*).
