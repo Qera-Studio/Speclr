@@ -14,7 +14,10 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // Migrations change the schema, so they run as the owner. The app's own
+    // DATABASE_URL becomes a restricted role once row-level security is on
+    // (`src/db/pending/README.md`); until then the two are the same login.
+    url: (process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL)!,
   },
   strict: true,
   verbose: true,

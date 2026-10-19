@@ -38,7 +38,9 @@ export function tablesOf(mod: Record<string, unknown>): PgTable[] {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  // The owner where there is one: a backup reads every table whole, and the
+  // app's restricted role is held to its policies.
+  const url = process.env.DATABASE_URL_OWNER ?? process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set (looked in .env.local).');
   const sql = neon(url);
 
