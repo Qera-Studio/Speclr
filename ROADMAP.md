@@ -123,10 +123,10 @@ only, nothing changed):
    at about ₹2.14 crore, while the schemas accept far more, and a larger
    document fails on insert after its number has been claimed. **Proposed:**
    move them to `bigint`, or cap the schemas at the column's range.
-4. **Accepted risks to record or refuse:** no Postgres RLS (single tenant, no
-   client-side database key, the gate on every action stands in for it); no
-   rate limit on PDF rendering and the sitemap fetch (allowlisted users only);
-   Clerk session tokens stay valid for their short life after sign-out.
+4. **Accepted risks to record or refuse:** decided 19 October 2026. RLS is
+   being added with a restricted role; rate limits are deferred to the day
+   something is public (see *Waiting on Shivanshu*); the token's last minute
+   after sign-out is accepted.
 5. **A privacy notice and a retention schedule** for the third-party personal
    data held (DPDP Act 2023), which can live outside the app.
 
@@ -289,19 +289,42 @@ Free tasks only the founder can do, plus decisions the work needs:
     execution heading are now hyphens: `b3c0538`.
   - The pay slip prints the rate of wages: `85b7279`.
   - The privacy notice will live on the website.
-- **Still open from those answers:**
-  - Row-level security: the version that adds protection needs a second
-    database role and a new `DATABASE_URL`.
-  - Signing-out tokens: Clerk already revokes the session; the remaining
-    window is up to a minute.
-  - Rate limits: judged unnecessary for now.
-  - The credit note checks, the taxable value row, the supplier's copy, the
-    "hereinafter" definitions, the notice clause, contract acceptance in place
-    of a client signature, the exit letter, the pay slip's row ceiling and a
-    wage register. Each is waiting on a reply to the explanation given.
-- **Two dead draft quotations** of type `QTN` (27 August, from before the
-  type was renamed `SQ`) crash any query that reads every document; found by
-  the store integration test. Delete them?
+- **Answered the same day, second round, and built:**
+  - Credit note checks: `965f919`. Finalize had never accepted a real credit
+    note at all; the schema read the wrong shape. Fixed in the same commit.
+  - No reverse-charge line on receipts: `58eaf55`.
+  - Taxable value row on the invoice: `f4b53e0`.
+  - The supplier's copy: `ddfe595`.
+  - The contract's "hereinafter" names, the definition of Third-Party Costs,
+    and notices to the parties page: `a92b6a3`, migration 0023.
+  - The exit letter, and letters that know whom they were written for:
+    `44cc6d1`.
+  - The pay slip row limit, 8 earnings and 7 deductions (measured): `9eb3582`.
+  - The wage register: `091e780`.
+  - Row-level security prepared, waiting on step 1 of
+    `src/db/pending/README.md`: `d65090f`.
+  - The two dead `QTN` drafts deleted after a backup.
+- **Create the `speclr_app` role in Neon** and swap the two connection
+  strings: the three steps in `src/db/pending/README.md`. Then say so, and
+  row-level security goes on.
+- **Contract acceptance in place of the client's signature** is still
+  unanswered: the proposed acceptance record and execution clause are in the
+  conversation of 19 October 2026, and need a yes, a change or a lawyer.
+
+**Accepted risks** (founder, 19 October 2026):
+- A Clerk session token stays valid for at most about a minute after sign-out.
+  The session itself ends at once, and closing the minute would cost a call to
+  Clerk on every request.
+
+**For the future: rate limits.** Not needed while two allowlisted people are
+the only callers, and Clerk limits sign-in attempts itself. They become
+necessary the day anything is reachable without signing in, which the client
+approval link (§12) will be. Then:
+- the approval link: per link and per address;
+- PDF rendering (`/api/docs/[id]/pdf`), which launches a browser: per user;
+- the sitemap fetch tool, which calls out to other sites: per user.
+
+Postgres can hold the counters, so this needs no paid service.
 
 - **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
   blockers*).
