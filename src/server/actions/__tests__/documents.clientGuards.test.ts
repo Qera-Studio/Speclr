@@ -18,6 +18,7 @@ const saveDocument = jest.fn((_doc: AdminDocument) => Promise.resolve());
 const getClient = jest.fn();
 const claimSerial = jest.fn();
 const getStudioSettings = jest.fn();
+const listFinalizedCreditNotesAgainst = jest.fn();
 
 jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: () => requireAuthorizedUser(),
@@ -37,6 +38,7 @@ jest.mock('@/db/store', () => ({
   getStudioSettings: () => getStudioSettings(),
   deleteDraft: () => Promise.resolve(),
   listFinalizedInvoicesForClient: () => Promise.resolve([]),
+  listFinalizedCreditNotesAgainst: (...a: unknown[]) => listFinalizedCreditNotesAgainst(...a),
 }));
 jest.mock('@/db/counter', () => ({ claimSerial: (...a: unknown[]) => claimSerial(...a) }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
@@ -102,6 +104,7 @@ beforeEach(() => {
   getClient.mockResolvedValue(client());
   getDocument.mockResolvedValue(invoice());
   getStudioSettings.mockResolvedValue(STUDIO_INFO);
+  listFinalizedCreditNotesAgainst.mockResolvedValue([]);
 });
 
 /**
@@ -473,5 +476,48 @@ describe('the SAC guard', () => {
     );
     const result = await finalizeDocument('doc-1');
     expect(result.error).toBeUndefined();
+  });
+});
+
+/** CGST s.34 with s.15: a credit note is held to the invoice it names (19 October 2026). */
+describe('the credit note guards', () => {
+  const issued = invoice({ id: 'inv-1', status: 'finalized', number: 'QS-INV-2627-005' });
+  const note = (overrides: Record<string, unknown> = {}) =>
+    invoice({
+      id: 'doc-1',
+      type: 'CRN',
+      against: { invoiceNumber: 'QS-INV-2627-005', invoiceDate: '2026-06-10', invoiceId: 'inv-1' },
+      reason: 'Post-supply discount agreed',
+      lineItems: [{ description: 'Brand system', ratePaise: 50_000, qty: 1 }],
+      ...overrides,
+    } as Partial<AdminDocument>);
+  const byId = (doc: AdminDocument) => (id: string) => Promise.resolve(id === 'inv-1' ? issued : doc);
+
+  it('issues a note within what the invoice charged', async () => {
+    getDocument.mockImplementation(byId(note()));
+    expect((await finalizeDocument('doc-1')).error).toBeUndefined();
+  });
+
+  it('refuses one with no reason', async () => {
+    getDocument.mockImplementation(byId(note({ reason: '' })));
+    expect((await finalizeDocument('doc-1')).error).toMatch(/reason/);
+  });
+
+  it('refuses a different GST rate from the invoice', async () => {
+    getDocument.mockImplementation(byId(note({ gstRatePercent: 12 })));
+    expect((await finalizeDocument('doc-1')).error).toMatch(/18%/);
+  });
+
+  it('refuses an invoice issued to another client', async () => {
+    getDocument.mockImplementation(byId(note({ clientId: 'client-2' })));
+    expect((await finalizeDocument('doc-1')).error).toMatch(/another client/);
+  });
+
+  it('refuses crediting more than was charged, counting earlier notes, before claiming a number', async () => {
+    getDocument.mockImplementation(byId(note()));
+    listFinalizedCreditNotesAgainst.mockResolvedValue([note({ id: 'crn-0', status: 'finalized', lineItems: [{ description: 'x', ratePaise: 120_000, qty: 1 }] })]);
+    const result = await finalizeDocument('doc-1');
+    expect(result.error).toMatch(/more than QS-INV-2627-005 charged/);
+    expect(claimSerial).not.toHaveBeenCalled();
   });
 });

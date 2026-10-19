@@ -98,8 +98,8 @@ describe("DOC_TYPES registry", () => {
       expect(
         DOC_TYPES.CRN.finalizeSchema.safeParse({
           ...fields,
-          againstInvoiceNumber: "QS-INV-2627-001",
-          againstInvoiceDate: "2026-07-01",
+          // The stored document's shape, which is what finalize parses.
+          against: { invoiceNumber: "QS-INV-2627-001", invoiceDate: "2026-07-01" },
         }).success,
       ).toBe(true);
       // A draft may be half-written, like every other draft here.

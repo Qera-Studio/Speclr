@@ -977,3 +977,32 @@ describe("DocumentEditor (line items from the client record)", () => {
     ).toBeInTheDocument();
   });
 });
+
+/** CGST s.34(2): past 30 November after the invoice's year, a note no longer reduces tax. */
+describe("DocumentEditor (credit note)", () => {
+  const note = (issueDate: string) =>
+    ({
+      id: "crn-1",
+      type: "CRN",
+      status: "draft",
+      clientId: "c1",
+      clientSnapshot: { name: "Acme Co.", address: "Road", email: "a@b.com", phone: "9" },
+      issueDate,
+      lineItems: [{ description: "Credit", ratePaise: 1000, qty: 1 }],
+      gstRatePercent: 18,
+      against: { invoiceNumber: "QS-INV-2526-004", invoiceDate: "2025-06-10" },
+      reason: "Discount agreed",
+      createdAt: 0,
+      updatedAt: 0,
+    }) as unknown as Parameters<typeof DocumentEditor>[0]["doc"];
+
+  it("warns when the note is dated past the s.34(2) deadline", () => {
+    render(<DocumentEditor typeCode="CRN" clients={clients} title="Credit note" doc={note("2026-12-15")} />);
+    expect(screen.getByText(/will not lower the GST/)).toHaveTextContent("dated after 30 Nov 2026");
+  });
+
+  it("says nothing inside it", () => {
+    render(<DocumentEditor typeCode="CRN" clients={clients} title="Credit note" doc={note("2026-11-30")} />);
+    expect(screen.queryByText(/will not lower the GST/)).not.toBeInTheDocument();
+  });
+});

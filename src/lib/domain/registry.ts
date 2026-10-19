@@ -364,13 +364,24 @@ const againstInvoiceShape = {
 
 export const creditNoteDraftSchema =
   baseDraftSchema.extend(againstInvoiceShape);
+/*
+ * Finalize parses the *stored* document, where the link is nested under
+ * `against` (`CreditNoteDocument`); the draft schema above parses the editor's
+ * flat payload. This used to be the flat shape too, so a real credit note
+ * could never be finalized: the number it required was always "missing".
+ * Found 19 October 2026, writing the first test that finalized one through
+ * the action.
+ */
 export const creditNoteFinalizeSchema = baseFinalizeSchema
   .extend({
-    ...againstInvoiceShape,
-    againstInvoiceNumber: codeSchema(40, {
-      required: "Name the invoice this credit note reduces.",
+    against: z.object({
+      invoiceNumber: codeSchema(40, {
+        required: "Name the invoice this credit note reduces.",
+      }),
+      invoiceDate: isoDate,
+      invoiceId: textSchema(64).optional(),
     }),
-    againstInvoiceDate: isoDate,
+    reason: textSchema(300).optional(),
   })
   .superRefine(requirePlaceOfSupplyWithGst)
   .superRefine(oneDiscount)

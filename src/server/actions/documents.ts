@@ -19,6 +19,7 @@ import {
   type DocFields,
 } from "@/lib/domain/registry";
 import { totalPaiseOf } from "@/lib/domain/documentQuery";
+import { formatINR } from "@/lib/domain/money";
 import { placeOfSupplyOf } from "@/lib/domain/placeOfSupply";
 import {
   gstTreatmentMismatch,
@@ -51,6 +52,7 @@ import {
   getEmployee,
   getStudioSettings,
   finalizeStoredDocument,
+  listFinalizedCreditNotesAgainst,
   listFinalizedInvoicesForClient,
   saveDocument,
   type Numbering,
@@ -579,6 +581,45 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
         success: false,
         error: `${client.name} is GST-registered, so every line needs a SAC code (Rule 46(g)).`,
       };
+    }
+
+    /**
+     * A credit note reverses tax that was actually charged, so it is held to
+     * the invoice it names (founder's decision, 19 October 2026). Only where
+     * the app holds the link: a note may lawfully credit an invoice issued
+     * before speclr existed, and then there is nothing here to check against.
+     */
+    if (existing.type === "CRN") {
+      const note = existing as CreditNoteDocument;
+      if (!note.reason?.trim()) {
+        return { success: false, error: "Give the reason for this credit note." };
+      }
+      if (note.against.invoiceId) {
+        const invoice = await getDocument(note.against.invoiceId);
+        if (!invoice || invoice.type !== "INV" || invoice.status !== "finalized") {
+          return { success: false, error: "The invoice this note credits is not an issued invoice." };
+        }
+        if (invoice.clientId !== note.clientId) {
+          return { success: false, error: `${invoice.number} was issued to another client.` };
+        }
+        if (invoice.gstRatePercent !== note.gstRatePercent) {
+          return {
+            success: false,
+            error: `${invoice.number} charged GST at ${invoice.gstRatePercent}%, and a credit note reverses it at the same rate.`,
+          };
+        }
+        const earlier = await listFinalizedCreditNotesAgainst(invoice.id);
+        const invoiced = totalPaiseOf(invoice) ?? 0;
+        const already = earlier.reduce((sum, n) => sum + (totalPaiseOf(n) ?? 0), 0);
+        if (already + (totalPaiseOf(note) ?? 0) > invoiced) {
+          return {
+            success: false,
+            error:
+              `This would credit more than ${invoice.number} charged. It was for ${formatINR(invoiced)}` +
+              (already ? `, ${formatINR(already)} of which is already credited.` : "."),
+          };
+        }
+      }
     }
 
     zeroRatedInvoice =

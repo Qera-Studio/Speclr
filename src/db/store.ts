@@ -635,6 +635,25 @@ export async function getLatestFinalizedInvoice(): Promise<AdminDocument | null>
 }
 
 /**
+ * Issued credit notes that name this invoice, so a new one can be held to what
+ * is left to credit (s.34 with s.15: a note cannot credit more than was
+ * charged, and several notes against one invoice add up).
+ */
+export async function listFinalizedCreditNotesAgainst(invoiceId: string): Promise<AdminDocument[]> {
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(
+      and(
+        eq(documents.type, 'CRN'),
+        eq(documents.status, 'finalized'),
+        sql`${documents.data}->>'againstInvoiceId' = ${invoiceId}`,
+      ),
+    );
+  return rows.map((r) => fromRow(r as DocumentRow));
+}
+
+/**
  * Finalized invoices for one client, newest first — the source for the
  * receipt's "against invoice" picker.
  *

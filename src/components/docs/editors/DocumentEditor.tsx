@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Controller, useWatch } from "react-hook-form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { creditNoteDeadline, creditNoteIsLate } from "@/lib/domain/creditNoteDeadline";
 import { useRouter } from "next/navigation";
 import {
   deleteDraftAction,
@@ -22,7 +24,7 @@ import {
 import { gstTreatmentOf } from "@/lib/domain/gstTreatment";
 import { allEngagedLines } from "@/lib/domain/engagedLines";
 import { rateUnitOf, type ContractService } from "@/lib/domain/service";
-import { addDays } from "@/lib/domain/dates";
+import { addDays, formatDisplayDate } from "@/lib/domain/dates";
 import {
   clientSnapshotOf,
   type ClientRecord,
@@ -1293,11 +1295,23 @@ export default function DocumentEditor({
                 </Field>
               </FieldRow>
 
+              {creditNoteIsLate(values.againstInvoiceDate, values.issueDate) ? (
+                <Alert variant="warning" role="status">
+                  <AlertDescription>
+                    This note is dated after{" "}
+                    {formatDisplayDate(creditNoteDeadline(values.againstInvoiceDate)!)}, the
+                    last day a credit note can reduce the tax on that invoice
+                    (CGST s.34(2)). It can still be issued, but it will not
+                    lower the GST you owe.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
               <Field>
                 <FieldInfo
                   htmlFor="doc-credit-reason"
                   label="Reason"
-                  info="Printed on the note. Not one of Rule 53's mandatory particulars, but it is what makes the credit reconcilable against the invoice a year later."
+                  info="Required, and printed on the note. It is what makes the credit reconcilable against the invoice a year later."
                   infoLabel="Why state a reason?"
                 />
                 <Input
