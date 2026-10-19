@@ -53,13 +53,12 @@ function PayRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
     <div className="flex">
-      <dt className="text-black/70 text-[12px] font-normal min-w-[100px]">
+      <dt className="text-black text-[8px] font-medium min-w-[100px]">
         {label}
       </dt>
-      {/* The same size and weight as the label: a table of bank details
-          reads as one block, and the bold value column outweighed TERMS
-          beside it. */}
-      <dd className="m-0 text-black/70 text-[12px] font-normal whitespace-pre-line">
+      {/* The same size and weight as the label, and as TERMS beside it: the
+          bank details read as one block at the size of the rest of the foot. */}
+      <dd className="m-0 text-black text-[8px] font-medium whitespace-pre-line">
         {value}
       </dd>
     </div>
@@ -87,14 +86,15 @@ export default function DocumentSheet({
   // every line (or no discount at all) prints the table exactly as before.
   const discountablePaise = discountablePaiseOf(doc.lineItems);
   const splitDiscount =
-    totals.discountPaise > 0 && doc.lineItems.some((item) => item.discountExempt);
+    totals.discountPaise > 0 &&
+    doc.lineItems.some((item) => item.discountExempt);
   const discounted = splitDiscount
     ? doc.lineItems.filter((item) => !item.discountExempt)
     : doc.lineItems;
   const exempt = doc.lineItems.filter((item) => item.discountExempt);
   const lineRow = (item: LineItem, index: number) => (
-              <tr key={index}>
-                {/*
+    <tr key={index}>
+      {/*
                   A line prints its description and nothing else, which is now
                   true of every document here rather than of the slips alone
                   (`SlipSheet`'s `ItemsTable` says the same).
@@ -107,27 +107,27 @@ export default function DocumentSheet({
                   descriptions of one supply is one more thing that can
                   disagree with the other on a document retained 72 months.
                 */}
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
-                  <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
-                    {item.description || NIL}
-                  </span>
-                </td>
-                {/* `NIL` rather than blank: a missing classification is a gap
+      <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top overflow-hidden [overflow-wrap:anywhere] break-words">
+        <span className="block text-black font-medium text-[14px] [overflow-wrap:anywhere]">
+          {item.description || NIL}
+        </span>
+      </td>
+      {/* `NIL` rather than blank: a missing classification is a gap
                     somebody has to close, and an empty cell reads as a column
                     that failed to render. */}
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {item.sacCode || NIL}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {money(item.ratePaise)}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {item.qty}
-                </td>
-                <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
-                  {money(lineAmountPaise(item))}
-                </td>
-              </tr>
+      <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+        {item.sacCode || NIL}
+      </td>
+      <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+        {money(item.ratePaise)}
+      </td>
+      <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+        {item.qty}
+      </td>
+      <td className="py-[10px] pr-[8px] pl-0 border-b border-[#d9d9d9] align-top text-left text-black text-[13px] [font-variant-numeric:tabular-nums] whitespace-nowrap">
+        {money(lineAmountPaise(item))}
+      </td>
+    </tr>
   );
   /* Joined rather than rendered as two spans: either may be cleared, and a
      stray separator on a line with one sentence left is the tell. */
@@ -424,8 +424,14 @@ export default function DocumentSheet({
               <tbody>
                 <tr>
                   <td colSpan={2} className="border-b-2 border-[#d9d9d9]" />
-                  <td colSpan={3} className="py-[8px] border-b-2 border-[#d9d9d9]">
-                    <SplitRow label="subtotal" value={money(discountablePaise)} />
+                  <td
+                    colSpan={3}
+                    className="py-[8px] border-b-2 border-[#d9d9d9]"
+                  >
+                    <SplitRow
+                      label="subtotal"
+                      value={money(discountablePaise)}
+                    />
                     <SplitRow
                       label={`discount${doc.discountPercent !== undefined ? ` (${doc.discountPercent}%)` : ""}`}
                       value={`-${money(totals.discountPaise)}`}
@@ -514,7 +520,10 @@ export default function DocumentSheet({
               <p>Source: {studio.bank.bankName} TT buying rate</p>
               <p>
                 INR equivalent:{" "}
-                {formatMoney(inrPaiseOf(totals.totalPaise, fx.inrPerUnit4), "INR")}
+                {formatMoney(
+                  inrPaiseOf(totals.totalPaise, fx.inrPerUnit4),
+                  "INR",
+                )}
               </p>
             </div>
           ) : null}
@@ -800,7 +809,7 @@ export default function DocumentSheet({
             <h3 className="text-black text-[24px] font-bold tracking-[-0.02em] mb-[8px]">
               TERMS
             </h3>
-            <div className="[column-count:2] [column-gap:24px]">
+            <div className="[column-count:2] [column-gap:12px]">
               {/* Keyed by position, not title: titles are editable now, so two
                   can be identical or blank while being typed. */}
               {terms.map((term, i) => (
