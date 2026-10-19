@@ -142,6 +142,21 @@ describe("DocumentSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("prints the LUT ARN under the export endorsement", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.getByText("LUT ARN: AD090826065953E")).toBeInTheDocument();
+  });
+
+  it("prints no LUT on a taxed domestic invoice", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.queryByText(/LUT ARN/)).toBeNull();
+  });
+
   it("prints no discount row when there is none", () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.queryByText(/^discount/)).toBeNull();

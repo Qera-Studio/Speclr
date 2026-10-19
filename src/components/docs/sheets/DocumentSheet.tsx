@@ -476,6 +476,17 @@ export default function DocumentSheet({
               {declarations}
             </p>
           ) : null}
+          {/*
+            The LUT the zero-rating rests on, wherever the endorsement says the
+            supply went out without IGST: an export and an SEZ supply alike.
+            Read from the studio snapshot, so a finalized invoice keeps the LUT
+            it was issued under after next year's replaces it.
+          */}
+          {text.exportEndorsement && studio.lutArn ? (
+            <p className="mb-2 text-black/70 text-[11px] font-normal leading-[1.3]">
+              LUT ARN: {studio.lutArn}
+            </p>
+          ) : null}
         </div>
         <div className="w-[60%] shrink-0">
           <div className="flex justify-between gap-[16px] py-[3px]">

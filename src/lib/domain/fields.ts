@@ -254,6 +254,27 @@ export function swiftSchema({ required }: FieldOptions = {}) {
   });
 }
 
+/**
+ * The ARN the GST portal issues on a Letter of Undertaking (form RFD-11): AD,
+ * the 2-digit state code, the filing month and year, a 6-digit sequence and a
+ * check character. 15 characters, e.g. AD090826065953E. A shape, not a
+ * verification: whether the LUT is live is what `lutValidTo` records.
+ */
+const LUT_ARN_RE = /^AD\d{12}[0-9A-Z]$/;
+
+export const LUT_ARN_MAX = 15;
+
+export function lutArnSchema({ required }: FieldOptions = {}) {
+  return identifier({
+    max: LUT_ARN_MAX,
+    error: (value) =>
+      LUT_ARN_RE.test(value.toUpperCase())
+        ? null
+        : 'Expected the 15-character ARN from the LUT acknowledgement, like AD090826065953E.',
+    required,
+  });
+}
+
 export const IBAN_MAX = 34;
 
 /**

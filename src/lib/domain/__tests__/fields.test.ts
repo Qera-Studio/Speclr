@@ -7,6 +7,7 @@ import {
   sacSchema,
   swiftSchema,
   tanSchema,
+  lutArnSchema,
 } from '../fields';
 
 /**
@@ -177,5 +178,21 @@ describe('swiftSchema and ibanSchema', () => {
   it('allows a blank on both — a studio with no foreign clients has neither', () => {
     expect(swiftSchema().safeParse('').success).toBe(true);
     expect(ibanSchema().safeParse('').success).toBe(true);
+  });
+});
+
+describe('lutArnSchema', () => {
+  it('accepts the ARN from an RFD-11 acknowledgement', () => {
+    expect(lutArnSchema().safeParse('AD090826065953E').success).toBe(true);
+  });
+
+  it('accepts blank, since the studio may not export at all', () => {
+    expect(lutArnSchema().safeParse('').success).toBe(true);
+  });
+
+  it('refuses a number that is not an ARN, naming the shape', () => {
+    const result = lutArnSchema().safeParse('09AABCQ2864Q1ZQ');
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toMatch(/15-character ARN/);
   });
 });

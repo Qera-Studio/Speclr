@@ -20,7 +20,11 @@ import {
 } from "@/lib/domain/registry";
 import { computeTotals } from "@/lib/domain/money";
 import { placeOfSupplyOf } from "@/lib/domain/placeOfSupply";
-import { gstTreatmentMismatch } from "@/lib/domain/gstTreatment";
+import {
+  gstTreatmentMismatch,
+  gstTreatmentOf,
+  lutError,
+} from "@/lib/domain/gstTreatment";
 import { materialiseContent } from "@/lib/domain/docContent";
 import {
   clientSnapshotOf,
@@ -433,6 +437,8 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   const hr = isHrDocType(spec.code);
   const quotation = spec.kind === "quotation";
   let clientSnapshot: ClientSnapshot | undefined;
+  /** An invoice going out without IGST, which needs a live LUT to do so. */
+  let zeroRatedInvoice = false;
   let employeeSnapshot: EmployeeSnapshot | undefined;
   if (hr) {
     const employeeId = (existing as SlipDocument | LetterDocument).employeeId;
@@ -555,7 +561,25 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
 
+    zeroRatedInvoice =
+      existing.type === "INV" &&
+      existing.gstRatePercent === 0 &&
+      gstTreatmentOf(client).label !== null;
+
     clientSnapshot = clientSnapshotOf(client);
+  }
+
+  // Freeze the studio's own identity block too. The details are editable, so
+  // without this a later address change would silently rewrite the "from:" block
+  // of every invoice already filed — which CGST s.36 (72-month unaltered
+  // retention) and Rule 46 (supplier address as at issue) do not allow.
+  // Read before the number is claimed, because the LUT check below can refuse
+  // and a refusal after the claim would burn a serial.
+  const studioSnapshot = await getStudioSettings();
+
+  if (zeroRatedInvoice) {
+    const lut = lutError(existing.issueDate, studioSnapshot);
+    if (lut) return { success: false, error: lut };
   }
 
   // Numbered docs: financial (invoices/receipts), hr-slip (stipend and pay) and
@@ -594,12 +618,6 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
   }
-
-  // Freeze the studio's own identity block too. The details are editable, so
-  // without this a later address change would silently rewrite the "from:" block
-  // of every invoice already filed — which CGST s.36 (72-month unaltered
-  // retention) and Rule 46 (supplier address as at issue) do not allow.
-  const studioSnapshot = await getStudioSettings();
 
   // Freeze the words too. The sheets resolve mastheads, TERMS, the MSA clauses
   // and the signatory block from defaults in code; without materialising them
