@@ -142,7 +142,7 @@ export interface ResolvedContent {
 /** The one signatory Qera has. Move to `StudioInfo` when there is a second. */
 const SIGNATORY = {
   name: 'Shivanshu Pareek',
-  title: 'Co-founder — Qera Studio',
+  title: 'Co-founder - Qera Studio',
   qualifier: '(Authorised Signatory)',
 };
 

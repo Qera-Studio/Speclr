@@ -29,6 +29,20 @@ describe('defaultLetterContent — offer', () => {
     expect(c.bodyParagraphs.join(' ')).toMatch(/stipend/i);
   });
 
+  /** Approved wording, 19 October 2026. */
+  it('names the legal entity, the end date on record, and a stipend for the whole internship', () => {
+    const all = defaultLetterContent('OFR', 'intern', baseArgs()).bodyParagraphs.join(' ');
+    expect(all).toMatch(/at Qera Private Limited/);
+    expect(all).not.toMatch(/Qera Studio|three months|first month/);
+    expect(all).toMatch(/continue until 10th July 2026/);
+    expect(all).toMatch(/per month for the duration of the internship/);
+  });
+
+  it('promises no notice period from policies that do not exist', () => {
+    const all = defaultLetterContent('OFR', 'employee', baseArgs()).bodyParagraphs.join(' ');
+    expect(all).not.toMatch(/notice period/);
+  });
+
   it('employee offer uses remuneration/employment wording, not stipend', () => {
     const c = defaultLetterContent('OFR', 'employee', baseArgs());
     const all = c.bodyParagraphs.join(' ').toLowerCase();

@@ -181,8 +181,8 @@ describe("contractBlocks", () => {
   /** A Schedule is what the Parties negotiate, so it is signed where it ends. */
   it("signs the end of every Schedule as well as the Agreement", () => {
     renderContract(contractDoc({ codes: ["01", "11"] }));
-    expect(screen.getByLabelText("Execution — Schedule A")).toBeInTheDocument();
-    expect(screen.getByLabelText("Execution — Schedule B")).toBeInTheDocument();
+    expect(screen.getByLabelText("Execution - Schedule A")).toBeInTheDocument();
+    expect(screen.getByLabelText("Execution - Schedule B")).toBeInTheDocument();
     expect(screen.getByLabelText("Execution")).toBeInTheDocument();
   });
 
@@ -302,7 +302,7 @@ describe("contractBlocks", () => {
         "data-page",
         "own",
       );
-      expect(screen.getByLabelText("Execution — Schedule A")).toHaveAttribute(
+      expect(screen.getByLabelText("Execution - Schedule A")).toHaveAttribute(
         "data-page",
         "own",
       );

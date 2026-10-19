@@ -873,7 +873,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
       ].filter(Boolean);
     }),
 
-    signatures(`sch-sign-${letter}`, `Execution — Schedule ${letter}`),
+    signatures(`sch-sign-${letter}`, `Execution - Schedule ${letter}`),
   ]);
 
   /*
