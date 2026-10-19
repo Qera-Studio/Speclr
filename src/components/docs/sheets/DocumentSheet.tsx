@@ -712,14 +712,6 @@ export default function DocumentSheet({
                         label="Branch address"
                         value={studio.bank.bankAddress}
                       />
-                      {/* The beneficiary's own address, which a remitting bank
-                          screens against. It is the studio's registered
-                          address, so it is read from there rather than kept as
-                          a second copy that could drift. */}
-                      <PayRow
-                        label="Beneficiary address"
-                        value={studio.address.replace(/,?\n/g, ", ")}
-                      />
                     </>
                   ) : (
                     <>

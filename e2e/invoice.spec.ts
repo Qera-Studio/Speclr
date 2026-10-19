@@ -54,9 +54,9 @@ test.describe("the invoice fits its page", () => {
     await expect(sheet).toBeVisible();
 
     await expect(sheet).toContainText("KKBKINBBCPC");
-    // Branch, its address and the beneficiary's: what a remitting bank asks.
+    // The branch and its address. The beneficiary's address is the "from:"
+    // block, already on the page, so it is not repeated here.
     await expect(sheet).toContainText("C-77, RDC Raj Nagar, Ghaziabad 201002");
-    await expect(sheet).toContainText("Beneficiary address");
 
     // A discount that skips the hosting line prints its own group above it.
     await expect(sheet).toContainText("discount (35%)");

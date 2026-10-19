@@ -126,7 +126,7 @@ describe("DocumentSheet", () => {
     expect(screen.queryByText("Beneficiary address")).toBeNull();
   });
 
-  it("prints the branch and our own address as the beneficiary's on an export", () => {
+  it("prints the branch on an export, and no beneficiary address row", () => {
     const doc = {
       ...baseInvoice,
       gstRatePercent: 0,
@@ -134,12 +134,8 @@ describe("DocumentSheet", () => {
     } as unknown as InvoiceDocument;
     render(<DocumentSheet doc={doc} />);
     expect(screen.getByText("C-77, RDC Raj Nagar, Ghaziabad 201002")).toBeInTheDocument();
-    // Read from the studio address, on one line.
-    expect(
-      screen.getByText(
-        "C-204, MGI Gharaunda, Raj Nagar Extension, Ghaziabad - 201017, Uttar Pradesh, India",
-      ),
-    ).toBeInTheDocument();
+    // The beneficiary's address is the "from:" block's; it is not repeated.
+    expect(screen.queryByText("Beneficiary address")).toBeNull();
   });
 
   it("prints the LUT ARN under the export endorsement", () => {

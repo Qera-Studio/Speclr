@@ -315,7 +315,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         <FieldSet>
           <LegendInfo
             label="When are these printed?"
-            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, with the branch and our registered address as the beneficiary's, in place of the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
+            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, with the branch, in place of the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
           >
             Wire transfer
           </LegendInfo>
