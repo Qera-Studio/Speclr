@@ -1,6 +1,7 @@
 import { contractDoc } from "@/lib/domain/contract/__tests__/fixture";
 import { STUDIO_INFO } from "@/lib/domain/studio";
 import { defaultLetterContent } from "@/lib/domain/hrContent";
+import { PAYSLIP_MAX_DEDUCTIONS, PAYSLIP_MAX_EARNINGS } from "@/lib/domain/registry";
 import type {
   AdminDocument,
   LetterDocument,
@@ -546,6 +547,8 @@ export const FIXTURES = {
   "pay-slip": () => paySlip(6, 5),
   /** Past it. The clipping this document type already shipped once. */
   "pay-slip-crowded": () => paySlip(12, 7),
+  // The most finalize accepts.
+  "pay-slip-ceiling": () => paySlip(PAYSLIP_MAX_EARNINGS, PAYSLIP_MAX_DEDUCTIONS),
   /** Twenty-odd pages of prose in two columns: the pagination case. */
   // Every identifier a client can carry, so the parties page is measured full.
   contract: () => {

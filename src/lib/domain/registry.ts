@@ -537,6 +537,15 @@ export const stipendFinalizeSchema = z.object({
  * Both stay optional — a slip with nothing withheld is normal, and days are not
  * prescribed by every state's rules.
  */
+/**
+ * The most rows a pay slip prints. It is one fixed A4 page that clips, so a
+ * row past these is cut off with nothing to say so. Measured, not chosen:
+ * `e2e/payslip.spec.ts` renders exactly this many and must find nothing
+ * hidden (19 October 2026, with the rate of wages row).
+ */
+export const PAYSLIP_MAX_EARNINGS = 8;
+export const PAYSLIP_MAX_DEDUCTIONS = 7;
+
 const payslipExtraShape = {
   deductions: z.array(lineItemSchema).max(20).optional(),
   daysInPeriod: z.number().int().min(0).max(31).optional(),
@@ -552,7 +561,14 @@ export const payslipFinalizeSchema = z
   .object({
     ...slipBaseShape,
     ...payslipExtraShape,
-    lineItems: z.array(lineItemSchema).min(1).max(20),
+    deductions: z
+      .array(lineItemSchema)
+      .max(PAYSLIP_MAX_DEDUCTIONS, `A pay slip holds ${PAYSLIP_MAX_DEDUCTIONS} deductions. Combine the smaller ones.`)
+      .optional(),
+    lineItems: z
+      .array(lineItemSchema)
+      .min(1)
+      .max(PAYSLIP_MAX_EARNINGS, `A pay slip holds ${PAYSLIP_MAX_EARNINGS} earnings. Combine the smaller ones.`),
   })
   /**
    * No lawful set of deductions leaves an employee owing wages back — the

@@ -16,7 +16,11 @@ import {
   todayISO,
 } from "@/lib/domain/dates";
 import { slipEarningsSeed } from "@/lib/domain/hrContent";
-import { DELETE_DRAFT_CONSEQUENCE } from "@/lib/domain/registry";
+import {
+  DELETE_DRAFT_CONSEQUENCE,
+  PAYSLIP_MAX_DEDUCTIONS,
+  PAYSLIP_MAX_EARNINGS,
+} from "@/lib/domain/registry";
 import type { StudioInfo } from "@/lib/domain/studio";
 import {
   DEFAULT_STIPEND_DEDUCTIONS_NOTE,
@@ -667,6 +671,8 @@ export default function SlipEditor({
             legend={isPay ? "Earnings" : "Line items"}
             addLabel={isPay ? "Add earning" : "Add line item"}
             itemLabel={isPay ? "earning" : "line item"}
+            maxRows={isPay ? PAYSLIP_MAX_EARNINGS : undefined}
+            fullNote={`A pay slip holds ${PAYSLIP_MAX_EARNINGS} earnings. Combine smaller ones into one line.`}
           />
 
           {/*
@@ -685,6 +691,8 @@ export default function SlipEditor({
               legend="Deductions"
               addLabel="Add deduction"
               itemLabel="deduction"
+              maxRows={PAYSLIP_MAX_DEDUCTIONS}
+              fullNote={`A pay slip holds ${PAYSLIP_MAX_DEDUCTIONS} deductions. Combine smaller ones into one line.`}
               hideQty
               allowEmpty
             />

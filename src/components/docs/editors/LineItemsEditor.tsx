@@ -96,6 +96,13 @@ interface LineItemsEditorProps<T extends FieldValues> {
    */
   allowEmpty?: boolean;
   /**
+   * The most rows this list may hold, and what to say once it does. The pay
+   * slip is one fixed page, and a row past what it holds is cut off with
+   * nothing to say so; the limit is that measurement (`e2e/payslip.spec.ts`).
+   */
+  maxRows?: number;
+  fullNote?: string;
+  /**
    * Show the SAC field. Invoices and receipts only: a pay slip's deductions are
    * not a supply and have nothing to classify.
    */
@@ -170,6 +177,8 @@ export default function LineItemsEditor<T extends FieldValues>({
   itemLabel = "line item",
   hideQty = false,
   allowEmpty = false,
+  maxRows,
+  fullNote,
   showSac = false,
   lockNames = false,
   showDetail = false,
@@ -405,7 +414,9 @@ export default function LineItemsEditor<T extends FieldValues>({
           );
         })}
         <div>
-          {presets && presets.length > 0 ? (
+          {maxRows !== undefined && fields.length >= maxRows ? (
+            <p className="text-meta text-muted-foreground">{fullNote}</p>
+          ) : presets && presets.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

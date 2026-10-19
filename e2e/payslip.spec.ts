@@ -52,6 +52,18 @@ test.describe('pay slip', () => {
   });
 
   /**
+   * The most rows finalize accepts (19 October 2026). The limit is the
+   * measurement: if this fails, lower `PAYSLIP_MAX_EARNINGS` or
+   * `PAYSLIP_MAX_DEDUCTIONS` until it passes, never the other way round.
+   */
+  test('fits the most rows finalize accepts', async ({ page }) => {
+    await page.goto('/preview/pay-slip-ceiling');
+    await expect(sheet(page)).toBeVisible();
+    const clip = await worstClip(sheet(page));
+    expect(clip, clip ? `${clip.px}px of "${clip.text}" is hidden` : '').toBeNull();
+  });
+
+  /**
    * The ceiling, written down.
    *
    * Twelve earnings against seven deductions does not fit, and the sheet clips

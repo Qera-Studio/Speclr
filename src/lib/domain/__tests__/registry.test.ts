@@ -1,4 +1,6 @@
 import {
+  PAYSLIP_MAX_DEDUCTIONS,
+  PAYSLIP_MAX_EARNINGS,
   clientInputSchema,
   contractDraftSchema,
   contractFinalizeSchema,
@@ -703,5 +705,25 @@ describe("HR registry entries", () => {
     expect(
       letterFinalizeSchema.safeParse({ ...base, employeeId: "" }).success,
     ).toBe(false);
+  });
+});
+
+/** The pay slip is one fixed page; finalize refuses what it cannot print (19 October 2026). */
+describe("the pay slip's row limit", () => {
+  const slip = (earnings: number, deductions: number) => ({
+    issueDate: "2026-06-30",
+    employeeId: "e1",
+    stipendMonth: "2026-06",
+    paymentMethod: "Bank Transfer",
+    deductionsNote: "",
+    lineItems: Array.from({ length: earnings }, (_, i) => ({ description: `Earning ${i}`, ratePaise: 100, qty: 1 })),
+    deductions: Array.from({ length: deductions }, (_, i) => ({ description: `Deduction ${i}`, ratePaise: 1, qty: 1 })),
+  });
+  const ok = (e: number, d: number) => DOC_TYPES.PAY.finalizeSchema.safeParse(slip(e, d)).success;
+
+  it("accepts what the page measured to hold, and nothing more", () => {
+    expect(ok(PAYSLIP_MAX_EARNINGS, PAYSLIP_MAX_DEDUCTIONS)).toBe(true);
+    expect(ok(PAYSLIP_MAX_EARNINGS + 1, 1)).toBe(false);
+    expect(ok(1, PAYSLIP_MAX_DEDUCTIONS + 1)).toBe(false);
   });
 });
