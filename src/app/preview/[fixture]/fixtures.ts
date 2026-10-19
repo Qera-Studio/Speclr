@@ -546,7 +546,14 @@ export const FIXTURES = {
   /** Past it. The clipping this document type already shipped once. */
   "pay-slip-crowded": () => paySlip(12, 7),
   /** Twenty-odd pages of prose in two columns: the pagination case. */
-  contract: () => contractDoc({ codes: ["01", "05"] }) as AdminDocument,
+  // Every identifier a client can carry, so the parties page is measured full.
+  contract: () => {
+    const doc = contractDoc({ codes: ["01", "05"] });
+    return {
+      ...doc,
+      clientSnapshot: { ...doc.clientSnapshot, cin: "U74999UP2021PTC150000", gstin: "09AAACC1206D1ZM" },
+    } as AdminDocument;
+  },
   invoice,
   /** The wire-transfer block, which is two rows taller than the domestic one. */
   "invoice-export": invoiceExport,

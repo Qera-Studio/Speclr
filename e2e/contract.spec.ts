@@ -50,6 +50,18 @@ test.describe('contract pagination', () => {
   });
 
   /**
+   * The parties page is one fixed page, and its identifier rows (format freeze
+   * audit, 19 October 2026) are what can push it over. The test above skips a
+   * page marked overflowing, so this one asserts it is not.
+   */
+  test('fits the parties, every identifier included, on their own page', async ({ page }) => {
+    const frame = pagesOf(page).filter({ hasText: '09AAACC1206D1ZM' });
+    await expect(frame).toHaveCount(1);
+    expect(await frame.evaluate((el) => el.classList.contains('overflow-visible'))).toBe(false);
+    expect(await worstClip(frame)).toBeNull();
+  });
+
+  /**
    * The cover is a page of its own, and the agreement starts after it.
    *
    * A cheap canary for the packer having got its first measurement wrong: when

@@ -69,6 +69,17 @@ const SUBHEADING =
 const SECTION = "border-t border-[#000] pt-[12px] mt-[36px]";
 
 /**
+ * A party's registration numbers, only those it has. A blank prints nothing
+ * rather than a dash: a sole trader has no CIN, and "CIN —" reads as missing.
+ * PAN is left out where a GSTIN is printed, which carries it.
+ */
+function identified(rows: [string, string | undefined][]) {
+  return rows
+    .filter(([, value]) => value)
+    .map(([label, value]) => ({ label, value: value as string }));
+}
+
+/**
  * Everything a page of this contract needs: its margins, its running header and
  * footer, and the height that furniture costs.
  *
@@ -106,7 +117,11 @@ export function contractPageProps(doc: ContractDocument) {
           <QeraMark />
           {studio.brandMark}
         </span>
-        <span>{displayDate}</span>
+        {/* The number from finalize on, so an issued agreement can be cited by
+            its own reference (format freeze audit, 19 October 2026). */}
+        <span className="tabular-nums">
+          {doc.number ? `${doc.number} · ${displayDate}` : displayDate}
+        </span>
       </div>
     ),
     pageFooter: (page: number, dark: boolean) => (
@@ -428,12 +443,22 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
           { label: "Address", value: studio.address },
           { label: "Email", value: studio.email },
           { label: "Number", value: studio.phone },
+          ...identified([
+            ["CIN", studio.cin],
+            ["GSTIN", studio.gstin],
+          ]),
         ])}
         {party("Second Party", "The Client", [
           { label: "Name", value: clientName },
           { label: "Address", value: doc.clientSnapshot.address },
           { label: "Email", value: doc.clientSnapshot.email },
           { label: "Number", value: doc.clientSnapshot.phone },
+          ...identified([
+            ["CIN", doc.clientSnapshot.cin],
+            ["Company no.", doc.clientSnapshot.registrationNumber],
+            ["GSTIN", doc.clientSnapshot.gstin],
+            ["PAN", doc.clientSnapshot.gstin ? undefined : doc.clientSnapshot.pan],
+          ]),
         ])}
       </div>
     </div>

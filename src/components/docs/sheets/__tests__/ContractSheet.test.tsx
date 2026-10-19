@@ -310,12 +310,35 @@ describe("contractBlocks", () => {
   });
 });
 
+/** Format freeze audit, 19 October 2026: who each party is, by number. */
+describe("the parties page", () => {
+  it("prints each party's registration numbers, only those it has", () => {
+    renderContract({
+      ...contractDoc(),
+      clientSnapshot: { ...contractDoc().clientSnapshot, gstin: "09AAACC1206D1ZM", pan: "AAACC1206D" },
+    });
+    const parties = screen.getByLabelText("Parties");
+    expect(within(parties).getAllByText("GSTIN")).toHaveLength(2);
+    expect(within(parties).getByText("09AAACC1206D1ZM")).toBeInTheDocument();
+    expect(within(parties).getByText("CIN")).toBeInTheDocument();
+    // The GSTIN carries the PAN; a client with no CIN prints no CIN row.
+    expect(within(parties).queryByText("PAN")).not.toBeInTheDocument();
+  });
+});
+
 describe("contractPageProps", () => {
   it("draws the studio and the date into every page header", () => {
     const { pageHeader } = contractPageProps(contractDoc());
     render(<>{pageHeader(3, false)}</>);
     expect(screen.getByText("10 Jun 2026")).toBeInTheDocument();
     expect(screen.getByText("qera studio")).toBeInTheDocument();
+  });
+
+  /** An issued agreement is cited by its number, so every page carries it. */
+  it("adds the contract number to the header once it has one", () => {
+    const { pageHeader } = contractPageProps({ ...contractDoc(), number: "QS-CON-2627-004" });
+    render(<>{pageHeader(0, false)}</>);
+    expect(screen.getByText("QS-CON-2627-004 · 10 Jun 2026")).toBeInTheDocument();
   });
 
   /** The number alone — a total is a promise about a document still being edited. */
