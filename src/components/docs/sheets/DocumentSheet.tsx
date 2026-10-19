@@ -535,12 +535,12 @@ export default function DocumentSheet({
             it was issued under after next year's replaces it.
           */}
           {text.exportEndorsement && studio.lutArn ? (
-            <p className="mb-2 text-black/70 text-[11px] font-normal leading-[1.3]">
+            <p className="text-black/70 text-[11px] font-normal leading-[1.3]">
               LUT ARN: {studio.lutArn}
             </p>
           ) : null}
         </div>
-        <div className={`${fx ? "w-[52%]" : "w-[60%]"} shrink-0`}>
+        <div className={`${fx ? "w-[52%]" : "w-[60%]"} shrink-0 flex flex-col`}>
           <div className="flex justify-between gap-[16px] py-[3px]">
             <span className="text-black/70 text-[12px] font-normal">
               subtotal
@@ -627,24 +627,31 @@ export default function DocumentSheet({
               Place of supply: {supplyStateName}
             </p>
           ) : null}
-          <div className="flex justify-between gap-[16px] py-[3px] border-t border-black mt-[3px] pt-[6px]">
-            {/*
+          {/*
+            The total and its words sit on the floor of the band, against the
+            divider above PAYMENT, so the figure being asked for is always in
+            the bottom-right corner whichever side of the band is taller. On an
+            export the notes beside it are, and it used to float up.
+          */}
+          <div className="mt-auto">
+            <div className="flex justify-between gap-[16px] py-[3px] border-t border-black mt-[3px] pt-[6px]">
+              {/*
             "TOTAL CREDITED", not "TOTAL DUE". A credit note is not a demand,
             and the figures on it are stated positive — the document's nature is
             what makes them a reduction, which is how s.34 describes it and how
             a return reads it. Labelling it "due" would read as a second bill.
           */}
-            <span className="text-black text-[14px] font-medium">
-              {doc.type === "CRN" ? "TOTAL CREDITED" : "TOTAL DUE"}
-            </span>
-            <span className="text-black text-[14px] font-medium [font-variant-numeric:tabular-nums] text-right">
-              {money(totals.totalPaise)}
-            </span>
-          </div>
-          <p className="text-right text-black/70 text-[12px] font-normal">
-            {amountInWords(totals.totalPaise, currency)}
-          </p>
-          {/*
+              <span className="text-black text-[14px] font-medium">
+                {doc.type === "CRN" ? "TOTAL CREDITED" : "TOTAL DUE"}
+              </span>
+              <span className="text-black text-[14px] font-medium [font-variant-numeric:tabular-nums] text-right">
+                {money(totals.totalPaise)}
+              </span>
+            </div>
+            <p className="text-right text-black/70 text-[12px] font-normal">
+              {amountInWords(totals.totalPaise, currency)}
+            </p>
+            {/*
           A memo, and only a memo. TDS is the *payer's* deduction under Chapter
           XVII-B: the invoice still bills the gross, and the taxable value on a
           GST document must be the full consideration. Netting it off here would
@@ -653,12 +660,13 @@ export default function DocumentSheet({
           words, and exists so the smaller payment that arrives reconciles
           against this invoice instead of looking short.
         */}
-          {tds ? (
-            <p className="text-right text-black/70 text-[12px] font-normal pt-[4px]">
-              TDS @{tds.ratePercent}% u/s {tds.section} deductible by recipient
-              — net payable {money(netOfTds)}
-            </p>
-          ) : null}
+            {tds ? (
+              <p className="text-right text-black/70 text-[12px] font-normal pt-[4px]">
+                TDS @{tds.ratePercent}% u/s {tds.section} deductible by
+                recipient — net payable {money(netOfTds)}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
 
