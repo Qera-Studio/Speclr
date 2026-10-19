@@ -165,9 +165,24 @@ describe('finalizing a pay slip', () => {
     expect(all).not.toMatch(/internship/);
   });
 
-  /** A stipend slip issued to an employee is fine — only PAY is restricted. */
-  it('still lets a stipend slip name an employee', async () => {
+  /**
+   * Reversed 19 October 2026 on the founder's instruction: this used to pin a
+   * stipend slip to an employee as fine. The picker never offers one, so the
+   * only way here is a draft whose intern was since made an employee.
+   */
+  it('refuses a stipend slip for someone now employed, before claiming a number', async () => {
     getDocument.mockResolvedValue(payDraft({ type: 'STP', deductions: undefined }));
+
+    const result = await finalizeDocument('doc-1');
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/pay slip/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+
+  it('issues a stipend slip to an intern', async () => {
+    getDocument.mockResolvedValue(payDraft({ type: 'STP', deductions: undefined }));
+    getEmployee.mockResolvedValue(employee({ engagementType: 'intern' }));
     claimSerial.mockResolvedValue({ serial: 1, number: 'QS-STP-2627-001' });
 
     const result = await finalizeDocument('doc-1');

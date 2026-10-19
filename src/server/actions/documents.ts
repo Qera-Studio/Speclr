@@ -462,6 +462,19 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
 
+    /*
+     * The mirror of the rule above. The picker lists only interns, but a slip
+     * drafted while someone was an intern can be finalized after they were made
+     * an employee, and nothing stopped it. A stipend slip denies employment in
+     * its first clause, so issued to an employee it contradicts their offer.
+     */
+    if (existing.type === "STP" && employee.engagementType === "employee") {
+      return {
+        success: false,
+        error: `${employee.name} is now an employee. Issue a pay slip, not a stipend slip.`,
+      };
+    }
+
     // Without an end date the exit letter prints the joining date as the day
     // they left (`hrContent.ts`, `endDate ?? startDate`).
     if (existing.type === "EXIT" && !employee.endDate) {
