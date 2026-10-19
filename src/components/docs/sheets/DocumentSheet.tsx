@@ -620,15 +620,13 @@ export default function DocumentSheet({
                 </h3>
                 <dl className="m-0">
                   <PayRow label="Bank" value={studio.bank.bankName} />
-                  {/* The account name is a wire-only row: a domestic transfer
-                      resolves on the account number, and a correspondent bank
-                      rejects on a beneficiary name that does not match. */}
-                  {overseas ? (
-                    <PayRow
-                      label="Account name"
-                      value={studio.bank.accountName}
-                    />
-                  ) : null}
+                  {/* The beneficiary name, on both sides: NEFT and IMPS ask
+                      for it as well as a wire, and a correspondent bank rejects
+                      on a name that does not match the account. */}
+                  <PayRow
+                    label="Account holder"
+                    value={studio.bank.accountName}
+                  />
                   <PayRow label="Account No." value={studio.bank.accountNo} />
                   {overseas ? (
                     <>
@@ -647,9 +645,18 @@ export default function DocumentSheet({
                       */}
                       <PayRow label="IFSC code" value={studio.bank.ifsc} />
                       <PayRow label="IBAN" value={studio.bank.iban} />
+                      <PayRow label="Branch" value={studio.bank.branch} />
                       <PayRow
-                        label="Bank address"
+                        label="Branch address"
                         value={studio.bank.bankAddress}
+                      />
+                      {/* The beneficiary's own address, which a remitting bank
+                          screens against. It is the studio's registered
+                          address, so it is read from there rather than kept as
+                          a second copy that could drift. */}
+                      <PayRow
+                        label="Beneficiary address"
+                        value={studio.address.replace(/,?\n/g, ", ")}
                       />
                     </>
                   ) : (

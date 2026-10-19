@@ -254,6 +254,17 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             <Input id="studio-bank-upi" size="form" autoComplete="off" {...register('bank.upiId')} />
             <FieldError errors={[errors.bank?.upiId]} />
           </Field>
+          <Field>
+            <FieldLabel htmlFor="studio-bank-account-name">Account holder</FieldLabel>
+            <Input
+              id="studio-bank-account-name"
+              size="form"
+              autoComplete="off"
+              placeholder="The name the account is held in"
+              {...register('bank.accountName')}
+            />
+            <FieldError errors={[errors.bank?.accountName]} />
+          </Field>
         </FieldSet>
 
         <FieldSeparator />
@@ -261,7 +272,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         <FieldSet>
           <LegendInfo
             label="When are these printed?"
-            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, in place of the IFSC and the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
+            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, with the branch and our registered address as the beneficiary's, in place of the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
           >
             Wire transfer
           </LegendInfo>
@@ -291,18 +302,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             </Field>
           </FieldRow>
           <Field>
-            <FieldLabel htmlFor="studio-bank-account-name">Account name</FieldLabel>
-            <Input
-              id="studio-bank-account-name"
-              size="form"
-              autoComplete="off"
-              placeholder="The name the account is held in"
-              {...register('bank.accountName')}
-            />
-            <FieldError errors={[errors.bank?.accountName]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="studio-bank-address">Bank address</FieldLabel>
+            <FieldLabel htmlFor="studio-bank-address">Branch address</FieldLabel>
             <Textarea
               id="studio-bank-address"
               rows={3}

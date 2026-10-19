@@ -120,6 +120,28 @@ describe("DocumentSheet", () => {
     expect(screen.queryByText("after discount")).toBeNull();
   });
 
+  it("names the account holder on a domestic invoice, for NEFT", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.getByText("Account holder")).toBeInTheDocument();
+    expect(screen.queryByText("Beneficiary address")).toBeNull();
+  });
+
+  it("prints the branch and our own address as the beneficiary's on an export", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.getByText("C-77, RDC Raj Nagar, Ghaziabad 201002")).toBeInTheDocument();
+    // Read from the studio address, on one line.
+    expect(
+      screen.getByText(
+        "C-204, MGI Gharaunda, Raj Nagar Extension, Ghaziabad - 201017, Uttar Pradesh, India",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("prints no discount row when there is none", () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.queryByText(/^discount/)).toBeNull();

@@ -186,17 +186,7 @@ const invoiceExport = (): AdminDocument =>
     gstRatePercent: 0,
     gstLabel: "Export of services under LUT, IGST not charged.",
     placeOfSupplyStateCode: "96",
-    studioSnapshot: {
-      ...STUDIO_INFO,
-      bank: {
-        ...STUDIO_INFO.bank,
-        accountName: "Qera Private Limited",
-        swift: "KKBKINBBCPC",
-        iban: "GB29NWBK60161331926819",
-        bankAddress:
-          "Kotak Mahindra Bank, Ground Floor,\nRaj Nagar Extension, Ghaziabad 201017, India",
-      },
-    },
+    studioSnapshot: STUDIO_INFO,
   }) as unknown as AdminDocument;
 
 /**

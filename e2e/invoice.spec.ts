@@ -54,14 +54,13 @@ test.describe("the invoice fits its page", () => {
     await expect(sheet).toBeVisible();
 
     await expect(sheet).toContainText("KKBKINBBCPC");
-    await expect(sheet).toContainText("GB29NWBK60161331926819");
+    // Branch, its address and the beneficiary's: what a remitting bank asks.
+    await expect(sheet).toContainText("C-77, RDC Raj Nagar, Ghaziabad 201002");
+    await expect(sheet).toContainText("Beneficiary address");
 
     // A discount that skips the hosting line prints its own group above it.
     await expect(sheet).toContainText("discount (35%)");
     await expect(sheet).toContainText("after discount");
-    await expect(sheet).toContainText(
-      "Raj Nagar Extension, Ghaziabad 201017, India",
-    );
 
     // A UPI intent is worth nothing to a payer abroad: no foreign banking app
     // reads the QR, and the handle cannot receive an inward remittance. So

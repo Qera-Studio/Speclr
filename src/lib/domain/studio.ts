@@ -45,7 +45,7 @@ export interface StudioInfo {
     bankName: string;
     accountNo: string;
     ifsc: string;
-    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    /** Filled from the IFSC lookup. Printed on an export invoice's wire block. */
     branch?: string;
     upiId: string;
     /**
@@ -90,7 +90,11 @@ export const STUDIO_INFO: StudioInfo = {
     bankName: 'Kotak Mahindra Bank',
     accountNo: '4056067000',
     ifsc: 'KKBK0000677',
+    branch: 'Ghaziabad',
     upiId: 'qera.studio@kotak',
+    accountName: 'Qera Private Limited',
+    swift: 'KKBKINBBCPC',
+    bankAddress: 'C-77, RDC Raj Nagar, Ghaziabad 201002',
   },
 };
 
