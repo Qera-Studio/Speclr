@@ -269,3 +269,16 @@ describe('the seeded Services', () => {
     }
   });
 });
+
+/** Approved wording, 19 October 2026 (format freeze audit). */
+describe('the notice and definitions wording', () => {
+  const { MSA_CLAUSES } = jest.requireActual('../msa') as typeof import('../msa');
+  const all = MSA_CLAUSES.flatMap((c) => c.body).join('\n');
+  it('sends notices to the addresses on the parties page', () => {
+    expect(all).toMatch(/5\.3 Formal notices shall be sent to the email address set out against each Party's name at the head of this Agreement/);
+    expect(all).not.toMatch(/stated in the applicable Schedule/);
+  });
+  it('defines Third-Party Costs', () => {
+    expect(all).toMatch(/"Third-Party Costs" means .* clause 9\.1/);
+  });
+});

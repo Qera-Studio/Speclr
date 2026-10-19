@@ -111,6 +111,7 @@ export const MSA_CLAUSES: MsaClause[] = [
       '"Revision" has the meaning given at clause 7.1.',
       '"Schedule" means any of the Build, Retainer, Setup or Audit Schedules forming part of this Agreement.',
       '"Services" means the services performed by Qera under this Agreement.',
+      '"Third-Party Costs" means the platform subscriptions, hosting, domain fees, licences and other third-party charges described at clause 9.1.',
       '"Third-Party Services" means any platform, application programming interface, hosting provider, model provider, software tool, plugin, advertising platform, infrastructure service or technology not owned or controlled by Qera.',
       '1.2 Headings are for convenience only and shall not affect construction. References to a clause are references to a clause of this Agreement. Words importing the singular include the plural and vice versa. "Including" means including without limitation. A reference to writing includes email.',
       '1.3 Any period expressed in days shall mean calendar days unless expressed as working days, in which case Saturdays, Sundays and public holidays at the place of performance shall be excluded.',
@@ -167,7 +168,7 @@ export const MSA_CLAUSES: MsaClause[] = [
     body: [
       '5.1 Operational communication may be conducted by email, messaging platform, project management tool or meeting, as the Parties find convenient.',
       '5.2 Approvals, variations to scope, commercial confirmations and formal notices shall be confirmed by email. No instruction, representation or discussion conducted otherwise shall operate to vary this Agreement, and neither Party shall be bound by any purported agreement not so confirmed.',
-      '5.3 Formal notices shall be sent to the email addresses stated in the applicable Schedule and shall be deemed received on the next working day following transmission, absent evidence of delivery failure.',
+      "5.3 Formal notices shall be sent to the email address set out against each Party's name at the head of this Agreement, or such other address as a Party notifies in writing, and shall be deemed received on the next working day following transmission, absent evidence of delivery failure.",
       '5.4 Qera shall not be liable for any misunderstanding arising from fragmented, inconsistent or undocumented communication conducted otherwise than in accordance with this clause.',
     ],
   },

@@ -321,6 +321,9 @@ describe("the parties page", () => {
     expect(within(parties).getAllByText("GSTIN")).toHaveLength(2);
     expect(within(parties).getByText("09AAACC1206D1ZM")).toBeInTheDocument();
     expect(within(parties).getByText("CIN")).toBeInTheDocument();
+    // The short names the clauses use are defined where each party is named.
+    expect(within(parties).getByText(/Hereinafter referred to as “Qera”/)).toBeInTheDocument();
+    expect(within(parties).getByText("(Hereinafter referred to as the “Client”)")).toBeInTheDocument();
     // The GSTIN carries the PAN; a client with no CIN prints no CIN row.
     expect(within(parties).queryByText("PAN")).not.toBeInTheDocument();
   });

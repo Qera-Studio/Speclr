@@ -162,6 +162,13 @@
       "when": 1790294400000,
       "tag": "0022_documents_immutable",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790380800000,
+      "tag": "0023_contract_definitions",
+      "breakpoints": true
     }
   ]
 }

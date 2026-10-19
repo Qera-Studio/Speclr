@@ -438,7 +438,9 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
         {text.preamble}
       </p>
       <div className="flex flex-col gap-[32px]">
-        {party("First Party", "The Studio / Service Provider", [
+        {/* The short names the clauses use, defined where each party is named,
+            as the founder's own contract does (19 October 2026). */}
+        {party("First Party", "(Hereinafter referred to as “Qera”, the “Studio”, the “Service Provider” or “Qera Studio”)", [
           { label: "Name", value: studio.legalName },
           { label: "Address", value: studio.address },
           { label: "Email", value: studio.email },
@@ -448,7 +450,7 @@ export function contractBlocks(doc: ContractDocument): React.ReactNode[] {
             ["GSTIN", studio.gstin],
           ]),
         ])}
-        {party("Second Party", "The Client", [
+        {party("Second Party", "(Hereinafter referred to as the “Client”)", [
           { label: "Name", value: clientName },
           { label: "Address", value: doc.clientSnapshot.address },
           { label: "Email", value: doc.clientSnapshot.email },
