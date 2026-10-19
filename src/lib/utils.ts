@@ -1,5 +1,25 @@
 import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
+
+/**
+ * tailwind-merge has to be told about the house tokens, or it guesses.
+ *
+ * It reads `text-meta` as a text *colour*, because every `text-<word>` it does
+ * not recognise is one, and then drops it the moment a real colour follows in
+ * the same `cn()` call. That is how the design page's rail came out at 16px
+ * with `text-meta` nowhere in its class list: the size had been merged away
+ * as a losing colour. The same applies to the three shadow tokens.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        { text: ["caption", "meta", "control", "body", "lead", "section", "title", "display"] },
+      ],
+      shadow: [{ shadow: ["raised", "overlay", "modal"] }],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

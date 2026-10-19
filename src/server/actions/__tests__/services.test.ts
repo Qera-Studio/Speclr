@@ -18,6 +18,7 @@ const saveService = jest.fn((_s: ContractService) => Promise.resolve());
 const insertService = jest.fn((_s: ContractService) => Promise.resolve());
 const listServices = jest.fn(() => Promise.resolve([] as ContractService[]));
 const archiveService = jest.fn((_code: string) => Promise.resolve());
+const restoreServiceRow = jest.fn((_code: string) => Promise.resolve());
 
 jest.mock('../authGate', () => ({ authorized: () => authorized() }));
 jest.mock('@/db/store', () => ({
@@ -26,6 +27,7 @@ jest.mock('@/db/store', () => ({
   insertService: (...a: unknown[]) => insertService(a[0] as ContractService),
   listServices: (...a: unknown[]) => listServices(...(a as [])),
   archiveService: (...a: unknown[]) => archiveService(a[0] as string),
+  restoreService: (...a: unknown[]) => restoreServiceRow(a[0] as string),
 }));
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
@@ -33,6 +35,7 @@ import {
   archiveServiceItem,
   createService,
   removeService,
+  restoreService,
   saveServiceItem,
   saveServiceSection,
 } from '../services';
@@ -79,6 +82,25 @@ describe('saveServiceSection', () => {
     const result = await saveServiceSection('99', 'items', { items: [] });
     expect(result).toEqual({ success: false, error: 'That service no longer exists.' });
     expect(saveService).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The description section: the one sentence the catalogue and the
+   * quotation print, and nothing else about the row.
+   */
+  it('saves the description alone', async () => {
+    const result = await saveServiceSection('06', 'description', { blurb: 'Built in code.' });
+    expect(result).toEqual({ success: true });
+    expect(saveService).toHaveBeenCalledWith({ ...existing, blurb: 'Built in code.' });
+  });
+
+  /** Clearing is sending empty, since a key left out is a key kept. */
+  it('clears the description when sent empty, and refuses it missing', async () => {
+    await saveServiceSection('06', 'description', { blurb: '' });
+    expect(saveService).toHaveBeenCalledWith({ ...existing, blurb: '' });
+
+    const missing = await saveServiceSection('06', 'description', {});
+    expect(missing.success).toBe(false);
   });
 
   /**
@@ -181,7 +203,7 @@ describe('createService', () => {
   const details = {
     name: 'Three.js experience',
     scheduleKey: 'build' as const,
-    overview: ['A 3D scene.'],
+    blurb: 'A 3D scene.',
     sacCode: '998314',
     ratePaise: 80_000_00,
   };
@@ -209,13 +231,34 @@ describe('createService', () => {
     const inserted = insertService.mock.calls[0][0];
     expect(inserted.code).toBe('23');
     expect(inserted.name).toBe('Three.js experience');
-    expect(inserted.overview).toEqual(['A 3D scene.']);
+    expect(inserted.blurb).toBe('A 3D scene.');
+    expect(inserted.overview).toEqual(existing.overview);
     expect(inserted.included).toEqual(existing.included);
     expect(inserted.limits).toEqual(existing.limits);
     expect(inserted.exclusionIds).toEqual(existing.exclusionIds);
     expect(inserted.items).toEqual(existing.items);
     expect(inserted.itemSeq).toBe(existing.itemSeq);
     expect(inserted.archived).toBe(false);
+  });
+
+  it('files the service under a typed code', async () => {
+    const result = await createService({ ...details, code: 'THREE' });
+    expect(result).toEqual({ success: true });
+    expect(insertService.mock.calls[0][0].code).toBe('THREE');
+  });
+
+  /** A retired code is never handed to different work. */
+  it('refuses a typed code any row already holds, archived included', async () => {
+    const archived = PARTS.find((p) => p.archived) ?? PARTS[0];
+    const result = await createService({ ...details, code: archived.code });
+    expect(result.success).toBe(false);
+    expect(insertService).not.toHaveBeenCalled();
+  });
+
+  it('refuses a code that is not two to six capitals or digits', async () => {
+    const result = await createService({ ...details, code: 'web' });
+    expect(result.success).toBe(false);
+    expect(insertService).not.toHaveBeenCalled();
   });
 
   it('refuses a clone source that does not exist', async () => {
@@ -244,6 +287,27 @@ describe('removeService', () => {
     const result = await removeService('not-a-code');
     expect(result.success).toBe(false);
     expect(archiveService).not.toHaveBeenCalled();
+  });
+});
+
+describe('restoreService', () => {
+  it('brings an archived service back', async () => {
+    const result = await restoreService('06');
+    expect(result).toEqual({ success: true });
+    expect(restoreServiceRow).toHaveBeenCalledWith('06');
+  });
+
+  it('refuses a signed-out caller', async () => {
+    authorized.mockResolvedValue(null);
+    const result = await restoreService('06');
+    expect(result).toEqual({ success: false, error: 'Unauthorized.' });
+    expect(restoreServiceRow).not.toHaveBeenCalled();
+  });
+
+  it('refuses a malformed code', async () => {
+    const result = await restoreService('not-a-code');
+    expect(result.success).toBe(false);
+    expect(restoreServiceRow).not.toHaveBeenCalled();
   });
 });
 

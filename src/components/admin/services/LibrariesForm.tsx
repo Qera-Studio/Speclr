@@ -35,7 +35,7 @@ function TickList({
       <ul className="flex flex-col">
         {lines.map((line) => (
           <li key={line.id}>
-            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-body hover:bg-accent/50">
               <Checkbox
                 className="mt-0.5"
                 checked={chosen.has(line.id)}
@@ -110,8 +110,8 @@ export default function LibrariesForm({
       ) : null}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save libraries'}
+        <Button variant="primary" type="submit" pending={pending}>
+          Save libraries
         </Button>
       </div>
     </form>

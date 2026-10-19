@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/attachment";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
-import FieldInfo, { InfoTip } from "@/components/form/FieldInfo";
+import FieldInfo, { InfoTip } from "@/components/patterns/FieldInfo";
 import UploadDropzone from "@/components/form/UploadDropzone";
 import {
   ATTACHMENT_KIND_LABELS,
@@ -29,10 +29,8 @@ import {
   type ClientAttachment,
 } from "@/lib/domain/client";
 import AttachmentTypeDialog from "./AttachmentTypeDialog";
-import {
-  deleteClientAttachment,
-  uploadClientAttachment,
-} from "@/server/actions/attachments";
+import { deleteClientAttachment } from "@/server/actions/attachments";
+import { uploadClientAttachment } from "./uploadAttachment";
 import type { ClientRecord } from "@/lib/domain/types";
 import { StepForm, type StepProps } from "./stepKit";
 
@@ -156,17 +154,13 @@ export default function AttachmentsStep({
     if (!client || !head || pending || started.current === head.id) return;
     started.current = head.id;
 
-    const data = new FormData();
-    data.set("file", head.file);
-    data.set("kind", head.kind);
-
     startTransition(async () => {
       // A Server Action that never returns (the request cut off, the network
       // dropped) rejects, and an uncaught rejection here takes the whole step
       // down with it. The file did not upload either way; say so and leave the
       // rest of the form standing.
-      const result = await uploadClientAttachment(client.id, data).catch(
-        (cause) => {
+      const result = await uploadClientAttachment(client.id, head.file, head.kind).catch(
+        (cause: unknown) => {
           // The operator gets the sentence, and whoever is debugging gets the
           // reason. Which leg failed is infrastructure detail: it tells anyone
           // watching where the seams are, and does not tell the operator
@@ -263,7 +257,7 @@ export default function AttachmentsStep({
       <div className="flex h-full items-center justify-center bg-muted">
         <FileLock2
           aria-hidden
-          className="size-10 stroke-[1.25] text-muted-foreground/40"
+          className="size-10 stroke-[1.25] text-tab-label"
         />
         <span className="sr-only">
           {attachment.filename} is password-protected, so it cannot be
@@ -415,14 +409,7 @@ export default function AttachmentsStep({
       // the list squeezes the drop box as it fills: a flex item's default is to
       // give up height, and this one is a target.
       className={inlineExtra ? "min-h-56" : "shrink-0"}
-      // Turns a quarter on hover, so this card answers the pointer the way the
-      // `TrayArrowIcon` boxes beside it do.
-      icon={
-        <Plus
-          aria-hidden
-          className="size-5 text-muted-foreground transition-transform group-hover/tray:rotate-90"
-        />
-      }
+      icon={<Plus aria-hidden className="size-5 text-muted-foreground" />}
       label="Add anything else"
       hint={`Add any document up to ${maxMb} MB`}
       onFileSelected={() => {}}

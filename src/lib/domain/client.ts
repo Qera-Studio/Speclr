@@ -386,6 +386,13 @@ export const clientContactsSchema = z.object({
 
 export const ENGAGEMENT_TYPES = ['retainer', 'project', 'hourly'] as const;
 
+/** Each engagement type's name and one-line meaning: the onboarding cards and the clients list. */
+export const ENGAGEMENT_TYPE_INFO = {
+  retainer: { title: 'Retainer', hint: 'Ongoing, billed on a cycle' },
+  project: { title: 'Project', hint: 'A defined scope, billed against it' },
+  hourly: { title: 'Hourly', hint: 'Billed against time' },
+} as const satisfies Record<(typeof ENGAGEMENT_TYPES)[number], { title: string; hint: string }>;
+
 /**
  * One item this client agreed to, under a Service they are engaged on.
  *
@@ -772,6 +779,15 @@ export const ATTACHMENT_EXTENSIONS: Record<string, string> = {
 
 /** 25 MB. A signed MSA scanned at full resolution is tens of pages. */
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Where an attachment's bytes live: under its client, named by its id alone.
+ * The browser uploads to this path and the server records it, so both build it
+ * here and cannot disagree. The display name is `filename`, kept on the row.
+ */
+export function attachmentKey(clientId: string, attachmentId: string): string {
+  return `clients/${clientId}/${attachmentId}`;
+}
 
 export interface ClientAttachment {
   id: string;

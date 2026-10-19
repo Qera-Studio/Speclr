@@ -33,16 +33,16 @@ const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
  * The neutral ramp: the only place a neutral colour is actually written.
  *
  * Every neutral semantic token is an alias (`--muted-foreground:
- * var(--slate-600)`), so measuring one means resolving it through here first.
+ * var(--gray-600)`), so measuring one means resolving it through here first.
  * Declared once in `:root` and never redefined per theme — the ramp is a set
  * of physical colours, and the theme is which end of it each role points at.
  */
 const RAMP: Record<string, string> = Object.fromEntries(
-  [...css.matchAll(/^\s*(--slate-\d{1,3}):\s*(oklch\([^)]*\));/gm)].map(([, n, v]) => [n, v]),
+  [...css.matchAll(/^\s*(--gray-\d{1,3}):\s*(oklch\([^)]*\));/gm)].map(([, n, v]) => [n, v]),
 );
 
 /**
- * The custom properties declared in one selector block, with `var(--slate-N)`
+ * The custom properties declared in one selector block, with `var(--gray-N)`
  * aliases resolved to the colour they name.
  *
  * An unresolvable alias is left as-is rather than skipped: `toLinearRgb` then
@@ -55,7 +55,7 @@ function tokensIn(selector: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [, name, value] of css
     .slice(start, end)
-    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\)|var\(--slate-\d{1,3}\));/gm)) {
+    .matchAll(/^\s*(--[a-z0-9-]+):\s*(oklch\([^)]*\)|var\(--gray-\d{1,3}\));/gm)) {
     out[name] = value.startsWith('var(')
       ? (RAMP[value.slice(4, -1)] ?? value)
       : value;
@@ -135,37 +135,35 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['destructive-foreground', 'destructive'],
   ['warning', 'background'],
   ['warning', 'card'],
+  ['success', 'background'],
+  ['success', 'card'],
+  ['success-foreground', 'success'],
   ['sidebar-foreground', 'sidebar'],
   // A table's header row sits on `--sidebar` (§2.3), and `TableHead` draws its
   // label at full strength, so this is the pair every column name is read on.
   ['foreground', 'sidebar'],
   ['sidebar-accent-foreground', 'sidebar-accent'],
   ['sidebar-accent-foreground', 'sidebar-active'],
-  // The pager's go-to-page box, which prints its value muted at rest and at
-  // full strength on focus. One shade off `--sidebar` is a small step, so this
-  // is the pair most likely to be quietly lost if either token moves.
-  ['foreground', 'sidebar-field'],
-  ['muted-foreground', 'sidebar-field'],
-  // Those two pairs now carry a second surface as well: `--sidebar-field` is
-  // the pager's tab-group trough, and its inactive page numbers are
-  // `foreground/60` and `muted-foreground` on it. The active one is `--raised`
-  // on that same trough, already measured a few rows below.
   // The active tab and the active profile. `--raised` is the only token whose
   // light and dark values are a whole step apart in *role*, so it is the one
   // most likely to be nudged in one theme without the other being checked.
   ['foreground', 'raised'],
   ['muted-foreground', 'raised'],
-  // The pager's active page. Its own surface rather than `--raised`, and dark
-  // is deliberately two ramp steps up from its container rather than one, for
-  // contrast. Only the full-strength pair is asserted: nothing muted lands
-  // here, which is exactly why slate-700 is allowed for this and refused for
-  // `--hover` (see the note beside it in `globals.css`).
-  ['foreground', 'page-active'],
   // A card under the pointer, which is a whole card's worth of text and not a
   // label: the type, the party and the date on it are all muted. This is the
-  // pair that ruled out the symmetrical dark value (`--slate-700`, 3.94:1).
+  // pair that ruled out the symmetrical dark value (`--gray-700`, 3.94:1).
   ['foreground', 'hover'],
   ['muted-foreground', 'hover'],
+  // Placeholder text. Every input, select and date picker is filled with
+  // `--background`, so that is the one surface it lands on. Light sits one
+  // step lighter than muted text and is the row most likely to be nudged one
+  // step too far: 500 is 4.74:1, 400 would be 2.52:1.
+  ['placeholder', 'background'],
+  // An inactive tab's label, and an inactive page number, on the trough
+  // both rest on.
+  ['tab-label', 'muted'],
+  // A quiet toolbar control's label, on the page (the service catalogue).
+  ['tab-label', 'background'],
 ];
 
 /**
@@ -203,7 +201,13 @@ const UI_PAIRS: Array<[string, string]> = [
 const ACCENTS = ['violet', 'cyan', 'teal', 'green', 'amber', 'orange', 'rose', 'magenta'];
 
 /** A wash of `hue` at `alpha` over `bg`, as the browser composites it. */
-function washed(hue: string, alpha: number, bg: string, tokens: Record<string, string>) {
+function washed(
+  hue: string,
+  alpha: number,
+  bg: string,
+  tokens: Record<string, string>,
+  ink = hue,
+) {
   const front = toLinearRgb(tokens[`--${hue}`]);
   const back = toLinearRgb(tokens[`--${bg}`]);
   const rgb = front.rgb.map((v, i) => alpha * v + (1 - alpha) * back.rgb[i]) as [
@@ -211,14 +215,27 @@ function washed(hue: string, alpha: number, bg: string, tokens: Record<string, s
     number,
     number,
   ];
-  const fg = toLinearRgb(tokens[`--${hue}`]);
+  const fg = toLinearRgb(tokens[`--${ink}`]);
   const [hi, lo] = [luminance(fg.rgb), luminance(rgb)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/**
+ * The editor rail restates five tokens one step firmer (`[data-editor-rail]`
+ * in `globals.css`). Contrast there "only ever goes up", which is a claim this
+ * file can check rather than take on trust: the rail's tokens over the
+ * theme's are a fourth and fifth theme as far as the pairs are concerned.
+ */
+const rail = (theme: string, selector: string) => ({
+  ...tokensIn(theme),
+  ...tokensIn(selector),
+});
+
 describe.each([
   ['light', tokensIn(':root'), 0.1],
   ['dark', tokensIn('.dark'), 0.12],
+  ['light editor rail', rail(':root', '[data-editor-rail]'), 0.1],
+  ['dark editor rail', rail('.dark', '.dark [data-editor-rail]'), 0.12],
 ])('%s theme', (_theme, tokens, wash) => {
   it.each(TEXT_PAIRS)('%s on %s reaches 4.5:1', (fg, bg) => {
     expect(Number(contrast(fg, bg, tokens).toFixed(2))).toBeGreaterThanOrEqual(4.5);
@@ -237,6 +254,15 @@ describe.each([
     expect(
       Number(washed(`accent-${hue}`, wash, 'card', tokens).toFixed(2)),
     ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /** The quieter ink (`accentBadge`'s `quiet`) on the same wash, card and page. */
+  it.each(ACCENTS)('accent-%s-ink reads on a wash of its hue', (hue) => {
+    for (const bg of ['card', 'background']) {
+      expect(
+        Number(washed(`accent-${hue}`, wash, bg, tokens, `accent-${hue}-ink`).toFixed(2)),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   /** And over the page, since a badge lands on both. */

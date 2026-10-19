@@ -43,9 +43,9 @@ describe('DocumentRowActions', () => {
 
     // The click opens a confirmation; nothing has been deleted yet.
     expect(deleteDraftAction).not.toHaveBeenCalled();
-    expect(await screen.findByText('Delete this draft?')).toBeInTheDocument();
+    expect(await screen.findByRole('alertdialog', { name: 'Delete draft' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+    await user.click(screen.getByRole('button', { name: /^delete draft$/i }));
     expect(deleteDraftAction).toHaveBeenCalledWith('doc-1');
   });
 

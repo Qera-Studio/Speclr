@@ -1,5 +1,5 @@
 /**
- * Currency codes for employee pay and stipend slips.
+ * Currency codes for employee pay, stipend slips and export invoices.
  *
  * Scope note — read before widening this:
  *
@@ -8,18 +8,24 @@
  * their own currency needs no exchange rate and no INR tax line. It prints the
  * amount, and the words, in the currency it was paid in.
  *
- * **Invoices and receipts stay INR, deliberately.** A GST document from an
- * Indian entity must show its tax amount in INR regardless of the billing
- * currency, and the CGST/SGST/IGST split is rupee-shaped. Making *those*
- * currency-aware needs an exchange rate and a parallel INR tax line — its own
- * piece of work, not a label swap. See ROADMAP.md.
+ * **A taxed invoice stays INR, deliberately.** A GST document from an Indian
+ * entity must show its tax amount in INR regardless of the billing currency,
+ * and the CGST/SGST/IGST split is rupee-shaped.
  *
- * **One exchange rate exists, for one list, and it never reaches a sheet.**
- * The clients list shows a foreign client's agreed price in their own currency
+ * **A zero-rated export may be billed in the client's currency** (19 October
+ * 2026, logged in `PRINCIPLES.md`). It charges no tax, so the objection above
+ * has nothing to bite on. The document carries its own rate, typed from the
+ * bank's TT buying rate on the issue date (CGST Rule 34(2)), as an integer
+ * (`FxRate`), and states the INR equivalent at it through `inrPaiseOf` in
+ * `money.ts`. `foreignCurrency` in the registry refuses any other case.
+ *
+ * **The market rate is for one list, and it never reaches a sheet.** That is a
+ * different rate from an invoice's, and the difference is the point. The
+ * clients list shows a foreign client's agreed price in their own currency
  * at that day's market rate (`server/rates.ts`), as a reading convenience, with
- * the chip toggling back to INR. `convertMinor` below is the only place money
- * is multiplied by a rate, and a document importing it would be the compliance
- * bug the paragraph above describes. Logged in `PRINCIPLES.md`.
+ * the chip toggling back to INR. A document importing `convertMinor` below
+ * would be printing a market rate on a tax figure, which is the compliance bug
+ * `docs/vendors.md` §1.5 describes. Logged in `PRINCIPLES.md`.
  *
  * Every currency here is a 2-decimal (minor-unit) currency, which is why
  * `money.ts` can assume a ×100 minor unit throughout. Adding a 0- or

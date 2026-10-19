@@ -1,10 +1,10 @@
 'use client';
 
 import { notFound } from 'next/navigation';
-import RecordTable from '@/components/admin/RecordTable';
-import { EditButton } from '@/components/admin/RowActions';
-import { PageBody, PageHeader } from '@/components/admin/Page';
-import SortToggle, { useShowSort } from '@/components/admin/SortToggle';
+import RecordTable from '@/components/patterns/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
+import SortToggle, { useShowSort } from '@/components/patterns/SortToggle';
 
 /**
  * The eye for the reorderable fixture.
@@ -181,7 +181,7 @@ export default async function RecordTablePreview({
           caption="Preview plain wide records"
           open={(row) => ({ href: `/preview/record-table?plainwide=1&opened=${row.id}` })}
           dividers
-          resizable
+          fixed
           columns={[
             { key: 'name', label: 'Name', size: 180, cell: (row) => row.name },
             { key: 'city', label: 'City', size: 140, cell: (row) => row.city },
@@ -206,7 +206,7 @@ export default async function RecordTablePreview({
           caption="Preview wide records"
           open={(row) => ({ href: `/preview/record-table?wide=1&opened=${row.id}` })}
           dividers
-          resizable
+          fixed
           actionsSticky
           columns={[
             {

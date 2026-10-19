@@ -20,6 +20,11 @@ export async function printUrlFor(doc: AdminDocument): Promise<string> {
   const h = await headers();
   const host = h.get('host') ?? process.env.VERCEL_PROJECT_PRODUCTION_URL;
   if (!host) throw new Error('No host to render from');
+  // The renderer carries the caller's session cookie to this host, so a Host
+  // header pointing anywhere else would hand that cookie (and, on a preview,
+  // the bypass secret) to whoever it names. Only hosts this app is served on
+  // are accepted (launch gate, 18 October 2026).
+  if (!isOwnHost(host)) throw new Error(`Refusing to render from host ${host}`);
   // A local dev server is plain http; everything else is https. `x-forwarded-proto`
   // is what Vercel sets, and is trusted here only to choose a scheme for a
   // request we are making to ourselves.
@@ -48,4 +53,14 @@ export async function printUrlFor(doc: AdminDocument): Promise<string> {
   }
 
   return url.toString();
+}
+
+/**
+ * Whether a host is one this app is served on: localhost in development, or
+ * one of the URLs Vercel says this deployment answers to.
+ */
+export function isOwnHost(host: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const name = host.split(':')[0];
+  if (name === 'localhost' || name === '127.0.0.1') return true;
+  return [env.VERCEL_PROJECT_PRODUCTION_URL, env.VERCEL_BRANCH_URL, env.VERCEL_URL].includes(host);
 }

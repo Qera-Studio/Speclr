@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { needsControls, pageRuns } from '@/components/ui/pageGroups';
+import { segmentTrough, tabPillSurface } from '@/components/ui/tabs';
 
 /**
  * Client-side pagination for the admin tables, and the one pager in the app.
@@ -128,23 +129,13 @@ function PageRuns({
         rather than a gap between boxes, so the background does the grouping and
         the strokes do not have to.
 
-        **No fill: the stroke is what groups it.** It carried
-        `bg-sidebar-field`, and that token is slate-100 in light and slate-900
-        in dark — where `--background` is *also* slate-900, so the fill only
-        ever existed in one theme. A surface that appears in light and vanishes
-        in dark is not the ramp doing its job, it is two different pagers, and
-        the light one was the odd one out (18 September 2026).
-
-        Nothing was lost with it. The border below already says where the
-        control ends, and the gap between runs still says numbers are missing;
-        the fill was a third thing saying what those two say.
-
-        The pill inside had to absorb it. It was "the step above the container",
-        which only means something while the container has a fill to be above;
-        it now sits on the card and steps *down* in light instead. See
-        `--page-active` in `globals.css`.
+        **The tab strip's trough** (11 October 2026): `segmentTrough`, the
+        same grey ground and corner as every tab group, with no stroke. It
+        had a border and no fill, which left the white pill nothing to read
+        against on a white card; the trough is what makes the pill visible,
+        and it makes the pager look like the tab group it already behaved as.
       */
-      className="flex items-center gap-2 rounded-lg border border-border p-[3px]"
+      className={cn('flex items-center gap-2 p-1', segmentTrough)}
     >
       {children?.('before')}
       {pageRuns(page, pageCount).map((run, position) => (
@@ -206,56 +197,15 @@ function PageRuns({
                   // inner corner is what says the pill is *in* the box. Two
                   // boxes at one radius read as a single shape with a line
                   // through it.
-                  'inline-flex h-6 min-w-6 items-center justify-center rounded-sm border border-transparent px-1.5 text-xs font-medium transition-colors [font-variant-numeric:tabular-nums]',
-                  'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                  'inline-flex h-6 min-w-6 items-center justify-center rounded-sm border border-transparent px-1.5 text-control font-medium transition-colors [font-variant-numeric:tabular-nums]',
+                  'focus-ring',
                   current
-                    ? /*
-                        `--page-active`: lighter than the container in both
-                        themes, plus a stroke.
-
-                        Its own token because no existing role is a step *up*
-                        from `--sidebar-field` on both sides. `--card` is right
-                        in light (slate-50) and is the container's own value in
-                        dark, where the fill separated by 0.000 and only the
-                        border drew the active page. `--raised`, which every
-                        other active pill in the app uses, is the mirror
-                        problem: it fixes dark and is a step *down* in light,
-                        making the pill a well.
-
-                        Dark is slate-700 rather than the symmetrical
-                        slate-800, on request and for contrast: 3.04 against the
-                        container where slate-800 gives 0.91. Lighter is what
-                        "nearer" means under a light source, and that does not
-                        invert with the theme, so dark raises rather than sinks.
-                      */
-                      'border-border bg-page-active text-foreground shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]'
-                    : /*
-                        Bare at rest, filled only under the pointer. A resting
-                        fill on every number would rebuild the per-page box the
-                        container replaced, and leave the active one nothing to
-                        be raised from.
-
-                        **Hover is darker than the active pill here, which is
-                        the one place in the app that inverts.** Everywhere
-                        else a hovered thing is a step toward the reader and an
-                        active thing is further still; in this control the pill
-                        is the *smallest* step off the page (slate-100, one
-                        rung) because it is a resting state that also carries a
-                        border and a shadow, and the fill is only the third
-                        thing saying "you are here".
-
-                        That leaves hover with nowhere to go but past it, to
-                        slate-200. It works because hovering is transient and
-                        reads as a press, and because only the pill has a
-                        stroke: the two are never confusable even at the moment
-                        the pointer is over the current page.
-
-                        Measured, both themes, rather than reasoned about:
-                        light is page 100, pill 96.2, hover 92.2 — and the pair
-                        collided at 90.9 when the pill was slate-200, which is
-                        what this arrangement exists to avoid.
-                      */
-                      'text-foreground/60 hover:bg-hover hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground',
+                    ? // The tab strip's white pill, from the one place it is
+                      // spelled (`ui/tabs.tsx`), so the two cannot drift.
+                      cn('text-foreground', tabPillSurface)
+                    : // Bare at rest, a step darker than the trough under the
+                      // pointer, so a hovered page is never the white pill.
+                      'text-tab-label hover:bg-hover hover:text-foreground',
                 )}
               >
                 {index + 1}
@@ -364,26 +314,10 @@ export function Pagination({
               sunk into it, because it is the one control here you type into
               rather than press.
 
-              `bg-sidebar-field` rather than `--hover`, since the container
-              stopped filling and the box's own surface moved with it. As a
-              well inside a slate-100 container, `--hover` (slate-200) was one
-              ramp step; on the bare card it became a two-step drop and read as
-              a hard chip on a light panel. Slate-100 restores the one step.
-
-              `--hover` was deliberately not re-valued to fix this:
-              `DocumentsCards` uses it for a hovered card, and moving a shared
-              role to suit one caller is how a token stops meaning anything
-              (`docs/design.md` §1.1).
-
-              **This is now the same value as the active pill, and that is a
-              decision rather than a drift** (18 September 2026). The pill came
-              down to slate-100 as well, so the well and the marker are one
-              fill apart from the pill's border and shadow. Allowed because
-              they sit at opposite ends of the control and are never read
-              against each other, and because the ramp has exactly one rung
-              between the page and slate-200: something had to share. If the
-              box ever needs to be told apart from the pill at a glance, it
-              goes *down* to slate-200, not the pill up.
+              `--hover`, one step below the tab trough it sits in (11 October
+              2026), and the same step a hovered page takes. The two never meet:
+              a hovered number has no box beside it, and the box holds no
+              number until you type one.
 
               It was transparent until hovered once, which made the one control
               you can *type* into look like the counter printed beside it. A
@@ -412,7 +346,12 @@ export function Pagination({
                 e.stopPropagation();
               }}
               aria-label={`Go to page of ${label}`}
-              className="h-6 w-9 rounded-sm bg-sidebar-field text-center text-xs text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
+              className={cn(
+                // Dark's `--hover` is the ramp's floor, two steps under the
+                // gray-800 trough; `--background` is the one step.
+                'bg-hover dark:bg-background',
+                "h-6 w-9 rounded-sm text-center text-control text-muted-foreground transition-colors [font-variant-numeric:tabular-nums] hover:text-foreground focus:text-foreground focus-ring focus:outline-none",
+              )}
             />
           ) : null
         }
@@ -422,7 +361,7 @@ export function Pagination({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="sm" icon
               // Square, and a shade smaller than a page so the glyph sits at
               // the same optical weight as a digit beside it.
               className="size-6 rounded-sm"

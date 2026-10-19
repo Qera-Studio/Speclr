@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import { useDownloadPdf } from '@/lib/useDownloadPdf';
 import FinalizedActions from './FinalizedActions';
 
@@ -122,7 +122,7 @@ export default function PrintToolbar({
     return (
       <PageHeaderSlot>
         <div data-print-hidden className="ml-auto flex shrink-0 items-center gap-2">
-          <Button type="button" variant="neutral" onClick={handlePrint}>
+          <Button type="button" variant="secondary" onClick={handlePrint}>
             <Printer aria-hidden="true" />
             Print / Save as PDF
           </Button>

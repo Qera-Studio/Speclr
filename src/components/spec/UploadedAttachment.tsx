@@ -59,7 +59,7 @@ export default function UploadedAttachment({ name, size, format, objectUrl, onRe
       </AttachmentContent>
       <AttachmentActions className="pr-1">
         <AttachmentAction
-          size="icon-sm"
+          size="sm"
           aria-label="Remove file"
           onClick={(e) => {
             e.stopPropagation();

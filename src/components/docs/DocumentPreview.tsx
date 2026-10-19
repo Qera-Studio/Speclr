@@ -38,8 +38,8 @@ const PAGE_GAP = 24;
  * the edge, which is the only thing the shadow was ever for here.
  */
 const PAGE_SHADOW =
-  'shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ' +
-  'dark:shadow-[0_1px_4px_rgba(255,255,255,0.035),0_0_0_1px_rgba(255,255,255,0.05)]';
+  'shadow-overlay ' +
+  'dark:ring-1 dark:ring-foreground/10';
 
 export type DocumentPreviewHandle = {
   /** Scroll the page at `index` (0-based) to the top of the viewport. */

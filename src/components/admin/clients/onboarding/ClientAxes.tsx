@@ -64,7 +64,7 @@ export default function ClientAxes({
   const flag = COUNTRY_SEED.find((c) => c.iso2 === country)?.flag;
 
   return (
-    <div className="mb-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+    <div className="flex items-center gap-1.5 text-meta text-muted-foreground">
       <DropdownMenu>
         <DropdownMenuTrigger render={<button type="button" className={TRIGGER} />}>
           <span className="sr-only">Type: </span>
@@ -115,13 +115,13 @@ export default function ClientAxes({
           </div>
           <div className="max-h-64 overflow-y-auto pr-1">
             {groups.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
+              <p className="py-6 text-center text-body text-muted-foreground">
                 No country matches “{query.trim()}”.
               </p>
             ) : (
               groups.map((group) => (
                 <section key={group.continent} className="mb-3 last:mb-0">
-                  <h3 className="sticky top-0 z-10 mb-1 border-b border-border bg-popover pt-0.5 pb-1 text-xs font-medium text-foreground">
+                  <h3 className="sticky top-0 z-10 mb-1 border-b border-border bg-popover pt-0.5 pb-1 text-meta font-medium text-foreground">
                     {group.continent}
                   </h3>
                   <ul>
@@ -162,4 +162,4 @@ const KIND_LABEL: Record<ClientKind, string> = {
  * one being used is the one that reads at full strength.
  */
 const TRIGGER =
-  "inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-popup-open:text-foreground";
+  "inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 transition-colors hover:text-foreground focus-visible:text-foreground focus-ring data-popup-open:text-foreground";

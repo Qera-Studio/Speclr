@@ -4,9 +4,20 @@ import {
   Archive,
   Banknote,
   Building2,
+  CalendarClock,
   CalendarDays,
   CircleDashed,
+  Clock,
+  Contact,
+  History,
+  IdCard,
   Mail,
+  Package,
+  Paperclip,
+  ReceiptText,
+  Repeat,
+  ScrollText,
+  Shapes,
   MapPin,
   Phone,
   Tag,
@@ -14,12 +25,13 @@ import {
   Users,
 } from 'lucide-react';
 import { completedSteps, onboardingStepsFor, resumeStep } from './onboarding/steps';
-import RecordTable, { type RecordTableProps } from '../RecordTable';
-import { DateValue } from '../Page';
-import { AmountCell } from '../AmountCell';
-import { CopyValue } from '../CopyCell';
-import { LocationCell } from '../LocationCell';
-import { PeopleCell, PersonCell } from '../PersonCell';
+import RecordTable, { type RecordColumn, type RecordTableProps } from '@/components/patterns/RecordTable';
+import { arrangeColumns } from '@/components/patterns/ColumnsMenu';
+import { DateValue } from '@/components/patterns/Page';
+import { AmountCell } from '@/components/patterns/AmountCell';
+import { CopyValue } from '@/components/patterns/CopyCell';
+import { LocationCell } from '@/components/patterns/LocationCell';
+import { PeopleCell, PersonCell } from '@/components/patterns/PersonCell';
 import { ClientRowMenu } from './ClientRowMenu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { accentBadge } from '@/lib/accent';
@@ -31,6 +43,8 @@ import type { ContractService } from '@/lib/domain/service';
 import type { ClientRecord } from '@/lib/domain/types';
 import type { StudioMember } from '@/lib/profile';
 import { NIL } from '@/lib/utils';
+import { clientContact, ENGAGEMENT_TYPE_INFO } from '@/lib/domain/client';
+import { entityTypeLabel } from '@/lib/domain/entityType';
 import type { ClientSortColumn, ClientSortState } from './clientQuery';
 
 /** `circle-dot-dashed` from Lucide, minus its centre dot. */
@@ -112,6 +126,62 @@ export function OnboardingRing({ done, total }: { done: number; total: number })
 }
 
 /**
+ * Every column's key, heading and icon, in order. One list, because the
+ * Properties menu offers exactly these and a heading spelled twice is a
+ * heading that drifts. Name is the one that cannot be hidden: it is what says
+ * which row you are on.
+ */
+const COLUMN = {
+  name: { key: 'name', label: 'Name', icon: Building2 },
+  email: { key: 'email', label: 'Email', icon: Mail },
+  phone: { key: 'phone', label: 'Phone', icon: Phone },
+  country: { key: 'country', label: 'Location', icon: MapPin },
+  amount: { key: 'amount', label: 'Amount', icon: Banknote },
+  industry: { key: 'industry', label: 'Industry', icon: Tag },
+  lead: { key: 'lead', label: 'Lead', icon: UserRound },
+  team: { key: 'team', label: 'Team', icon: Users },
+  added: { key: 'added', label: 'Added', icon: CalendarDays },
+  onboarding: { key: 'onboarding', label: 'Status', icon: CircleDashed },
+  // Off until somebody ticks them: the ten above are what the list is for,
+  // these are what it can also answer.
+  legalName: { key: 'legalName', label: 'Legal name', icon: ScrollText, defaultHidden: true },
+  entityType: { key: 'entityType', label: 'Entity type', icon: Shapes, defaultHidden: true },
+  contact: { key: 'contact', label: 'Contact person', icon: Contact, defaultHidden: true },
+  gstin: { key: 'gstin', label: 'GSTIN', icon: ReceiptText, defaultHidden: true },
+  pan: { key: 'pan', label: 'PAN', icon: IdCard, defaultHidden: true },
+  engagement: { key: 'engagement', label: 'Engagement', icon: Repeat, defaultHidden: true },
+  terms: { key: 'terms', label: 'Payment terms', icon: Clock, defaultHidden: true },
+  services: { key: 'services', label: 'Services', icon: Package, defaultHidden: true },
+  startDate: { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultHidden: true },
+  updated: { key: 'updated', label: 'Last edited', icon: History, defaultHidden: true },
+  files: { key: 'files', label: 'Files', icon: Paperclip, defaultHidden: true },
+} as const;
+
+export type ClientColumnKey = keyof typeof COLUMN;
+
+export const CLIENT_COLUMNS = Object.values(COLUMN).map(
+  ({ key, label, icon, ...rest }) => ({
+    key,
+    label,
+    icon,
+    locked: key === 'name',
+    defaultHidden: 'defaultHidden' in rest,
+  }),
+);
+
+/** The columns a reader who has never opened Properties sees. */
+export const DEFAULT_CLIENT_COLUMNS = CLIENT_COLUMNS.filter((c) => !c.defaultHidden).map(
+  (c) => c.key,
+);
+
+/** `COLUMN[key]` without the flag, which is the menu's business, not the table's. */
+const col = (key: keyof typeof COLUMN) => ({
+  key: COLUMN[key].key,
+  label: COLUMN[key].label,
+  icon: COLUMN[key].icon,
+});
+
+/**
  * The clients list.
  *
  * Wide enough to scroll, and built for it. The name is frozen at the left and
@@ -119,12 +189,14 @@ export function OnboardingRing({ done, total }: { done: number; total: number })
  * scroll position. Hairline column dividers at half the row rule's weight,
  * because a row that is no longer one glance needs them, and two rules of
  * equal weight turn a table into a grid the eye cannot follow across.
- * Resizable columns, which switch the table to `table-layout: fixed` and so
- * make every cell clip rather than widen. And one three-dot menu in place of
+ * Fixed column widths (`fixed`, no drag handles), which put the table on
+ * `table-layout: fixed` and so make every cell clip rather than widen. Which
+ * columns show is the reader's, through the Properties menu (`hidden`). And one three-dot menu in place of
  * three icon buttons (`ClientRowMenu`). What the frozen columns cost is the
  * sticky header: a horizontally scrolling container is the scrollport for
  * both axes, so the column names no longer follow the page down.
- * `RecordTable`'s `resizable` note records that trade.
+ * `RecordTable`'s `resizable` note records that trade, and it holds for
+ * `fixed` the same way.
  *
  * **Four columns read the record, and one of them reads it through the
  * catalogue.** Industry is `client.industry`, drawn with `accentBadge`. Lead
@@ -160,6 +232,8 @@ export default function ClientsTable({
   onSortChange,
   paging,
   onBulkDelete,
+  hidden = [],
+  order = [],
 }: {
   clients: ClientRecord[];
   /** Everyone at the studio, past and present, for the lead and team columns. */
@@ -183,7 +257,12 @@ export default function ClientsTable({
   paging?: RecordTableProps<ClientRecord>['paging'];
   /** Bulk delete, opt-in. Offering it is what shows the checkbox column. */
   onBulkDelete?: (clients: ClientRecord[]) => Promise<void>;
+  /** Columns the reader has switched off. Name is never among them. */
+  hidden?: readonly string[];
+  /** The reader's column order from the Properties panel, reconciled there. */
+  order?: readonly string[];
 }) {
+  const drawn = arrangeColumns(CLIENT_COLUMNS, order).map((column) => column.key);
   const nameOf = new Map(people.map((person) => [person.id, person.name]));
   // A team id nobody answers to any more is dropped, not printed blank: the
   // array carries no foreign key (`schema.ts`), so this is where it is filtered.
@@ -214,18 +293,18 @@ export default function ClientsTable({
       externalSort
       paging={paging}
       dividers
-      resizable
+      fixed
+      fitTruncated
       actionsSticky
-      columns={[
+      columns={(
+        [
         {
-          key: 'name',
-          label: 'Name',
-          icon: Building2,
+          ...col('name'),
           // Frozen, and the reason it is this column rather than any other: it
           // is the only one that says *which row you are on*, which is what a
           // reader needs at every scroll position in order to act on anything.
           sticky: true,
-          size: 200,
+          size: 160,
           cell: (client) => client.name,
         },
         {
@@ -242,9 +321,7 @@ export default function ClientsTable({
             including the frozen columns, which is what made a hovered email
             appear to sit on top of the Name column.
           */
-          key: 'email',
-          label: 'Email',
-          icon: Mail,
+          ...col('email'),
           size: 210,
           sortValue: (client) => client.email,
           // `text-primary`, the app's own blue, rather than a new token: it is
@@ -262,9 +339,7 @@ export default function ClientsTable({
           ),
         },
         {
-          key: 'phone',
-          label: 'Phone',
-          icon: Phone,
+          ...col('phone'),
           size: 150,
           sortValue: (client) => client.phone,
           // Never the stored E.164 form, which is the house rule and is policed
@@ -290,9 +365,7 @@ export default function ClientsTable({
             something other than what it appears to sort is worse than one
             that does not sort at all.
           */
-          key: 'country',
-          label: 'Location',
-          icon: MapPin,
+          ...col('country'),
           size: 264,
           // 264px stated, and never narrower than that however short the
           // places on the page happen to be. `fit` alone was not this: it
@@ -315,9 +388,7 @@ export default function ClientsTable({
           ),
         },
         {
-          key: 'amount',
-          label: 'Amount',
-          icon: Banknote,
+          ...col('amount'),
           size: 150,
           sortable: false,
           className: 'tabular-nums',
@@ -345,15 +416,23 @@ export default function ClientsTable({
           },
         },
         {
-          key: 'industry',
-          label: 'Industry',
-          icon: Tag,
-          size: 140,
+          ...col('industry'),
+          size: 220,
           sortable: false,
           cell: (client) => {
             const industry = industryByKey(client.industry);
             return industry ? (
-              <span className={accentBadge(industry.accent)}>{industry.label}</span>
+              // No border, a lighter wash and the hue's quieter ink: the
+              // industry is context for the row, not something to read first.
+              <span
+                className={accentBadge(
+                  industry.accent,
+                  'h-[1.375rem] border-0 px-2 ',
+                  true,
+                )}
+              >
+                {industry.label}
+              </span>
             ) : (
               nil
             );
@@ -361,9 +440,7 @@ export default function ClientsTable({
         },
         {
           /* Who brought this client in. One person, so a disc and a name. */
-          key: 'lead',
-          label: 'Lead',
-          icon: UserRound,
+          ...col('lead'),
           size: 150,
           sortable: false,
           cell: (client) => (
@@ -374,9 +451,7 @@ export default function ClientsTable({
           /* Who works with this client. Several people, so the discs stack and
              the names go to the tooltip: the question here is "how many, and
              the usual crowd?" rather than "who exactly". */
-          key: 'team',
-          label: 'Team',
-          icon: Users,
+          ...col('team'),
           size: 120,
           sortable: false,
           cell: (client) => <PeopleCell names={teamOf(client)} />,
@@ -390,9 +465,7 @@ export default function ClientsTable({
             beside it. That is what made a hovered row's date appear on top of
             the Team column.
           */
-          key: 'added',
-          label: 'Added',
-          icon: CalendarDays,
+          ...col('added'),
           size: 130,
           sortValue: (client) => client.createdAt,
           cell: (client) => <DateValue value={client.createdAt} />,
@@ -407,9 +480,7 @@ export default function ClientsTable({
             "Status", not "Onboarding": at this width the longer word would
             ellipsise into "Onboardi…", and the ring already means one thing.
           */
-          key: 'onboarding',
-          label: 'Status',
-          icon: CircleDashed,
+          ...col('onboarding'),
           size: 90,
           sortable: false,
           cell: (client) => (
@@ -420,7 +491,94 @@ export default function ClientsTable({
             />
           ),
         },
-      ]}
+        {
+          ...col('legalName'),
+          // Not one `sortClients` knows, so no arrow that would sort nothing.
+          sortable: false,
+          size: 180,
+          cell: (client) => client.companyName || nil,
+        },
+        {
+          ...col('entityType'),
+          sortable: false,
+          size: 170,
+          cell: (client) => entityTypeLabel(client.entityType) ?? nil,
+        },
+        {
+          ...col('contact'),
+          sortable: false,
+          size: 170,
+          // Through `clientContact`, so a person is their own contact.
+          cell: (client) => clientContact(client, 'primary')?.name || nil,
+        },
+        {
+          ...col('gstin'),
+          sortable: false,
+          size: 160,
+          // The top-level field: `tax.gstin` is never read outside onboarding.
+          cell: (client) => client.gstin || nil,
+          className: 'tabular-nums',
+        },
+        {
+          ...col('pan'),
+          sortable: false,
+          size: 120,
+          cell: (client) => client.tax?.pan || nil,
+          className: 'tabular-nums',
+        },
+        {
+          ...col('engagement'),
+          sortable: false,
+          size: 140,
+          cell: (client) => {
+            const type = client.commercial?.engagementType;
+            return type ? ENGAGEMENT_TYPE_INFO[type].title : nil;
+          },
+        },
+        {
+          ...col('terms'),
+          sortable: false,
+          size: 150,
+          cell: (client) => {
+            const days = client.commercial?.paymentTermsDays;
+            return days === undefined ? nil : days === 0 ? 'On receipt' : `Net ${days}`;
+          },
+          className: 'tabular-nums',
+        },
+        {
+          ...col('services'),
+          sortable: false,
+          size: 150,
+          // The codes, which is how the catalogue and the documents list name them.
+          cell: (client) =>
+            client.commercial?.services?.map((service) => service.code).join(', ') || nil,
+        },
+        {
+          ...col('startDate'),
+          sortable: false,
+          size: 130,
+          cell: (client) =>
+            client.commercial?.startDate ? <DateValue value={client.commercial.startDate} /> : nil,
+          className: 'tabular-nums',
+        },
+        {
+          ...col('updated'),
+          sortable: false,
+          size: 130,
+          cell: (client) => (client.updatedAt ? <DateValue value={client.updatedAt} /> : nil),
+          className: 'tabular-nums',
+        },
+        {
+          ...col('files'),
+          sortable: false,
+          size: 90,
+          cell: (client) => client.attachments?.length || nil,
+          className: 'tabular-nums',
+        },
+        ] satisfies RecordColumn<ClientRecord>[]
+      )
+        .filter((column) => column.key === 'name' || !hidden.includes(column.key))
+        .sort((a, b) => drawn.indexOf(a.key) - drawn.indexOf(b.key))}
       onBulkDelete={onBulkDelete}
       bulkConsequence="This permanently removes these clients and any files uploaded for them. A client that has been on a document can't be deleted. This cannot be undone."
       actions={(client) => (

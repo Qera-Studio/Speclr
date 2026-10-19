@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Mono } from '@/components/patterns/Mono';
 import { TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +12,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 /**
  * The third empty state: not "nothing here yet", not "nothing matches", but
@@ -59,13 +60,13 @@ export default function AppError({
             {error.digest ? (
               <>
                 {' '}
-                Reference <code className="font-mono">{error.digest}</code>.
+                Reference <Mono>{error.digest}</Mono>.
               </>
             ) : null}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button type="button" onClick={reset}>
+          <Button variant="primary" type="button" onClick={reset}>
             Try again
           </Button>
         </EmptyContent>

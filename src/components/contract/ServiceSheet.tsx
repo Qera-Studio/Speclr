@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import { DrawerSheet } from '@/components/ui/drawer-sheet';
-import { DrawerToolbar } from '@/components/ui/drawer-toolbar';
+import { DrawerToolbar } from '@/components/patterns/DrawerToolbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -174,12 +174,12 @@ export default function ServiceSheet({
     key: 'exclusionIds' | 'clientInputIds',
   ) => (
     <section className="flex flex-col gap-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{heading}</h3>
-      {note ? <p className="text-xs text-muted-foreground">{note}</p> : null}
+      <h3 className="text-meta font-medium text-muted-foreground">{heading}</h3>
+      {note ? <p className="text-meta text-muted-foreground">{note}</p> : null}
       <ul className="flex flex-col">
         {lines.map((line) => (
           <li key={line.id}>
-            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent/50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-body hover:bg-accent/50">
               <Checkbox
                 className="mt-0.5"
                 checked={draft[key].includes(line.id)}
@@ -263,11 +263,11 @@ export default function ServiceSheet({
       footer={
         <>
           {missing.length > 0 ? (
-            <p className="mr-auto text-xs text-muted-foreground" role="status">
+            <p className="mr-auto text-meta text-muted-foreground" role="status">
               {missing.length} field{missing.length === 1 ? '' : 's'} still empty
             </p>
           ) : null}
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           {/*
@@ -280,7 +280,7 @@ export default function ServiceSheet({
             was lost for one run when this moved to `DrawerSheet`, and
             `ContractFlow.test.tsx` caught it.
           */}
-          <Button
+          <Button variant="primary"
             type="button"
             onClick={() => {
               onCommit(draft, values);

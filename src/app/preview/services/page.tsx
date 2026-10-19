@@ -1,12 +1,12 @@
 'use client';
 
 import { notFound } from 'next/navigation';
-import ServiceCards from '@/components/admin/services/ServiceCards';
-import { PageBody } from '@/components/admin/Page';
+import AdminShell from '@/components/shell/AdminShell';
+import ServiceCatalogue from '@/components/admin/services/ServiceCatalogue';
 import { SERVICES } from '@/lib/domain/seed/services';
 
 /**
- * `/preview/services`: the services board with no session and no database.
+ * `/preview/services`: the service catalogue with no session and no database.
  *
  * The real one is on `/client/services`, which is behind Clerk and reads Neon.
  * This is the same component over the seeded catalogue, so the *cards* can be
@@ -48,15 +48,20 @@ const PRICED = SERVICES.map((service, i) =>
       }
     : i === 1
       ? { ...service, ratePaise: 45_000_00 }
-      : service,
+      : // One archived, so the Archived tab has something to show.
+        i === SERVICES.length - 1
+        ? { ...service, archived: true }
+        : service,
 );
 
 export default function ServicesPreview() {
   if (process.env.NODE_ENV === 'production') notFound();
 
   return (
-    <PageBody>
-      <ServiceCards services={PRICED} />
-    </PageBody>
+    // Inside the real shell, so the centred column is judged against the
+    // inset frame it really sits in.
+    <AdminShell user={{ name: 'Preview', email: 'preview@qera.studio' }}>
+      <ServiceCatalogue services={PRICED} />
+    </AdminShell>
   );
 }

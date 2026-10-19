@@ -2,9 +2,9 @@ import { redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listDocumentsByProfile, listServices } from '@/db/store';
 import DocumentsBrowser from '@/components/admin/DocumentsBrowser';
-import NewDocumentButton from '@/components/admin/NewDocumentButton';
-import { PageBody, PageHeader } from '@/components/admin/Page';
-import { NAV_BY_PROFILE } from '@/components/admin/nav';
+import NewDocumentButton from '@/components/shell/NewDocumentButton';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
+import { NAV_BY_PROFILE } from '@/components/shell/nav';
 import type { Profile } from '@/lib/profile';
 
 /**
@@ -40,7 +40,7 @@ export default async function HomeRoute({ profile }: { profile: Profile }) {
       <PageHeader title={NAV_BY_PROFILE[profile].home.label}>
         {/* The one button trialling `raised` — see the variant's note in
             `button.tsx`. Every other create button is still `default`. */}
-        <NewDocumentButton variant="raised" />
+        <NewDocumentButton variant="primary" />
       </PageHeader>
       {/* No tab strip. The client side's dashboard was a tab over this list,
           which had one page answering to two names — the rail said one thing,

@@ -40,7 +40,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
+import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";

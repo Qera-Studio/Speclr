@@ -55,7 +55,7 @@ export default function ServiceCatalog({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search services — Shopify, brand, maintenance…"
-          className="h-12 rounded-xl pl-11 text-base md:text-base"
+          className="h-12 rounded-lg pl-12 text-lead"
         />
       </div>
 
@@ -66,8 +66,8 @@ export default function ServiceCatalog({
         return (
           <section key={schedule.key} className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <h3 className="shrink-0 text-sm font-semibold">{schedule.name}</h3>
-              <span className="text-xs text-muted-foreground tabular-nums">{mine.length}</span>
+              <h3 className="shrink-0 text-body font-medium">{schedule.name}</h3>
+              <span className="text-meta text-muted-foreground tabular-nums">{mine.length}</span>
               <span className="h-px min-w-0 flex-1 bg-border" />
             </div>
 
@@ -85,7 +85,7 @@ export default function ServiceCatalog({
                       <Card className="h-full transition-colors group-hover:border-ring/60 group-focus-visible:border-ring">
                         <CardHeader>
                           <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-sm">{service.name}</CardTitle>
+                            <CardTitle className="text-body">{service.name}</CardTitle>
                             <Badge variant="outline" className="shrink-0 tabular-nums">
                               {service.code}
                             </Badge>
@@ -96,7 +96,7 @@ export default function ServiceCatalog({
                         </CardHeader>
 
                         <div className="mt-auto px-(--card-spacing)">
-                          <span className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md text-xs font-medium text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground group-focus-visible:bg-primary group-focus-visible:text-primary-foreground">
+                          <span className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md text-meta font-medium text-muted-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground group-focus-visible:bg-primary group-focus-visible:text-primary-foreground">
                             {chosen ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
                             {chosen ? 'Edit this Part' : 'Add to contract'}
                           </span>
@@ -112,7 +112,7 @@ export default function ServiceCatalog({
       })}
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No matching services.</p>
+        <p className="text-body text-muted-foreground">No matching services.</p>
       ) : null}
     </div>
   );

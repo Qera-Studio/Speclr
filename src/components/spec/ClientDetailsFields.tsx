@@ -26,7 +26,7 @@ export default function ClientDetailsFields({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="client-name" className="text-sm font-medium">
+        <Label htmlFor="client-name" className="text-body font-medium">
           Client / project name
         </Label>
         <Input
@@ -36,12 +36,12 @@ export default function ClientDetailsFields({
           value={clientName}
           onChange={(e) => onClientNameChange(e.target.value)}
           autoComplete="off"
-          className="h-11 text-base md:text-base"
+          className="h-11 text-lead"
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="client-domain" className="text-sm font-medium">
+        <Label htmlFor="client-domain" className="text-body font-medium">
           Website / domain
         </Label>
         <Input
@@ -53,9 +53,9 @@ export default function ClientDetailsFields({
           onChange={(e) => onDomainChange(e.target.value)}
           autoComplete="off"
           aria-describedby="client-domain-hint"
-          className="h-11 text-base md:text-base"
+          className="h-11 text-lead"
         />
-        <p id="client-domain-hint" className="text-xs text-muted-foreground">
+        <p id="client-domain-hint" className="text-meta text-muted-foreground">
           Shown in the previews — a name can&apos;t be guessed into a domain.
         </p>
       </div>

@@ -1,4 +1,9 @@
 /**
+ * Copy every row into an empty database: from another Neon project (a region
+ * move, or launch day's paid tier), or from a `scripts/backup.ts` folder.
+ *
+ *     SOURCE_BACKUP_DIR=~/speclr-backups/<stamp> TARGET_DATABASE_URL=... npx tsx scripts/migrate-region.ts
+ *
  * One-off: copy every row from one Neon project to another, for a region move.
  *
  *     SOURCE_DATABASE_URL=... TARGET_DATABASE_URL=... npx tsx scripts/migrate-region.ts
@@ -9,7 +14,7 @@
  *
  * **The schema is not this script's job.** Run the Drizzle migrations against
  * the target first (`DATABASE_URL=<target> npx drizzle-kit migrate`), so the
- * target's shape comes from the same 16 migration files as production rather
+ * target's shape comes from the same migration files as production rather
  * than from whatever this script inferred. This copies data into a schema that
  * already exists.
  *
@@ -40,18 +45,24 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { neon } from '@neondatabase/serverless';
 
 /**
- * Copy order. Parents before children, `documents` last because it is the only
- * table with foreign keys (`client_id`, `employee_id`).
+ * Copy order. Parents before children: `employees` before `clients`, since
+ * 0017 gave `clients.lead_employee_id` a foreign key to it, and `documents`
+ * last (`client_id`, `employee_id`).
  *
- * Listed explicitly rather than discovered from `information_schema`, so a new
- * table added later fails loudly here instead of being silently left behind.
+ * Listed explicitly for the order, and held to the schema by
+ * `src/__tests__/copyTables.test.ts`: a table missing from this list was
+ * silently left behind (`leads`, until 18 October 2026), and a test is what
+ * makes that fail loudly instead.
  */
-const TABLES = [
-  'clients',
+export const TABLES = [
   'employees',
+  'clients',
+  'leads',
   'services',
   'client_inputs',
   'exclusions',
@@ -70,10 +81,16 @@ function required(name: string): string {
 }
 
 async function main() {
-  const source = neon(required('SOURCE_DATABASE_URL'));
   const target = neon(required('TARGET_DATABASE_URL'));
+  // A backup folder, or a live database opened read-only (rule 1).
+  const backupDir = process.env.SOURCE_BACKUP_DIR;
+  const source = backupDir ? null : neon(required('SOURCE_DATABASE_URL'));
+  const rowsOf = async (table: string): Promise<Record<string, unknown>[]> =>
+    backupDir
+      ? JSON.parse(readFileSync(join(backupDir, `${table}.json`), 'utf8'))
+      : await source!.query(`select * from "${table}"`);
 
-  if (required('SOURCE_DATABASE_URL') === required('TARGET_DATABASE_URL')) {
+  if (!backupDir && required('SOURCE_DATABASE_URL') === required('TARGET_DATABASE_URL')) {
     throw new Error('Source and target are the same database');
   }
 
@@ -130,7 +147,7 @@ async function main() {
 
   let total = 0;
   for (const table of TABLES) {
-    const rows = await source.query(`select * from "${table}"`);
+    const rows = await rowsOf(table);
     total += rows.length;
     if (rows.length === 0) {
       console.log(`  ${table}: empty`);
@@ -175,11 +192,11 @@ async function main() {
   console.log('\nVerifying:');
   let ok = true;
   for (const table of TABLES) {
-    const [a] = await source.query(`select count(*)::int as count from "${table}"`);
+    const expected = (await rowsOf(table)).length;
     const [b] = await target.query(`select count(*)::int as count from "${table}"`);
-    const agree = a.count === b.count;
+    const agree = expected === b.count;
     ok &&= agree;
-    console.log(`  ${agree ? 'ok  ' : 'FAIL'} ${table}: ${a.count} -> ${b.count}`);
+    console.log(`  ${agree ? 'ok  ' : 'FAIL'} ${table}: ${expected} -> ${b.count}`);
   }
 
   const serials = await target`select doc_type, fy_code, last_serial from counters order by doc_type`;
@@ -190,7 +207,9 @@ async function main() {
   console.log('\nAll tables agree.');
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

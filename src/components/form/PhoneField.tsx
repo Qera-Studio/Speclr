@@ -50,7 +50,7 @@ const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({
  * rather than fixed, because a fixed inset that clears `+91` runs straight
  * through `+971`.
  */
-const PREFIX_PADDING: Record<number, string> = { 1: 'pl-9', 2: 'pl-11', 3: 'pl-13' };
+const PREFIX_PADDING: Record<number, string> = { 1: 'pl-9', 2: 'pl-12', 3: 'pl-12' };
 
 /**
  * The strict phone check, for a form's resolver to call.
@@ -208,7 +208,7 @@ export default function PhoneField<T extends FieldValues>({
             aria-hidden="true"
             className={cn(
               'pointer-events-none absolute inset-y-0 left-0 flex items-center select-none',
-              size === 'form' ? 'pl-3 text-sm' : 'pl-2 text-xs/relaxed',
+              size === 'form' ? 'pl-3 text-body' : 'pl-2 text-body',
             )}
           >
             +{dialCode}
@@ -220,7 +220,7 @@ export default function PhoneField<T extends FieldValues>({
             inputMode="tel"
             autoComplete="off"
             aria-invalid={fieldState.error ? true : undefined}
-            className={PREFIX_PADDING[dialCode.length] ?? 'pl-13'}
+            className={PREFIX_PADDING[dialCode.length] ?? 'pl-12'}
             value={formatNationalDigits(national, iso2)}
             onBlur={field.onBlur}
             onChange={(event) => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import {
   Banknote,
@@ -11,16 +12,15 @@ import {
   Layers,
   Package,
 } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { accentBadge, accentSwatch } from '@/lib/accent';
 import { NIL } from '@/lib/utils';
 import { totalPaiseOf, type SortColumn, type SortState } from '@/lib/domain/documentQuery';
 import { documentSchedules } from '@/lib/domain/documentSchedules';
 import type { ContractService } from '@/lib/domain/service';
-import RecordTable, { type RecordTableProps } from './RecordTable';
-import type { BulkSelection } from './BulkSelect';
-import { CopyValue } from './CopyCell';
-import { DateValue } from './Page';
+import RecordTable, { type RecordTableProps } from '@/components/patterns/RecordTable';
+import type { BulkSelection } from '@/components/patterns/BulkSelect';
+import { CopyValue } from '@/components/patterns/CopyCell';
+import { DateValue } from '@/components/patterns/Page';
 import DocumentRowActions from './DocumentRowActions';
 import { DocumentTotal } from './DocumentTotal';
 import { DOC_TYPES } from '@/lib/domain/registry';
@@ -146,7 +146,7 @@ export default function DocumentsTable({
       paging={paging}
       selection={selection}
       dividers
-      resizable
+      fixed
       // Press a heading and move to drag the column; the order persists per
       // table. The library's template table has it, so this one does.
       reorderable
@@ -191,7 +191,7 @@ export default function DocumentsTable({
                 href={openDocHref(doc)}
                 className="after:absolute after:inset-0 after:content-['']"
               >
-                {doc.number ?? <StatusBadge status="draft" />}
+                {doc.number ?? <Badge status="draft" />}
               </Link>
             );
             // A draft has no number to copy, so no copy control either: a
@@ -264,7 +264,7 @@ export default function DocumentsTable({
           icon: CircleDashed,
           size: 120,
           sortValue: (doc) => doc.status,
-          cell: (doc) => <StatusBadge status={doc.status} />,
+          cell: (doc) => <Badge status={doc.status} />,
         },
       ]}
       actions={(doc) => <DocumentRowActions doc={doc} />}

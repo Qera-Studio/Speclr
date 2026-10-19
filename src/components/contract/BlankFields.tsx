@@ -79,7 +79,7 @@ export function BlankField({
               <button
                 type="button"
                 aria-label={`About ${label}`}
-                className="shrink-0 rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                className="shrink-0 rounded-full text-muted-foreground transition-colors hover:text-foreground focus-ring focus-visible:outline-none"
               />
             }
           >
@@ -119,7 +119,7 @@ export function BlankSection({
 }) {
   return (
     <section aria-label={heading} className="flex flex-col gap-3">
-      <h3 className="text-xs font-medium text-muted-foreground">{heading}</h3>
+      <h3 className="text-meta font-medium text-muted-foreground">{heading}</h3>
       <FieldRow columns={3}>
         {scope.parsed.flatMap((parsed, i) =>
           parsed.blanks.map((blank, j) => (

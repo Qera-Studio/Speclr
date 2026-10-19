@@ -105,7 +105,7 @@ describe('UnsavedChangesDialog', () => {
     const dialog = await openIt(user, autosaveStub({ dirty: true }));
 
     const save = screen.getByRole('button', { name: 'Save and leave' });
-    const discard = screen.getByRole('button', { name: 'Discard' });
+    const discard = screen.getByRole('button', { name: 'Discard changes' });
 
     // jsdom computes no colours, so the signal is the variant's own classes,
     // and specifically the *fill*: every button carries

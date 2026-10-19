@@ -51,6 +51,82 @@ const clients: ClientRecord[] = [
 ] as ClientRecord[];
 
 describe('ClientManager', () => {
+  /**
+   * The Properties menu: a checkbox per column, Name locked on, and the choice
+   * remembered for the next visit.
+   */
+  describe('Properties', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('hides and shows a column, and keeps Name', async () => {
+      const user = userEvent.setup();
+      render(<ClientManager clients={clients} />);
+      expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Properties' }));
+      await user.click(await screen.findByRole('checkbox', { name: 'Email' }));
+      expect(screen.queryByRole('columnheader', { name: /email/i })).not.toBeInTheDocument();
+      expect(JSON.parse(localStorage.getItem('speclr:client-columns-shown')!)).not.toContain('email');
+
+      const name = screen.getByRole('checkbox', { name: 'Name' });
+      expect(name).toBeChecked();
+      expect(name).toHaveAttribute('aria-disabled', 'true');
+      // Name leads and does not move.
+      expect(screen.queryByRole('button', { name: 'Move Name' })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('checkbox', { name: 'Email' }));
+      expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
+    });
+
+    it('offers more columns, off until ticked', async () => {
+      const user = userEvent.setup();
+      render(<ClientManager clients={clients} />);
+      expect(screen.queryByRole('columnheader', { name: /last edited/i })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Properties' }));
+      for (const name of ['Legal name', 'Entity type', 'GSTIN', 'PAN', 'Last edited']) {
+        expect(await screen.findByRole('checkbox', { name })).not.toBeChecked();
+      }
+      await user.click(screen.getByRole('checkbox', { name: 'Last edited' }));
+      expect(screen.getByRole('columnheader', { name: /last edited/i })).toBeInTheDocument();
+    });
+
+    it('reorders the columns from the panel, and remembers the order', async () => {
+      const user = userEvent.setup();
+      render(<ClientManager clients={clients} />);
+      const headings = () =>
+        screen.getAllByRole('columnheader').map((th) => th.textContent?.trim()).filter(Boolean);
+      expect(headings().slice(0, 3)).toEqual(['Name', 'Email', 'Phone']);
+
+      await user.click(screen.getByRole('button', { name: 'Properties' }));
+      const handle = await screen.findByRole('button', { name: 'Move Phone' });
+      handle.focus();
+      await user.keyboard('{ArrowUp}');
+      expect(headings().slice(0, 3)).toEqual(['Name', 'Phone', 'Email']);
+      // And it stops under Name rather than moving past it.
+      await user.keyboard('{ArrowUp}');
+      expect(headings().slice(0, 3)).toEqual(['Name', 'Phone', 'Email']);
+      expect(JSON.parse(localStorage.getItem('speclr:client-column-order')!).slice(0, 3)).toEqual([
+        'name',
+        'phone',
+        'email',
+      ]);
+    });
+
+    it('opens with the columns chosen last time', () => {
+      localStorage.setItem('speclr:client-columns-shown', '["name","email"]');
+      render(<ClientManager clients={clients} />);
+      expect(screen.queryByRole('columnheader', { name: /phone/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('columnheader', { name: /team/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
+    });
+
+    it('treats a stored value that is not a list of keys as nothing hidden', () => {
+      localStorage.setItem('speclr:client-columns-shown', '{"email":true}');
+      render(<ClientManager clients={clients} />);
+      expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
+    });
+  });
+
   it('sends Add client to the onboarding route', () => {
     render(<ClientManager clients={clients} />);
     expect(screen.getByRole('link', { name: /add client/i })).toHaveAttribute(
@@ -129,7 +205,7 @@ describe('ClientManager', () => {
   async function deleteFirstClient(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: /more actions for acme co\./i }));
     await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
-    await user.click(await screen.findByRole('button', { name: /^delete$/i }));
+    await user.click(await screen.findByRole('button', { name: /^delete client$/i }));
   }
 
   async function archiveFirstClient(user: ReturnType<typeof userEvent.setup>) {

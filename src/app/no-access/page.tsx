@@ -52,7 +52,7 @@ export default function NoAccessPage() {
         </EmptyHeader>
         <EmptyContent>
           <SignOutButton>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="secondary">
               Sign out
             </Button>
           </SignOutButton>

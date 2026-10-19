@@ -52,7 +52,7 @@ export default function ValidationResultBadge({ result, criteria }: ValidationRe
     result.transparency === 'unknown' ? 'unknown' : result.transparencyIsWarning ? 'warning' : 'pass';
 
   return (
-    <ul className="flex flex-col gap-1.5 text-sm">
+    <ul className="flex flex-col gap-1.5 text-body">
       {showDimensions && (
         <li className="flex items-center gap-2">
           <StatusIcon status={dimensions} />
@@ -84,7 +84,7 @@ export default function ValidationResultBadge({ result, criteria }: ValidationRe
           <span className="text-foreground">{w.message}</span>
         </li>
       ))}
-      {result.note && <li className="text-xs text-muted-foreground">{result.note}</li>}
+      {result.note && <li className="text-meta text-muted-foreground">{result.note}</li>}
     </ul>
   );
 }

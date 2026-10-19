@@ -469,7 +469,7 @@ describe('acting on several clauses at once', () => {
     await u.click(screen.getByRole('button', { name: 'Delete' }));
     expect(destroyClause).not.toHaveBeenCalled();
 
-    await u.click(await screen.findByRole('button', { name: /^Delete$/ }));
+    await u.click(await screen.findByRole('button', { name: /^Delete \d/ }));
 
     await waitFor(() => expect(destroyClause).toHaveBeenCalledWith(1));
   });

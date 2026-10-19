@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listEmployees } from '@/db/store';
 import EmployeeManager from '@/components/admin/employees/EmployeeManager';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',

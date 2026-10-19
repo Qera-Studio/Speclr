@@ -21,7 +21,7 @@ export default function SpecProgress({ reviewed, total }: SpecProgressProps) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         {reviewed} of {total} reviewed
       </p>
     </div>

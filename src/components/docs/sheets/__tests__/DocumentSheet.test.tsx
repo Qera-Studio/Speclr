@@ -76,6 +76,116 @@ describe("DocumentSheet", () => {
     expect(screen.getByText("₹ 2,124.00")).toBeInTheDocument();
   });
 
+  /**
+   * Hosting passed through at cost is not discounted with the build. The
+   * reduction is recorded against the lines it reduced, and the exempt line
+   * follows the group, so each figure can be checked from the page.
+   */
+  it("records a discount against only the lines it reached", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+      lineItems: [
+        { description: "Website", ratePaise: 100000, qty: 1 },
+        { description: "Hosting", ratePaise: 5000, qty: 1, discountExempt: true },
+      ],
+      discountPercent: 35,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getByText("discount (35%)")).toBeInTheDocument();
+    // 35% of ₹1,000, never of ₹1,050.
+    expect(screen.getByText("-₹ 350.00")).toBeInTheDocument();
+    expect(screen.getByText("after discount")).toBeInTheDocument();
+    expect(screen.getAllByText("₹ 650.00").length).toBeGreaterThan(0);
+    // The total sums the discounted group and the exempt line.
+    expect(screen.getAllByText("₹ 700.00").length).toBeGreaterThan(0);
+    // The discount is printed once, in the group, not again in the totals.
+    expect(screen.getAllByText(/^discount/)).toHaveLength(1);
+    // The exempt line prints after the group.
+    const rows = screen.getAllByRole("row").map((r) => r.textContent ?? "");
+    const group = rows.findIndex((t) => t.includes("after discount"));
+    expect(rows.findIndex((t) => t.includes("Website"))).toBeLessThan(group);
+    expect(rows.findIndex((t) => t.includes("Hosting"))).toBeGreaterThan(group);
+  });
+
+  it("prints the table as one group when the discount reaches every line", () => {
+    const doc = {
+      ...baseInvoice,
+      lineItems: [{ description: "Design", ratePaise: 200000, qty: 1 }],
+      discountPercent: 10,
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.queryByText("after discount")).toBeNull();
+  });
+
+  it("names the account holder on a domestic invoice, for NEFT", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.getByText("Account holder")).toBeInTheDocument();
+    expect(screen.queryByText("Beneficiary address")).toBeNull();
+  });
+
+  it("prints the branch on an export, and no address rows", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.getByText("Branch")).toBeInTheDocument();
+    // SWIFT and IFSC identify the branch, and the beneficiary's address is the
+    // "from:" block's, so neither address is repeated here.
+    expect(screen.queryByText("Branch address")).toBeNull();
+    expect(screen.queryByText("Beneficiary address")).toBeNull();
+  });
+
+  it("prints the LUT ARN under the export endorsement", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+    expect(screen.getByText("LUT ARN: AD090826065953E")).toBeInTheDocument();
+  });
+
+  it("prints no LUT on a taxed domestic invoice", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.queryByText(/LUT ARN/)).toBeNull();
+  });
+
+  /**
+   * An export billed in the client's currency: every figure in it, the words
+   * in it, and the rupee equivalent stated at the rate and date the invoice
+   * carries, with the bank whose rate it is.
+   */
+  it("bills an export in the client's currency and states the rupees", () => {
+    const doc = {
+      ...baseInvoice,
+      gstRatePercent: 0,
+      placeOfSupplyStateCode: "96",
+      currency: "AUD",
+      fxRate: { inrPerUnit4: 666000, asOf: "2026-09-03" },
+      lineItems: [{ description: "Website", ratePaise: 95269, qty: 1 }],
+    } as unknown as InvoiceDocument;
+    render(<DocumentSheet doc={doc} />);
+
+    expect(screen.getAllByText("A$ 952.69").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/₹ 952\.69/)).toBeNull();
+    expect(screen.getByText(/Fifty-Two Dollars and Sixty-Nine Cents Only/)).toBeInTheDocument();
+    expect(screen.getByText(/Exchange rate: A\$ 1\.00 = ₹ 66\.60/)).toBeInTheDocument();
+    expect(screen.getByText("Source: Kotak Mahindra Bank TT buying rate")).toBeInTheDocument();
+    // 952.69 × 66.60, to the paisa: not rounded to the rupee.
+    expect(screen.getByText(/INR equivalent: ₹ 63,449\.15/)).toBeInTheDocument();
+    expect(screen.getByText(/All amounts are in Australian Dollar \(AUD\)\./)).toBeInTheDocument();
+  });
+
+  it("prints no exchange rate on an invoice billed in rupees", () => {
+    render(<DocumentSheet doc={baseInvoice} />);
+    expect(screen.queryByText(/Exchange rate/)).toBeNull();
+  });
+
   it("prints no discount row when there is none", () => {
     render(<DocumentSheet doc={baseInvoice} />);
     expect(screen.queryByText(/^discount/)).toBeNull();

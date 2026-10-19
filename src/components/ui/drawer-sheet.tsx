@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
  * It is the same argument `ui/pagination.tsx` makes at the top of its own file,
  * and it had already produced the same result: the copies had drifted.
  * `Notifications` drew a rule under its header and the other two did not; two
- * of the three remembered `pr-14` to clear the close button and one did not;
+ * of the three remembered `pr-16` to clear the close button and one did not;
  * the primitives default to `p-6` and every caller overrode it to `p-4`, which
  * means the default was wrong rather than the callers. `ServiceSheet`'s own
  * comment said it outright: "The clause drawer's chrome, exactly". A comment
@@ -82,7 +82,7 @@ export function DrawerFrame({
         is the definition of the default being wrong; `docs/design.md` §2.11
         records the drawer's padding.
 
-        `pr-14` only when the sheet draws its own close button, which it floats
+        `pr-16` only when the sheet draws its own close button, which it floats
         at `top-4 right-4`. Applied unconditionally it would leave a 56px hole
         at the end of a title row that has nothing in that corner, which is why
         this is computed rather than constant.
@@ -90,20 +90,20 @@ export function DrawerFrame({
       <SheetHeader
         className={cn(
           'gap-1 p-4',
-          (showCloseButton ?? !toolbar) && 'pr-14',
+          (showCloseButton ?? !toolbar) && 'pr-16',
           headerBorder && 'border-b',
         )}
       >
         {titleAside ? (
           <div className="flex items-start justify-between gap-3">
-            <SheetTitle className="text-base">{title}</SheetTitle>
+            <SheetTitle className="text-section">{title}</SheetTitle>
             <span className="flex shrink-0 items-center gap-2">{titleAside}</span>
           </div>
         ) : (
-          // `text-base` is §1.4's card/section heading rung, and that is what a
+          // `text-section` is §1.4's card/section heading rung, and that is what a
           // drawer title is: the name of the thing the panel is about. The
-          // primitive's `text-sm` is sized for a label over a feed.
-          <SheetTitle className="text-base">{title}</SheetTitle>
+          // primitive's `text-body` is sized for a label over a feed.
+          <SheetTitle className="text-section">{title}</SheetTitle>
         )}
         {description ? <SheetDescription>{description}</SheetDescription> : null}
       </SheetHeader>

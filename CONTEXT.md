@@ -507,10 +507,14 @@ broken:
 | a *visible* `<input type="file">` | `form/UploadDropzone` (the input must be `sr-only`) |
 | `register('pan' / 'gstin' / 'tan' / 'cin')` | the matching component in `form/fields.tsx` |
 | `.email(` in a component | `emailSchema()` from `domain/fields.ts` |
-| `formatDisplayDate` in a file with a `<TableCell>` | `DateCell` from `admin/Page.tsx` |
+| `formatDisplayDate` in a file with a `<TableCell>` | `DateValue` from `patterns/Page.tsx` |
 | a quoted em or en dash used as "no value" | `NIL` from `lib/utils.ts` |
-| `status === 'finalized' ? …` as a label | `StatusBadge` from `ui/status-badge.tsx` |
-| a `size="icon"` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `status === 'finalized' ? …` as a label | `<Badge status={…}>` from `ui/badge.tsx` |
+| an `AlertDialog` written by hand, or a `ConfirmDialog` title ending in `?` | `ConfirmDialog` from `patterns/` (`docs/design.md` §2.6) |
+| `disabled={pending}` on a `Button` | `pending={pending}` |
+| `font-mono` on a string, `Loader2` imported | `Mono` from `patterns/`, `Spinner` from `ui/` |
+| an `icon` button with no name to announce | `aria-label`, an `sr-only` span, or a wrapper's `label` |
+| `variant="default\|outline\|raised\|neutral"` or `size="icon\|form"` on a button | the five fills and three heights in `ui/button.tsx` (`docs/design.md` §2.1) |
 
 **The last row is the one a person caught before the suite did**, and it is the
 general lesson rather than a rule about dates. The dashboard printed a
@@ -715,8 +719,17 @@ removed; a rule that matches nothing is a test that passes forever.
 ### 5h. A Service carries its SAC and its list price
 
 The catalogue at `/client/services` is editable now: a pencil on each card opens
-a dialog of five fields (section, title, description, rate, SAC). Four things
-about it are decisions rather than defaults.
+a dialog of five fields (name, description, section, list price, SAC), plus a
+code when adding. Four things about it are decisions rather than defaults.
+
+**The dialog's description is the `blurb`** (changed 16 October 2026): the one
+sentence the catalogue card, the service page and the quotation print. It used
+to write `overview`, which is contract wording a sold service takes from its
+terms, so what was typed there showed nowhere. **A code may be typed when
+adding** (upper-cased as typed, `serviceCodeSchema`), and `createService`
+refuses one any row already holds, archived included; blank still takes the
+next number. An existing code never changes: it is the key every contract,
+client record and invoice line cites.
 
 **The dialog posts five fields; the server reads the row.** A Service also
 carries sixty-odd lines of scope, exclusions and client inputs that this screen
@@ -1106,6 +1119,50 @@ it copies the rate: it reverses tax that was actually charged, and a note
 crediting the undiscounted figure would credit more than the invoice ever
 billed.
 
+**A line can sit outside the discount** (`LineItem.discountExempt`, added 19
+October 2026). Hosting passed through at cost is the case: a discount agreed on
+the work should not come off a third party's bill. The percentage is a
+percentage of the lines without the flag, an amount is clamped to them
+(`discountablePaiseOf`), and the sheet prints those lines first under their own
+subtotal, discount and "after discount" rows, then the exempt lines, so the
+reduction is recorded against exactly what it reduced. The totals band then
+starts at the taxable value and does not repeat the discount. The switch is on
+each row's header, outside the lock, and appears only while a discount is
+entered. A credit note and a receipt copy the flag with the lines, or the note
+would credit a discount the invoice never gave.
+
+### 5k-i. An export can be billed in the client's currency
+
+Added 19 October 2026 (`PRINCIPLES.md`, logged deviations). A zero-rated export
+carries `currency` (`billingCurrencyOf`: the record's billing currency abroad,
+or the client's country's when the record names none or INR, since onboarding
+used to say invoices always printed INR; read-only on the document) and
+`fxRate` (`inrPerUnit4`, the bank's TT buying rate ×10,000, and `asOf`, the issue
+date). Every amount on it is in that currency's minor units, and the sheet
+states the rate, its source (`{bankName} TT buying rate`, derived) and the INR
+equivalent. Four rules:
+
+- **Only a zero-rated export**, refused otherwise at finalize, because GST is
+  shown in rupees.
+- **A draft follows its client, not the moment it was picked.** Place of
+  supply, the zero-rating note and the currency are kept in step on every
+  open. Place of supply used to sync only while GST applied, so an export
+  draft that opened with GST off never stored 96 and printed as domestic, UPI
+  QR and all.
+- **`total_paise` is the INR equivalent**, so lists and reports stay in rupees.
+- **The client record's rates are rupees.** A line seeded from them converts at
+  the rate typed on the document and stays blank until there is one. A rupee
+  figure in a dollar column is off by the rate and looks plausible.
+- **A credit note and a receipt carry the invoice's currency, rate and date.**
+
+**The export sheet holds four lines, not more,** with a split discount and the
+three exchange-rate lines below. The notes column widens on this case alone
+(the rate lines were wrapping in 210px and took the line table's room). A
+fifth line is clipped off the bottom with nothing to say so; that is the fixed
+frame's standing limit, measured in `e2e/invoice.spec.ts`, and the day a real
+export needs five, the invoice goes through the `Paginator` as the contract
+does.
+
 ### 5l. The Service Quotation is a fixed-page document, and it clips
 
 Rebuilt 31 August 2026 from the design actually sent to clients. It is the one
@@ -1250,6 +1307,25 @@ on every quote, with nothing deriving it and nothing checking it.
 it is not, and refused at finalize unless it bills 100%. A field that starts
 empty and one that starts correct are different fields.
 
+### 5m. A lead is not a client, and becomes one by signing
+
+Added 17 October 2026 (`lib/domain/lead.ts`, `/client/leads`). A lead is a
+name and a first conversation: company, email, phone, where they came from,
+which services they asked about, notes. **It is deliberately not a client
+record.** A client is onboarded once and every document derives from it
+(§5d); a lead has no legal name, no address and no tax identity, and asking
+for them up front is the onboarding flow's weight on someone who may never
+buy anything.
+
+Three rules. **Deleting a lead erases the row**, because it holds a third
+party's contact details, which is the DPDP Act 2023 reading §5d applies to
+attachments. **The stages are a fixed list** (New, Reached out, Discovery
+session, Quotation sent, Quotation approved, Contract sent, Lost), and there
+is no "won": a signed lead becomes a client. **The document stages are typed
+by hand for now** and are meant to be derived from the quotation and the
+contract once those link to a lead (`ROADMAP.md` §12), at which point they
+stop being editable.
+
 ### 6. Intern vs. employee is a legal distinction (not cosmetic)
 HR documents branch on `engagementType`:
 - The **exit document auto-switches**: an intern gets an **"Internship Completion Letter"**; an employee gets a **"Relieving Letter"**. These are legally different — an intern is never "relieved from services," never "resigned," and internship docs must not contain salary/employment language.
@@ -1315,7 +1391,7 @@ form → Zod validate → Server Action → Drizzle → Postgres
 - **`src/db/`** — Drizzle schema + queries + migrations. Relational tables (`clients`, `employees`, `service_templates`, `documents`, `counters`) with JSONB for the doc-type-specific parts. Zod validates JSONB on write.
 - **`src/server/actions/`** — Server Actions (documents, clients, employees, services). Each verifies the Clerk session server-side.
 - **`src/components/docs/sheets/`** — the **pixel-faithful document sheets**. Pure `data → markup`. Tailwind + `src/styles/print.css` for A4/print. Do not redesign.
-- **`src/components/`** — everything else, fresh shadcn (dashboard Table, forms, nav, editors, the Paginator).
+- **`src/components/`** — everything else, fresh shadcn, in layers: `ui/` atoms, `patterns/` molecules and organisms, `shell/` the frame, and the domain screens (`admin/`, `contract/`, `docs/`). `docs/design.md` §0 has the table and the test that holds the order.
 - **`src/app/(app)/{client,admin}/`** — the two profiles (see below). `_routes/` holds the route bodies both profiles share; the page files under each profile are thin wrappers that say which one they are.
 - **`src/lib/profile.ts`** — which side a thing belongs to, and the one documented seam between them.
 
@@ -1440,7 +1516,7 @@ speclr holds sensitive financial/legal documents. Access is defence-in-depth:
 
 ## Known issues / watch-list
 
-- **npm audit** flags transitive `postcss`/`sharp` advisories bundled inside Next.js. **Do NOT `audit fix --force`** — it downgrades Next 16 → 9.3.3 (catastrophic). Resolve by upgrading Next when a patch lands.
+- **npm audit**: `npm audit --omit=dev` is at 0 since Next 16.4.2 (18 October 2026). The dev-only tree (drizzle-kit, the shadcn CLI) still reports advisories that never ship. **Do NOT `audit fix --force`**: it downgrades Next 16 to 9.3.3 (catastrophic). Plain `npm audit fix` is safe.
 - **Clerk keys are `pk_test_` (dev instance)** — they only work on `localhost`. Production login needs a Clerk *production instance* + the `speclr.qera.studio` domain configured. A go-live task, not done yet.
 - **`SPECLR_ALLOWED_EMAILS` in Vercel** must be kept in sync with `.env.local` (currently `shivanshu@qera.studio,ops@qera.studio`).
 

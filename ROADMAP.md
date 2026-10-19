@@ -11,6 +11,186 @@
 
 ---
 
+## Now: the road to ready, spending nothing
+
+Set 18 October 2026 by the founder. Launching costs about $50 a month that is
+not there yet, so this is everything that can be done **before** that money
+exists, in order, so that launch day is a configuration change and not a
+project. It replaces adding screens: **no new page, view or restyle is built
+until this list is done**, unless it unblocks a line of *What "ready" means*
+below. A request that breaks that rule gets the conflict named first.
+
+**How it runs.** The assistant works through it without stopping for approval,
+under these rules:
+
+- Commit after each green unit of work, on the current branch, never push.
+  Green means `npm test`, `npx tsc --noEmit`, and `npm run test:e2e` where
+  geometry moved; `npm run build` at the end of every phase.
+- **Never without the founder:** legal wording on any document, money,
+  numbering or immutability logic, finalizing a document, deleting real data,
+  anything paid, pushing. Each of those goes on *Waiting on Shivanshu* below,
+  and the work continues around it rather than stopping.
+- Each phase ends with a dated line in *Progress*, so a fresh session resumes
+  from the last line rather than from memory.
+
+### Phase 0: a clean slate
+
+1. Commit the uncommitted work in reviewable groups: the service page, the
+   dialogs and shared fixes, leads, the onboarding tabs, the roadmap.
+2. Apply `0019_lead_stages.sql` (data only: two rows renamed).
+3. Bring `CONTEXT.md` and `docs/design.md` up to date with what changed in
+   October: the description is the `blurb`, codes are typed when adding,
+   overlays sit above dialogs, `Select` shows labels, leads exist, onboarding
+   steps are tabs.
+
+### Phase 1: the free half of going live
+
+1. **Tests on every push**: a GitHub Actions workflow running `npm test` and
+   `npx tsc --noEmit`. Free for a private repository at this size.
+2. **Uploads over 4.5 MB**: move attachments to a client-direct Blob upload,
+   as *Go-live blockers* describes. Code only.
+3. **A backup that costs nothing**: a script exporting every table to dated
+   JSON, plus a test that the export round-trips through the write schemas.
+   This is what makes local use defensible before a paid Neon tier (see
+   Phase 5).
+4. **Dry-run the launch-readiness gate** (`dev/master-launch-readiness-gate.md`)
+   and record every line that fails, as work or as a founder task.
+
+### Phase 2: the format freeze audit
+
+Per document type, the audit listed under *The format freeze*: invoice against
+Rule 46 clause by clause, receipt against Rule 50, credit note against s.34
+and Rule 53, the contract, the pay slip against the Code on Wages, the HR
+letters. Each type gets a findings table here. A missing field or a structural
+gap is fixed; a change to legal wording is written up as a proposal and goes
+to *Waiting on Shivanshu*. The LUT number for export invoices lands here.
+
+### Phase 3: every sheet at real A4
+
+A browser fixture and a Playwright measurement for every document type not
+already covered (receipt, credit note, offer, experience and exit letters,
+stipend slip), at realistic and at maximum content, each confirmed to fail
+before it is trusted. jsdom cannot see a page; this is the only way to know
+nothing clips before the first finalize claims a number for ever.
+
+### Phase 4: the debts this month left
+
+The quick-edit dialog's last dead field, `quiet.ts` moving into `patterns/`
+now that it is the app's style rather than the catalogue's, the shared
+`EmptyState` and `RupeeInput` written into the design doc, and any rough edge
+the first three phases turned up.
+
+### Phase 5: ready to be used for real (the founder's call)
+
+When 0 to 4 are done, the app can issue real documents from this laptop
+against the free database, with the Phase 1 backup run after every finalize
+and every issued PDF kept. **Only from a production build** (`npm run build &&
+npm start`), never `npm run dev`: `DEV_UNLIMITED` is "not production", so under
+the dev server every finalize claims a fake clock-based serial
+(`db/counter.ts`) and a finalized document can be deleted (`deleteDraft`).
+Found by the gate dry run on 18 October 2026. That starts *What "ready" means* without waiting for
+money. Whether to do it is a decision for the founder, not the assistant.
+Launch day then adds the paid tiers, the production Clerk instance and the
+domain, and nothing else.
+
+### The gate dry run, 18 October 2026
+
+Three read-only reviews of `dev/master-launch-readiness-gate.md` against the
+code, each finding checked before it was written here.
+
+**Decisions for the founder** (numbering, immutability and money: proposals
+only, nothing changed):
+
+1. **Finalize is not atomic, and a double finalize can overwrite an issued
+   document.** `saveDocument` reads the status, then upserts unconditionally
+   (`db/store.ts`), and finalize is three or four separate HTTP statements
+   (claim, studio read, save) because the Neon HTTP driver has no interactive
+   transaction. Two finalizes racing, or a finalize racing an autosave, can
+   burn a number, re-finalize under a second one, or flip an issued row back
+   to draft. A failure after the claim burns the number and the message says
+   it "was not used". **Proposed:** one SQL statement that claims the serial
+   and writes the row `WHERE id = $1 AND status = 'draft'`, returning
+   "already finalized" when it matches nothing, plus a database trigger that
+   refuses any UPDATE or DELETE of a finalized row. This is the guarantee
+   `CONTEXT.md` §4 already claims to make.
+2. **A credit note is not checked against the invoice it reduces.** The number,
+   date, rate and amount are trusted from the form, so a note can credit more
+   than was billed, at a rate the invoice never charged. **Proposed:** at CRN
+   finalize, when `againstInvoiceId` is set, require the same client, a
+   finalized invoice, the same rate, and a credited total no greater than the
+   invoice's.
+3. **The money columns are 32-bit.** `total_paise` and `pay_amount_paise` cap
+   at about ₹2.14 crore, while the schemas accept far more, and a larger
+   document fails on insert after its number has been claimed. **Proposed:**
+   move them to `bigint`, or cap the schemas at the column's range.
+4. **Accepted risks to record or refuse:** no Postgres RLS (single tenant, no
+   client-side database key, the gate on every action stands in for it); no
+   rate limit on PDF rendering and the sitemap fetch (allowlisted users only);
+   Clerk session tokens stay valid for their short life after sign-out.
+5. **A privacy notice and a retention schedule** for the third-party personal
+   data held (DPDP Act 2023), which can live outside the app.
+
+**The assistant fixes** (security, error handling, accessibility, performance;
+logged in *Progress* as each lands): the PDF route returning raw error text;
+the print URL trusting the request's Host header; a pagination timeout that
+stores a half-rendered PDF; concurrent attachment uploads losing a row; the
+unbounded list queries; the resize handle's weak focus ring and two faded text
+colours; an `npm run db:migrate` that backs up first; an axe scan in `e2e/`.
+
+**Launch day:** a rehearsed rollback, a post-deploy smoke test, live header and
+logged-out checks against the real domain, and a restore rehearsed into a fresh
+Neon branch.
+
+### Waiting on Shivanshu
+
+Free tasks only the founder can do, plus decisions the work needs:
+
+- **Decide the five items under *The gate dry run* above.** Item 1 matters
+  most: it is the difference between "issued documents are immutable" being
+  true and being likely.
+
+- **Rotate `BLOB_READ_WRITE_TOKEN`** (free, five minutes; see *Go-live
+  blockers*).
+- **Try one attachment upload** in onboarding, ideally a scan over 5 MB. The
+  new direct upload is tested in Jest, but a real round trip writes to your
+  live store and client record, which the assistant does not do unasked.
+- **Create a Clerk production instance** (free plan) for `speclr.qera.studio`,
+  whenever DNS access is to hand. It sits unused until launch day.
+- **A compact board card was found uncommitted** in `ServiceCatalogue.tsx`,
+  written outside these sessions. It brings back a second card shape for the
+  board, which reverses "one card for both views" (`5b2dc25`). Parked, not
+  lost: `git stash list` shows it as "foreign: compact board card". Keep it
+  (`git stash pop`) or drop it (`git stash drop`).
+
+### Progress
+
+- 18 October 2026: plan set.
+- 18 October 2026, Phase 0 done: the October work committed in four groups
+  (`b8f4aaf` shared UI fixes, `96232cf` services, `1195ec2` leads, `a4d271f`
+  onboarding tabs); `0019_lead_stages` applied (20 migrations recorded, both
+  leads moved); `CONTEXT.md` §5h and §5m and `docs/design.md` brought up to
+  date.
+- 18 October 2026, Phase 1: CI workflow (`d0b5d95`, runs once pushed);
+  attachments upload straight to Blob (`7a64f85`); free backup and restore,
+  which found and fixed two copy-script bugs (`2d8d592`); the gate dry run
+  (above). Phase 3: every document type measured at real A4 (`82f95d8`).
+  Next.js 16.4.2 and a clean audit (`fcebb2b`).
+- 18 October 2026, the gate fixes the assistant owns: the print URL only
+  renders from hosts this app is served on (`9cf0c11`); a contract whose
+  pagination timed out is never stored as the issued PDF (`28d2985`); a 2px
+  focus line on the resize handle and no faded text, with a design rule
+  against it (`6ba13a4`); `npm run db:migrate` backs up first (`becc50a`); an
+  axe scan of six screens, all clean (`df7c090`). **Kept on purpose:** the
+  PDF route's error text, which only an authorized caller entitled to that
+  document can see. **Recorded, not built:** concurrent attachment uploads
+  across two tabs can drop a row (every client save shares that
+  read-then-write shape; one operator, uploads already queued one at a time);
+  and the list queries are unbounded, which stays fast for years at about 30
+  documents a month, so paging waits until a list passes roughly 2,000 rows,
+  since a hard cap would hide old financial records instead.
+
+---
+
 ## The three that need thought before code
 
 Most items below are ordinary work. These three interact with decisions already
@@ -286,6 +466,136 @@ cases, the same severity marking. Both gaps above will very likely turn out to
 be two rows in that list rather than one-off reports; this entry should be
 folded into that audit's findings when it starts rather than tracked twice.
 
+### 11. A first catalogue in minutes: bring your own AI
+
+Proposed by the founder on 17 October 2026. A new user opens an empty service
+catalogue, and building sixteen services and three hundred items by hand is
+the reason they would leave. Instead, the empty state offers a ready-to-paste
+prompt for any AI they already use. That AI, which knows their work and their
+prices, writes a file in our format; they upload it, review it, and the
+catalogue fills.
+
+Why it is the right shape: no AI integration, no API key, no cost per user, no
+client data sent anywhere by us, and the user's own AI already has the context
+(their website, their old rate card, their chat history) that ours never would.
+
+**Decided in the proposal review, before any design pass:**
+
+- **CSV, one row per item**, not Markdown. Items are the bulk and the shape is
+  flat: service columns (code, name, section, description, SAC) repeat on each
+  item row, then the item's own (name, group, price, up to, unit, unit label,
+  quotation description). A spreadsheet can open and fix it, and a parser
+  needs no guessing. Markdown reads well and parses badly.
+- **The prompt and the importer are generated from one definition**, the same
+  field list the zod schemas use, and a test pins that every column the prompt
+  asks for is one the importer reads. A prompt edited by hand drifts from the
+  app the first time a field is added.
+- **Nothing is written until a review screen is confirmed.** Every row runs the
+  write-time schemas (`serviceContentSchema`, `serviceItemsSchema`, `sacSchema`,
+  money to paise via `rupeesToPaise`), and the screen lists what will be added,
+  with per-row errors named and the bad rows excluded rather than the whole
+  file refused.
+- **Services and items only. Never contract terms.** Terms are legal text, and
+  AI-written legal text reaching a contract is the risk `CONTEXT.md` §5c was
+  built to contain. An imported service starts with no terms, and the existing
+  "Add terms" path is where they come from.
+- **SAC is treated as unverified.** An AI will produce a plausible six-digit
+  code with confidence. The format check passes it; whether it is the right
+  classification is a CA's call (§5h). Imported SACs are flagged on the review
+  screen, or left blank so the service default applies.
+- **Codes are checked, never trusted.** A code already held by any row,
+  archived included, is refused on that row (the rule `createService` applies);
+  a blank one is assigned.
+- **Import adds, never deletes or overwrites.** Running it twice is a set of
+  "already exists" rows, not a wiped catalogue.
+
+**Worth adding alongside it:**
+
+- **A starter catalogue, with no AI at all.** "Start from Qera's catalogue" for
+  a design studio or freelancer: the 16 services and 293 items, prices cleared.
+  For the target user this may be the faster path, and it is mostly the seed
+  that already exists.
+- **Export to the same CSV.** Cheap once the format exists, and it turns the
+  format into a round trip: edit prices in a spreadsheet, import the changes.
+  Export first is also the easiest way to test the importer.
+- **A downloadable example file** with three rows from the real seed, which the
+  prompt also embeds, because an AI follows an example more reliably than a
+  column description.
+
+Depends on a first-run state that does not exist yet: today the studio's own
+details fall back to Qera's constants and there is no sign-up flow. This is
+worth building with that, since it is the first screen a user who is not the
+founder would meet (`PRINCIPLES.md` §6).
+
+### 12. One journey: lead to quotation to contract to invoice
+
+Proposed by the founder on 18 October 2026: the documents should stop being
+separate forms and become one journey that the app follows and remembers. A
+lead is quoted; the client approves the quotation and it is settled; the
+contract is drafted from it, sent as a link, approved in one click and logged;
+the first invoice then loads itself from phase 1 of the agreed schedule. No
+AI: every step is a fact the app already holds, derived rather than retyped.
+That is `PRINCIPLES.md` rule 3 applied across documents instead of within one.
+
+**The spine is a link, not a new store.** Each document records the one before
+it (`quotationId` on a contract, `contractId` and `phase` on an invoice), the
+way a receipt and a credit note already record `againstInvoiceId`. A lead's
+stage then stops being typed and is read off the latest fact: a finalized
+quotation means "Quotation sent", an accepted one "Quotation approved", a sent
+contract "Contract sent", an accepted contract turns the lead into a client.
+Only New, Reached out, Discovery session and Lost stay manual, because no
+document says them.
+
+**Phases, each shippable on its own:**
+
+1. **A quotation can be addressed to a lead.** A quotation already carries no
+   `clientId` (`registry.ts`), so this is a `leadId` and a snapshot of the
+   lead's name and company, frozen at finalize like every other recipient.
+2. **Acceptance links.** A finalized quotation gets an unguessable link the
+   client opens without an account: read the document, approve in one click.
+   The approval is an append-only record: when, from where, the name they
+   typed, and a SHA-256 of the exact content they saw, so what was accepted
+   can be proven later even though the document is already immutable.
+3. **The contract drafts itself from the accepted quotation.** Its Parts are
+   the quoted services, narrowed to the quoted items (`copyPart` already takes
+   the agreed items), the fee blanks are the quoted prices, and the payment
+   clause is the quotation's phases. Nothing is retyped, so nothing can
+   disagree.
+4. **The contract goes out on the same kind of link**, read in full, approved
+   in one click, logged the same way. Approval converts the lead to a client.
+5. **Invoices follow the schedule.** Picking the client suggests the next
+   unbilled phase ("Phase 1, 35% of ₹2,40,000, per QS-CON-2627-004"), the
+   invoice records which phase it bills, and a receipt against it closes it.
+   The next invoice then offers phase 2.
+6. **A timeline per client**, read from those same records: quoted, viewed,
+   approved, contracted, invoiced, paid. Nothing written twice.
+
+**Decided in the proposal review, before any design pass:**
+
+- **Approval links are the first public surface this app has ever had**, and
+  everything else sits behind Clerk and an allowlist (`CONTEXT.md`, access
+  control). Each link is scoped to one document, read-only apart from the
+  approve action, expiring, revocable, stored hashed, rate-limited and
+  `noindex`. This goes through the security checklist before it ships, not
+  after.
+- **One-click approval is evidence of acceptance, not a digital signature.**
+  An agreement accepted electronically is enforceable in India (IT Act 2000
+  s.10A), and click-to-accept is the common way it is done. It is not an
+  "electronic signature" under s.3A, which needs Aadhaar eSign or a DSC. The
+  log above is what makes the acceptance provable. Whether contracts above
+  some value should also offer a real eSign (a vendor, and a `vendors.md`
+  row) is a question for the commercial lawyer the clauses already wait on.
+- **The client's legal details are needed before the contract, not after.** A
+  contract names the parties and the first invoice needs their GSTIN, so
+  "becomes a client when signed" cannot mean "is onboarded when signed".
+  Proposed: approving the quotation sends the client a link to fill in their
+  own company details (they know their GSTIN better than we do, and the field
+  rules check it), and the contract is drafted from that record.
+- **Sending is a link to copy first.** speclr sends no email today. Emailing
+  the link is a vendor, and waits until copying it has proved the flow.
+- **The format freeze still gates issuing** (see *The format freeze* below):
+  none of this changes what an issued document must contain.
+
 ---
 
 ## Deliberately deferred (YAGNI — noted, not built)
@@ -398,6 +708,25 @@ if one of these gets picked up, the reasoning is what to re-examine first.
   exactly one surface that writes each group.
 
 ## Pending work (in flight)
+
+**Founder's list, 13 October 2026.** Recorded as given; each wants its scope
+confirmed before work starts.
+
+- [x] Implement the change for the documents page.
+- [ ] Fix the tabs.
+- [ ] Turn the process pages into tabs.
+- [ ] Remove the Magic Mouse effect.
+- [ ] Implement the changes already in the prompt.
+- [ ] Improve the drag animation in the table columns.
+- [ ] Archive the custom cursors (all of them).
+- [ ] The contract process for the service quotation.
+- [ ] Connect the quotation to onboarding.
+- [ ] Add a leads form.
+- [ ] Add a leads page.
+- [ ] Connect leads to the service quotation.
+- [ ] Take the service section icons from the contract and add them to the
+      edit dropdown.
+- [ ] Clicking a client's row should not open the onboarding process.
 
 - **Make the invoice honour the billing block.** Onboarding now collects two
   things the sheets do not yet read, deliberately: a **separate billing address**
@@ -625,10 +954,10 @@ Indian export invoice. This is not N jurisdictions. It is six additions:
 | Needed | Status today |
 |---|---|
 | The prescribed export endorsement, **verbatim** | Done, 24 August 2026. `EXPORT_ENDORSEMENT` in `placeOfSupply.ts`, printed through the `exportEndorsement` content key. |
-| **LUT number and date printed on the invoice** | Not collected anywhere. Belongs on studio settings, and therefore inside `studioSnapshot`. |
+| **LUT number and date printed on the invoice** | Done 19 October 2026: on studio settings, inside `studioSnapshot`, printed on every zero-rated invoice, and finalize refuses one dated after it lapses. |
 | Recipient's foreign tax ID | Collected (`taxIds/foreign.ts`), prints in the billed-to block |
 | Place of supply for an export of services (IGST s.13(2), location of recipient) | `placeOfSupplyOf` covers the domestic case; the export case needs confirming |
-| INR conversion at the **CBIC notified rate** (Rule 34), not a market rate | Not built. Separate from `currency.ts`, which correctly keeps invoices in INR. |
+| INR conversion at a GAAP rate on the date of supply (Rule 34(2), for services; the CBIC notified rate is Rule 34(1), for goods), not a market rate | Done 19 October 2026: an export is billed in the client's currency, the bank's TT buying rate is typed per invoice, and the INR equivalent prints at it. No API: none publishes a compliant rate for AUD. |
 | FIRC / BRC as proof of realisation | Already an attachment kind |
 
 The **contract** has a global dimension that is commercial rather than
@@ -675,12 +1004,11 @@ real documents exist.
   `vercel env pull .env.local`, and restart dev. Nothing is exposed until the
   store holds real client files, which is why this is a blocker rather than an
   incident.
-- **Attachments over 4.5 MB will fail on Vercel.** They upload through a Server
-  Action, and Vercel's serverless functions reject a request body over 4.5 MB
-  before Next runs, so `serverActions.bodySizeLimit: '26mb'` only buys the
-  25 MB limit in local dev. The fix is a client-direct upload: a route that
-  hands out a one-shot token, the browser PUTs to Blob, and the action records
-  the resulting URL. Same private store, same `requireAuthorizedUser`, same
-  byte-sniffing on the way in. Until then a large scan silently fails in
-  production.
+- ~~**Attachments over 4.5 MB will fail on Vercel.**~~ Closed 18 October 2026.
+  The browser now uploads straight to the private Blob store on a token from
+  `/api/clients/[id]/files/upload` (signed-in caller, a client that exists, a
+  path that is that client's prefix and a uuid, the size cap and three types,
+  no overwrite), and `recordClientAttachment` reads the bytes back, sniffs
+  them, and deletes anything that is not what it claims before writing the
+  row.
 - **Run `dev/master-launch-readiness-gate.md`** before any production deploy.

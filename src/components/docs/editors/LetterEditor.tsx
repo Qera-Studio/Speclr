@@ -17,12 +17,12 @@ import { pronounSet, type EmployeeRecord } from "@/lib/domain/employee";
 import { formatINR } from "@/lib/domain/money";
 import type { EmployeeSnapshot, LetterDocument } from "@/lib/domain/types";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ConfirmActionButton } from "@/components/ui/confirm-action-button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { ConfirmActionButton } from "@/components/patterns/ConfirmAction";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Spinner } from "@/components/ui/spinner";
@@ -391,7 +391,7 @@ export default function LetterEditor({
               <Textarea
                 id="letter-body"
                 rows={18}
-                className="font-normal leading-relaxed"
+                className="font-normal "
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
               />
@@ -416,7 +416,7 @@ export default function LetterEditor({
                   key={si}
                   className="flex flex-col gap-3 rounded-lg border border-border p-4"
                 >
-                  <legend className="px-1 text-sm font-medium">
+                  <legend className="px-1 text-body font-medium">
                     Bullet section {si + 1}
                   </legend>
                   <Field>
@@ -449,7 +449,7 @@ export default function LetterEditor({
                   <div>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => addBulletItem(si)}
                     >
                       Add bullet

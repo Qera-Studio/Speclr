@@ -7,7 +7,7 @@ import { usePagination } from './usePagination';
 import type { PageChrome } from './DocumentPreview';
 import PageColumns from './PageColumns';
 import PageThumbnails from './PageThumbnails';
-import { PageHeaderSlot } from '@/components/admin/PageHeaderSlot';
+import { PageHeaderSlot } from '@/components/shell/PageHeaderSlot';
 import DocumentPager from './DocumentPager';
 import { PAGE_SAFETY_MARGIN, SHEET_HEIGHT } from './sheets/frame';
 
@@ -221,6 +221,9 @@ export default function PrintPages({
     return (
       <div
         ref={flowRef}
+        // Present only until pagination lands, so the PDF renderer can tell a
+        // contract that never paginated from a sheet that never needed to.
+        data-paginated="pending"
         // Measured at full page width; a column block carries its own — see
         // `DocumentPreview`.
         className={`paginatorPage w-[794px] box-border flex flex-col [&>*]:shrink-0 ${
@@ -396,12 +399,12 @@ export default function PrintPages({
       >
         <Button
           type="button"
-          variant="outline"
-          size="icon"
+          variant="secondary"
+          size="sm" icon
           onClick={scrollToTop}
           aria-label="Scroll to top"
           className={[
-            'pointer-events-auto rounded-full bg-background/80 shadow-sm backdrop-blur transition-opacity',
+            'pointer-events-auto rounded-full bg-background/80 shadow-raised backdrop-blur transition-opacity',
             atTop ? 'pointer-events-none opacity-0' : 'opacity-100',
           ].join(' ')}
         >

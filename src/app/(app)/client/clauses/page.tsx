@@ -4,7 +4,7 @@ import { requireAuthorizedUser } from '@/lib/auth/session';
 import { listClauses } from '@/db/store';
 import { MSA_CLAUSES } from '@/lib/domain/contract/msa';
 import ClauseLibrary from '@/components/admin/clauses/ClauseLibrary';
-import { PageBody } from '@/components/admin/Page';
+import { PageBody } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',

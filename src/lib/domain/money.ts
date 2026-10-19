@@ -29,7 +29,7 @@ export interface Discount {
 }
 
 /**
- * What the discount comes to in paise, clamped to the subtotal.
+ * What the discount comes to in paise, clamped to the base it applies to.
  *
  * The clamp is not defensive tidiness: a taxable value below zero would put a
  * negative through the GST arithmetic and print a tax invoice charging tax on
@@ -48,6 +48,18 @@ export function discountPaiseOf(
   return Math.min(Math.max(raw, 0), subtotalPaise);
 }
 
+/**
+ * The part of the subtotal a discount reaches: every line not marked
+ * `discountExempt`. A percentage is a percentage of this, and an amount is
+ * clamped to it, so a pass-through cost billed at cost is never discounted.
+ */
+export function discountablePaiseOf(lineItems: LineItem[]): number {
+  return lineItems.reduce(
+    (sum, item) => (item.discountExempt ? sum : sum + lineAmountPaise(item)),
+    0,
+  );
+}
+
 export function computeTotals(
   lineItems: LineItem[],
   gstRatePercent: number,
@@ -57,7 +69,7 @@ export function computeTotals(
     (sum, item) => sum + lineAmountPaise(item),
     0,
   );
-  const discountPaise = discountPaiseOf(subtotalPaise, discount);
+  const discountPaise = discountPaiseOf(discountablePaiseOf(lineItems), discount);
   const taxablePaise = subtotalPaise - discountPaise;
   const gstPaise = roundHalfUp((taxablePaise * gstRatePercent) / 100);
   return {
@@ -115,6 +127,44 @@ export function splitGST(gstPaise: number): {
   }
   const cgstPaise = Math.floor(gstPaise / 2);
   return { cgstPaise, sgstPaise: gstPaise - cgstPaise };
+}
+
+/**
+ * An export's figure in rupees, at the rate stated on it.
+ *
+ * `inrPerUnit4` is rupees per unit of the foreign currency times 10,000 (see
+ * `FxRate`), so minor units times it, over 10,000, is paise. Done in BigInt
+ * because the product of a large invoice and a rate passes 2^53, and rounded
+ * half-up once, at the end.
+ */
+export function inrPaiseOf(minor: number, inrPerUnit4: number): number {
+  return Number((BigInt(minor) * BigInt(inrPerUnit4) + BigInt(5000)) / BigInt(10000));
+}
+
+/**
+ * A rupee price in the foreign currency at the stated rate: the inverse of
+ * `inrPaiseOf`, for seeding an export's lines from the INR rates on the
+ * client record. Rounded half-up to the minor unit.
+ */
+export function foreignMinorOf(paise: number, inrPerUnit4: number): number {
+  return Number(
+    (BigInt(paise) * BigInt(10000) + BigInt(inrPerUnit4) / BigInt(2)) / BigInt(inrPerUnit4),
+  );
+}
+
+/** '66.6' or '66.6025' → 666000 / 666025. Null for anything else; never a float. */
+export function parseRate4(text: string): number | null {
+  const match = /^(\d{1,5})(?:\.(\d{1,4}))?$/.exec(text.trim());
+  if (!match) return null;
+  const value = Number(match[1]) * 10000 + Number((match[2] ?? "").padEnd(4, "0"));
+  return value > 0 ? value : null;
+}
+
+/** 666000 → '66.60', 666025 → '66.6025': at least two decimals, at most four. */
+export function formatRate4(inrPerUnit4: number): string {
+  const whole = Math.floor(inrPerUnit4 / 10000);
+  const fraction = String(inrPerUnit4 % 10000).padStart(4, "0").replace(/0{1,2}$/, "");
+  return `${whole}.${fraction.length < 2 ? fraction.padEnd(2, "0") : fraction}`;
 }
 
 const inrIntegerFormat = new Intl.NumberFormat("en-IN");

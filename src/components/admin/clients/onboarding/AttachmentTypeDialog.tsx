@@ -122,10 +122,10 @@ export default function AttachmentTypeDialog({
               <button
                 type="button"
                 onClick={() => choose(kind)}
-                className="group/card flex w-full cursor-pointer flex-col gap-2 rounded-md p-1 text-center transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group/card flex w-full cursor-pointer flex-col gap-2 rounded-md p-1 text-center transition-colors hover:bg-accent focus-ring"
               >
                 <KindName kind={kind} />
-                <span className="px-1 pb-1 text-xs text-balance text-muted-foreground">
+                <span className="px-1 pb-1 text-meta text-balance text-muted-foreground">
                   {ATTACHMENT_KIND_DESCRIPTIONS[kind]}
                 </span>
               </button>
@@ -169,7 +169,7 @@ function KindName({ kind }: { kind: AttachmentKind }) {
       {kind === 'other' ? (
         <Plus aria-hidden className="size-5 text-muted-foreground" />
       ) : null}
-      <span className="text-sm font-medium text-balance text-foreground">
+      <span className="text-body font-medium text-balance text-foreground">
         {ATTACHMENT_KIND_LABELS[kind]}
       </span>
     </div>

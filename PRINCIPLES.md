@@ -364,6 +364,26 @@ Specific standing pushbacks:
 
 ### Logged deviations
 
+**19 October 2026: an export invoice can be billed in the client's currency.**
+§4 says no multi-currency engine for invoices. The request was to bill a
+foreign company in its own currency with the rupee equivalent stated, which is
+how the client pays and what their bank's remittance matches. §4's reason is
+that GST must be shown in rupees and the CGST/SGST split is rupee-shaped; a
+zero-rated export charges neither, so the reason does not reach it. Built and
+bounded:
+
+- **Only a zero-rated export.** `foreignCurrency` in the registry refuses a
+  foreign currency on anything with GST or a domestic place of supply.
+- **The currency is derived from the client** (`billingCurrencyOf`), read-only
+  on the document (rule 3).
+- **The rate is typed, never fetched**: the bank's TT buying rate on the issue
+  date (CGST Rule 34(2)), stored as an integer and frozen with the document.
+  The market-rate feed stays on the clients list (the deviation below).
+- **The rupees stay the record.** `total_paise` is the INR equivalent, so every
+  list, filter and report is unchanged.
+
+`computeTotals` never learned a currency: it is integer minor units either way.
+
 **21 September 2026: an exchange rate exists, for the clients list only.** §4
 says no multi-currency engine for invoices, and `currency.ts` said there was
 no exchange rate anywhere in the app. There is one now, on request, and it is

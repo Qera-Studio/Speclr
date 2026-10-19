@@ -8,6 +8,7 @@ import {
   ifscSchema,
   phoneSchema,
   swiftSchema,
+  lutArnSchema,
   upiSchema,
 } from './fields';
 import { codeSchema, multilineSchema, orgNameSchema, textSchema } from './text';
@@ -41,11 +42,24 @@ export interface StudioInfo {
   stateCode: string;
   /** Derived from `stateCode` on save — never typed. */
   stateName: string;
+  /**
+   * The Letter of Undertaking that lets an export or an SEZ supply go out
+   * without IGST (IGST Act s.16(3)(a), form RFD-11). One per financial year,
+   * so it lapses every 31 March and has to be furnished again.
+   *
+   * On the studio record because it is a fact about the supplier (rule 2), and
+   * therefore frozen by `studioSnapshot` like the GSTIN: an invoice keeps the
+   * LUT it was issued under. `lutValidTo` is what finalize checks; without a
+   * live LUT a zero-rated supply owes IGST and cannot be issued as one.
+   */
+  lutArn?: string;
+  /** ISO date the LUT covers to, the 31 March closing its financial year. */
+  lutValidTo?: string;
   bank: {
     bankName: string;
     accountNo: string;
     ifsc: string;
-    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    /** Filled from the IFSC lookup. Printed on an export invoice's wire block. */
     branch?: string;
     upiId: string;
     /**
@@ -60,7 +74,11 @@ export interface StudioInfo {
     accountName?: string;
     swift?: string;
     iban?: string;
-    /** The branch address a correspondent bank wants, as printed lines. */
+    /**
+     * The branch's address. Printed nowhere since 19 October 2026: SWIFT and
+     * IFSC identify the branch, and no transfer form requires it. Kept in the
+     * type and schema so settings saved with one still load.
+     */
     bankAddress?: string;
   };
 }
@@ -86,11 +104,17 @@ export const STUDIO_INFO: StudioInfo = {
   queryEmailHr: 'admin@qera.studio',
   stateCode: '09',
   stateName: 'Uttar Pradesh',
+  // Confirmed 2 September 2026 for FY 2026-27 (COMPLIANCE.md §2.2).
+  lutArn: 'AD090826065953E',
+  lutValidTo: '2027-03-31',
   bank: {
     bankName: 'Kotak Mahindra Bank',
     accountNo: '4056067000',
     ifsc: 'KKBK0000677',
+    branch: 'Ghaziabad',
     upiId: 'qera.studio@kotak',
+    accountName: 'Qera Private Limited',
+    swift: 'KKBKINBBCPC',
   },
 };
 
@@ -143,11 +167,15 @@ export const studioInputSchema = z.object({
   cin: cinSchema({ required: 'A CIN is required.' }),
   queryEmailHr: emailSchema({ required: 'An HR email is required.' }),
   stateCode: z.string().regex(/^\d{2}$/, { message: 'Expected a 2-digit GST state code.' }),
+  lutArn: lutArnSchema().optional(),
+  lutValidTo: z
+    .union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+    .optional(),
   bank: z.object({
     bankName: orgNameSchema(120, { required: 'A bank name is required.' }),
     accountNo: codeSchema(40, { required: 'An account number is required.' }),
     ifsc: ifscSchema({ required: 'An IFSC is required.' }),
-    /** Filled from the IFSC lookup. Record-keeping only — no document prints it. */
+    /** Filled from the IFSC lookup. Printed on an export invoice's wire block. */
     branch: textSchema(120).optional(),
     upiId: upiSchema(120, { required: 'A UPI ID is required.' }),
     // The wire block. Optional throughout: it prints only on a foreign

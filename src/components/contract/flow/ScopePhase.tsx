@@ -124,7 +124,7 @@ export default function ScopePhase({
   */
   if (contract.parts.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         No services on this contract yet. Pick them on the Services step, then
         come back to say what each one covers.
       </p>
@@ -133,7 +133,7 @@ export default function ScopePhase({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         Open each service to say what it covers, or confirm the ones with
         nothing to change.
       </p>
@@ -168,8 +168,8 @@ export default function ScopePhase({
                   aria-hidden
                   className={
                     done
-                      ? "flex size-3 shrink-0 items-center justify-center rounded-[3px] bg-primary text-primary-foreground"
-                      : "flex size-3 shrink-0 items-center justify-center rounded-[3px] bg-muted text-muted-foreground"
+                      ? "flex size-3 shrink-0 items-center justify-center rounded-sm bg-primary text-primary-foreground"
+                      : "flex size-3 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground"
                   }
                 >
                   {/* `stroke-[3]` because the glyph is now 10px: at the default
@@ -182,7 +182,7 @@ export default function ScopePhase({
                   nobody reading the contract. What stands there now is what the
                   row still needs, which is the thing worth a second line. */}
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="min-w-0 truncate text-sm font-medium">
+                  <span className="min-w-0 truncate text-body font-medium">
                     {part.name}
                   </span>
                   {/*
@@ -198,7 +198,7 @@ export default function ScopePhase({
                   acknowledgement exists (`contract/ledger.ts`).
                 */}
                   {done ? null : (
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate text-meta text-muted-foreground">
                       {unfilled > 0
                         ? `${unfilled} to fill`
                         : "Nothing missing, not yet confirmed"}
@@ -235,7 +235,7 @@ export default function ScopePhase({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
+                            size="sm" icon
                             // Subtle blue: it is an offer, not a warning, and it
                             // sits beside a destructive bin that owns the row's one
                             // strong colour.
@@ -283,8 +283,8 @@ export default function ScopePhase({
                   {unfilled === 0 && !confirmed ? (
                     <Button
                       type="button"
-                      variant="outline"
-                      size="form"
+                      variant="secondary"
+                      size="lg"
                       // Visible always, unlike the three icons: it is the row's
                       // one remaining job stated in words, and a job that hides
                       // until hovered is a job nobody knows is outstanding.
@@ -305,7 +305,7 @@ export default function ScopePhase({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
+                          size="sm" icon
                           className={REVEALED}
                           aria-label={`Open ${part.name}`}
                           onClick={() => onOpen(part.code)}
@@ -342,7 +342,7 @@ export default function ScopePhase({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
+                          size="sm" icon
                           className={cn(
                             REVEALED,
                             "text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:text-destructive",

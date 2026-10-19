@@ -61,8 +61,10 @@ These checklists travel to every Qera project. When one's floor changes, update 
 ## Coding rules
 
 - **Server Components by default.** Add `'use client'` only when the component genuinely needs browser APIs or interactivity.
-- **[`docs/design.md`](docs/design.md) is the design law.** Read it before
-  building any new surface: colour, spacing, radius, type, icons, motion,
+- **[`docs/design.md`](docs/design.md) is the design law, and `/design` is it
+  live.** Read the doc before building any new surface, and look at the page:
+  every token, atom, pattern, state and decision is there, imported from the
+  real files. Read it before building any new surface: colour, spacing, radius, type, icons, motion,
   elevation, and the rules per primitive. A value it does not cover is a value
   you are inventing, which means a new row there in the same commit. Where a
   rule is mechanically enforced, breaking it fails `npm test`.
@@ -189,3 +191,13 @@ Two halves, and the split is what each can see. **Jest + React Testing Library**
 ## When unsure
 
 Ask for clarification instead of guessing. For anything touching money, numbering, immutability, auth, or the legal content of a document — **confirm before changing**. These are the parts where a silent bug becomes a real-world incident.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

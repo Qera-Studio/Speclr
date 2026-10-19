@@ -74,7 +74,7 @@ export function useImageValidation() {
       const dimensionsOk = matchesAcceptedDimensions(spec, width, height);
 
       // SVG is vector — no meaningful rasterized alpha channel to sample. Its
-      // quality checks are text-based hygiene (viewBox, no embedded raster,
+      // quality checks are text-sectiond hygiene (viewBox, no embedded raster,
       // no external refs, monochrome for the pinned-tab) plus file weight.
       if (spec.format === 'svg' || isSvgFile(file)) {
         const svgText = await file.text();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { TrayArrowIcon } from "@/components/ui/tray-arrow-icon";
+import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -134,8 +134,8 @@ export default function UploadDropzone({
         else onFileSelected?.(files[0], files.length);
       }}
       className={cn(
-        "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-sm transition-colors",
-        "hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group/tray flex w-full cursor-pointer flex-col rounded-md border border-dashed border-input bg-muted text-body transition-colors",
+        "hover:bg-accent hover:text-accent-foreground focus-ring",
         // A wash of the same blue the border turns, not the neutral hover
         // grey: the box being armed to receive the file is a different state
         // from the pointer merely resting on it, and it should not look like it.
@@ -181,7 +181,7 @@ export default function UploadDropzone({
           <div className="absolute inset-1 overflow-hidden rounded-sm bg-background">
             {preview}
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/80 text-center opacity-0 transition-opacity group-hover/tray:opacity-100 group-focus-visible/tray:opacity-100">
-              <TrayArrowIcon direction="up" className="text-muted-foreground" />
+              <Upload aria-hidden="true" className="size-4 text-muted-foreground" />
               <span className="font-medium">
                 {isDragging ? "Drop to upload" : "Replace"}
               </span>
@@ -190,12 +190,12 @@ export default function UploadDropzone({
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-1 px-3 py-8 text-center">
-          {icon ?? <TrayArrowIcon direction="up" className="text-muted-foreground" />}
+          {icon ?? <Upload aria-hidden="true" className="size-4 text-muted-foreground" />}
           <span className="font-medium">
             {isDragging ? "Drop to upload" : action}
           </span>
           {!hasFile ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               {hint ?? "Drag & drop or click to browse"}
             </span>
           ) : null}

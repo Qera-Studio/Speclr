@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../table';
-import { TableCard } from '@/components/admin/Page';
+import { TableCard } from '@/components/patterns/Page';
 
 /**
  * The table primitives' own decisions, as opposed to `RecordTable`'s.

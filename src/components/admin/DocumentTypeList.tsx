@@ -1,13 +1,13 @@
-import { AddLink } from "@/components/ui/add-button";
+import { AddLink } from "@/components/patterns/AddAction";
 import { Shortcut } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { shortcutForSlug } from "./nav";
+import { shortcutForSlug } from "@/components/shell/nav";
 import DocumentsBrowser from "./DocumentsBrowser";
-import { PageBody, PageHeader } from "./Page";
+import { PageBody, PageHeader } from "@/components/patterns/Page";
 import ReceiptForInvoiceButton from "./ReceiptForInvoiceButton";
 import type { DocTypeSpec } from "@/lib/domain/registry";
 import type { ContractService } from "@/lib/domain/service";
@@ -57,7 +57,7 @@ export default function DocumentTypeList({
         ) : null}
         {shortcut ? (
           <Tooltip>
-            <TooltipTrigger render={<AddLink href={newHref} variant="outline">
+            <TooltipTrigger render={<AddLink href={newHref} variant="secondary">
                 {newLabel}
               </AddLink>} />
             <TooltipContent>
@@ -66,7 +66,7 @@ export default function DocumentTypeList({
             </TooltipContent>
           </Tooltip>
         ) : (
-          <AddLink href={newHref} variant="outline">
+          <AddLink href={newHref} variant="secondary">
                 {newLabel}
               </AddLink>
         )}

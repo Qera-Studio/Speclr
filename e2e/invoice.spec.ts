@@ -54,10 +54,18 @@ test.describe("the invoice fits its page", () => {
     await expect(sheet).toBeVisible();
 
     await expect(sheet).toContainText("KKBKINBBCPC");
-    await expect(sheet).toContainText("GB29NWBK60161331926819");
-    await expect(sheet).toContainText(
-      "Raj Nagar Extension, Ghaziabad 201017, India",
-    );
+    // The branch by name. SWIFT and IFSC identify it, so no address rows.
+    await expect(sheet).not.toContainText("Branch address");
+
+    // A discount that skips the hosting line prints its own group above it.
+    await expect(sheet).toContainText("discount (35%)");
+    await expect(sheet).toContainText("after discount");
+
+    // Billed in the client's currency, with the rupees stated at the rate.
+    await expect(sheet).toContainText("A$ 952.69");
+    await expect(sheet).toContainText("Exchange rate: A$ 1.00 = ₹ 66.60");
+    await expect(sheet).toContainText("INR equivalent: ₹ 63,449.15");
+    await expect(sheet).toContainText("LUT ARN: AD090826065953E");
 
     // A UPI intent is worth nothing to a payer abroad: no foreign banking app
     // reads the QR, and the handle cannot receive an inward remittance. So

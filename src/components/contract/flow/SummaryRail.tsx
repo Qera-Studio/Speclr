@@ -53,9 +53,9 @@ export default function SummaryRail({
     */
     <aside
       aria-label="What the contract says so far"
-      className="scrollbar-none hidden h-full w-56 shrink-0 flex-col justify-center overflow-y-auto overscroll-contain px-5 py-6 lg:flex"
+      className="scrollbar-none hidden h-full w-56 shrink-0 flex-col justify-center overflow-y-auto overscroll-contain px-4 py-6 lg:flex"
     >
-      <dl className="flex flex-col gap-5">
+      <dl className="flex flex-col gap-4">
         {groups.map((group) => {
           const current = group.phase === activePhase;
           return (
@@ -76,7 +76,7 @@ export default function SummaryRail({
               */}
               <p
                 className={cn(
-                  'text-xs font-medium',
+                  'text-meta font-medium',
                   current ? 'text-foreground' : 'text-muted-foreground',
                 )}
               >
@@ -88,7 +88,7 @@ export default function SummaryRail({
                   {/* One weight for every value, because every value here is
                       the same kind of thing: a decision that has been made.
                       Nothing is italic anywhere in this app. */}
-                  <dd className="text-sm leading-snug text-foreground">{line.value}</dd>
+                  <dd className="text-body text-foreground">{line.value}</dd>
                 </div>
               ))}
             </div>

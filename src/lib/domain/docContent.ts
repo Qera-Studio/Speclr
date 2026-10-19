@@ -9,6 +9,7 @@ import {
   PLACE_OF_SUPPLY_EXPORT,
 } from './placeOfSupply';
 import type { DocTypeCode, EngagementType } from './types';
+import { currencyByCode, type CurrencyCode } from './currency';
 
 /**
  * The editable *content* of a document — every line whose words carry meaning,
@@ -107,6 +108,8 @@ export interface ContentSource {
    */
   gstRatePercent?: number;
   placeOfSupplyStateCode?: string;
+  /** An export's billing currency, for the currency line. Absent is INR. */
+  currency?: CurrencyCode;
   studioSnapshot?: StudioInfo;
   deductionsNote?: string;
   employeeSnapshot?: { engagementType: EngagementType };
@@ -222,14 +225,18 @@ function defaultReverseChargeLine(doc: ContentSource): string {
 /**
  * What currency the figures are in, said once in words.
  *
- * Every amount on the sheet is already an INR-formatted string, which is
- * unambiguous to an Indian reader and not to anyone else: '₹' and a lakh-grouped
- * number are exactly what a foreign accounts department has to guess at. This
- * says it. It is not a conversion and there is no second currency in the
- * arithmetic — see `currency.ts` for why a GST document stays in rupees.
+ * An amount formatted as '₹' and lakh-grouped is unambiguous to an Indian
+ * reader and not to anyone else, and 'A$' is not universal either. Rupees on
+ * every domestic document; on an export billed in the client's currency, that
+ * currency, with the rupee equivalent stated separately on the sheet at the
+ * document's own rate.
  */
 function defaultCurrencyLine(doc: ContentSource): string {
-  return isTaxDocument(doc) ? 'All amounts are in Indian Rupees (INR).' : '';
+  if (!isTaxDocument(doc)) return '';
+  const foreign = doc.currency && doc.currency !== 'INR' ? currencyByCode(doc.currency) : undefined;
+  return foreign
+    ? `All amounts are in ${foreign.name} (${foreign.code}).`
+    : 'All amounts are in Indian Rupees (INR).';
 }
 
 /**

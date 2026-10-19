@@ -5,7 +5,6 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { MagicMove, useMagicMove } from "@/components/ui/magic-move";
 import { RINGED_POPUP_GAP, RINGED_POPUP_WIDTH } from "@/components/ui/popup";
 
 /**
@@ -82,7 +81,7 @@ interface ComboboxProps {
   id?: string;
   name?: string;
   disabled?: boolean;
-  size?: "default" | "md" | "form";
+  size?: "default" | "form";
   className?: string;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
@@ -129,11 +128,10 @@ function renderItem(item: ComboboxOption) {
                     still reads as hover.
                   */
       className={cn(
-        // The *selected* tint stays on the row: it marks a standing fact and
-        // several rows' worth of it can be on screen at once. The *highlight*
-        // does not, because there is only ever one and it slides between rows
-        // (`magic-move.tsx`). `z-10` keeps both the label and that tint above it.
-        "group/combobox-item relative z-10 flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none data-selected:bg-accent/50 data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-sm",
+        // The *selected* tint marks a standing fact and several rows' worth of
+        // it can be on screen at once; the *highlight* is the one row under the
+        // pointer or the cursor.
+        "group/combobox-item relative flex min-h-7 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-meta outline-hidden select-none data-selected:bg-accent/50 data-highlighted:bg-accent data-highlighted:text-accent-foreground group-data-[size=form]/combobox-content:min-h-8 group-data-[size=form]/combobox-content:px-3 group-data-[size=form]/combobox-content:text-body",
         item.separatorBefore &&
           "mt-1 rounded-t-none border-t border-border pt-2",
       )}
@@ -142,7 +140,7 @@ function renderItem(item: ComboboxOption) {
         {/* No truncate; the popup sizes to its content instead. */}
         <span className="whitespace-nowrap">{item.label}</span>
         {item.hint ? (
-          <span className="whitespace-nowrap text-xs/relaxed text-muted-foreground">
+          <span className="whitespace-nowrap text-meta text-muted-foreground">
             {item.hint}
           </span>
         ) : null}
@@ -209,8 +207,6 @@ function Combobox({
   freeText,
   ...aria
 }: ComboboxProps) {
-  // One highlight for the list, moved between rows rather than painted on each.
-  const { track, highlight } = useMagicMove();
   // Flattened once, so the selected row is found the same way whether the list
   // is grouped or not.
   const flat = React.useMemo(
@@ -292,7 +288,7 @@ function Combobox({
         data-slot="combobox"
         data-size={size}
         className={cn(
-          "group/combobox relative flex w-full items-center rounded-md border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-8 data-[size=md]:h-9 data-[size=form]:h-9.5 group-data-[size=form]/field-group:h-9.5",
+          "group/combobox relative flex w-full items-center rounded-md border border-input bg-background transition-colors focus-ring-within has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-2 has-aria-invalid:ring-destructive/20 data-[size=default]:h-8 data-[size=form]:h-9 group-data-[size=form]/field-group:h-9",
           className,
         )}
       >
@@ -300,10 +296,10 @@ function Combobox({
           id={id}
           placeholder={placeholder}
           className={cn(
-            "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground",
-            size === "form" || size === "md"
-              ? "px-3 text-sm"
-              : "px-2 text-xs/relaxed group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm",
+            "w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-placeholder",
+            size === "form"
+              ? "px-3 text-body"
+              : "px-2 text-meta group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-body",
           )}
           {...aria}
         />
@@ -311,7 +307,7 @@ function Combobox({
           aria-label="Open list"
           className={cn(
             "flex shrink-0 items-center justify-center text-muted-foreground outline-none",
-            size === "form" || size === "md"
+            size === "form"
               ? "pr-3"
               : "pr-2 group-data-[size=form]/field-group:pr-3",
           )}
@@ -335,27 +331,22 @@ function Combobox({
         */}
         <ComboboxPrimitive.Positioner
           sideOffset={RINGED_POPUP_GAP}
-          className={cn("isolate z-50", RINGED_POPUP_WIDTH)}
+          className={cn("isolate z-(--z-overlay)", RINGED_POPUP_WIDTH)}
         >
           <ComboboxPrimitive.Popup
-            ref={track.ref}
+            
             data-slot="combobox-content"
             data-size={size}
-            className="group/combobox-content relative isolate z-50 max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 print:hidden"
+            className="group/combobox-content relative isolate z-(--z-overlay) max-h-(--available-height) w-full origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-overlay ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 print:hidden"
           >
             {/* Suppressed under `freeText`: there, a list matching nothing
                 means the typed value is new, which is allowed, so "No matches."
                 would report a failure that has not happened. */}
             {freeText ? null : (
-              <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-xs/relaxed text-muted-foreground group-data-[size=form]/combobox-content:text-sm">
+              <ComboboxPrimitive.Empty className="px-2 py-3 text-center text-meta text-muted-foreground group-data-[size=form]/combobox-content:text-body">
                 {emptyMessage}
               </ComboboxPrimitive.Empty>
             )}
-            {/* The highlight is a child of the popup rather than of the list:
-                the list takes a *render function* as its only child, so it has
-                no room for a sibling. The popup is the scrolling box and is
-                already `relative`, so it measures the same. See `magic-move.tsx`. */}
-            <MagicMove {...highlight} />
             <ComboboxPrimitive.List>
               {groups
                 ? (group: ComboboxGroup) => (
@@ -371,7 +362,7 @@ function Combobox({
                         what keeps a search from returning a page of empty
                         headings.
                       */}
-                      <ComboboxPrimitive.GroupLabel className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground group-data-[size=form]/combobox-content:px-3">
+                      <ComboboxPrimitive.GroupLabel className="px-2 pt-2 pb-1 text-meta font-medium text-muted-foreground group-data-[size=form]/combobox-content:px-3">
                         {group.label}
                       </ComboboxPrimitive.GroupLabel>
                       <ComboboxPrimitive.Collection>

@@ -5,13 +5,27 @@
 > button, the answer is already in here. If it is not, you are about to invent
 > one, which means you add a row here in the same commit.
 >
-> This file grows as `ui-elevation.md` is worked through. Anything decided there
-> that will be reused, or that changes how a whole class of thing looks, lands
-> here. `ui-elevation.md` is the **to-do list**; this is the **result**.
+> The decisions behind every rule are on `/design` (the decisions section)
+> and in §6 below; the test that holds each is in §4.
 
 ---
 
 ## 0. How to use this file
+
+**The folders are the atomic ladder, and a test holds the order:**
+
+| Level | Folder | What lives there | May import |
+|---|---|---|---|
+| Tokens | `src/app/globals.css` | A named value. Never a component. | |
+| Atoms | `src/components/ui/` | One styled control: Button, Input, Badge, Tooltip, Sheet | `lib/`, other atoms |
+| Molecules and organisms | `src/components/patterns/` | Compositions of atoms with one job, domain-free: ConfirmDialog, IconAction, RecordTable, FilterBar, FlowShell, the cells | atoms, other patterns |
+| Shell | `src/components/shell/` | The frame every page sits in: AdminShell, the nav, the top panel, the editor rail, the palettes | atoms, patterns, `lib/` |
+| Screens | `src/components/admin/`, `contract/`, `docs/`, `form/`, `spec/`, `tools/` | A pattern filled with real data | anything |
+
+`design-system.test.ts` fails the build when `ui/` imports a pattern, a
+pattern imports the shell or a screen, or the shell imports a screen. A type
+import crosses no layer. The level is also declared in each pattern's
+docstring (`@level molecule`).
 
 **Building something new:** read §1 (foundations) and the §2 entry for the
 primitive you need. Compose from `src/components/ui/`. If nothing fits, §5 says
@@ -20,18 +34,13 @@ what to do.
 **Changing something everywhere:** change it here first, then in the code, then
 add the test that stops it drifting back (§4).
 
-**Status key**, on every rule:
-
-| | Meaning |
-|---|---|
-| **enforced** | A test fails if you break it. Named in §4. |
-| **house** | Agreed and applied, not yet mechanically enforced. Enforce it the day it gets broken twice. |
-| **open** | Decided in principle, not built yet. Carries a `ui-elevation.md` id. |
-
-**The escalation rule.** A house rule that gets broken a second time becomes an
-enforced rule in the commit that fixes the second break. That is the §5e
-mechanism from `CONTEXT.md`, and it is the only thing keeping this file from
-becoming decoration.
+**Every rule is enforced or it is deleted.** There used to be a "house"
+status for rules agreed but not tested, with an escalation rule for the day
+one was broken twice. It was retired on 16 October 2026: the audit found the
+house rules were the ones that had drifted, every one. A rule that cannot be
+written as a test is rewritten until it can, and until then it is a note in
+§6, not a rule. Where a rule has existing violations it lands with a
+shrinking allowlist (§4).
 
 ---
 
@@ -49,39 +58,37 @@ it (`--warning` is the model: amber-500 fails AA on our background, so it is a
 token).
 
 **The neutrals are one ramp, and a role never holds a colour of its own.**
-`--slate-0` … `--slate-950` are declared once in `:root` and are the only
+`--gray-0` … `--gray-950` are declared once in `:root` and are the only
 place a neutral value is written. Every neutral role is an *alias* onto a step,
 chosen per theme:
 
 ```css
---muted-foreground: var(--slate-600);   /* :root  */
---muted-foreground: var(--slate-400);   /* .dark  */
+--muted-foreground: var(--gray-600);   /* :root  */
+--muted-foreground: var(--gray-400);   /* .dark  */
 ```
 
 So a surface is described by **where it sits on the ramp** rather than by a
 lightness solved for in isolation, and "two steps darker" is a thing you can
 say. **Enforced:** a raw `oklch()` on a semantic token fails
-`design-tokens.test.ts`, as does a near-neutral outside slate's hue band.
+`design-tokens.test.ts`, as does a near-neutral carrying any chroma.
 
-The values are Tailwind's published slate, verbatim, hue drift along the ramp
-included (247.858 → 265.755). **`--slate-0` is the one step that is not
-Tailwind's**: plain white, chroma 0, added when the shell became an inset. The
-card had to sit above its ground and the page and the rails were both on
-slate-50, so there was no step left above them. Achromatic rather than the
-ramp's hue, because a document preview renders on this surface and white with
-a hint of blue in it is a tint. This replaced a warm taupe at hue 40 whose tokens
-were each an independent literal, with a chroma curve documented for humans to
-interpolate from; that curve is gone, because it existed as a substitute for
-having a ramp.
+The values are Tailwind's neutral, verbatim: chroma 0 at every step, so the
+shell is white, black and grey and only the signals (`--primary` and the rest)
+carry a hue. It replaced Tailwind's slate on 4 October 2026, on request: slate's
+blue sat on every surface and hairline at once and read as tinted. **`--gray-0`
+is the one step that is not Tailwind's**: plain white, added when the shell
+became an inset, because the card had to sit above its ground and the page and
+the rails were both on gray-50. Before slate there was a warm taupe at hue 40
+whose tokens were each an independent literal; the ramp replaced that.
 
 **The ramp is deliberately not exposed as utility classes.** There is no
-`bg-slate-300`; `design-tokens.test.ts` bans exactly that name. Roles are the
+`bg-gray-300`; `design-tokens.test.ts` bans exactly that name. Roles are the
 interface, which is what lets a surface be restated in `globals.css` without
 touching a component.
 
 **One row is not a free choice: `--ring`.** WCAG 1.4.11 wants 3:1 against the
-surface behind it, and slate 400 (the step that *looks* right) is 2.51:1 on
-slate 50. It is 500 in light and 400 in dark for that reason alone. A focus
+surface behind it, and gray 400 (the step that *looks* right) is 2.51:1 on
+gray 50. It is 500 in light and 400 in dark for that reason alone. A focus
 ring is the one piece of UI a keyboard user has no fallback for.
 
 The chromatic tokens keep their own hues, and the dark mode's `--border` /
@@ -97,6 +104,7 @@ active profile use a token rather than `bg-input/85`.
 | A raised surface (card, popover, dialog) | `bg-card`, `bg-popover` |
 | A pill sitting on a track (active tab, active profile) | `bg-raised` |
 | Anything quieter than body text | `text-muted-foreground` |
+| Placeholder text in a field (set by the primitives, never by hand) | `placeholder:text-placeholder` |
 | A resting fill (selected, chip) | `bg-muted` / `bg-accent` |
 | A card or a row under the pointer | `hover:bg-hover` |
 | The action colour | `primary` |
@@ -109,8 +117,8 @@ active profile use a token rather than `bg-input/85`.
 hover reaches for `--muted` or `--accent` by habit, and on a board a card sits
 *inside* a `bg-muted` column, so that hover paints the card the colour of the
 well behind it. `--hover` moves a step away from the well instead, which means
-down the ramp in light (slate 200) and down to the page's own step in dark
-(slate 950). The symmetrical dark answer, slate 700, fails: muted text lands on
+down the ramp in light (gray 200) and down to the page's own step in dark
+(gray 950). The symmetrical dark answer, gray 700, fails: muted text lands on
 it at 3.94:1, and most of what a card prints is muted.
 
 **Never mix a token with a palette class to get an in-between shade.** Use
@@ -121,131 +129,140 @@ it at 3.94:1, and most of what a card prints is muted.
 `ring-ring/30`). Prefer them to a new token; add a token only when the value has
 a *meaning* that needs naming.
 
-### 1.2 Spacing — **house**
+### 1.2 Spacing — **enforced**
 
-One scale, and it is Tailwind's. The vocabulary in use, in order of how often
-it should appear:
+**Rule of thumb:** 4px grid. Inside a control, 8; between controls, 8; between
+groups of controls, 16; between sections, 24; the page inset is 32. Nothing
+else.
 
-Four values carry the rhythm. Everything else is an exception that wants a
-reason.
+A grid is what makes alignment free: with one base, any two things on screen
+are either aligned or an obvious multiple apart, and the eye reads
+"intentional" even when nothing was individually tuned. 4 rather than 8
+because a 28px control needs a 6px gap from icon to label and a 4px gap to an
+adjacent chip, and 8 cannot express either.
 
-| Step | px | Where |
+| Step | px | Name | Where |
+|---|---|---|---|
+| `gap-1` | 4 | hairline | Icon to text inside a chip; stacked meta lines |
+| `gap-1.5` | 6 | inline | Icon to label inside a button |
+| `gap-2` | 8 | control | Between controls in a row; input padding-x |
+| `gap-3` | 12 | group | Label to field; between rows of a form |
+| `gap-4` | 16 | card | Between cards; card padding; between fields in a `FieldGroup` |
+| `gap-6` | 24 | section | Between sections of a page |
+| `gap-8` | 32 | page | The page inset (`PageBody`) |
+| `pl-9` | 36 | control | Only as an inset that aligns to a form control (36px tall): the footer count under the first column, an icon inside a field |
+
+`gap-3` was admitted on 16 October 2026: it was the second most-used value in
+the app and not in the vocabulary, which is how a rulebook loses. `p-9` (36)
+becomes `p-8`: 36 is off-grid.
+
+**Rules, all enforced by `design-system.test.ts`:**
+
+- **The page inset is never typed by a page.** `PageBody` owns it.
+- **Spacing is a `gap` on the parent, never a margin on the child.** A child
+  with `mt-*` carries a decision about its neighbours into every place it is
+  reused. `m*-auto` is alignment, not spacing, and is allowed. `space-y-*` is
+  margin in disguise and is banned with it.
+- **No value off the scale, no arbitrary value.** `p-[13px]` or `gap-5` means
+  the scale is wrong or the component is. Round to the scale.
+
+Files that broke these before the rule existed are listed in
+`src/__tests__/migratedLater.ts`, which only shrinks (§4).
+
+### 1.3 Radius — **enforced**
+
+**Rule of thumb:** a nested corner is one step tighter than its parent; a
+corner is never larger than half the thing's height.
+
+Four integers, fixed in `globals.css`. They were multipliers of one base and
+landed on 3.6px and 4.8px, which anti-alias differently on every edge and read
+as "slightly soft" without anyone being able to say why. 6px on a 28px control
+is the ratio macOS uses on a push button.
+
+| Class | px | For |
 |---|---|---|
-| `gap-6` | 24 | **Section.** Between the blocks of a page. |
-| `gap-4` | 16 | **Card.** Between distinct blocks inside one surface. |
-| `gap-2` | 8 | **Control.** Between sibling controls in a row. |
-| `gap-1.5` | 6 | **Inline.** Icon to its label, a label to its value. |
+| `rounded-sm` | 4 | Chips, badges, kbd, checkbox, a cell highlight |
+| `rounded-md` | 6 | **Default.** Buttons, inputs, menu rows, table rows, the inset shell frame |
+| `rounded-lg` | 8 | Cards, panels, popovers, drawers, the tab trough |
+| `rounded-xl` | 12 | `Dialog` and `AlertDialog` only |
+| `rounded-full` | | Avatars, the status dot, a switch thumb |
 
-Plus one fixed number that is not a rhythm step:
-
-| `p-9` | 36 | **The page inset.** Header and body both. |
-|---|---|---|
-
-**Rules:**
-
-- **The page inset is 36px and it is never typed by a page.** `PageBody` owns
-  it (`src/components/admin/Page.tsx`), and it matches `AdminHeader`'s `px-9`.
-  **Enforced:** a hand-typed `p-9` fails `design-system.test.ts`. A page that
-  genuinely differs passes `className`, which is an override with a reason
-  rather than a second inset.
-- **Vertical rhythm is a gap on the parent, never a margin on the child.** A
-  child with `mt-*` cannot be reordered or reused; a `flex flex-col gap-*`
-  parent can. If you are typing `mt-`, you probably want a gap one level up.
-- **No arbitrary spacing values.** `p-[13px]` means the scale is wrong or the
-  component is. Round to the scale.
-- Odd steps (`gap-5`, `p-10`) are allowed but want a reason in a comment.
-
-### 1.3 Radius — **house**
-
-One root (`--radius: 0.375rem`) and everything derives from it. Use the named
-steps, never a raw `rounded-[6px]`:
-
-| Class | For |
-|---|---|
-| `rounded-sm` | Chips, badges, the smallest icon buttons |
-| `rounded-md` | **Buttons, inputs, menu rows.** The default. |
-| `rounded-lg` | Cards, panels, popovers |
-| `rounded-xl` and up | Nothing, currently |
+`2xl` and up do not exist. `rounded-[Npx]` is banned. `rounded-xl` outside the
+two dialog primitives fails the build.
 
 **The inset shell frame is `rounded-md`, and it is the exception to the nesting
-rule.** It used to be the one thing at `rounded-xl` and up, on the reasoning
-that the largest box takes the largest corner. That is backwards at this size:
-a frame the height of the window reads its radius as a *hint* of one, and a
-visible curve on it makes the shell look like a widget floated on the page
-rather than one surface with a seam in it. So it takes the smallest named step
-above square, and the cards inside it keep `rounded-lg` rather than stepping
-down from it.
+rule.** A frame the height of the window reads its radius as a *hint* of one,
+and a visible curve on it makes the shell look like a widget floated on the
+page rather than one surface with a seam in it. So it takes the smallest step
+above square, and the cards inside it keep `rounded-lg`.
 
-A nested corner is one step *smaller* than its parent, never equal. A button
-inside a card is `rounded-md` inside `rounded-lg`. Where the maths matters,
-`calc(var(--radius-sm) + 2px)` is legitimate (the sidebar's create button does
-this) and is preferred to guessing a pixel.
+### 1.4 Type — **enforced**
 
-### 1.4 Type — **house**
+**Rule of thumb:** a dense tool reads at 13px; a control reads one step
+smaller than the prose beside it; a caption one step smaller than that;
+headings grow by *weight and one step*, not by two steps.
 
 Geist for everything, Geist Mono for anything a human reads character by
-character. There is one type scale and it is small on purpose: this is a
-data-dense internal tool, not a marketing page.
+character. Eight sizes, six in routine use, each a token in `globals.css` that
+carries its own line-height (a multiple of 4, so text rows sit on the spacing
+grid), weight and tracking. A call site says one word.
 
-Four sizes. A fifth is a mistake, not a nuance.
+| Token | px / line | Weight | Tracking | Use |
+|---|---|---|---|---|
+| `text-caption` | 11 / 16 | 400 | +0.01em | Badge text, kbd, a timestamp inside a cell. Never for anything that must be read to act. |
+| `text-meta` | 12 / 16 | 400 | +0.01em | Field labels, column headers, help, secondary cell text. Always `text-muted-foreground`. |
+| `text-control` | 12 / 16 | 500 | | Button, chip, tab and menu labels; input text at `md`. |
+| `text-body` | 13 / 20 | 400 | | Prose, table cells, input text at `lg`, descriptions, dialog bodies. **The default on `body`.** |
+| `text-lead` | 14 / 20 | 500 | | Row titles, card titles, drawer titles, the name column. |
+| `text-section` | 16 / 24 | 500 | | Section headings inside a page, dialog titles, `h2`. |
+| `text-title` | 20 / 28 | 600 | -0.01em | The page `h1`. One per page, owned by `PageHeader`. |
+| `text-display` | 24 / 32 | 600 | -0.02em | A figure that is the page's result (the CTC total). Never a heading. |
 
-| Role | Class | px |
-|---|---|---|
-| Page title | `text-2xl font-semibold` | 24 |
-| Card / section heading | `text-base font-medium` | 16 |
-| Body, table cell, label | `text-sm` | 14 |
-| Secondary, help, meta | `text-xs text-muted-foreground` | 12 |
-| Control text (buttons, chips) | `text-xs/relaxed` | 12 |
+**Why 13 and not 14.** 14 is the web default because browsers default to 16
+and shadcn scaled down once. Tools people sit in for hours (Linear, Figma,
+Finder, Notion's sidebar; macOS HIG body is 13pt) sit at 13 because at a
+desk's viewing distance 13px Geist clears the x-height floor where reading
+speed stops dropping, and it fits about eight percent more rows than 14.
+**12 for controls** because a label is read once, not read through, and a
+control one step quieter than the prose lets the prose lead. **11 is the
+floor**: below it Geist's counters close at 1x and the contrast test cannot
+save it.
 
-**Sentence case, never uppercase. Enforced.** Small caps was how three
-surfaces said "this is a name, not a value": a table header, a search group
-heading, a stat label. All-caps is the worst available way to say it. It
-destroys the word shapes a reader recognises without looking, it costs about a
-tenth of the reading speed of the same word in sentence case, and some screen
-readers spell it out letter by letter. Hierarchy is carried by colour at one
-size, which is what everything else here already does. The document sheets are
-exempt and correctly so: "DESCRIPTION" is the printed artifact's own
-typography, and Rule 46 wants several of those headings verbatim.
+**Enforced** (`design-system.test.ts`): `text-xs` … `text-2xl`, `text-[N]`,
+`leading-*`, `tracking-*`, `text-x/y` and `font-semibold` / `font-bold` are
+banned outside the token definitions. Two weights per screen is therefore
+mechanical: 400 and 500 everywhere, 600 only where `text-title` and
+`text-display` apply it.
 
-**One optical correction, at the top of the scale.** The page title takes
-`tracking-[-0.01em]`; a 12px meta label that has to hold its own beside a value
-takes `tracking-[0.01em]`. Nothing between the two gets tracking at all. Type
-set for body text reads loose at 24px and tight at 12px, and this is the whole
-of the correction, not the start of a system.
+**Sentence case, never uppercase. Enforced.** All-caps destroys the word shapes
+a reader recognises without looking, costs about a tenth of reading speed, and
+some screen readers spell it out letter by letter. Hierarchy is carried by
+colour at one size. The document sheets are exempt: "DESCRIPTION" is the
+printed artifact's own typography, and Rule 46 wants several of those headings
+verbatim.
 
-**Label and value are one size, separated by colour.** `text-sm
-text-muted-foreground` over `text-sm` for the value. Making the label smaller
-*as well* says the same thing twice and leaves the label unreadable at the size
-it ends up.
+**Label and value are one size, separated by colour.** `text-body
+text-muted-foreground` over `text-body` for the value. Making the label smaller
+*as well* says the same thing twice.
 
-**The page title is never typed by a page.** `PageHeader` owns the `h1`, its
-optional description and where the actions sit. **Enforced:** an `h1` carrying
-`text-2xl` outside `Page.tsx` fails `design-system.test.ts`. The rule is scoped
-to the heading, not the type size, because 24px semibold is also what the CTC
-calculator's result figure is, and a number is not a page title.
+**The page title is never typed by a page.** `PageHeader` owns the `h1`.
 
 **Mono is for identity, not for decoration.** Document numbers, GSTIN, PAN,
-CIN, IFSC, employee codes, uuids, amounts in a column that is scanned down.
-Anything the reader compares against a certificate or a bank statement gets
-`font-mono` and `tabular-nums`. Prose never does.
+CIN, IFSC, UPI, employee codes, uuids, amounts in a column that is scanned
+down: anything compared against a certificate or a bank statement gets
+`font-mono tabular-nums`. Prose never does.
 
-**Rules:**
-
-- **Never more than two weights on one screen** (regular and medium/semibold).
-  Bold is not a level; if you need a third level, use colour or size.
 - **`tabular-nums` on every numeric column.** Digits that do not line up cannot
   be compared, which is most of what these tables are for.
 - **Never centre body text.** Numbers are right-aligned, everything else left.
-- Sentence case for labels, buttons and headings. Not Title Case, not ALL CAPS,
-  with the single exception of the document sheets, whose structural labels
-  ("DESCRIPTION", "TERMS") are fixed by `CONTEXT.md` §5b and are not ours to
-  restyle.
 
-### 1.5 Icons — **house**, partly enforced
+### 1.5 Icons — **enforced**, except the stroke width
 
-Lucide only. One weight everywhere: `globals.css` sets `stroke-width: 1.5`
+Lucide only. One weight everywhere: `globals.css` sets `stroke-width: 1.75`
 with `non-scaling-stroke` on `.lucide`, so the weight is screen pixels and does
-not drift with size. **Do not set `strokeWidth` per icon.**
+not drift with size. 1.75 because 2 is heavy at 14px and 1.5 breaks at 12, and
+the doc and the stylesheet had disagreed (1.5 and 2) for a month without
+anyone noticing. **Do not set `strokeWidth` per icon.**
 
 | Size | Where |
 |---|---|
@@ -283,144 +300,102 @@ pass).
 
 ### 1.6 Motion — **enforced**
 
+**Rule of thumb:** motion exists only to connect two states the reader caused.
+If removing it loses no information, remove it.
+
 Motion is decoration, never information. Every animated state also says itself
 in text, a live region or `aria-current`. That is why `globals.css` can kill all
-motion under `prefers-reduced-motion` in one blanket rule instead of per
-animation, and why adding an animation never requires adding an opt-out.
+motion under `prefers-reduced-motion` in one blanket rule.
 
-**Four tiers, and a transition belongs to exactly one.** Defined in
-`globals.css`, enforced by `design-system.test.ts`: a duration outside the
-scale fails the build. Each tier is roughly double the one above it, which is
-the interval at which two speeds are actually told apart rather than merely
-measured differently.
+**Three tiers, one easing, and a transition belongs to exactly one tier.**
 
-| Tier | Duration | For |
-|---|---|---|
-| **State** | **75ms — the default** | Hover, press, focus, a colour, a chevron |
-| **Overlay** | `duration-100` | Popover, dropdown, select, combobox, dialog, an overlay scrim |
-| **Panel** | `duration-200` | Sheet, sidebar, editor rail, a sliding pill indicator |
-| **Reveal** | `duration-400` | Content arriving unasked, for reading rather than acknowledging |
-
-**The Reveal tier is the newest and has one member: the nav pill's hover
-grow.** It exists because the other three all animate a result the operator
-already knows is coming — they clicked for it, and the motion is a receipt. A
-peek is the opposite: nothing was clicked, and the labels that arrive are the
-whole reason the motion happened. At Panel speed they land after the eye has
-moved on, so the preview has to be re-read rather than read. Only the *arriving*
-direction is slowed; the pill shrinking on mouse-out is getting out of the way
-and stays on Panel.
-
-800ms was tried and reverted: past about half a second the pill stops reading
-as a panel opening and starts reading as one that is stuck, and a nav the
-operator is waiting on is worse than one whose labels they have to look at
-twice. 400 is the top of the scale for that reason, not for lack of a rung
-above it.
-
-Reach for it sparingly. A fifth tier would mean the scale stopped being a scale.
+| Tier | Duration | Property | For |
+|---|---|---|---|
+| **State** | **75ms, the default** | colour, opacity | Hover, press, focus, selected |
+| **Overlay** | `duration-100` | opacity, a 2px translate | Popover, menu, tooltip, dialog, scrim |
+| **Panel** | `duration-200` | transform | Sheet, drawer, sidebar collapse, editor rail |
 
 **75ms is the default**, set once as `--default-transition-duration` rather
-than per call site. That is deliberate: the state tier was the one nobody ever
-wrote, so a bare `transition-colors` silently took Tailwind's 150ms and every
-hover in the app ran at twice the intended speed. Making the most-wanted tier
-free is what stops that recurring. The other two are written explicitly,
-because they are the exceptions.
+than per call site: the state tier was the one nobody ever wrote, so a bare
+`transition-colors` silently took Tailwind's 150ms and every hover ran at
+twice the intended speed. The other two are written explicitly, because they
+are the exceptions. The fourth tier (400ms, one member) and the two
+"signature" exemptions (a 420ms tray arrow, a 500ms spin) were removed on 16
+October 2026 with the rest of the decorative motion (§6).
 
 **One easing: `ease-standard`** (`cubic-bezier(.2, 0, 0, 1)`). It leaves
 immediately and settles slowly, which is what makes a control feel like it
-responded to the click rather than thought about it. No `ease-linear` (reads
-mechanical, and was on the sidebar collapse), no per-component curve.
+responded to the click rather than thought about it. It is the default, so
+nothing names an easing; `ease-*` anything else fails the build, and so does a
+duration written inside a `style` string.
 
-Exactly two animations sit outside the scale, both one-off icon performances
-rather than state changes: the tray arrow's 420ms and the reset button's 500ms
-spin. They are exempted **by filename**, so a third cannot join them quietly.
+**What stays:** `animate-spin` (a spinner says "working"), `animate-pulse` (a
+skeleton says "loading, not empty"), `progress-slide` (indeterminate
+progress), the overlay fade, the panel slide, and `active:translate-y-px`
+(one frame: how a button says the click landed).
+
+**What does not exist here, by decision:** animated icons (a chevron that
+rotates, a plus that turns, an arrow that slides), a highlight that follows
+the pointer through a menu, a pill that slides between tabs, a spring
+library, a ring that pulses when a field auto-fills. Each delays recognising
+*which* control this is by the length of its animation, none carries
+information, and together they made the tool feel like it was reacting to
+the reader rather than waiting for them. macOS does almost none of this: a
+button changes colour in no frames, a menu appears in one, a sheet slides
+because it *is* arriving from somewhere.
 
 **Rules:**
 
 - **Animate `transform` and `opacity`.** Not `width`, `height`, `top`, `left`.
-  The nav rail is the one exception and it is deliberate: collapsing detaches
-  it into a floating column, which is a change of *box* rather than of
-  position, so there is no transform that expresses it. It animates width, top,
-  left and radius together in a single declaration in `ui/sidebar.tsx`. Nothing
-  else may reach for that, and a second call site is a signal that the thing
-  wants a transform instead.
-
-  **Both endpoints of an animated `height` must be lengths**, and the cheapest
-  way to obey that is for them to be the *same* length. The float used to shrink
-  to its rows, which cost a measured `--rail-height` and a `ResizeObserver` to
-  animate at all: releasing a fixed box's bottom edge to let it size to its
-  content does not tween, because the box stops being stretched, drops to its
-  intrinsic height in one frame, and only the remainder animates (measured at
-  672px → 360px instantly), and `height: fit-content` does not animate either,
-  because its computed value never changes when its content does.
-  `interpolate-size: allow-keywords` (set on `:root`) tweens a length to
-  `fit-content` but cannot tween the loss of an anchor, and neither
-  `transition-behavior: allow-discrete` nor a grid track reaches it. The float
-  is full height now and states the same `calc()` the docked rail does, so the
-  height transition is gone rather than fixed. Prefer that shape.
-- **Press gives physical feedback.** `active:translate-y-px` is on every button
-  by default (`button.tsx`) and is excluded on menu triggers, which move their
-  popover instead.
-- **Nothing animates on mount.** Staggered list entrances, fade-in-on-scroll and
-  skeleton-to-content crossfades are refused: this is a tool people use fifty
-  times a day, and an animation you have seen fifty times is a delay.
+  The nav rail is the one exception: collapsing is a change of *box*, so it
+  animates width and radius together in one declaration in `ui/sidebar.tsx`.
+  **Both endpoints of an animated `height` must be lengths.**
+- **Nothing animates on mount.** This is a tool people use fifty times a day,
+  and an animation seen fifty times is a delay.
 - **Layout must not shift.** A hover state that adds a border changes size;
-  reserve the space (transparent border, or `ring` which does not affect
-  layout).
+  reserve the space (transparent border, or `ring`).
 
-**One control was drawn three ways, and that is what the rule is worth.** The
-sliding pill indicator exists in `Tabs`, the document browser's view toggle and
-the profile switcher. They ran at 500ms, 300ms and 300ms, with the tab *panel*
-sliding at 1500ms. Nobody chose those numbers: they are shadcn defaults nobody
-read. All four are 200ms now.
+### 1.7 Elevation and borders — **enforced**
 
-**Open — `ui-elevation.md` F-series: icon motion on buttons.** The intent is
-that an icon inside an interactive control responds to hover: a chevron rotates,
-an arrow slides in its direction, a plus rotates 90° into an active state, a
-trash lid tips. The rule when it lands: the motion is **on the icon only**
-(`group-hover/button:` on the svg), `duration-200 ease-out`, transform only, and
-never more than one moving part per control. Not built yet — do not scatter
-one-off hover transforms in the meantime.
+**Rule of thumb:** flat and bordered on the page; shadow only on things that
+float; the higher it floats, the softer and larger the shadow.
 
-### 1.7 Elevation and borders — **house**
+A shadow says "this is above that". On a flat page nothing is above anything,
+so a card gets a border, not a shadow. A popover is above the page; a dialog is
+above everything and gets a scrim too. Three levels are all a reader can tell
+apart, and they are the only shadows that exist.
 
-This is a **flat, bordered** design language. Depth comes from a hairline and a
-background step, not from shadow.
+| Token | Light | For |
+|---|---|---|
+| `shadow-raised` | `0 1px 2px` at 6% | The inset shell frame, the selected tab pill, a dragged row |
+| `shadow-overlay` | `0 4px 12px` at 10% + a 1px edge | Popover, dropdown, combobox, tooltip, toast |
+| `shadow-modal` | `0 16px 48px` at 18% + a 2px edge | Dialog, drawer, sheet |
 
-- A surface is separated by `border border-border`, and if it needs to sit above
-  the page, `bg-card`.
-- **Shadows are for things that float over the page only**: popover, dropdown,
-  dialog, toast, tooltip. Never on a card, a table or a button.
-- **One exception, and it is the frame, not a card**: the inset shell frame in
-  `AdminShell` carries `shadow-2xs` (one pixel of 5% black) under its ring, so
-  the frame reads as a hair above the shell rather than flush with it. That is
-  the only step permitted there. It is not a licence for the cards inside it,
-  which stay flat. The nav's resize handle sits on that frame's left ring and
-  lights it in `--ring` only at the pointer's height, fading to nothing 160px
-  above and below; the whole edge never lights, and there is no bar.
-- The one licensed exception is the `raised` button variant's two inset
-  hairlines, which are on trial and either get rolled into `default` or deleted.
+Dark theme: same geometry at about twice the alpha, because a shadow on a dark
+ground is mostly invisible at the light values. Values live in `:root` /
+`.dark` as `--elevation-*` and are mapped in `@theme`. `shadow-[…]` and
+Tailwind's `shadow-sm` … `shadow-2xl` fail the build.
+
 - **One border, not two.** A bordered card containing a bordered table produces
   a double line at the join; the inner element drops its outer border.
-- **A shadow separates nothing in dark mode.** A drop shadow on a near-black
-  page is invisible, so every floating surface carries `ring-1
-  ring-foreground/10` as well and that hairline is what actually does the work.
-  The shadow is depth for the light theme; the ring is the edge in both.
-- **A pill inside a trough is raised by its fill, not by an outline.** The
-  active tab, the list/card toggle and the profile switcher all sit *in* a
-  recess rather than floating over the page, so what says "this one is on" is a
-  fill lighter than the trough behind it, plus a slight shadow. Same rule in
-  both themes, different values: light paints `bg-background` on `bg-muted`,
-  dark paints a white overlay, because there `--background` is the darker of
-  the two. No border in either. One `tabPillSurface` in `ui/tabs.tsx`.
-- **Dark mode is its own design, not an inversion.** Text is `oklch(0.93)`, not
+- **A shadow separates nothing in dark mode on its own.** Every floating
+  surface also carries `ring-1 ring-foreground/10`; the ring is the edge in
+  both themes, the shadow is depth.
+- **A pill inside a trough is raised by its fill, not by an outline.** Light
+  paints `bg-background` on `bg-muted`; dark paints a step up the ramp. No
+  border in either. One `tabPillSurface` in `ui/tabs.tsx`.
+- **Dark mode is its own design, not an inversion.** Text is `--gray-200`, not
   white, because pure white on near-black haloes; `--border` and `--input` are
-  *higher* than their light counterparts in relative terms, because a hairline
-  that reads as an edge on white is nearly gone on black. Both live in
-  `globals.css` with the reasoning beside them. `--input` is 16%, one step above
-  `--border` rather than eight: at 22% a rail of eight fields read as a grid of
-  hard boxes instead of a form. It is not held to 1.4.11, because every field
-  here is identified by a visible `<Label>` — written down in `contrast.test.ts`
-  rather than silently skipped.
+  a 10% white overlay, which composites to a hairline of whatever ground it
+  sits on. Neither is held to 1.4.11, because every field is identified by a
+  visible `<Label>`; that is written down in `contrast.test.ts` rather than
+  silently skipped.
+
+**Layers** (`--z-*` in `globals.css`): sticky 10, rail 20, modal 30,
+overlay 40, toast 50. **Overlay sits above modal**, because a select, menu or
+tooltip is opened from something already on screen, which is often a dialog
+or a drawer. The other order hid every dropdown in every dialog behind the
+dialog itself until 16 October 2026; `e2e/popup.spec.ts` measures it.
 
 ### 1.7a Popups anchored to a control — **enforced**
 
@@ -461,178 +436,60 @@ measurement in `e2e/popup.spec.ts` caught:
 The measured resting state is now 6px offset and anchor+4px width on the three
 ringed controls (a visible 4px gap and edges flush with the ring), and 4px with
 equal width on the unringed menu. **The animation must be killed before
-measuring**: `zoom-in-95` and `slide-in-from-*` are transforms, so a box read
+measuring**: `slide-in-from-*` is a transform, so a box read
 inside the first 100ms is smaller than the one that settles, and the numbers
 moved between runs until the spec disabled them.
 
-**The highlight behind the active row is one surface that slides**, not a fill
-painted on whichever row is under the pointer. `useMagicMove` and `MagicMove`
-in `src/components/ui/magic-move.tsx`, used by the dropdown menu, the select and the
-combobox; it is `TabsIndicator`'s idea reaching the popups, and it exists as a
-hook only because Base UI measures the active *tab* onto custom properties and
-offers nothing equivalent for a row. Panel tier, `duration-200 ease-standard`,
-per §1.6's "a sliding pill indicator".
+**The highlighted row is painted, not slid.** A menu, select or combobox row
+under the pointer or the keyboard cursor takes `bg-accent` in the frame it is
+reached, the nav rail's row takes `bg-sidebar-hover`, and the ⌘D palette's
+card takes `bg-foreground/8`. There was a travelling highlight once
+(`MagicMove`, removed 16 October 2026 with the rest of the decorative motion,
+§1.6): one surface that slid between rows at 200ms. It cost a hook, a
+`MutationObserver`, three e2e specs that sampled `transform` per frame, and a
+rule that rows must *not* paint their own fill so the slide had something to
+be seen against. A row reached by keyboard still had to answer in the frame
+it was reached, which meant the text colour switched instantly while the fill
+arrived 200ms later. Painting the fill in that same frame is what every
+reader actually wanted.
 
-Four rules, each of which was a bug first:
+Two fills were never the highlight and still are not: a **destructive** menu
+row is a different colour, and a combobox's **selected** tint marks a standing
+fact several rows can carry at once. On the rail, **hover and active are two
+fills**, one step apart on the gray ramp (`globals.css`), because the active
+one says which page you are on; hovering the current page leaves it in its
+active colour.
 
-- **The row keeps its text colour and loses its fill.** A row reached by
-  keyboard has to answer in the frame it is reached; one waiting on a 200ms
-  slide reads as lag. So `focus:bg-accent` came off the items and
-  `focus:text-accent-foreground` stayed.
-- **Two fills stay on their rows**, because they are not the one highlight: a
-  **destructive** menu row is a different colour, and a combobox's
-  **selected** tint marks a standing fact several rows can carry at once. The
-  magic move hides under the destructive row rather than sliding grey beneath red.
-- **The track takes a callback ref, never `useRef`.** A popup is portalled and
-  unmounted while closed, so it mounts after the hook's effects have run; an
-  effect keyed on a ref object attaches its observers to `null` and is never
-  re-run. Confirmed red: with a plain ref, all four magic-move tests fail.
-- **Measure the row, do not compute it.** The three primitives put their
-  padding in three different places, so the fill's box is read off the row
-  rather than assumed from the track's inset.
+### 1.8 Focus and hit targets — **enforced**
 
-**The nav rail uses it too, in `hover` mode.** A nav row carries no
-`data-highlighted` to watch: its hover is a CSS pseudo-class and nothing in the
-DOM changes, so the hook follows the pointer instead, through one delegated
-`pointerover`/`pointerout` pair on the list rather than handlers per row. The
-rail adds the one constraint the popups do not have, and it is the reason the
-active fill is left alone:
-
-- **Hover and active are two fills, and only hover moves.** They are one step
-  apart on the slate ramp deliberately (`globals.css`), because the active one
-  says which page you are on. A highlight that travelled in the active colour,
-  or that dragged the active row's own fill with it, would take "you are here"
-  away the moment the pointer rested anywhere else. Both halves are pinned, and
-  the colour half needs its own test: a version painting the moving fill in
-  `--sidebar-active` leaves the active row genuinely untouched and still reads
-  as three current pages on the way past.
-- **The rows' `hover:bg-*` is suppressed on the list, not in the primitive.**
-  The editor rail and the mobile sheet still use `ui/sidebar.tsx`'s own hover.
-  Without the suppression the hovered row paints instantly under a fill that is
-  still 200ms away, so two rows claim the pointer for the length of the move.
-- **Keyboard focus is deliberately not tracked in this mode.** The rows are
-  links with a focus ring of their own, and a fill chasing focus would compete
-  with the active fill rather than add to it.
-- **Hovering changes the fill and nothing else.** The primitive also darkens a
-  hovered row's text to `--sidebar-accent-foreground`, slate-600 to slate-900
-  in light mode: a measured drop from L 33.7 to L 5.0, near enough to black.
-  That reads as pressed rather than pointed at, and it restates what the fill
-  already says, so it is suppressed on this list. Worth knowing before
-  restoring it: the primitive's `data-active:text-*` and
-  `data-active:font-medium` never reach this rail either, because `MenuLink`
-  passes `text-sm` and `cn` drops the conflicting utilities on merge. An active
-  row here is its fill and only its fill, and the one place its text *did*
-  change was under the pointer, which said "hovered" rather than "current".
-- **The rows sit 8px apart, and that 8px is padding rather than a gap.** The
-  distinction is the rule, and the number is unchanged from what the rail
-  always had: this is the same spacing, expressed so it is not a hole.
-  `SidebarMenu`'s `gap-[8px]` put dead space between each row, and the fill
-  spent a third of every one-row move crossing it, which read as a block
-  jumping rather than a surface sliding. `gap-0` with `py-1` on each item puts
-  that distance inside the list instead, so every pixel of the column belongs
-  to some row. **The original `gap-[8px]` is the trap**: it is pixel-identical
-  and fails both halves of the test, which asserts 8px of visible ground
-  between rows *and* zero between the items the fill travels along. Note that
-  `py-1` is 4px per side and two neighbours' padding meets, so the class is
-  half the spacing it produces. The rows stay at the primitive's 32px, pinned,
-  since growing them into the spacing looks like the same fix.
-- **A row's hint waits 500ms before appearing.** The chevron and the ⌘D keycap
-  are a *delay*, not a slower fade: the State tier's 75ms is untouched and only
-  its start moves, so §1.6's table still holds. It exists because the fill
-  follows the pointer down the whole column, and running past six rows flashed
-  a chevron on each. The delay is on the arriving direction only (`delay-0`
-  with `group-hover:delay-500`), since a hint lingering over a row the pointer
-  has left is the same noise arriving late.
-
-**The ⌘D palette is the third caller, and the first that is a grid.** Its five
-document cards share one fill (`admin/NewDocumentCommand.tsx`). Two rules that
-only a grid could have produced:
-
-- **One fill for the pointer and the keyboard cursor**, which is the opposite
-  call from the rail and for a reason that does not carry: the rail's active
-  fill says which page you are on and must not travel, while a palette's
-  selection is only a cursor. So hovering a card selects it, and Enter opens
-  whatever the fill is sitting on. `marked` mode rather than `hover`, because
-  the grid already tracks a selection for the arrow keys and roving tabindex,
-  and watching `data-highlighted` answers the pointer, the arrows and Tab at
-  once where `hover` would leave the keyboard's own moves unlit.
-- **The focus ring is ours, not `focus-visible:`.** Selecting a card focuses
-  it, which is what makes Enter work. But `.focus()` called from code inherits
-  the modality the dialog was entered with, so Chromium reports
-  `:focus-visible` and paints the ring even when a mouse caused the move,
-  measured in both themes with the ring chasing the pointer across the grid.
-  The card records what moved the selection (`data-moved-by`) and the ring is
-  drawn only for the keyboard. **This is the rule to remember before adding a
-  fourth caller that moves focus**: a programmatic `.focus()` is never the
-  browser's evidence of a keyboard user.
-
-- **The grid lifts a clipped row itself, because the browser will not do it
-  smoothly.** Five cards do not fit (607px of content in 540px), so the bottom
-  row is clipped by 51px and reaching it has to bring it into view. Focusing an
-  element makes the browser scroll it in **instantly**, and that scroll ignores
-  `scroll-behavior: smooth`: the class lands, `getComputedStyle` reports
-  `smooth`, the grid is the only scroller in the ancestry, and it still snapped.
-  So the browser's scroll is suppressed with `focus({ preventScroll: true })`
-  and the same move made through `scrollIntoView`, which does animate.
-  `block: 'nearest'` is the intent: lift a clipped card just far enough to be
-  whole, and leave one already in view where it is (measured at 0px moved).
-  **Its reduced-motion handling cannot ride on `globals.css`**, and this is the
-  general trap rather than a fact about this grid: the blanket
-  `scroll-behavior: auto !important` cannot reach a scroll whose behavior comes
-  from an *argument*, so this one kept animating under
-  `prefers-reduced-motion` while every CSS transition correctly stopped. The
-  media query is read in the effect, as `useProfileDrag` already does.
-
-Its e2e pair is the one that catches an axis. Every other caller is a list of
-full-width rows, where `left` and `width` never change and a fill tracking only
-`top` passes every test above; pinning `left` to 0 in the hook leaves all four
-popup tests green and turns only the palette's landing test red. Confirmed in
-exactly that way before it was trusted.
-
-**A scroll test must move the pointer with `mouse.move`, never `hover()`.**
-Playwright's `hover()` scrolls its target into view before it moves the
-pointer, so a test using it performs the very scroll it is measuring,
-instantly, before the app sees a pointer event at all. That produced a test
-failing against a fix that worked, and it was only identified by trapping
-every `scrollTop` write: the scroll arrived with no JavaScript stack behind it.
-Parking the pointer on a visible card and moving down measures the app.
-
-**Only the frames in between prove it, which is why this is e2e.** Both ends
-of the move look identical whether the highlight glides or jumps, so
-`e2e/popup.spec.ts` samples `transform` every frame and counts distinct values:
-a jump gives two, a real transition gives twenty-five. Three separate causes
-were invisible from the endpoints, each with the class and the computed
-`duration` both reading 0.2s the whole time — a ref read during render leaving
-the transition class one move stale, a `translate` value the browser normalises
-to a non-interpolable shape (hence `transform: translate3d`), and the class
-dropping for the single frame a select has no row marked.
-
-### 1.8 Focus and hit targets — **house**
-
-- Focus is `focus-visible:ring-2 ring-ring/30` plus `focus-visible:border-ring`.
-  It is on the primitives already. **Never `outline-none` without replacing it.**
-- Every interactive element has a **minimum 24px hit area**, and a row-level
-  action (a kebab in a table row) has 28px. Padding, not size, buys this where
-  the visual must stay small.
+- **One focus indicator, `focus-ring`** (`@utility` in `globals.css`): a 2px
+  ring of `--ring` at 30% plus `border-ring`, visible only on
+  `focus-visible`. Every interactive atom applies it; a component drawing
+  its own `ring-ring` or `focus-visible:ring-*` fails the build. The audit
+  found rings at 30%, 40%, 50% and solid, and one control with none, and the
+  keyboard user is the one reader with no other cue. **Never `outline-none`
+  without `focus-ring`.**
+- **Hit targets:** 28px minimum (a `sm` button), 32 standard, 36 in forms.
+  Nothing clickable is under 28 on either axis.
 - Anything clickable is a `<button>` or an `<a>`. A `div` with an `onClick` is a
   bug, not a shortcut. Where the visual must be a box (the upload drop zone), it
   is `role="button"` with a keyboard handler and an `sr-only` real input inside.
 
-### 1.9 Cursors — **house**
+### 1.9 Cursors
 
 The platform cursors are black with a white outline whatever the theme, and on
-a slate shell they sat like strangers. Five are drawn in-house, as inline SVG
+a gray shell they sat like strangers. Five are drawn in-house, as inline SVG
 data URIs on custom properties in `globals.css`, each with the platform cursor
 as its fallback. The I-beam is the one native cursor kept: a field is where
 text is typed, and nothing about that glyph is a colour choice.
 
 | Cursor | Glyph | Light | Dark | Applied by |
 |---|---|---|---|---|
-| `--cursor-default` | Lucide `mouse-pointer-2`, filled | slate-800 | slate-200 | `body`, inherited; the `cursor-default` utility |
-| `--cursor-pointer` | A filled hand, index raised, hotspot at the fingertip | slate-800 | slate-200 | `a[href]`; the `cursor-pointer` utility |
-| `--cursor-grab` | The same hand, open, hotspot at the palm | slate-800 | slate-200 | the `cursor-grab` utility |
-| `--cursor-grabbing` | The same hand, closed | slate-800 | slate-200 | the `cursor-grabbing` utility |
-| `--cursor-col-resize` | A spine with a head each way | slate-700 | slate-300 | the nav resize handle, and `body[data-resizing]` |
+| `--cursor-default` | Lucide `mouse-pointer-2`, filled | gray-800 | gray-200 | `body`, inherited; the `cursor-default` utility |
+| `--cursor-pointer` | A filled hand, index raised, hotspot at the fingertip | gray-800 | gray-200 | `a[href]`; the `cursor-pointer` utility |
+| `--cursor-grab` | The same hand, open, hotspot at the palm | gray-800 | gray-200 | the `cursor-grab` utility |
+| `--cursor-grabbing` | The same hand, closed | gray-800 | gray-200 | the `cursor-grabbing` utility |
+| `--cursor-col-resize` | A spine with a head each way | gray-700 | gray-300 | the nav resize handle, and `body[data-resizing]` |
 
 - **The four utilities are redefined at the foot of `globals.css`**, so an
   existing `cursor-pointer` resolves to the themed hand without the call site
@@ -640,14 +497,14 @@ text is typed, and nothing about that glyph is a colour choice.
   a row here.
 - **An SVG data URI cannot read a custom property**, so each fill is the
   token's oklch value written out. The comment beside each says which token
-  it must equal; a slate token that changes changes these too.
+  it must equal; a gray token that changes changes these too.
 - **The hand is one silhouette in three poses.** The pointer, the open hand
   and the fist share a palm and a thumb, so a drag reads as the same hand
   closing rather than as three icons from three sets. Outlined and heavier
   versions were tried and rejected: at 20px an outline fills in, and a bulkier
   fill reads as a glove.
-- **The col-resize glyph is one step lighter** than the hands (slate-700, not
-  800). Slate-900 was tried first and read as too heavy against the shell.
+- **The col-resize glyph is one step lighter** than the hands (gray-700, not
+  800). Gray-900 was tried first and read as too heavy against the shell.
 
 ---
 
@@ -655,62 +512,66 @@ text is typed, and nothing about that glyph is a colour choice.
 
 ### 2.1 Buttons
 
-**Never hand-roll one.** `src/components/ui/button.tsx`, always.
+**Rule of thumb:** one filled button per view; everything else is quiet; the
+height of a button is the height of whatever sits beside it.
 
-| Variant | Use | Rule |
+**Five fills**, and the order is the hierarchy:
+
+| Variant | Looks | When |
 |---|---|---|
-| `default` | The one action a screen exists for | **At most one per screen.** |
-| `outline` | The ordinary action. Most buttons are this. | |
-| `secondary` | An action grouped with an outline one, slightly louder | |
-| `ghost` | Toolbar, table row, nav, anywhere inside dense chrome | |
-| `destructive` | Delete, void, revoke | Tinted, never a solid red slab |
-| `link` | Inline in a sentence only | Never in a button row |
+| `primary` | `bg-primary` | The one action the page exists for. **One per view.** |
+| `secondary` | border, no fill | **Default.** Every ordinary action. |
+| `ghost` | nothing until hovered | A row of icons, a toolbar, "Cancel": anything that must not compete |
+| `destructive` | red tint | Delete, remove, discard. Solid red only on the confirm inside its own dialog |
+| `link` | text, underline on hover | Inline in prose |
 
-| Size | Use |
-|---|---|
-| `sm` / `default` | Chrome: toolbars, table rows, the sidebar |
-| `lg` | A page-level action in a header |
-| `form` | **Any button sitting inline with an Input, Combobox or DatePicker.** It is the only size that matches their height. |
-| `icon-xs` / `icon-sm` / `icon` | Icon-only, sized to its neighbours |
+`raised` and `neutral` were deleted on 16 October 2026: one was on trial on
+one button for a year, the other existed for a row with two solid buttons,
+which the one-primary rule forbids. A row that needs two solid buttons is a
+row with the wrong hierarchy.
+
+**Three heights:**
+
+| Size | px | Text | Where |
+|---|---|---|---|
+| `sm` | 28 | control | Toolbars (filter, sort, columns), row actions, the drawer toolbar, icon-only anywhere, inside a 40px table row |
+| `md` | 32 | control | **Default.** Page actions, dialog actions, drawer footer, beside a rail Input (also 32) |
+| `lg` | 36 | body, medium | Beside a form Input (also 36); a form's own submit |
+
+28 is the smallest thing that reads as a control rather than a chip. 32 is
+the height of an action on the page and of an Input in the editor rail. 36 is
+a form field's height, and a button beside a field is the field's height. 24
+was deleted: it was only ever icon-only row actions, and a 28 square sits in a
+40 row with 6px above and below. Inside a `FieldGroup size="form"` an `md`
+button grows to `lg` on its own.
+
+**`icon`** makes the button square at its height. It is a shape, not a fourth
+size. An icon-only button still names itself (`aria-label` or an `sr-only`
+span); **enforced**, it fails the build otherwise.
+
+**Six states, defined once in `buttonVariants`:** rest; hover (fill one step,
+75ms); active (`translate-y-px`, one frame); focus-visible (the one
+`focus-ring`); disabled (`opacity-50`, pointer events off, never hidden);
+pending (`Spinner` in front of a label that never changes, `aria-busy`).
 
 **Rules:**
 
-- **Order is [cancel] [confirm], confirm on the right,** in every dialog and
-  every form footer. One order across the app beats being right about which
-  order is better.
+- **`[Cancel] [Confirm]` order**, and Cancel is `ghost`.
 - **Label the verb and the object**: "Save client", not "Save"; "Delete
   invoice", not "Delete". A button that says "OK" says nothing.
 - **A destructive confirmation uses `AlertDialog`, never `Dialog`.**
-- **Every button that starts an async action has a pending state** and is
-  disabled while pending, or double-submit is a live bug. See `ConfirmButton`
-  and the confirmSwap pattern for the feedback shape.
+- **Every button that starts an async action passes `pending`**, or
+  double-submit is a live bug.
 - A disabled button must be explainable. If the reason is not obvious on the
   screen, wrap it in a tooltip that says why.
-- **Every control in one horizontal row is the same height.** The `form` size
-  above is this rule stated for one case; it holds for all of them. A toolbar of
-  `default` buttons is 28px, so anything sharing that row is 28px too, including
-  a hand-written control that is not a `Button` at all. Pick the height from
-  whichever primitive dominates the row rather than choosing one per control.
+- **Every control in one horizontal row is the same height.**
+- **One filled blue per viewport.** The rail's "New document" is on screen
+  everywhere, so a page-level create is `secondary`. A create action is an
+  `AddButton` / `AddLink`: a plus and a verb.
 
-  A row is a single band of chrome. Two heights inside it read as a rendering
-  artefact rather than a distinction, because they are not saying anything: no
-  control in a toolbar is more important than its neighbour, and 28 against 32
-  is too small a difference to mean something and too large to go unseen. The
-  case that produced this rule was the Table/Cards toggle in `DocumentsBrowser`,
-  hand-written at `h-8` beside filter and sort controls that take `Button`'s own
-  `h-7`.
-
-  **This one is not mechanically enforced**, and the reason is worth stating:
-  a grep cannot see which elements share a row. It is checked by eye, which
-  makes the fix above the reference rather than the exception. When a control in
-  a toolbar is hand-written, take its height from the primitive beside it and
-  say so in a comment, or the next person will have nothing to reconcile against.
-
-**One filled blue per viewport.** The rail's "New document" is the app's single
-primary and is on screen everywhere, so a page-level create is `outline`. Two
-filled blues make the viewport argue with itself about which action matters. A
-create action is an `AddButton` / `AddLink` whichever variant it wears, so it
-keeps the plus animation (§1.6).
+**Enforced:** the old API (`variant="default|outline|raised|neutral"`,
+`size="icon|icon-sm|default|form"`) fails `design-system.test.ts` on any
+button tag, and cva rejects it at the type level.
 
 ### 2.2 Inputs and fields
 
@@ -719,8 +580,11 @@ The pair rule (`CONTEXT.md` §5f) is the law here: the **rule** lives in
 `src/components/form/fields.tsx`, named to match. Every schema imports the
 first, every form the second.
 
-**Three heights, and 32px is the floor.** The compact `default` is **32px**
-(`h-8`), `md` is **36px** (`h-9`) and the roomy `form` is 38px (`h-9.5`).
+**Two heights, and 32px is the floor.** The compact `default` is **32px**
+(`h-8`) and the roomy `form` is **36px** (`h-9`), which are Button's `md` and
+`lg`, so a button beside a field is never a different height. The 36px `md`
+rung that sat between them (one caller) was folded into `form` on 16 October
+2026.
 Nothing typed into goes under 32 in any variant: input, textarea, select
 trigger, combobox and date trigger all declare the same number, so a field row
 cannot come out three heights. Pinned in `ui/__tests__/control-size.test.tsx`.
@@ -761,12 +625,12 @@ the floor.
   `text.ts`/`fields.ts`, no hand-written phone rule.
 - No date read out of a UTC slice. `domain/dates.ts`.
 - No `formatDisplayDate` in a file that renders `<TableCell>`. `DateCell` from
-  `admin/Page.tsx` owns the format *and* the weight, so the same fact cannot
+  `patterns/Page.tsx` owns the format *and* the weight, so the same fact cannot
   look like two different facts on two lists.
 - No quoted em or en dash as a nil glyph. `NIL` from `lib/utils.ts`, which is a
   hyphen. Same reason as the row above, and the house rule on dashes.
 - No `status === 'finalized' ? …` label written in a component. `StatusBadge`
-  from `ui/status-badge.tsx` owns the word and the fill, and every status
+  from `ui/badge.tsx`'s `status` prop owns the word and the fill, and every status
   carries a word so colour is never the message.
 - No `size="icon"` button without a name to announce: `aria-label`, an
   `sr-only` span, or a `label` prop on one of the wrappers that renders both.
@@ -778,10 +642,10 @@ the floor.
 
 **Controls, settled:**
 
-- **Three heights.** 28 (`default`, the dense height this tool is built at),
-  32 (`lg`, a form's own submit), 38 (`form`, which is `Input`'s height, for a
-  button sitting inline with one). `sm` (24) and `icon-xs` (20) were deleted:
-  neither said anything the survivors do not, and a fourth height is a fourth
+- **Three heights.** 28 (`sm`, toolbars and row actions), 32 (`md`, the
+  default and a rail input's height), 36 (`lg`, a form field's height, for a
+  button sitting inline with one). 24 was deleted:
+  it said nothing the survivors do not, and a fourth height is a fourth
   decision every call site has to get right.
 - **Destructive is quiet, then loud.** Tinted (`bg-destructive/10`) everywhere
   it sits among other controls; solid red only as the confirming button inside
@@ -887,13 +751,13 @@ same red `StatusBadge`'s danger variant uses, holds for **10 seconds** rather
 than 4, and every toast (this class included) carries a manual close. Four
 seconds was never enough to read a reason; it was enough for a confirmation.
 
-**The table, settled:** rows are 44px (`h-11` on the row, 12px cell padding,
+**The table, settled:** rows are 40px (`h-10` on the row, 8px cell padding, the 20px line with one control gap each side,
 `leading-none`), hover is `bg-muted/40`, the header is sticky, the whole row is
 one stretched anchor, row actions and copy buttons reveal on `group-hover/row`
 and on `focus-within`, every figure is `tabular-nums`, money is right-aligned,
 a sort arrow is permanent on the sorted column and appears on hover elsewhere,
 and long values truncate with the full string on `title`. All of it lives in
-`ui/table.tsx` and `admin/Page.tsx`, so a new table inherits it by existing.
+`ui/table.tsx` and `patterns/Page.tsx`, so a new table inherits it by existing.
 
 **House rules on top:**
 
@@ -923,7 +787,7 @@ The primary surface of this app, and the one place where "every instance
 behaves the same" is not a preference but the product working.
 
 **The rule above all the others: a list of records is a `RecordTable`**
-(`components/admin/RecordTable.tsx`). Not a `<Table>` you assemble. You pass
+(`components/patterns/RecordTable.tsx`). Not a `<Table>` you assemble. You pass
 rows and a column spec; it brings paging, the caption, the actions column, row
 selection and the row that opens its record. **Enforced:
 `design-system.test.ts` fails a `TableBody` outside `ui/` and `RecordTable`.**
@@ -1003,7 +867,7 @@ Three rules follow it:
 
 **Everything else, unchanged and still true:**
 
-- **Every table sits in a `TableCard`** (`components/admin/Page.tsx`):
+- **Every table sits in a `TableCard`** (`components/patterns/Page.tsx`):
   `rounded-md border bg-background`, `overflow-clip`. **Enforced.** The fill is
   `bg-background`, not `bg-card`: the two are the same white in light mode, so
   the card fill drew nothing there and drew a grey slab in dark mode, and one
@@ -1025,7 +889,7 @@ Three rules follow it:
   held inside the chrome rather than as a box whose first row happens to be
   bold. Before it, the header and the rows were the same fill and a hairline
   carried the whole distinction, which in dark mode is close to carrying
-  nothing. Subtle in light (slate-50 on white) and strong in dark (slate-950
+  nothing. Subtle in light (gray-50 on white) and strong in dark (gray-950
   against the card), which is the right way round. Opaque either way, because
   `sticky` means rows scroll under it.
 - **The footer's padding is asymmetric: 36px left, 8px right.** The left holds
@@ -1095,7 +959,7 @@ Everything above is a rule; `library/table/` is that rule made into something
 you can copy. It is one `RecordTable` call site (`TemplateTable.tsx`) over a
 column spec holding **one of every kind of column this app has**
 (`columns.tsx`), over rows built to exercise each (`rows.ts`), shown live under
-`/client/library?component=table`. Build a new table by taking the column
+`/design?section=patterns&item=table`. Build a new table by taking the column
 definitions it needs and deleting the rest.
 
 It is a **reference, not a second component.** There is exactly one table
@@ -1130,8 +994,8 @@ dropping where it is released. Under that it is still a click, so a sortable
 heading still sorts. Ctrl/alt with an arrow does the same from the keyboard, and
 that path is not optional (WCAG 2.1.1): a `<th>` takes no focus by default, so
 a reorderable heading is given `tabIndex={-1}`, which keeps it reachable without
-adding a third tab stop per column to a header that already has a sort button
-and a resize handle.
+adding a second tab stop per column to a header that already has a sort
+button.
 
 Both bounds hold without anyone remembering them. The **checkbox and actions**
 columns are furniture `RecordTable` draws itself and are not in `columns`, so
@@ -1146,10 +1010,9 @@ the edge the dragged column would land on. A *fill* there would read as a second
 selection; this is an insertion point.
 
 **The order persists, per table, keyed on `caption`**, and that is the one place
-this departs from `resizable`, whose widths deliberately do not. The two differ
-in kind: a width is a momentary reading aid tied to the value in front of you,
-while an order says which columns matter to you, which does not change between
-visits. A stored order is always reconciled against the current spec, so a
+this departs from column widths, which are set by the call site and are not
+the reader's. An order says which columns matter to you, which does not change
+between visits. A stored order is always reconciled against the current spec, so a
 column added later appears rather than vanishing and a column removed does not
 strand the rest.
 
@@ -1161,7 +1024,7 @@ because pointer capture retargets it. Capture is therefore taken *when the drag
 starts*, not on pointer-down. Taking it early stole the click that sorts, which
 is one of the two bugs `e2e/record-table.spec.ts` now pins.
 
-**The wide package is one decision, not five.** `resizable` switches the table
+**The wide package is one decision, not five.** `fixed` switches the table
 to `table-layout: fixed` and wraps it in a horizontal scrollport. Three things
 follow and they arrive together: every column must state a `size` and content is
 **clipped** rather than widening (so every cell truncates); frozen columns become
@@ -1170,10 +1033,18 @@ because a horizontally scrolling container is the scrollport for both axes.
 `dividers` and `sticky` earn their place only here, where a row is no longer one
 glance. A table narrow enough to read at once takes none of it.
 
+**Columns do not resize.** The drag handles were removed from every table on
+9 October 2026, on request: a handle let a column be dragged down to almost
+nothing, and widths are a decision for the call site, not a control. Two
+things stand in for it. `fitTruncated` widens a column that cuts a value on
+the rows shown, by exactly what it cut; and when the columns add up to less
+than the card, a blank column takes the rest so every real column keeps its
+stated `size` instead of being stretched in proportion.
+
 ### 2.4 Cards and page layout
 
 - **A page is: header (title, description, primary action), then content.** One
-  component owns that (`PageHeader`, `ui-elevation.md` B1), so the inset,
+  component owns that (`PageHeader`), so the inset,
   the title size and the action placement cannot drift per page.
 - A card is `border border-border rounded-lg bg-card`, no shadow, and its own
   padding is `p-4` (dense) or `p-6` (a form).
@@ -1186,25 +1057,66 @@ glance. A table narrow enough to read at once takes none of it.
 - **Never nest a card in a card.** If a section inside a card needs separating,
   a hairline and a heading do it.
 
-### 2.5 The four states
+### 2.5 The six states
 
-Every surface that loads data declares all four. This is not optional polish;
-three of them are what the screen looks like when something goes wrong.
+Every surface that loads data declares all of them, from one component:
+`EmptyState` in `ui/empty.tsx` carries the copy for the four empties, so
+"No clients match these filters" is written once. Enforced: the sentence
+written anywhere else fails the build.
 
 | State | Rule |
 |---|---|
-| **Loading** | A skeleton in the shape of the content, not a spinner, and it must not shift layout when real content lands. For a list that means `TableSkeleton`, which is a real `Table` of real `TableRow`s so its geometry cannot drift from the table it stands in for. |
-| **Empty** | One line saying what would be here, and **the button that creates the first one**. Never just "No results". |
-| **Error** | What failed, in a sentence, plus a retry. Never a raw error string. |
-| **Filtered-empty** | Different from empty: says which filter is hiding things, and offers to clear it. |
+| **Loading** | A skeleton in the shape of what is arriving, held back 150ms so a fast route never flashes one. `TableSkeleton` for a list, `FormSkeleton` for a form (`clients/new` and `clients/[id]` carry their own `loading.tsx`). Never a spinner, never layout shift. |
+| **Empty** | `preset="none-yet"`: what would be here, and **the button that creates the first one**. Never just "No results". |
+| **Filtered-empty** | `preset="no-matches"`: says the filters are hiding things and offers to clear them. |
+| **Error** | `preset="error"` or `(app)/error.tsx`: what failed, in a sentence, plus retry, plus the digest in `Mono`. |
+| **Not found** | `(app)/not-found.tsx`, inside the shell: a dead link lands on a page that still has the nav and the way back. |
+| **Pending** | `Button pending`: a spinner in front of a label that never changes. Enforced on every submit, primary and destructive. |
+
+The empty panel is lifted by `shadow-raised`, carries a 40px icon, and sets
+its one action 48px below the copy, at `lg`, so the button reads as the next
+step rather than a fourth line of text (17 October 2026).
 
 ### 2.6 Feedback
 
-- **A toast is for something that happened out of sight.** An action whose
-  result is visible on screen (a row appearing, a field saving) does not toast.
-- **Destructive actions confirm before, not undo after** — these are financial
-  records; there is no undo to offer.
-- **Never a toast for a validation error.** Errors belong on the field.
+**The ladder, lowest to highest:** a field error (inline, `FieldError`, on
+blur) → a form error (`Alert destructive` at the top of the form) → a toast
+(only for something that happened out of view: "Archived", "Copied") → a
+dialog (only when the reader must decide). A validation error is never a
+toast. Confirm before anything destructive.
+
+**One confirmation, `patterns/ConfirmDialog`.** Enforced: an `AlertDialog`
+written outside `ui/` and `patterns/` fails the build. There were nine of
+them, with "Cancel", "Stay" and "Keep editing" between them, and the dialog
+that threw work away was the one the eye landed on. The wording is the
+component's, not the call site's:
+
+| Part | Rule | Example |
+|---|---|---|
+| Title | Verb and object, no question mark | "Delete draft", "Leave page", "Archive service" |
+| Consequence | One sentence: what cannot be undone | "The draft and its line items are removed." |
+| Cancel | Always "Cancel", always `ghost` | |
+| Confirm | Repeats the verb and the object; solid red when destructive | "Delete draft" |
+| `extra` | A third action only where there is a better answer than either | "Save and leave" |
+
+Enforced: a `ConfirmDialog` title ending in `?` fails the build.
+`ConfirmAction` is a button that opens one; `RemoveButton` is its preset for
+a repeatable row.
+
+**The other molecules in `patterns/`, and what each replaced:**
+
+| Molecule | Replaces | Rule it holds |
+|---|---|---|
+| `IconAction` | a ghost icon `Button` + `Tooltip` written per site | Every icon-only control is 28px square, muted until hovered, named, with a one-word tooltip |
+| `CopyAction` | `copy-button.tsx` (a raw `<button>`) | Copy shows a tick for 1.5s; `useCopy` lives in `lib/` |
+| `AddButton` / `AddLink` | `ui/add-button.tsx` | A create action is a plus and a verb |
+| `Mono` | `font-mono` by hand | Identity strings are mono with tabular figures (§1.4); `font-mono` elsewhere fails the build |
+| `DrawerToolbar` | `ui/drawer-toolbar.tsx` | Back, expand, pager and actions in one row of `IconAction`s |
+| `Spinner` (`ui/`) | `Loader2` imported per site | One spinner; `Button pending` uses it; `Loader2` elsewhere fails the build |
+
+**Working buttons say so.** `disabled={pending}` on a `Button` fails the
+build (allowlisted until the screen migration); `pending={pending}` is the
+spelling, and it draws the spinner.
 
 ### 2.7 Tabs and segmented pills
 
@@ -1219,10 +1131,28 @@ claim tab roles) spreads the hook onto its container and marks its parts:
 `data-drag-pill` on the sliding surface, `data-drag-segment` on each choice. The
 pill's transform then adds `var(--tab-drag, 0px)`, which is 0 at rest.
 
-Container and pill both carry `border border-border` — the same light stroke,
-never one without the other. `tabPillSurface` (the pill's fill + shadow +
-border) is the one export every pill draws from, hand-rolled ones included, so
-none of them can drift back apart the way they had before it existed.
+**The look is one set of three exports** in `ui/tabs.tsx`, adopted for every
+strip on 10 October 2026 from a reference design (`library/tabs`):
+`segmentTrough` (a `--muted` fill, `--radius` corners, **no stroke**),
+`tabPillSurface` (white with a soft shadow, one ramp step up in dark mode,
+`rounded-sm` so it stays concentric inside the trough's padding, **no
+stroke**), and `segmentLabel` (`--tab-label` at rest, full ink when
+chosen or hovered). Every strip draws from them, hand-rolled ones included:
+`TabsList`, `ProfileSwitcher`, the documents view toggle, `ThemeToggle` and
+`SpecDetailsTabs`'s Motion pill, and the pager (§2.10). `--tab-label` is a
+shade quieter than muted text and as light as AA allows on the trough
+(4.64:1 light, 4.58:1 dark, asserted in `contrast.test.ts`); the reference's
+paler grey fails 4.5:1 there.
+
+**Three sizes, the button heights** (16 October 2026): `sm` 28, `md` 32
+(the default), `lg` 36. One 2px inset at every size, so the pill is the strip
+minus 4px and its 6px corner stays concentric with the trough's 8px. Labels
+follow the button scale: 12px at `sm` and `md`, 13px at `lg`.
+
+**A caller passes a size and its triggers, nothing else.** `TabsList` draws
+the pill itself. It used to be a separate `TabsIndicator` each screen had to
+add, and four of six did not, so their drag committed on release with nothing
+moving under the pointer. The indicator is no longer exported.
 
 Six rules, each of which is a thing that broke while it was being built:
 
@@ -1417,31 +1347,28 @@ that appears twice, applied to a control.
 - **The box is filled one shade off whatever it sits on, never transparent.** It
   was transparent until hovered once, which made the one control you can *type*
   into look like the counter printed beside it; a field that takes input should
-  say so before it is touched. It is `--sidebar-field` on the `--sidebar` band:
-  a step down in light (slate-100 on slate-50) and a step up in dark
-  (slate-900 on slate-950, the ramp's floor, which has nothing below it). The
-  rule is the step, not the direction. It stays borderless: the fill identifies
+  say so before it is touched. It is a well one step below the trough it sits
+  in: `--hover` in light (gray-200 on gray-100) and `--background` in dark
+  (gray-900 on gray-800), because dark's `--hover` is the ramp's floor and two
+  steps down. The rule is the step, not the token. It stays borderless: the fill identifies
   it, and a stroke as well would make a form field of it. **Enforced in a
   browser** (`e2e/shell-sheets.spec.ts`, both themes, bounded above as well as
   below), because a computed colour is what jsdom cannot see, and because this
   started at two shades and was brought down: a test asking only "different
   from its surroundings" would pass against the value that was too strong.
-- **The container has no fill; its stroke is what groups it** (18 September
-  2026). It carried `--sidebar-field`, which in dark is also `--background`, so
-  the fill existed in one theme only: two different pagers rather than the ramp
-  doing its job. The border already says where the control ends and the rules
-  between runs say numbers are missing, so the fill was a third thing saying
-  what those two say. Everything inside is therefore measured against the band,
-  and the spec asserts the container is clear so it notices a fill coming back.
-- **The active page is `--page-active`, with a border and a shadow.** Against
-  the band it is a step down in light (it shares `--sidebar-field`'s value with
-  the go-to box) and slate-700 in dark, two steps up for contrast (9.71:1 for
-  its `--foreground` text, asserted in `contrast.test.ts`). **In light the
-  border is what separates it from the box**, which share one fill; that is
-  accepted, since shape and position keep them apart and the box holds no
-  number until you type one. What the spec rules out is the active page having
-  neither a fill step nor a painted stroke against the band, which is the
-  invisible pill described below.
+- **The container is the tab strip's trough** (11 October 2026):
+  `segmentTrough` from `ui/tabs.tsx`, grey and borderless. From 18 September
+  it had a stroke and no fill, which left a white pill nothing to read against
+  on a white card. The pager now is the tab group it always behaved as, spelled
+  in one place, and the spec asserts the trough is filled.
+- **The active page is the tabs' white pill** (`tabPillSurface`), white with
+  the tab shadow in light and gray-700 in dark, no stroke. It replaced a
+  bordered `--page-active` pill, and `--page-active` and `--sidebar-field` were
+  deleted with it. What the spec rules out is the active page having neither a
+  fill step nor a painted stroke against the trough, which is the invisible
+  pill described below.
+- **Inactive numbers are `--tab-label`**, the inactive tab colour, and step
+  down to `--hover` under the pointer, so a hovered page never looks chosen.
 - **An inactive page is bare until hovered.** A resting fill on every number
   would rebuild the per-page box the container replaced, and leave the active
   one nothing to be raised from.
@@ -1581,7 +1508,7 @@ each confirmed red against a panel with `float` removed.
 
 ### 2.12 Multi-step flows
 
-**Every multi-step flow is built on `FlowShell`** (`src/components/flow/`).
+**Every multi-step flow is built on `FlowShell`** (`src/components/patterns/flow/`).
 There were two coming (client onboarding, the contract builder), and a second
 hand-built step row is a second set of answers about what a locked step looks
 like, whether the current one is announced, and where the submit sits. None of
@@ -1609,60 +1536,57 @@ them. Only the middle band scrolls.
   the honest state rather than a link that fails on arrival.
 - **`fill` drops the centred column** for a phase that is its own layout: a
   preview beside a rail, a ledger of cards.
+- **`nav="tabs"` draws the steps as the shared tab strip** instead of the
+  spread track, left-aligned to the form panel's edge, with the step anchored
+  directly under it. Client onboarding uses it (17 October 2026); the
+  contract flow keeps the track.
 
 **Enforced** (`design-system.test.ts`): `aria-current="step"` outside
-`components/flow/` fails the build. It is the attribute that marks which step of
+`components/patterns/flow/` fails the build. It is the attribute that marks which step of
 a sequence you are on, so a file carrying one has built its own row.
 
-### 2.13 The component library
+### 2.13 The design page
 
-**`/client/library` is where a component is decided.** Every component the app
-uses, every variant of it, live and drivable, with a rail of components on the
-left and one component's specimens on the right. A change to a primitive is
-made, looked at and tried here first.
+**`/design` is where a component is decided**, and it is the catalogue this
+document describes: every token, atom, pattern, template and state, live and
+drivable, with the decisions behind them. Profile-neutral, like settings; both
+rails link to it. A change to a primitive is made, looked at and tried here
+first.
 
-**There is no second step where it ships**, and that is the point rather than a
-convenience. The page imports the real primitive from `src/components/ui/`, so
-this page and every caller are one import of one file. A library holding its own
-copies would be a place for the app to disagree with its own documentation,
-which is §5e's argument one layer up: the failure would be the library looking
-right while the app did not.
+**There is no second step where it ships.** The page imports the real
+primitive from `ui/` or `patterns/`, so this page and every caller are one
+import of one file. The tokens are read back from the stylesheet at runtime,
+so the page cannot show a value the app lacks.
 
-- **A component is addressable.** `?component=` carries which one is showing, so
-  a variant can be linked to in a review. `replace`, not `push`: moving between
-  components changes what the page shows rather than navigating away from it,
-  and one history entry per component looked at is a back button nobody can use.
-- **Every variant is named and explained**, not merely shown. A gallery of
-  unlabelled specimens is a picture of the component; the note is what says
-  which rule each one is demonstrating and when it appears.
-- **The specimens are wired to real state.** This is the difference from a
-  screenshot and the reason behaviour can be finalised here: the pager's batch
-  turn, its runs merging at either end and its box committing on blur are all
-  behaviours, and a static render proves none of them.
+Eight sections, in the rail's order: overview (the five properties, the
+ladder, how to add something), foundations (colour, type, spacing, radius,
+elevation, motion, icons), atoms, patterns, shell, states, writing, decisions.
+`?section=` and `?item=` carry what is showing, validated against the
+catalogue; an unknown item falls back to its section, an unknown section to
+the overview. `replace`, not `push`.
+
+- **Every variant is named and explained**, and the specimens are wired to
+  real state: the pager pages, the drawer opens, the dialog asks.
 - **A specimen is drawn on the band the component actually lives on**, never a
-  neutral backdrop chosen to flatter it. The pager's trough is one step off
-  `--sidebar`, and that step is precisely what a reviewer is here to judge; on
-  `--card` it would separate cleanly here and vanish in the table footer it
-  ships into. In light mode the two surfaces are indistinguishable, so this is
-  a mistake only dark mode can show.
-- **An absence is labelled.** Some variants are the component declining to
-  render (a pager at one page). An empty stage among full ones reads as
-  something that broke rather than as the rule being demonstrated.
-- **A variant opens where it is actually interesting.** The pager's trailing
-  merge is a specimen of its own opening on the *last* page, because every long
-  list shows the leading merge on open and a specimen of that would be
-  demonstrating the shape the reader already knows.
+  neutral backdrop chosen to flatter it.
+  `Specimen` (`design/Specimen.tsx`) is that frame: a tinted card for the
+  name, a stage inset on the real fill for the component, `fill` for a row of
+  examples, `stage="sidebar"` for a pager, `empty` for an absence. It is on
+  the page as its own entry, so the frame is decided where everything else is.
+- **A decision is a record, not a paragraph.** `DECISIONS` in `catalogue.ts`
+  holds each one with what was rejected and the test that holds it; the
+  decisions section renders them newest first. §6 below is the same history
+  as prose.
+- **Experiments do not live in the product.** The three that did (a segmented
+  tab, an item drawer, a clause drawer) and the archived rich table were
+  deleted with `/admin/kit` and `/client/library` on 16 October 2026.
 
-It supersedes `/admin/kit`, a flat scroll of static examples with no way to
-drive any of them, which stays until its six sections have been re-homed here
-one at a time.
-
-**Enforced** (`library/__tests__/catalogue.test.ts`): every entry's `source`
-must name a file that exists, its `rule` must name a heading that is actually in
-this document, and `Specimen.tsx` must import each catalogued primitive rather
-than reproduce it. All three are one-line edits somebody makes without opening
-that folder, and none of them look broken on the page afterwards.
-**`e2e/component-library.spec.ts`** owns the half only a browser can see: that a
+**Enforced** (`design/__tests__/catalogue.test.ts`): every entry sits in a
+listed section and every section has an entry; every `source` exists; every
+`rule` names a heading in this document; every atom and pattern file is
+imported by the page or sits on `KNOWN_GAPS`, which only shrinks; every
+decision names an `it(…)` that exists in the enforcement tests.
+**`e2e/design.spec.ts`** owns the half only a browser can see: that a
 specimen's surfaces match the real table footer's, byte for byte, in both
 themes.
 
@@ -1700,7 +1624,16 @@ when a house rule gets broken twice.
 | The seven primitive/field rules in §2.2 | `src/__tests__/design-system.test.ts` |
 | Page inset comes from `PageBody` (§1.2) | `src/__tests__/design-system.test.ts` |
 | Page title comes from `PageHeader` (§1.4) | `src/__tests__/design-system.test.ts` |
-| Every duration is on the three-tier scale (§1.6) | `src/__tests__/design-system.test.ts` |
+| Every duration is on the three-tier scale; one easing; no inline transition (§1.6) | `src/__tests__/design-system.test.ts` |
+| Every text size is a type token; no `leading`/`tracking`; two weights (§1.4) | `src/__tests__/design-system.test.ts` |
+| Every gap and inset is on the spacing scale; no margin (§1.2) | `src/__tests__/design-system.test.ts` |
+| Every corner is on the radius scale; `xl` is the dialogs' (§1.3) | `src/__tests__/design-system.test.ts` |
+| Every shadow is one of three elevation tokens (§1.7) | `src/__tests__/design-system.test.ts` |
+| The focus ring is `focus-ring`, never drawn by hand (§1.8) | `src/__tests__/design-system.test.ts` |
+| Every z-index is a named layer; breakpoints stay in the shell | `src/__tests__/design-system.test.ts` |
+| No `[var(--gray-N)]`, `[oklch()]` or `rgba()` escape past the tokens (§1.1) | `src/__tests__/design-tokens.test.ts` |
+| Every token the system is built on exists in `globals.css` | `src/__tests__/design-tokens.test.ts` |
+| Every text pair clears 4.5:1 in both themes and in the editor rail (§1.1) | `src/__tests__/contrast.test.ts` |
 | Every table is in a `TableCard` (§2.3) | `src/__tests__/design-system.test.ts` |
 | Every pager is `Pagination` (§2.10) | `src/__tests__/design-system.test.ts` |
 | A sorting table has a `SortToggle` (§2.3) | `src/__tests__/design-system.test.ts` |
@@ -1709,9 +1642,9 @@ when a house rule gets broken twice.
 | No sheet names its own width; it takes a size (§2.11) | `src/__tests__/design-system.test.ts` |
 | Each size resolves to its share of the card (§2.11) | `src/components/ui/__tests__/sheet.test.tsx`, `e2e/shell-sheets.spec.ts` |
 | Every multi-step flow is built on `FlowShell` (§2.12) | `src/__tests__/design-system.test.ts` |
-| Every catalogued component points at a real file and a real section (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
-| The library imports each primitive, never copies it (§2.13) | `src/components/library/__tests__/catalogue.test.ts` |
-| A specimen's surfaces match the real footer's, both themes (§2.13) | `e2e/component-library.spec.ts` |
+| Every catalogued component points at a real file and a real section; every atom and pattern is on the page; every decision names a real test (§2.13) | `src/components/design/__tests__/catalogue.test.ts` |
+| The page imports each primitive, never copies it (§2.13) | `src/components/design/__tests__/catalogue.test.ts` |
+| A specimen's surfaces match the real footer's, both themes (§2.13) | `e2e/design.spec.ts` |
 | No phone printed in its stored form (§2.3) | `src/__tests__/design-system.test.ts` |
 | Optional is marked by `OptionalMark`, never by hand (§3) | `src/__tests__/design-system.test.ts` |
 | Labels are sentence case, never `uppercase` (§1.4) | `src/__tests__/design-system.test.ts` |
@@ -1720,8 +1653,16 @@ when a house rule gets broken twice.
 | Autofill defaults off | `src/components/ui/__tests__/autofill.test.tsx` |
 
 Both design walkers share `src/__tests__/policedSource.ts`, so their exemption
-lists cannot drift apart, and each one asserts it matched some files — a rule
+lists cannot drift apart, and each one asserts it matched some files: a rule
 that matches nothing is a test that passes forever.
+
+**Rules land with a shrinking allowlist, never a regex exemption.** When a new
+rule has existing violations, the files that break it are listed in
+`src/__tests__/migratedLater.ts` on the day the rule is written, and nothing
+else changes in that commit. A file added to a list fails the build; a file
+that stops violating must leave the list in the same commit (a test checks
+every entry still earns its place); an empty list is deleted and the rule
+stands bare. Every list from 16 October 2026 empties in the screen migration.
 
 **To add a rule:** add the regex and its `it(…)` to `design-system.test.ts`,
 confirm it **fails** when the thing it guards is removed, then fix the
@@ -1755,9 +1696,89 @@ In order:
 
 ## 6. Change log
 
+- **17 October 2026, the quiet style reaches forms and a second page.** The
+  service dialog, the item panel and the leads pages take it: labels muted
+  once at the form (`**:data-[slot=field-label]:text-muted-foreground`) so a
+  shared field cannot come out darker; white surfaces for a dialog and a
+  panel; quiet Cancel, ink primary, buttons at the foot. Prices are typed into
+  `RupeeInput` (₹ inside the field, a unit in the label where one matters).
+  `Select` now shows an option's label rather than its stored value, fixed in
+  the atom for all eight callers. `quiet.ts` still lives under
+  `admin/services/` and should move to `patterns/` now that other pages use it.
+
+- **16 October 2026, the quiet style, on the service catalogue first.** A
+  trial approved on a preview page replaced the services board
+  (`admin/services/ServiceCatalogue`). What it introduces, on that page only
+  until another page takes it: a centred 980px column; hairlines at half
+  strength (`border-border/50`); controls that strengthen ink and hairline on
+  hover instead of filling (`hover:border-muted-foreground`); an ink primary
+  (`bg-foreground`) instead of the blue one; colour only on the code chip, from
+  the Schedule's own accent; prices in muted ink, "Quoted" one shade quieter.
+  The card is the link to its Service's page and the corner square is its
+  menu. Two views of one list, cards by section and a board by column. The
+  documents board still carries the old look and should follow it.
+
+- **16 October 2026, `/design`.** The component library grew into the design
+  system's own page: eight sections, the tokens read from the stylesheet, a
+  specimen for every foundation, the atoms and patterns, the states, the
+  writing rules, and the decisions as records. `/admin/kit`, `/client/library`,
+  the three experiments and the archived rich table were deleted.
+
+- **16 October 2026, the states, the row, and the last raw buttons.**
+  `EmptyState` with four presets replaces the two copied "no matches"
+  blocks; `not-found.tsx` inside the shell; `FormSkeleton` and a
+  `loading.tsx` for the two client form routes. Table rows are 40px, which
+  is the body line plus a control gap each side, and the footer band
+  matches. A rule bans `<button>` outside `ui/` and `patterns/`, with the
+  32 screens that still write one on a shrinking list.
+
+- **16 October 2026, the folders follow the ladder.** `shell/` (25 files
+  out of `admin/`: the frame, nav, rail, palettes, and the record panel that
+  renders into the rail) and `patterns/` (the page frame, the record table
+  and its toolbar and cells, the flow shell, the field info and check). Pure
+  moves; the layering rule above is the new test and was seen red.
+
+- **16 October 2026, the atoms and the molecules.** Button: five fills
+  (`primary`, `secondary` as the default, `ghost`, `destructive`, `link`),
+  three heights (28/32/36), `icon` as a shape; `raised`, `neutral`, the grey
+  `secondary` fill and the 24px size deleted. Inputs: 32 and 36, equal to
+  Button's `md` and `lg`. One `focus-ring`. `Badge` carries status and
+  retires `status-badge`. `Empty` gains four presets. New `patterns/`
+  folder for the molecules: `ConfirmDialog` (nine hand-written dialogs
+  moved onto it, wording fixed), `ConfirmAction` with `RemoveButton`,
+  `IconAction` with `CopyAction`, `AddButton`/`AddLink`, `Mono`,
+  `DrawerToolbar`. Eight rules added, each red on a probe.
+
+- **16 October 2026, decorative motion removed.** The `motion` package and
+  its four callers, `MagicMove` and the five surfaces that used it, the
+  sliding tab pill and the two Motion pills, the tray and cycle arrow icons
+  (static Lucide `Download` / `Upload` / `ArrowRight` now), every hover
+  transform on an icon, the reset spin, the chevron rotation transition, the
+  `fill-flash` ring, every mount animation (the flow step slide, the finish
+  ticks, the tax step's reveals, the field tick's zoom) and the `zoom-in-95`
+  on every popup. What stays is in §1.6. The three e2e blocks that sampled
+  the glide per frame went with it. `ConfirmButton` (the confirm-swap) was
+  deleted; its one caller is a plain button, because the browser's download
+  bar already says the file arrived.
+
+- **16 October 2026, foundations as tokens and tests.** The type scale
+  (`text-caption` … `text-display`, with line-height, weight and tracking in
+  the token), fixed-pixel radii (4/6/8/12), three elevation tokens, five named
+  z-index layers, a `success` token, and the one `focus-ring` utility. Motion
+  tightened to three tiers with no exemptions. Stroke width settled at 1.75.
+  `@theme` reads next/font's variables rather than naming Geist by string, so
+  the metrics-matched fallback is finally used. Ten new enforcement rules,
+  each with a shrinking allowlist in `migratedLater.ts`; the screen migration
+  that empties them is a later phase. The design-system plan this is the first
+  phase of is at `/design` once Phase 6 lands.
+
 Append a line when a rule here changes. Keep it to one line and name the
 `ui-elevation.md` id where there is one.
 
+- **11 October 2026**: The pager takes the tab strip's look (§2.10): the
+  trough, the white pill and `--tab-label` for inactive numbers. Its bordered
+  container and `--page-active` / `--sidebar-field` tokens are gone. Inactive
+  tab labels move to the new, lighter `--tab-label` (§2.7).
 - **4 October 2026**: §2.10 catches up with the pager that ships. The
   container lost its fill on 18 September (it existed in light only), and the
   rules still measured the box and the active page against it. Both are now
@@ -2115,7 +2136,7 @@ Append a line when a rule here changes. Keep it to one line and name the
   `e2e/sidebar-float.spec.ts` were rewritten around the new shape and confirmed
   red on the one-line revert to `h-fit`.
 - **15 September 2026** — **§1.9 added.** The arrow, hand, open hand, fist and
-  col-resize cursors are drawn in slate rather than the platform's black on
+  col-resize cursors are drawn in gray rather than the platform's black on
   white, one variable per theme in `globals.css` and the four Tailwind
   utilities redefined to resolve to them. The section records the arrow and
   hand built earlier this month, which had no row until now.
@@ -2238,8 +2259,8 @@ Append a line when a rule here changes. Keep it to one line and name the
   too strong on the footer. `--sidebar-field` is a new token rather than a
   reused role, because "one step off `--sidebar`" is not a value any existing
   role holds in both themes: `--muted` is one step in light and three in dark.
-  slate-100 in light, slate-900 in dark, stepping up rather than down because
-  slate-950 is the ramp's floor. The browser check gained an upper bound with
+  gray-100 in light, gray-900 in dark, stepping up rather than down because
+  gray-950 is the ramp's floor. The browser check gained an upper bound with
   it, since the rule it now guards is a value that was already once too dark.
 - **16 September 2026** — **Sorting became opt-in, and the clause library lost
   it.** The clause library showed sort arrows on hover with no eye anywhere on
@@ -2417,7 +2438,7 @@ Append a line when a rule here changes. Keep it to one line and name the
   Both arrows, both anchors and the window now sit in a single container, and
   nothing inside it carries a stroke: it was three troughs with the arrows loose
   outside them, five separate objects saying one thing. The active page moved to
-  `--card` (slate-50 in light, as specified) with its border kept, an inactive
+  `--card` (gray-50 in light, as specified) with its border kept, an inactive
   one is bare until hovered, and the pill is rounded tighter than the box so the
   nesting reads. **One thing fell out of it and needed its own fix:** the 8px
   gap between runs stopped meaning anything. It worked while each run had a
@@ -2439,17 +2460,17 @@ Append a line when a rule here changes. Keep it to one line and name the
   pill. The active page was `--card` in both themes, and `--card` is the
   container's own value in dark, so its fill separated by **0.000** and the
   border alone was drawing it; `dark:bg-raised` restores +0.91 while light keeps
-  slate-50 as specified. And the run separator moved off `--border` (white at
+  gray-50 as specified. And the run separator moved off `--border` (white at
   10% in dark, fainter than the frame around it) onto the text ramp at 40%,
   then came *down* from 18px to 12px: weight and height are separate knobs and
   only weight should have been doing the work, since a full-height rule read as
   a structural divider cutting the control into sections.
 - **17 September 2026** — **The pager's active page got its own token, and dark
-  went two steps up.** `--page-active` (slate-50 / slate-700) replaces the
+  went two steps up.** `--page-active` (gray-50 / gray-700) replaces the
   `bg-card` plus `dark:bg-raised` pair that was describing one surface with two
-  names. Dark is slate-700 rather than the symmetrical slate-800, on request:
-  3.04 against the container where slate-800 gave 0.91, and 0.000 before that
-  when both were `--card`. The note in `globals.css` refusing slate-700 for
+  names. Dark is gray-700 rather than the symmetrical gray-800, on request:
+  3.04 against the container where gray-800 gave 0.91, and 0.000 before that
+  when both were `--card`. The note in `globals.css` refusing gray-700 for
   `--hover` was checked rather than assumed to apply: it is about
   `--muted-foreground` at 3.94:1 on a hovered card, and this pill prints
   `--foreground` at 9.71:1. Added to `contrast.test.ts` and seen red against a
@@ -2485,7 +2506,7 @@ Append a line when a rule here changes. Keep it to one line and name the
 - **17 September 2026** — **A 36px rung, and the clause drawer resized around
   it.** The drawer's Heading and Description were the compact 32px under a
   full-width body editor and the three add-a-paragraph buttons were `form`
-  (38px), which is the size for a button sitting *inline with* an Input: these
+  (36px), which is the size for a button sitting *inline with* an Input: these
   sit in a row of their own with no field beside them, so it only made them the
   largest thing on the panel. Fields to 36, buttons to 28 (`default`, the dense
   height this tool is built at). The conflict was named before it was built,

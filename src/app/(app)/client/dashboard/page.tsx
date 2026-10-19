@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { LayoutDashboard } from 'lucide-react';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 import {
   Empty,
   EmptyDescription,
@@ -10,7 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { NAV_BY_PROFILE } from '@/components/admin/nav';
+import { NAV_BY_PROFILE } from '@/components/shell/nav';
 
 export const metadata: Metadata = {
   title: 'Dashboard — speclr',

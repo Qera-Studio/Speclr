@@ -149,6 +149,18 @@ export interface ServiceContent {
  * Service's price is monthly by construction, and a second field saying so
  * would be a second place for the record to disagree with itself.
  */
+/**
+ * A service code.
+ *
+ * Two digits was the shape while the catalogue was the 22 Parts. The sales
+ * catalogue uses letters (`WEB`, `DSGN`, `AIOP`), so the rule is now what a code
+ * has always actually been: a short, stable, opaque key. It is never reassigned,
+ * because every contract that used one cites it.
+ */
+export const serviceCodeSchema = z
+  .string()
+  .regex(/^[A-Z0-9]{2,6}$/, 'A service code is two to six capitals or digits.');
+
 export function rateUnitOf(scheduleKey: ScheduleKey): string {
   return scheduleKey === 'retainer' ? 'per month' : 'fixed';
 }
@@ -286,3 +298,61 @@ export const libraryLineSchema = z.object({
   category: textSchema(40, { required: 'A category is required.' }),
   archived: z.boolean(),
 });
+
+/**
+ * The contract terms a Service uses: the Parts it names, in its own order.
+ *
+ * A sold Service carries no terms of its own; `frameOf` (`contract/copy.ts`)
+ * replaces its sections with these when a contract is drafted. A code naming
+ * no row is skipped, the rule `frameOf` follows.
+ */
+export function termsOf(service: ContractService, all: ContractService[]): ContractService[] {
+  const byCode = new Map(all.map((s) => [s.code, s]));
+  return (service.partCodes ?? [])
+    .map((code) => byCode.get(code))
+    .filter((s): s is ContractService => s !== undefined);
+}
+
+/** The Services that use this row as their contract terms. */
+export function termsUsers(code: string, all: ContractService[]): ContractService[] {
+  return all.filter((s) => s.partCodes?.includes(code));
+}
+
+/** Whether a row carries any contract terms of its own. */
+export function hasOwnTerms(service: ContractService): boolean {
+  return (
+    [
+      service.included,
+      service.accountTerms,
+      service.limits,
+      service.limitsNotes,
+      service.completion,
+      service.receives,
+      service.receivesNotes,
+      service.fee,
+      service.exclusionIds,
+      service.clientInputIds,
+    ].some((list) => list.length > 0) || service.thirdPartyCosts.trim() !== ''
+  );
+}
+
+/**
+ * Everything the service page reads about one row, from the whole catalogue:
+ * the row, the terms it names, the services naming it, and for each of its
+ * terms the other services sharing them. One function so the route and its
+ * preview fixture cannot work it out differently. Null when the code names
+ * nothing.
+ */
+export function servicePageData(code: string, all: ContractService[]) {
+  const service = all.find((s) => s.code === code);
+  if (!service) return null;
+  const terms = termsOf(service, all);
+  return {
+    service,
+    terms,
+    users: termsUsers(code, all),
+    sharedWith: Object.fromEntries(
+      terms.map((t) => [t.code, termsUsers(t.code, all).filter((s) => s.code !== code)]),
+    ),
+  };
+}

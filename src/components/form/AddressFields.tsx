@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { FieldSpinner } from "@/components/ui/spinner";
 import { useMinimumDuration } from "@/lib/useMinimumDuration";
-import FieldInfo, { OptionalMark } from "./FieldInfo";
+import FieldInfo, { OptionalMark } from "@/components/patterns/FieldInfo";
 import { formatPostcode, isLookupPostcode } from "@/lib/domain/address";
 import { COUNTRIES_BY_CONTINENT, COUNTRY_SEED } from "@/lib/domain/countries";
 
@@ -433,7 +433,6 @@ export default function AddressFields<T extends FieldValues>({
             <Combobox
               id={`${idPrefix}-city`}
               size={size}
-              className={autofilled.city ? "animate-fill-flash" : undefined}
               options={options.map((option) => ({
                 value: option,
                 label: option,
@@ -460,7 +459,6 @@ export default function AddressFields<T extends FieldValues>({
             // no state of its own: the effect clears `autofilled` before every
             // lookup, so the class is genuinely removed and re-added on each
             // answer, which is what makes a *corrected* pincode flash again.
-            className={autofilled.city ? "animate-fill-flash" : undefined}
             readOnly={autofilled.city}
             aria-readonly={autofilled.city || undefined}
             {...city.field}
@@ -473,7 +471,7 @@ export default function AddressFields<T extends FieldValues>({
             data that produced it rather than reassurance about it.
           */}
           {options.length ? (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               This postcode covers {options.length} localities. The first is
               filled in; choose another if it is wrong.
             </p>
@@ -487,7 +485,6 @@ export default function AddressFields<T extends FieldValues>({
             id={`${idPrefix}-state`}
             size={size}
             autoComplete={NO_PROFILE_AUTOFILL}
-            className={autofilled.state ? "animate-fill-flash" : undefined}
             readOnly={autofilled.state}
             aria-readonly={autofilled.state || undefined}
             {...state.field}

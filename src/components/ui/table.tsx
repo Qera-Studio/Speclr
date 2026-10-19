@@ -26,7 +26,7 @@ function Table({
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-xs", className)}
+        className={cn("w-full caption-bottom text-meta", className)}
         {...props}
       />
     </div>
@@ -92,7 +92,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "h-11 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
+        "h-10 border-b transition-colors hover:bg-muted/40 has-aria-expanded:bg-muted/40 data-[state=selected]:bg-muted",
         className,
       )}
       {...props}
@@ -124,8 +124,8 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        // 10px vertical padding against `h-11` on the row: a 44px row.
-        // `leading-none` because a cell holds a value, not prose: prose leading
+        // 8px vertical padding against `h-10` on the row: a 40px row, which is the 20px line plus one control gap each side.
+        // `` because a cell holds a value, not prose: prose leading
         // makes rows of different content types sit at different heights in the
         // same table.
         //
@@ -135,7 +135,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
         // tapped) and now clears for free. `RowActions`' own note already sized
         // its hit targets against a 44px row, so the two agree now instead of
         // one of them being written against a height that was not there.
-        "px-2 py-2.5 leading-none align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-2 py-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -150,7 +150,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-xs text-muted-foreground", className)}
+      className={cn("mt-4 text-meta text-muted-foreground", className)}
       {...props}
     />
   );

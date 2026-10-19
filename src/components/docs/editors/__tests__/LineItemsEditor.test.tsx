@@ -7,9 +7,13 @@ import { emptyLineItem, type EditorFormValues } from '../useDocumentForm';
 function Harness({
   count = 2,
   lockNames = false,
+  discountToggle = false,
+  onValues,
 }: {
   count?: number;
   lockNames?: boolean;
+  discountToggle?: boolean;
+  onValues?: (values: EditorFormValues) => void;
 }) {
   const form = useForm<EditorFormValues>({
     defaultValues: {
@@ -24,6 +28,7 @@ function Harness({
     } as EditorFormValues,
   });
   const fieldArray = useFieldArray({ control: form.control, name: 'lineItems' });
+  onValues?.(form.watch());
   return (
     <LineItemsEditor
       control={form.control}
@@ -31,6 +36,7 @@ function Harness({
       fieldArray={fieldArray}
       showSac
       lockNames={lockNames}
+      discountToggle={discountToggle}
     />
   );
 }
@@ -56,6 +62,27 @@ async function confirmRemoval(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('LineItemsEditor', () => {
+  it('offers no discount switch while the document has no discount', () => {
+    render(<Harness />);
+    expect(screen.queryByRole('switch')).toBeNull();
+  });
+
+  it('excludes a locked line from the discount without unlocking it', async () => {
+    const user = userEvent.setup();
+    let values: EditorFormValues | undefined;
+    render(<Harness lockNames discountToggle onValues={(v) => (values = v)} />);
+
+    const second = screen.getByRole('switch', { name: 'Apply discount to line item 2' });
+    expect(second).toBeChecked();
+    await user.click(second);
+
+    expect(second).not.toBeChecked();
+    expect(values?.lineItems[1].discountExempt).toBe(true);
+    expect(values?.lineItems[0].discountExempt).toBeFalsy();
+    // Still locked: excluding a line is not an edit to what the Service says.
+    expect(screen.getByRole('button', { name: 'Unlock line item 2' })).toBeInTheDocument();
+  });
+
   it('asks before removing a line item', async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -88,15 +115,21 @@ describe('LineItemsEditor', () => {
     expect(rowCount()).toBe(2);
   });
 
-  it('will not let the last line item be removed', async () => {
+  it('clears the last line item, once confirmed, rather than refusing', async () => {
     const user = userEvent.setup();
-    render(<Harness count={1} />);
+    render(<Harness count={1} lockNames />);
 
+    // A seeded line is locked; it still has to be removable once opened.
+    await unlockRow(user, 1);
     await user.click(screen.getByRole('button', { name: 'Remove line item 1' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText('Remove Item 1')).toBeInTheDocument();
+    await confirmRemoval(user);
 
-    // An invoice with no line items has nothing to bill for.
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    // One blank row left to type into: a document still needs a line.
     expect(rowCount()).toBe(1);
+    expect(screen.queryByText('Item 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Untitled item')).toBeInTheDocument();
   });
 
   it('adds a line item', async () => {

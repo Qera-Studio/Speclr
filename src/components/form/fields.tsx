@@ -10,8 +10,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Field, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import FieldInfo from '@/components/form/FieldInfo';
-import FieldCheck from '@/components/form/FieldCheck';
+import FieldInfo from '@/components/patterns/FieldInfo';
+import FieldCheck from '@/components/patterns/FieldCheck';
 import type { IdentifierKind } from '@/lib/domain/taxIds/decode';
 import { upperNoSpace } from '@/components/form/inputFilters';
 
@@ -47,11 +47,7 @@ interface IdentifierProps<T extends FieldValues> {
   /** Overrides the accessible name of the info button. */
   infoLabel?: string;
   placeholder?: string;
-  /**
-   * Extra classes for the `<input>` itself. Exists for one thing: the
-   * `animate-fill-flash` a caller adds when the app filled the field in, the
-   * same signal `AddressFields` gives when a pincode fills city and state.
-   */
+  /** Extra classes for the `<input>` itself. */
   inputClassName?: string;
   /**
    * Derived from something else on the form and not typed here.

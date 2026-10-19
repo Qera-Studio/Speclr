@@ -194,7 +194,7 @@ export default function ClientRequestChecklist() {
         </Tabs>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={ticked.length === 0}
           onClick={downloadTicked}
         >
@@ -209,13 +209,13 @@ export default function ClientRequestChecklist() {
           a hole beside the longer one. `break-inside-avoid` keeps a group whole
           rather than splitting its heading from its lines. The box scrolls on
           its own so the page header stays put. */}
-      <div className="max-h-[65vh] overflow-y-auto pr-2 md:columns-2 md:gap-x-10">
+      <div className="max-h-[65vh] overflow-y-auto pr-2 md:columns-2 md:gap-x-8">
         {CHECKLIST.map((group) => (
           <fieldset
             key={group.heading}
             className="flex break-inside-avoid flex-col gap-3 pb-6"
           >
-            <legend className="text-sm font-medium">{group.heading}</legend>
+            <legend className="text-body font-medium">{group.heading}</legend>
             {group.items
               .filter((item) => !item.only || item.only === scope)
               .map(({ text }) => (
@@ -233,7 +233,7 @@ export default function ClientRequestChecklist() {
                       )
                     }
                   />
-                  <Label htmlFor={idOf(text)} className="font-normal leading-snug">
+                  <Label htmlFor={idOf(text)} className="font-normal ">
                     {text}
                     {optional.includes(text) && (
                       <span className="text-muted-foreground"> (optional)</span>

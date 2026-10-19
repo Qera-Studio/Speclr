@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Controller,
   useWatch,
   type ArrayPath,
   type Control,
@@ -18,7 +19,7 @@ import {
   type CurrencyCode,
 } from "@/lib/domain/currency";
 import { Field, FieldLabel } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +32,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { Switch } from "@/components/ui/switch";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { emptyLineItem, type LineItemFormValues } from "./useDocumentForm";
 import { numericField } from "@/components/form/inputFilters";
 import { NIL } from "@/lib/utils";
@@ -124,6 +126,14 @@ interface LineItemsEditorProps<T extends FieldValues> {
    * about either: it takes finished rows and appends them.
    */
   presets?: LineItemPreset[];
+  /**
+   * Offer an "Apply discount" switch on every row. The caller passes it only
+   * while the document carries a discount: with none there is nothing for a
+   * line to be excluded from. It sits in the row's header, outside the lock,
+   * because excluding a seeded line is a question about this document and not
+   * an edit to what the Service says.
+   */
+  discountToggle?: boolean;
 }
 
 export interface LineItemPreset {
@@ -164,9 +174,10 @@ export default function LineItemsEditor<T extends FieldValues>({
   lockNames = false,
   showDetail = false,
   presets,
+  discountToggle = false,
   className,
 }: LineItemsEditorProps<T>) {
-  const { fields, append, remove } = fieldArray;
+  const { fields, append, remove, replace } = fieldArray;
   const currencySymbol = currencyByCode(currency)?.symbol ?? "₹";
 
   // The summaries have to track what is typed. `fields` holds the values the
@@ -210,6 +221,14 @@ export default function LineItemsEditor<T extends FieldValues>({
   };
 
   const removeAt = (index: number) => {
+    // The last line of a document that needs one is cleared rather than
+    // refused: a seeded line nobody wants (a retainer not billed this month)
+    // has to be removable, and a blank row is what the form starts from anyway.
+    if (!allowEmpty && fields.length === 1) {
+      replace([emptyLineItem()] as Parameters<typeof replace>[0]);
+      setRows({});
+      return;
+    }
     remove(index);
     setRows((prev) => {
       const next: Record<number, RowState> = {};
@@ -231,7 +250,7 @@ export default function LineItemsEditor<T extends FieldValues>({
        beginning to the right of the word "Line items" rather than above it. */
     <div className={className}>
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{legend}</legend>
+        <legend className="mb-1 text-body font-medium">{legend}</legend>
         {fields.map((field, index) => {
           const row = rows[index];
           /*
@@ -258,8 +277,24 @@ export default function LineItemsEditor<T extends FieldValues>({
             <div key={field.id} className="rounded-md border border-border">
               <div className="flex w-full items-center gap-2 px-3 py-2 text-left">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">{description}</span>
+                  <span className="block truncate text-body">{description}</span>
                 </span>
+                {discountToggle ? (
+                  <Controller
+                    control={control}
+                    name={`${name}.${index}.discountExempt` as Path<T>}
+                    render={({ field: exempt }) => (
+                      <span className="flex shrink-0 items-center gap-2 text-caption text-muted-foreground">
+                        <span aria-hidden="true">Discount</span>
+                        <Switch
+                          checked={!exempt.value}
+                          onCheckedChange={(on) => exempt.onChange(!on)}
+                          aria-label={`Apply discount to ${itemLabel} ${index + 1}`}
+                        />
+                      </span>
+                    )}
+                  />
+                ) : null}
                 {custom ? null : (
                   <button
                     type="button"
@@ -270,7 +305,7 @@ export default function LineItemsEditor<T extends FieldValues>({
                         ? `Lock ${itemLabel} ${index + 1}`
                         : `Unlock ${itemLabel} ${index + 1}`
                     }
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-ring focus-visible:outline-none"
                   >
                     {open ? (
                       <LockOpen aria-hidden="true" className="size-3.5" />
@@ -360,8 +395,8 @@ export default function LineItemsEditor<T extends FieldValues>({
                     )}
                     <RemoveButton
                       label={`Remove ${itemLabel} ${index + 1}`}
+                      confirmTitle={`Remove ${description}`}
                       onConfirm={() => removeAt(index)}
-                      disabled={!allowEmpty && fields.length === 1}
                     />
                   </div>
                 </div>
@@ -376,7 +411,7 @@ export default function LineItemsEditor<T extends FieldValues>({
                 render={
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     className="w-full justify-between"
                   >
                     {addLabel}
@@ -418,7 +453,7 @@ export default function LineItemsEditor<T extends FieldValues>({
           ) : (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               className="w-full"
               onClick={() => addRow(emptyLineItem())}
             >

@@ -54,8 +54,8 @@ export default function TermsForm({
   return (
     <div className="flex max-w-5xl flex-col gap-8 p-6">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Agreement &amp; schedule terms</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-section font-medium">Agreement &amp; schedule terms</h2>
+        <p className="text-body text-muted-foreground">
           The periods, rates and splits in the standing text. Every one is drafted with a
           default — change only what this engagement needs.
         </p>
@@ -67,7 +67,7 @@ export default function TermsForm({
               title already says which document they belong to. The Schedules do. */}
           {group === 'Master Agreement' ? null : (
             <div className="flex items-center gap-3">
-              <h3 className="shrink-0 text-sm font-semibold">{group}</h3>
+              <h3 className="shrink-0 text-body font-medium">{group}</h3>
               <span className="h-px min-w-0 flex-1 bg-border" />
             </div>
           )}
@@ -104,7 +104,7 @@ export default function TermsForm({
       ))}
 
       {scopes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Nothing to set here yet — the standing terms that carry figures depend on which
           Schedules the contract includes.
         </p>

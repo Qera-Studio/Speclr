@@ -20,11 +20,10 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Tabs,
-  TabsIndicator,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import FieldInfo, { LegendInfo } from "@/components/form/FieldInfo";
+import FieldInfo, { LegendInfo } from "@/components/patterns/FieldInfo";
 import { numericField } from "@/components/form/inputFilters";
 import {
   clientCommercialSchema,
@@ -269,7 +268,7 @@ export default function ServicesStep({
         </LegendInfo>
 
         {services.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             No services in the library yet — add them at{" "}
             <a href="/client/services" className="underline">
               Services
@@ -289,12 +288,11 @@ export default function ServicesStep({
               onValueChange={(value) => setTab(value as ScheduleKey)}
             >
               <TabsList className="w-full">
-                <TabsIndicator />
                 {SCHEDULES.map((schedule) => (
                   <TabsTrigger
                     key={schedule.key}
                     value={schedule.key}
-                    className="text-xs"
+                    className="text-meta"
                   >
                     {schedule.name}
                   </TabsTrigger>
@@ -338,7 +336,7 @@ export default function ServicesStep({
                           // A tone off the foreground rather than a surface token:
                           // `background` and `card` are both white in light mode, so
                           // a tray painted with either disappears behind its own card.
-                          "flex w-44 flex-col gap-1 rounded-xl bg-foreground/15 p-1 transition-colors",
+                          "flex w-44 flex-col gap-1 rounded-lg bg-foreground/15 p-1 transition-colors",
                           isOn && "bg-foreground/15",
                         )}
                       >
@@ -363,7 +361,7 @@ export default function ServicesStep({
                           className="group/service flex aspect-square w-full flex-col justify-between rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary/60 focus-visible:border-primary focus-visible:outline-none"
                         >
                           <span className="flex items-start justify-between gap-1">
-                            <span className="text-xs text-muted-foreground tabular-nums">
+                            <span className="text-meta text-muted-foreground tabular-nums">
                               {service.code}
                             </span>
                             <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors group-hover/service:border-primary group-hover/service:bg-primary group-hover/service:text-primary-foreground group-focus-visible/service:border-primary group-focus-visible/service:bg-primary group-focus-visible/service:text-primary-foreground group-aria-pressed/service:border-primary group-aria-pressed/service:bg-primary group-aria-pressed/service:text-primary-foreground">
@@ -372,11 +370,11 @@ export default function ServicesStep({
                               ) : (
                                 // A quarter turn on hover, so the mark answers
                                 // the pointer before the click does.
-                                <Plus className="size-3 transition-transform group-hover/service:rotate-90" />
+                                <Plus className="size-3" />
                               )}
                             </span>
                           </span>
-                          <span className="line-clamp-3 text-sm font-medium">
+                          <span className="line-clamp-3 text-body font-medium">
                             {service.name}
                           </span>
                         </button>
@@ -384,7 +382,7 @@ export default function ServicesStep({
                         <div className="relative">
                           <span
                             aria-hidden
-                            className="pointer-events-none absolute inset-y-0 left-1.5 flex items-center text-xs text-muted-foreground"
+                            className="pointer-events-none absolute inset-y-0 left-1.5 flex items-center text-meta text-muted-foreground"
                           >
                             ₹
                           </span>
@@ -392,7 +390,7 @@ export default function ServicesStep({
                             aria-label={`Agreed rate for ${service.name}`}
                             inputMode="decimal"
                             placeholder="Rate"
-                            className="h-7 w-full border-transparent bg-transparent pl-4.5 text-xs shadow-none group-data-[size=form]/field-group:h-7 group-data-[size=form]/field-group:pr-1.5 group-data-[size=form]/field-group:pl-4.5 group-data-[size=form]/field-group:text-xs group-data-[size=form]/field-group:md:text-xs"
+                            className="h-7 w-full border-transparent bg-transparent pl-4.5 text-meta shadow-none group-data-[size=form]/field-group:h-7 group-data-[size=form]/field-group:pr-1.5 group-data-[size=form]/field-group:pl-4.5 group-data-[size=form]/field-group:text-meta group-data-[size=form]/field-group:text-meta"
                             value={selected[service.code] ?? ""}
                             onChange={(event) =>
                               setSelected((current) => ({
@@ -417,7 +415,7 @@ export default function ServicesStep({
               Build is open.
             */}
             {added.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 Nothing added yet.
               </p>
             ) : (
@@ -430,9 +428,9 @@ export default function ServicesStep({
                   );
                   const open = openItems === service.code;
                   return (
-                    <li key={service.code} className="text-sm">
+                    <li key={service.code} className="text-body">
                       <div className="flex items-center gap-3 px-3 py-1.5">
-                        <span className="text-xs text-muted-foreground tabular-nums">
+                        <span className="text-meta text-muted-foreground tabular-nums">
                           {service.code}
                         </span>
                         <span className="min-w-0 flex-1 truncate">
@@ -451,12 +449,12 @@ export default function ServicesStep({
                             onClick={() =>
                               setOpenItems(open ? null : service.code)
                             }
-                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-meta text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring focus-visible:outline-none"
                           >
                             <ChevronDown
                               aria-hidden
                               className={cn(
-                                "size-3 transition-transform",
+                                "size-3",
                                 open && "rotate-180",
                               )}
                             />
@@ -488,7 +486,7 @@ export default function ServicesStep({
                           type="button"
                           aria-label={`Remove ${service.name}`}
                           onClick={() => toggle(service.code)}
-                          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                          className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-ring focus-visible:outline-none"
                         >
                           <X className="size-3.5" />
                         </button>
@@ -515,7 +513,7 @@ export default function ServicesStep({
                                 />
                                 <FieldLabel
                                   htmlFor={`item-${service.code}-${item.id}`}
-                                  className="min-w-0 flex-1 truncate text-xs font-normal"
+                                  className="min-w-0 flex-1 truncate text-meta font-normal"
                                 >
                                   {item.name}
                                 </FieldLabel>
@@ -534,7 +532,7 @@ export default function ServicesStep({
                                         ? "Quoted"
                                         : paiseToRupees(item.ratePaise)
                                     }
-                                    className="h-6 w-24 shrink-0 text-xs group-data-[size=form]/field-group:h-6 group-data-[size=form]/field-group:text-xs group-data-[size=form]/field-group:md:text-xs"
+                                    className="h-6 w-24 shrink-0 text-meta group-data-[size=form]/field-group:h-6 group-data-[size=form]/field-group:text-meta group-data-[size=form]/field-group:text-meta"
                                     value={chosen?.[item.id] ?? ""}
                                     onChange={(event) =>
                                       setItems((current) => ({
@@ -549,7 +547,7 @@ export default function ServicesStep({
                                     }
                                   />
                                 ) : (
-                                  <span className="w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                                  <span className="w-24 shrink-0 text-right text-meta text-muted-foreground tabular-nums">
                                     {item.ratePaise === undefined
                                       ? "Quoted"
                                       : `₹${paiseToRupees(item.ratePaise)}`}

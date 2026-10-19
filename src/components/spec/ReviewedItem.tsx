@@ -39,7 +39,7 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
         )}
       >
         <CollapsibleTrigger
-          className="flex w-full items-center gap-3 p-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="flex w-full items-center gap-3 p-2 text-left focus-ring"
           aria-label="Reviewed — show checks"
         >
           <BlueCheck
@@ -48,10 +48,10 @@ export default function ReviewedItem({ result, criteria, preview }: ReviewedItem
             icon={attention ? TriangleAlert : undefined}
             className={cn('size-5 shrink-0 rounded-sm', attention ? 'text-warning' : 'text-primary')}
           />
-          <span className="text-sm font-medium text-foreground">Reviewed</span>
-          <span className="ml-auto text-xs text-muted-foreground">{summary}</span>
+          <span className="text-body font-medium text-foreground">Reviewed</span>
+          <span className="ml-auto text-meta text-muted-foreground">{summary}</span>
           <ChevronDown
-            className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+            className={cn('size-4 shrink-0 text-muted-foreground', open && 'rotate-180')}
             aria-hidden="true"
           />
         </CollapsibleTrigger>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { FileText } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Empty,
@@ -69,7 +69,7 @@ export function DocumentCard({ doc }: { doc: AdminDocument }) {
             {DOC_TYPES[doc.type].label}
           </span>
         </div>
-        <StatusBadge status={doc.status} />
+        <Badge status={doc.status} />
       </CardContent>
 
       <CardContent className="flex flex-col gap-0.5">

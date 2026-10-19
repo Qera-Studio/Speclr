@@ -13,10 +13,11 @@ import { Combobox } from '@/components/ui/combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RINGED_POPUP_GAP } from '@/components/ui/popup';
 import { cn } from '@/lib/utils';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 import {
   ENGAGEMENT_TYPES,
+  ENGAGEMENT_TYPE_INFO,
   clientCommercialSchema,
   type ClientCommercial,
 } from '@/lib/domain/client';
@@ -27,11 +28,6 @@ import { StepForm, asOptionalNumber, pruneEmpty, useStepSave, type StepProps } f
 /** Only the fields this step owns; the term and services belong to the next one. */
 type FormValues = Omit<ClientCommercial, 'services' | 'startDate' | 'termMonths' | 'autoRenew' | 'noticeDays'>;
 
-const ENGAGEMENT_CARDS = {
-  retainer: { title: 'Retainer', hint: 'Ongoing, billed on a cycle' },
-  project: { title: 'Project', hint: 'A defined scope, billed against it' },
-  hourly: { title: 'Hourly', hint: 'Billed against time' },
-} as const;
 
 /**
  * The cycles anyone actually names, as intervals. `custom` is not a stored
@@ -182,7 +178,7 @@ export default function CommercialStep({
           <FieldInfo
             htmlFor="client-currency"
             label="Billing currency"
-            info="Recorded as what was agreed. Invoices still print INR: a GST document from an Indian entity must show its tax in INR whatever the billing currency, and the CGST/SGST split is rupee-shaped."
+            info="What an export invoice to this client is billed in, with the rupee equivalent stated at the bank's rate. Left as INR for a client abroad, their own country's currency is used. A client in India is always billed in INR."
             infoLabel="Why do invoices still print INR?"
           />
           <Controller
@@ -270,7 +266,7 @@ export default function CommercialStep({
               {ENGAGEMENT_TYPES.map((type) => (
                 <label
                   key={type}
-                  className="flex cursor-pointer flex-col gap-0.5 rounded-md border border-input bg-background p-3 transition-colors hover:bg-accent/40 has-[:checked]:border-ring has-[:checked]:bg-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/30"
+                  className="flex cursor-pointer flex-col gap-0.5 rounded-md border border-input bg-background p-3 transition-colors hover:bg-accent/40 has-[:checked]:border-ring has-[:checked]:bg-accent has-[:focus-visible]:ring-forced"
                 >
                   <input
                     type="radio"
@@ -281,9 +277,9 @@ export default function CommercialStep({
                     onChange={() => field.onChange(type)}
                     onBlur={field.onBlur}
                   />
-                  <span className="text-sm font-medium">{ENGAGEMENT_CARDS[type].title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {ENGAGEMENT_CARDS[type].hint}
+                  <span className="text-body font-medium">{ENGAGEMENT_TYPE_INFO[type].title}</span>
+                  <span className="text-meta text-muted-foreground">
+                    {ENGAGEMENT_TYPE_INFO[type].hint}
                   </span>
                 </label>
               ))}
@@ -501,8 +497,8 @@ function DayOfMonthPicker({
       <PopoverTrigger
         id={id}
         onBlur={onBlur}
-        data-empty={value == null}
-        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-sm whitespace-nowrap transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-empty:text-muted-foreground"
+        data-empty={value == null ? '' : undefined}
+        className="flex h-9.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-body whitespace-nowrap transition-colors focus-ring data-empty:text-placeholder"
       >
         <span className="truncate">{value == null ? 'Pick a day' : `Day ${value}`}</span>
         <CalendarDays className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
@@ -527,7 +523,7 @@ function DayOfMonthPicker({
                 setOpen(false);
               }}
               className={cn(
-                'size-8 rounded-md text-sm tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none',
+                'size-8 rounded-md text-body tabular-nums transition-colors hover:bg-accent focus-ring focus-visible:outline-none',
                 day === value && 'bg-primary text-primary-foreground hover:bg-primary',
               )}
             >
@@ -535,7 +531,7 @@ function DayOfMonthPicker({
             </button>
           ))}
         </div>
-        <p className="mt-2 max-w-56 text-xs text-muted-foreground">
+        <p className="mt-2 max-w-56 text-meta text-muted-foreground">
           A month with no such day is billed on its last one, so the 31st becomes the 28th in
           February.
         </p>

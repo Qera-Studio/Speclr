@@ -1,75 +1,65 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Spinner } from "@/components/ui/spinner"
 
+/**
+ * Five fills, three heights, one shape switch. `docs/design.md` §2.1.
+ *
+ * **Fills.** `primary` is the one action a view exists for, and there is one
+ * per view. `secondary` (a border, no fill) is the default and the ordinary
+ * action. `ghost` is for a row of icons, a toolbar, and "Cancel": anything
+ * that must not compete. `destructive` is a tint among other controls; the
+ * solid red exists only on the confirm inside its own dialog
+ * (`AlertDialogAction`). `link` is inline in prose. `raised` (on trial on one
+ * button for a year) and `neutral` (a second solid for a row with two, which
+ * the one-primary rule forbids) were deleted on 16 October 2026.
+ *
+ * **Heights.** 28 (`sm`) is the smallest thing that reads as a control rather
+ * than a chip: toolbars, row actions, icon-only buttons. 32 (`md`) is the
+ * default, the height of an action on the page and of an Input in the editor
+ * rail. 36 (`lg`) is a form field's height, for a button beside one or a
+ * form's own submit. 24 was deleted: nothing needed it. Inside a
+ * `FieldGroup size="form"` an `md` button grows to `lg` on its own, so a
+ * button next to a field never has to be told.
+ *
+ * **`icon`** makes the button square at its height. It is a shape, not a
+ * fourth size, and an icon-only button still has to name itself
+ * (`aria-label` or an `sr-only` span); `design-system.test.ts` fails the
+ * build when it does not.
+ */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-xs/relaxed font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button focus-ring inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-control whitespace-nowrap transition-colors select-none active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
-        // `default`, given an edge. The stroke is mixed from `--primary` rather
-        // than hard-coded, so it darkens with whatever the theme sets and stays
-        // two steps down from the fill in both. The two inset lines are a lit
-        // top edge and a shaded bottom one — enough to read as a raised surface
-        // at a glance, not enough to look like a 2010 gradient button.
-        //
-        // On trial on the dashboard's "New document" only. Roll it into
-        // `default` if it holds up, or delete it — do not leave it half-adopted.
-        raised:
-          "bg-primary text-primary-foreground border-[color-mix(in_oklch,var(--primary),black_18%)] shadow-[inset_0_1px_0_color-mix(in_oklch,white,transparent_78%),inset_0_-1px_0_color-mix(in_oklch,black,transparent_88%)] hover:bg-[color-mix(in_oklch,var(--primary),white_6%)]",
-        // Solid, and the one neutral fill in the set. `secondary` is a *light*
-        // slate fill; this is the ink colour itself, so it reads as black on a
-        // light theme and inverts with the token rather than staying black in
-        // dark mode, where a black button on a slate-950 ground disappears.
-        //
-        // It exists for a row where more than one action is solid and only one
-        // of them is the primary: the print view's Download is `default` blue,
-        // and Print and Duplicate are these. Without it the row was two blues
-        // and nothing said which one to press.
-        neutral: "bg-foreground text-background hover:bg-foreground/85",
-        outline:
-          "border-border hover:bg-input/50 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/30",
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-border hover:bg-hover hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/30",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-hover hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
       },
-      /**
-       * Three heights, and the third one earns its place.
-       *
-       * 28 (`default`) is the dense height this tool is built at; 32 (`lg`) is
-       * the height of a form's own submit, where the action is the point of the
-       * screen rather than one control among many. `form` (38) is not a fourth
-       * opinion about buttons: it is `Input`/`Combobox`/`DatePicker`'s height,
-       * for a button sitting *inline* with one of them, and a button beside a
-       * field that does not match the field is the mismatch this variant
-       * exists to stop.
-       *
-       * `sm` (24) and `icon-xs` (20) were deleted. Neither said anything
-       * `default` and `icon-sm` do not, and a fourth height is a fourth
-       * decision every call site has to make correctly.
-       */
       size: {
-        default:
-          "h-7 gap-1 px-2 text-xs/relaxed has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 group-data-[size=form]/field-group:h-9.5 group-data-[size=form]/field-group:gap-1.5 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-sm group-data-[size=form]/field-group:[&_svg:not([class*='size-'])]:size-4",
-        lg: "h-8 gap-1 px-2.5 text-xs/relaxed has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
-        // Matches the `form` size on Input/Combobox/DatePicker, for a button
-        // sitting inline with one of them. Button was the only kit primitive
-        // without it, which is why such pairs came out mismatched.
-        form: "h-9.5 gap-1.5 px-3 text-sm [&_svg:not([class*='size-'])]:size-4",
-        icon: "size-7 [&_svg:not([class*='size-'])]:size-3.5 group-data-[size=form]/field-group:size-9 group-data-[size=form]/field-group:[&_svg:not([class*='size-'])]:size-4",
-        "icon-sm": "size-6 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+        md: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 group-data-[size=form]/field-group:h-9 group-data-[size=form]/field-group:px-3 group-data-[size=form]/field-group:text-body group-data-[size=form]/field-group:font-medium group-data-[size=form]/field-group:[&_svg:not([class*='size-'])]:size-4",
+        lg: "h-9 gap-1.5 px-3 text-body font-medium [&_svg:not([class*='size-'])]:size-4",
+      },
+      icon: {
+        true: "px-0",
       },
     },
+    compoundVariants: [
+      { icon: true, size: "sm", className: "size-7" },
+      { icon: true, size: "md", className: "size-8 group-data-[size=form]/field-group:size-9" },
+      { icon: true, size: "lg", className: "size-9" },
+    ],
     defaultVariants: {
-      variant: "default",
-      size: "default",
+      variant: "secondary",
+      size: "md",
     },
   }
 )
@@ -90,8 +80,9 @@ const buttonVariants = cva(
  */
 function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant = "secondary",
+  size = "md",
+  icon,
   pending,
   disabled,
   children,
@@ -101,14 +92,12 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, icon, className }))}
       disabled={disabled || pending}
       aria-busy={pending || undefined}
       {...props}
     >
-      {pending ? (
-        <Loader2 aria-hidden="true" className="animate-spin text-current" />
-      ) : null}
+      {pending ? <Spinner className="text-current" /> : null}
       {children}
     </ButtonPrimitive>
   )

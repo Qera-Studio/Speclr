@@ -23,8 +23,8 @@ import type { ClientKind } from '@/lib/domain/entityType';
 export default function KindChooser({ onChoose }: { onChoose: (kind: ClientKind) => void }) {
   return (
     <div className="m-auto w-full max-w-2xl">
-      <h2 className="mb-1 text-center text-lg font-medium">Who are you adding?</h2>
-      <p className="mb-6 text-center text-sm text-muted-foreground">
+      <h2 className="mb-1 text-center text-section font-medium">Who are you adding?</h2>
+      <p className="mb-6 text-center text-body text-muted-foreground">
         It decides what they are asked for. You can change it later by changing their entity type.
       </p>
 
@@ -69,13 +69,13 @@ function KindCard({
     <button
       type="button"
       onClick={onClick}
-      className="group/kind flex h-full w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/kind flex h-full w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card px-6 py-8 text-center transition-colors hover:border-primary/40 hover:bg-accent focus-ring"
     >
       <span className="text-muted-foreground transition-colors group-hover/kind:text-primary">
         {icon}
       </span>
-      <span className="text-base font-medium text-foreground">{title}</span>
-      <span className="max-w-[28ch] text-xs/relaxed text-balance text-muted-foreground">{line}</span>
+      <span className="text-section font-medium text-foreground">{title}</span>
+      <span className="max-w-[28ch] text-body text-balance text-muted-foreground">{line}</span>
     </button>
   );
 }

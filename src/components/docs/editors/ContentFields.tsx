@@ -4,11 +4,11 @@ import { ChevronRight } from 'lucide-react';
 import type { DocContent, ResolvedContent, TermItem } from '@/lib/domain/docContent';
 import type { MsaClause } from '@/lib/domain/contract/msa';
 import { Field, FieldLabel } from '@/components/ui/field';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 /**
@@ -54,7 +54,7 @@ export function ContentText({
         <Textarea
           id={id}
           rows={rows}
-          className="font-normal leading-relaxed"
+          className="font-normal "
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -89,17 +89,17 @@ export function TermsFields({
             render={
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-ring focus-visible:outline-none"
               >
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[open]/term:rotate-90"
+                  className="size-4 shrink-0 text-muted-foreground group-data-[open]/term:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
+                  <span className="block truncate text-body">
                     {term.title.trim() || `Term ${index + 1}`}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">{term.body}</span>
+                  <span className="block truncate text-meta text-muted-foreground">{term.body}</span>
                 </span>
               </button>
             }
@@ -136,7 +136,7 @@ export function TermsFields({
       <div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => onChange([...terms, { title: '', body: '' }])}
         >
           Add term
@@ -181,17 +181,17 @@ export function ClauseFields({
             render={
               <button
                 type="button"
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent/50 focus-ring focus-visible:outline-none"
               >
                 <ChevronRight
                   aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[open]/clause:rotate-90"
+                  className="size-4 shrink-0 text-muted-foreground group-data-[open]/clause:rotate-90"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
+                  <span className="block truncate text-body">
                     {clause.number}. {clause.heading.trim() || 'Untitled clause'}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="block truncate text-meta text-muted-foreground">
                     {clause.body[0] ?? ''}
                   </span>
                 </span>
@@ -218,7 +218,7 @@ export function ClauseFields({
                 <Textarea
                   id={`clause-body-${index}`}
                   rows={8}
-                  className="font-normal leading-relaxed"
+                  className="font-normal "
                   value={clause.body.join('\n\n')}
                   onChange={(e) => update(index, { body: splitParagraphs(e.target.value) })}
                 />

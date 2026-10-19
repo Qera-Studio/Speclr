@@ -6,7 +6,7 @@ import {
   type FilterRow as FilterRowOf,
 } from './filters';
 import { contractTotalPaise } from './contract/listing';
-import { computeTotals, rupeesToPaise, slipTotals } from './money';
+import { computeTotals, inrPaiseOf, rupeesToPaise, slipTotals } from './money';
 import { computeQuotationTotals } from './quotation';
 import { partyName } from './party';
 import { DOC_TYPES, DOC_TYPE_LIST, isHrDocType } from './registry';
@@ -241,6 +241,20 @@ function newestAt(docs: AdminDocument[]): number {
  * quotation its section-grouped arithmetic, a contract the fees its Parts
  * state (`contract/listing.ts`), and a letter nothing.
  */
+/**
+ * A money document's total in rupees. An export billed in another currency is
+ * converted at its own stated rate, so the stored `total_paise`, every list
+ * and every filter stay in the rupees a GST return reports.
+ */
+function inrTotalOf(doc: AdminDocument): number {
+  const total = computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc).totalPaise;
+  const billed = doc as { currency?: string; fxRate?: { inrPerUnit4: number } };
+  if (!billed.currency || billed.currency === 'INR') return total;
+  // A foreign draft with no rate yet has no rupee figure; zero rather than a
+  // dollar amount read as rupees.
+  return billed.fxRate ? inrPaiseOf(total, billed.fxRate.inrPerUnit4) : 0;
+}
+
 export function totalPaiseOf(doc: AdminDocument): number | null {
   switch (doc.type) {
     case 'PAY':
@@ -253,7 +267,7 @@ export function totalPaiseOf(doc: AdminDocument): number | null {
       return contractTotalPaise(doc.contract);
     default:
       if (DOC_TYPES[doc.type].kind === 'hr-letter') return null;
-      return computeTotals(doc.lineItems ?? [], doc.gstRatePercent, doc).totalPaise;
+      return inrTotalOf(doc);
   }
 }
 

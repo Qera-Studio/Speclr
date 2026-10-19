@@ -1,8 +1,7 @@
 'use client';
 
-import { Download, CheckCheck } from 'lucide-react';
-import { ConfirmButton } from '@/components/ui/confirm-button';
-import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
+import { Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { ExportedProgress } from '@/lib/spec/types';
 
 interface ExportProgressButtonProps {
@@ -41,15 +40,16 @@ export default function ExportProgressButton({ clientName, onExport }: ExportPro
   };
 
   return (
-    <ConfirmButton
-      idleIcon={Download}
-      idleIconSlot={<TrayArrowIcon direction="down" />}
-      idleLabel="Export progress"
-      confirmIcon={CheckCheck}
-      confirmLabel="Downloaded"
-      onAction={handleExport}
-      revertAfterMs={3000}
-      className="group/tray h-10 gap-2 px-5 text-sm [&_svg:not([class*='size-'])]:size-4"
-    />
+    // The browser's own download bar is the confirmation here; the button
+    // used to swap its label to "Downloaded" as well, which said it twice.
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={handleExport}
+      className="h-10 gap-2 px-4 text-body [&_svg:not([class*='size-'])]:size-4"
+    >
+      <Download aria-hidden="true" />
+      Export progress
+    </Button>
   );
 }

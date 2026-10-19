@@ -28,19 +28,29 @@ const tabsListVariants = cva(
   // The grab cursor only where there is a pill to grab: a `line` strip is an
   // underline with nothing to pick up, and a vertical one goes nowhere
   // sideways. Neither should claim otherwise.
-  "group/tabs-list relative inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none group-data-horizontal/tabs:data-[variant=default]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
+  "group/tabs-list relative inline-flex w-fit items-center justify-center text-tab-label group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none group-data-horizontal/tabs:data-[variant=default]:cursor-grab data-dragging:cursor-grabbing data-dragging:select-none",
   {
     variants: {
       variant: {
-        // Border only on the trough that actually holds a pill — a `line`
-        // strip is an underline sitting on nothing, so a container stroke
-        // around it would frame empty air.
-        default: "border border-border bg-muted",
+        // The segmented trough (`segmentTrough`): a soft fill and no stroke.
+        // The pill's own shadow is what lifts the choice off it.
+        // Equal segments, as a segmented control has: the pill is one width
+        // wherever it is dragged, so it never covers half of a neighbour.
+        default: "bg-muted group-data-horizontal/tabs:inline-grid group-data-horizontal/tabs:auto-cols-fr group-data-horizontal/tabs:grid-flow-col",
         line: "gap-1 bg-transparent",
+      },
+      // The button heights (`docs/design.md` §2.1), so a strip beside a
+      // button is never a different height. One 2px inset at every size: the
+      // pill is the strip minus that, and nothing else needs setting.
+      size: {
+        sm: "rounded-lg p-0.5 group-data-horizontal/tabs:h-7",
+        md: "rounded-lg p-0.5 group-data-horizontal/tabs:h-8",
+        lg: "rounded-lg p-0.5 group-data-horizontal/tabs:h-9",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "md",
     },
   },
 );
@@ -123,9 +133,16 @@ export function useTabDrag() {
 
     const box = indicator.getBoundingClientRect();
     const trough = list.getBoundingClientRect();
+    // The inside of the trough, not its outer edge: the pill sits 2px in at
+    // rest and must stay 2px in while it is held, or it slides into the
+    // padding and out past the corner.
+    const css = getComputedStyle(list);
+    const inset = (side: "left" | "right") =>
+      parseFloat(css.getPropertyValue(`padding-${side}`)) +
+      parseFloat(css.getPropertyValue(`border-${side}-width`));
     const startX = event.clientX;
-    const min = trough.left - box.left;
-    const max = trough.right - box.right;
+    const min = trough.left + inset("left") - box.left;
+    const max = trough.right - inset("right") - box.right;
     moved.current = false;
     // A release that never produced a click (let go outside the strip) would
     // otherwise leave this armed and eat the next real one.
@@ -155,10 +172,30 @@ export function useTabDrag() {
      * down) never arises. A plain, no-movement tap on a trigger still
      * reaches the trigger's own `onClick` untouched.
      */
+    const segments = [...list.querySelectorAll<HTMLElement>(SEGMENT_SELECTOR)];
+    const centreOf = (el: Element) => {
+      const rect = el.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    };
+    /**
+     * The segment the pill would land on, marked `data-drag-over` so its label
+     * goes to full ink and the others go quiet. Set on the DOM rather than in
+     * state: it changes on every move and nothing else reads it.
+     */
+    const markOver = (dx: number) => {
+      const centre = box.left + box.width / 2 + dx;
+      const over = segments.reduce((best, el) =>
+        Math.abs(centreOf(el) - centre) < Math.abs(centreOf(best) - centre) ? el : best,
+      segments[0]);
+      for (const el of segments) el.toggleAttribute("data-drag-over", el === over);
+    };
+    const unmark = () => segments.forEach((el) => el.removeAttribute("data-drag-over"));
+
     const handleMove = (moveEvent: PointerEvent) => {
       const dx = Math.max(min, Math.min(max, moveEvent.clientX - startX));
       if (Math.abs(moveEvent.clientX - startX) > DRAG_SLOP)
         moved.current = true;
+      markOver(dx);
       setDrag((current) => (current ? { ...current, dx } : current));
     };
 
@@ -167,6 +204,7 @@ export function useTabDrag() {
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleCancel);
       cleanup.current = null;
+      unmark();
       const dragged = moved.current;
       setDrag(null);
       if (!commit || !dragged) return;
@@ -207,6 +245,7 @@ export function useTabDrag() {
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleCancel);
     cleanup.current = () => {
+      unmark();
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleCancel);
@@ -230,9 +269,20 @@ export function useTabDrag() {
   };
 }
 
+/**
+ * A tab strip. A caller passes a `size` and its triggers, and nothing else.
+ *
+ * **The pill is drawn here, not by the caller** (16 October 2026). It used to
+ * be a separate `TabsIndicator` each screen had to remember, and four of six
+ * did not: their triggers painted their own fill, so a drag committed on
+ * release while nothing moved under the pointer. A part every caller needs is
+ * not a part, it is the component.
+ */
 function TabsList({
   className,
   variant = "default",
+  size = "md",
+  children,
   ...props
 }: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
   const { style, ...drag } = useTabDrag();
@@ -240,58 +290,62 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
+      data-size={size}
+      className={cn(tabsListVariants({ variant, size }), className)}
       {...props}
       // After `props`, so a caller cannot drop the gesture by passing a pointer
       // handler of its own. Its `style` is merged rather than replaced: the
       // drag rides on a custom property and would otherwise be clobbered.
       {...drag}
       style={{ ...(props.style as React.CSSProperties), ...style }}
-    />
+    >
+      {variant === "default" ? <TabsIndicator /> : null}
+      {children}
+    </TabsPrimitive.List>
   );
 }
 
 /**
- * The raised surface behind the active tab.
+ * The segmented look, in three parts, so every strip in the app draws the same
+ * one (`docs/design.md` §2.7). It came from a reference design adopted on
+ * 10 October 2026: a soft grey trough, a white pill under the choice with a
+ * shadow and no stroke, and muted labels that go to full ink when chosen.
  *
- * Exported because four things draw it — this file's `TabsIndicator` and
- * `TabsTrigger`, plus the hand-rolled pills (`ProfileSwitcher`,
- * `SpecDetailsTabs`'s Motion one, and the list/card toggle in
- * `DocumentsBrowser`) — and they had already drifted apart.
+ * **The pill is white in light mode and one step up the ramp in dark**, which
+ * is "nearer" in both themes: lighter is what raised means under a light
+ * source, and that does not invert with the theme. `--background` cannot be
+ * the dark value because it is darker than the trough there.
  *
- * **Fill, shadow and a light stroke, in both themes.** Light mode raises the
- * pill by making it lighter than the trough (white on `--muted`) and adds a
- * shadow; dark mode does the same thing in the same direction, because lighter
- * is what "nearer" means under a light source and that does not invert with the
- * theme. What dark mode cannot do is inherit light's *values*: `--background`
- * there is darker than `--muted`, so painting the pill `bg-background` would
- * push it into the trough. Hence a white overlay instead. The border is what
- * `ProfileSwitcher` carried on its own before this was generalised to it: a
- * pill that is only a fill difference reads as one thing on a busy background,
- * and the stroke is what lets an eye find its edge without the shadow alone
- * carrying it. It is fill *and* shadow *and* stroke together that make the
- * surface, not the stroke instead of the other two — the same fill-does-not-
- * read problem this comment used to describe would return if the border were
- * asked to carry the elevation on its own.
+ * Used by `TabsIndicator`, `TabsTrigger`, and the strips Base UI does not build
+ * (`ProfileSwitcher`, the documents view toggle, `ThemeToggle`,
+ * `SpecDetailsTabs`'s Motion pill). Change it here and they all follow.
  */
+const segmentTrough = "rounded-lg bg-muted";
 const tabPillSurface =
-  "border border-border bg-raised shadow-sm dark:shadow-[0_1px_2px_oklch(0_0_0/0.4)]";
+  "rounded-sm bg-background shadow-raised dark:bg-foreground/10";
+/** A segment's label: muted at rest, full ink once chosen or under the pointer. */
+const segmentLabel = "font-medium text-tab-label transition-colors hover:text-foreground";
 
 function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-[calc(--spacing(1.25))] hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "relative inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-control whitespace-nowrap group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:py-1.5 focus-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        segmentLabel,
+        // Label and icon follow the strip, as they do on a button: 12px and a
+        // 14px icon at sm and md, 13px and 16px at lg.
+        "[&_svg:not([class*='size-'])]:size-3.5 group-data-[size=sm]/tabs-list:px-2.5 group-data-[size=lg]/tabs-list:px-4 group-data-[size=lg]/tabs-list:text-body group-data-[size=lg]/tabs-list:[&_svg:not([class*='size-'])]:size-4",
         // `line` is an underline, not a pill — its active trigger keeps no
         // fill and no border in either theme. Unprefixed rather than `dark:`
         // only, so it also overrides the new `data-active:border-border`
         // below in light mode.
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:border-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent",
-        // Same surface as `tabPillSurface`, spelled with `data-active:` since
-        // it paints on the trigger itself. Keep the two in step. The base
-        // class already carries `border`; only the colour needs to switch.
-        "data-active:border-border data-active:bg-raised data-active:shadow-sm data-active:text-foreground dark:data-active:text-foreground dark:data-active:shadow-[0_1px_2px_oklch(0_0_0/0.4)]",
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent group-data-[variant=line]/tabs-list:data-active:shadow-none",
+        // The pill paints the chosen surface; the trigger only goes to full ink.
+        // While the pill is held, ink follows the pill rather than the choice,
+        // so the label under it is the one that reads as chosen. `!` because
+        // two variants of one property have no order Tailwind promises.
+        "data-active:text-foreground group-data-dragging/tabs-list:text-tab-label! group-data-dragging/tabs-list:data-drag-over:text-foreground!",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
         className,
       )}
@@ -302,11 +356,12 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
 
 /**
  * The pill behind the active tab. Base UI measures the active trigger onto
- * `--active-tab-left` / `--active-tab-width`, so this slides between them
- * rather than blinking from one to the next.
+ * `--active-tab-left` / `--active-tab-width`, so one element is positioned
+ * under whichever tab is on. It moves in a frame: a pill that slid between
+ * tabs was decoration, and the drag in `useTabDrag` still works because the
+ * offset there is per-frame anyway (`docs/design.md` §1.6).
  *
- * A list using it should suppress its triggers' own `data-active` background —
- * otherwise that paints instantly and there is nothing left to watch.
+ * A list using it should suppress its triggers' own `data-active` background.
  */
 function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
   return (
@@ -315,11 +370,10 @@ function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
       className={cn(
         // `--tab-drag` is set on the list by `useTabDrag` and inherits down. It
         // is 0 at rest, so the resting position is exactly what it always was.
-        "absolute top-1/2 left-0 z-0 h-[calc(100%-6px)] w-(--active-tab-width) -translate-y-1/2 translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))] rounded-md transition-[translate,width] duration-200 ease-standard",
-        // Untransitioned under the hand: the offset is already per-frame, and a
-        // transition on top of it lags the pointer.
-        "group-data-dragging/tabs-list:transition-none",
+        "absolute inset-y-0.5 left-0 z-0 w-(--active-tab-width) translate-x-[calc(var(--active-tab-left)+var(--tab-drag,0px))]",
         tabPillSurface,
+        // 8px trough, 2px inset: a 6px pill keeps the two corners concentric.
+        "rounded-md",
         className,
       )}
       {...props}
@@ -349,16 +403,8 @@ function TabsPanels({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 /**
- * Panels are kept mounted so the one leaving can animate out; Base UI marks it
- * `data-ending-style` and waits for the transition before hiding it. The
- * direction of travel decides which way each goes — moving right, the arriving
- * panel comes from the right and the leaving one goes out to the left.
- *
- * 1.5s. Base UI holds the leaving panel in the DOM for the whole of it, so the
- * tabs stay clickable throughout — a second click mid-slide just redirects it.
- *
- * Belongs inside `TabsPanels`. On its own the two panels would stack
- * vertically for the length of the transition.
+ * Panels are kept mounted by default so a form inside one keeps its state
+ * across a switch. Nothing slides: the arriving panel is simply the one shown.
  */
 function TabsContent({
   className,
@@ -370,10 +416,7 @@ function TabsContent({
       data-slot="tabs-content"
       keepMounted={keepMounted}
       className={cn(
-        "flex-1 text-xs/relaxed outline-none",
-        "transition-[translate] duration-200 ease-standard motion-reduce:transition-none",
-        "data-[activation-direction=right]:data-[starting-style]:translate-x-full data-[activation-direction=right]:data-[ending-style]:-translate-x-full",
-        "data-[activation-direction=left]:data-[starting-style]:-translate-x-full data-[activation-direction=left]:data-[ending-style]:translate-x-full",
+        "flex-1 text-control outline-none",
         className,
       )}
       {...props}
@@ -385,9 +428,10 @@ export {
   Tabs,
   TabsList,
   TabsTrigger,
-  TabsIndicator,
   TabsPanels,
   TabsContent,
   tabsListVariants,
   tabPillSurface,
+  segmentTrough,
+  segmentLabel,
 };

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye } from "lucide-react";
-import { useEditorPanel } from "@/components/admin/EditorPanel";
+import { useEditorPanel } from "@/components/shell/EditorPanel";
 
 /**
  * Every printed *word* of a document, behind one row and an eye.
@@ -59,11 +59,11 @@ export default function WordingDrawer({
         type="button"
         onClick={() => (host ? panel?.setDrawer(label) : setInline(!inline))}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+        className="flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-left transition-colors hover:bg-accent/50 focus-ring focus-visible:outline-none"
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{label}</span>
-          <span className="block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-body font-medium">{label}</span>
+          <span className="block truncate text-meta text-muted-foreground">
             {description}
           </span>
         </span>
@@ -73,7 +73,7 @@ export default function WordingDrawer({
       {!open ? null : host ? (
         createPortal(
           <div className="flex flex-col gap-3">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               Every word this document prints that is not a fixed label. Edits
               save as you type and are frozen onto the document when it is
               finalized.

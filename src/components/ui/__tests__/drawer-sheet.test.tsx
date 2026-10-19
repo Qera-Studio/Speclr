@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DrawerSheet } from '../drawer-sheet';
-import { DrawerToolbar } from '../drawer-toolbar';
+import { DrawerToolbar } from '@/components/patterns/DrawerToolbar';
 
 /**
  * The frame, tested for the things that had drifted between the three
@@ -42,7 +42,7 @@ describe('DrawerSheet', () => {
   });
 
   /**
-   * `pr-14` clears the close button the sheet floats at `top-4 right-4`. Two
+   * `pr-16` clears the close button the sheet floats at `top-4 right-4`. Two
    * of the three old copies remembered it and one did not, so the title ran
    * under the X. It is *conditional*, because applied with no close button it
    * leaves a 56px hole at the end of the row.
@@ -53,7 +53,7 @@ describe('DrawerSheet', () => {
         <p>Body</p>
       </DrawerSheet>,
     );
-    expect(screen.getByText('Titled').parentElement).toHaveClass('pr-14');
+    expect(screen.getByText('Titled').parentElement).toHaveClass('pr-16');
 
     rerender(
       <DrawerSheet
@@ -65,7 +65,7 @@ describe('DrawerSheet', () => {
         <p>Body</p>
       </DrawerSheet>,
     );
-    expect(screen.getByText('Titled').parentElement).not.toHaveClass('pr-14');
+    expect(screen.getByText('Titled').parentElement).not.toHaveClass('pr-16');
   });
 
   /**

@@ -9,7 +9,7 @@ import ImportProgressControls from './ImportProgressControls';
 import ExportProgressButton from './ExportProgressButton';
 import ResetProgressButton from './ResetProgressButton';
 import IconSpecCard from './IconSpecCard';
-import { PageBody, PageHeader } from "@/components/admin/Page";
+import { PageBody, PageHeader } from "@/components/patterns/Page";
 
 export default function IconSpecTool() {
   const {
@@ -37,7 +37,7 @@ export default function IconSpecTool() {
 
       {/* Identity block — these two fields drive every preview mockup, so they
           lead the page rather than sitting inline with the progress meter. */}
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card/50 p-4 sm:p-5">
+      <div className="flex flex-col gap-4 rounded-lg border border-border bg-card/50 p-4 sm:p-4">
         <ClientDetailsFields
           clientName={clientName}
           domain={domain}

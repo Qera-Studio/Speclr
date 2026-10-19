@@ -18,6 +18,8 @@ const mockPdf = jest.fn(() => Buffer.from('%PDF-1.4 fake'));
 const mockClose = jest.fn(() => Promise.resolve());
 
 const mockSetCookie = jest.fn(() => Promise.resolve());
+/** Whether the page still shows its un-paginated flow when the wait ends. */
+const mockQuery = jest.fn(async (): Promise<object | null> => null);
 
 jest.mock('puppeteer-core', () => ({
   launch: async () => ({
@@ -26,6 +28,7 @@ jest.mock('puppeteer-core', () => ({
       goto: mockGoto,
       url: mockPageUrl,
       waitForSelector: jest.fn().mockRejectedValue(new Error('no marker')),
+      $: mockQuery,
       pdf: mockPdf,
     }),
     setCookie: mockSetCookie,
@@ -52,6 +55,17 @@ describe('renderPdf', () => {
 
     const bytes = await renderPdf(WANTED, 'session=x');
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  /** A half-paginated contract is one enormous page; never store it. */
+  it('refuses a document whose pagination never finished', async () => {
+    mockGoto.mockResolvedValue({ status: () => 200 });
+    mockPageUrl.mockReturnValue(WANTED);
+    mockQuery.mockResolvedValueOnce({});
+    const renderPdf = await load();
+
+    await expect(renderPdf(WANTED, 'session=x')).rejects.toThrow(/Pagination did not finish/);
+    expect(mockPdf).not.toHaveBeenCalled();
   });
 
   it('refuses a redirect to a sign-in wall instead of rendering it', async () => {

@@ -18,9 +18,13 @@ import {
   isSlip,
   type DocFields,
 } from "@/lib/domain/registry";
-import { computeTotals } from "@/lib/domain/money";
+import { totalPaiseOf } from "@/lib/domain/documentQuery";
 import { placeOfSupplyOf } from "@/lib/domain/placeOfSupply";
-import { gstTreatmentMismatch } from "@/lib/domain/gstTreatment";
+import {
+  gstTreatmentMismatch,
+  gstTreatmentOf,
+  lutError,
+} from "@/lib/domain/gstTreatment";
 import { materialiseContent } from "@/lib/domain/docContent";
 import {
   clientSnapshotOf,
@@ -158,6 +162,8 @@ function withFields(base: DocBase, fields: DocFields): AdminDocument {
     gstLabel: fields.gstLabel,
     discountPercent: fields.discountPercent,
     discountPaise: fields.discountPaise,
+    currency: fields.currency,
+    fxRate: fields.fxRate,
     placeOfSupplyStateCode: fields.placeOfSupplyStateCode,
     placeOfSupplyOverrideReason: fields.placeOfSupplyOverrideReason,
     gstOverrideReason: fields.gstOverrideReason,
@@ -433,6 +439,8 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
   const hr = isHrDocType(spec.code);
   const quotation = spec.kind === "quotation";
   let clientSnapshot: ClientSnapshot | undefined;
+  /** An invoice going out without IGST, which needs a live LUT to do so. */
+  let zeroRatedInvoice = false;
   let employeeSnapshot: EmployeeSnapshot | undefined;
   if (hr) {
     const employeeId = (existing as SlipDocument | LetterDocument).employeeId;
@@ -555,7 +563,25 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
       };
     }
 
+    zeroRatedInvoice =
+      existing.type === "INV" &&
+      existing.gstRatePercent === 0 &&
+      gstTreatmentOf(client).label !== null;
+
     clientSnapshot = clientSnapshotOf(client);
+  }
+
+  // Freeze the studio's own identity block too. The details are editable, so
+  // without this a later address change would silently rewrite the "from:" block
+  // of every invoice already filed, which CGST s.36 (72-month unaltered
+  // retention) and Rule 46 (supplier address as at issue) do not allow.
+  // Read before the number is claimed, because the LUT check below can refuse
+  // and a refusal after the claim would burn a serial.
+  const studioSnapshot = await getStudioSettings();
+
+  if (zeroRatedInvoice) {
+    const lut = lutError(existing.issueDate, studioSnapshot);
+    if (lut) return { success: false, error: lut };
   }
 
   // Numbered docs: financial (invoices/receipts), hr-slip (stipend and pay) and
@@ -595,12 +621,6 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     }
   }
 
-  // Freeze the studio's own identity block too. The details are editable, so
-  // without this a later address change would silently rewrite the "from:" block
-  // of every invoice already filed — which CGST s.36 (72-month unaltered
-  // retention) and Rule 46 (supplier address as at issue) do not allow.
-  const studioSnapshot = await getStudioSettings();
-
   // Freeze the words too. The sheets resolve mastheads, TERMS, the MSA clauses
   // and the signatory block from defaults in code; without materialising them
   // here, revising that wording later would rewrite documents already issued.
@@ -609,6 +629,11 @@ export async function finalizeDocument(id: unknown): Promise<ActionResult> {
     {
       type: existing.type,
       content: existing.content,
+      // The Rule 46 statements default from these. Left out, an export froze
+      // the domestic wording.
+      gstRatePercent: existing.gstRatePercent,
+      placeOfSupplyStateCode: (existing as InvoiceDocument).placeOfSupplyStateCode,
+      currency: (existing as InvoiceDocument).currency,
       studioSnapshot,
       deductionsNote: (existing as SlipDocument).deductionsNote,
       employeeSnapshot,
@@ -883,6 +908,10 @@ export async function createReceiptForInvoice(
     // invoice's discount with the lines it discounted.
     discountPercent: invoice.discountPercent,
     discountPaise: invoice.discountPaise,
+    // And in the invoice's currency at the invoice's rate: a receipt settles
+    // the figure that was billed.
+    currency: invoice.currency,
+    fxRate: invoice.fxRate,
     placeOfSupplyStateCode: invoice.placeOfSupplyStateCode,
     notes: invoice.notes,
     payment: {
@@ -937,14 +966,16 @@ export async function listInvoicesForClient(
           id: doc.id,
           number: doc.number,
           issueDate: doc.issueDate,
-          totalPaise: computeTotals(doc.lineItems, doc.gstRatePercent, doc)
-            .totalPaise,
+          // In rupees, whatever the invoice was billed in.
+          totalPaise: totalPaiseOf(doc) ?? 0,
           lineItems: doc.lineItems,
           gstRatePercent: doc.gstRatePercent,
           placeOfSupplyStateCode: doc.placeOfSupplyStateCode,
           gstLabel: doc.gstLabel,
           discountPercent: doc.discountPercent,
           discountPaise: doc.discountPaise,
+          currency: doc.currency,
+          fxRate: doc.fxRate,
         },
       ];
     });

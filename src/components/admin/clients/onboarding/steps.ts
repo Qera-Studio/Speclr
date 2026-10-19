@@ -30,7 +30,7 @@ import {
   resumeStep as flowResumeStep,
   stepIndex as flowStepIndex,
   type FlowStep,
-} from '@/components/flow/steps';
+} from '@/components/patterns/flow/steps';
 
 export type { ClientKind };
 

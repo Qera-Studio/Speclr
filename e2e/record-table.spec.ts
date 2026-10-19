@@ -371,93 +371,6 @@ test.describe('a wide table', () => {
     expect(hovered).not.toMatch(/rgba\([^)]*,\s*0\)$/);
   });
 
-  /** Dragging a handle widens that column, and leaves its neighbours alone. */
-  test('resizes one column by its handle', async ({ page }) => {
-    await page.setViewportSize({ width: 1200, height: 800 });
-    await page.goto('/preview/record-table?wide=1');
-
-    // Anchored: /Column 1/ also matches Column 10, 11 and 12, and the accessible
-    // name carries the resize button's label too.
-    const target = page.getByRole('columnheader', { name: 'Column 1 Resize Column 1' });
-    const neighbour = page.getByRole('columnheader', { name: 'Column 2 Resize Column 2' });
-    const before = (await target.boundingBox())!;
-    const neighbourBefore = (await neighbour.boundingBox())!;
-
-    const handle = target.getByRole('button', { name: /Resize Column 1 column/ });
-    const grip = (await handle.boundingBox())!;
-    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(grip.x + grip.width / 2 + 80, grip.y + grip.height / 2, {
-      steps: 8,
-    });
-    await page.mouse.up();
-
-    const after = (await target.boundingBox())!;
-    expect(after.width).toBeGreaterThan(before.width + 40);
-    // The next column keeps its own width: a resize moves one edge, and a
-    // `table-fixed` layout that re-solved every column would fail here.
-    expect(Math.abs((await neighbour.boundingBox())!.width - neighbourBefore.width)).toBeLessThan(2);
-  });
-
-  /**
-   * A drag towards zero stops at the column's widest value, not at a constant.
-   *
-   * The `long` column starts at 120px and holds one row of roughly 280px, so a
-   * 200px drag to the left would put it well under any fixed floor. What it
-   * must land on instead is the width of that row, which is what makes the
-   * assertion a measurement rather than a threshold: the floor is compared
-   * against the cell's own `scrollWidth`, read from the page.
-   */
-  test('will not drag a column narrower than its widest value', async ({ page }) => {
-    await page.setViewportSize({ width: 1200, height: 800 });
-    await page.goto('/preview/record-table?wide=1');
-
-    const target = page.getByRole('columnheader', { name: 'Long Resize Long' });
-    const handle = target.getByRole('button', { name: /Resize Long column/ });
-    const grip = (await handle.boundingBox())!;
-
-    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(grip.x + grip.width / 2 - 200, grip.y + grip.height / 2, {
-      steps: 8,
-    });
-    await page.mouse.up();
-
-    // What the content actually needs, asked of the browser rather than
-    // written down: a number in this test would go stale the day the fixture's
-    // string or the app's font changes, and would then pass for the wrong
-    // reason.
-    //
-    // Measured over the *text nodes*, for the two reasons `widestIn` records:
-    // `scrollWidth` floors at the cell's current width, so it would compare the
-    // clamp against itself and pass however wrong it was, and a range over a
-    // cell's contents measures the cell's own box.
-    //
-    // Only the body rows, because the header's ink is its label and arrow and
-    // this column's long value is the thing under test.
-    const widest = await page.evaluate(() => {
-      const range = document.createRange();
-      const cells = [...document.querySelectorAll<HTMLElement>('td[data-col="long"]')];
-      return Math.max(
-        ...cells.map((cell) => {
-          range.selectNodeContents(cell.firstChild ?? cell);
-          const box = getComputedStyle(cell);
-          return (
-            range.getBoundingClientRect().width +
-            parseFloat(box.paddingLeft) +
-            parseFloat(box.paddingRight)
-          );
-        }),
-      );
-    });
-
-    const after = (await target.boundingBox())!.width;
-    expect(after).toBeGreaterThanOrEqual(widest);
-    // And it stopped *at* the floor rather than ignoring the drag: a column
-    // that simply refused to move would also pass the line above.
-    expect(after).toBeLessThan(widest + 8);
-  });
-
   /**
    * A column whose declared `size` is narrower than its data widens on its own.
    *
@@ -514,7 +427,8 @@ test.describe('a wide table', () => {
     /*
       `fit` being opt-in is deliberately *not* asserted here, rather than
       asserted weakly. Every other column on this fixture already fits its
-      declared size (Email needs 193 of its 210, Phone 133 of its 150), so
+      declared size (Phone 133 of its 150; Email is cut on purpose now, for the
+      `fitTruncated` test below), so
       making `fit` table-wide would change none of them and the assertion would
       pass either way. It was written, seen to pass against the behaviour it
       was meant to forbid, and removed: a test that cannot fail is worse than
@@ -527,45 +441,77 @@ test.describe('a wide table', () => {
   });
 
   /**
-   * A stated `minSize` holds against a drag, and still lets the column widen.
-   *
-   * Separate from the `fit` test above because the two floors come from
-   * different places and only one of them survives a page of short values:
-   * `fit` is derived from the rows on the screen, `minSize` is stated. A drag
-   * of 300px to the left is far more than the distance to either floor, so the
-   * column can only stop at one it is actually holding.
+   * Under `fixed`, columns that add up to less than the card keep their stated
+   * widths and a blank column takes the rest. Without it the browser stretches
+   * every column in proportion, which turned a 40px checkbox into 143px and a
+   * 150px Amount into 535px. `?few=1` shows three columns, which leaves room.
    */
-  test('holds a column at its stated minimum width', async ({ page }) => {
+  test('keeps every column at its size when there is room to spare', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.goto('/preview/clients?few=1');
+    const width = async (selector: string) =>
+      Math.round((await page.locator(selector).first().boundingBox())!.width);
+
+    await expect.poll(() => width('th[data-col="name"]')).toBe(160);
+    expect(await width('th[data-col="amount"]')).toBe(150);
+    expect(await width('th[data-col="phone"]')).toBe(150);
+    expect(await page.locator('th[data-col="email"]').count()).toBe(0);
+    // The checkbox column, which has no `data-col`: the first heading.
+    expect(await width('thead th')).toBe(40);
+  });
+
+  /**
+   * The copy icon reveals on its own cell and nowhere else on the row.
+   *
+   * Name is frozen, so the row's overlay lives inside the Email cell, and a
+   * reveal keyed on that cell's `:hover` fired from every column. The corner of
+   * the Email cell is the other half: its padding is still the hover target.
+   */
+  test('reveals the copy icon on its own cell only, padding included', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.goto('/preview/clients');
+    // The icon fades, so a poll for '0' passes on the frame before a wrong
+    // reveal starts. Without transitions every read is the settled state.
+    await page.addStyleTag({ content: '*{transition:none!important}' });
+
+    const row = page.locator('tbody tr').filter({ has: page.locator('td[data-col="email"] button') }).first();
+    const email = row.locator('td[data-col="email"]');
+    const icon = email.locator('button svg');
+    const opacity = () => icon.evaluate((el) => getComputedStyle(el).opacity);
+
+    // The mouse, not `hover()`: the overlay intercepting the pointer is the
+    // case under test, and `hover()` refuses to act through it.
+    const plain = (await row.locator('td[data-col="country"]').boundingBox())!;
+    await page.mouse.move(plain.x + plain.width / 2, plain.y + plain.height / 2);
+    await expect.poll(opacity).toBe('0');
+
+    const box = (await email.boundingBox())!;
+    await page.mouse.move(box.x + 2, box.y + 2);
+    await expect.poll(opacity).toBe('1');
+  });
+
+  /**
+   * A column that cuts a value is widened to show it (`fitTruncated`), and no
+   * column offers a resize handle. The fixture's one long email is what cuts.
+   */
+  test('widens the column that cuts a value, without a handle', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto('/preview/clients');
 
-    const heading = page.locator('th[data-col="country"]');
+    const heading = page.locator('th[data-col="email"]');
+    // Polled: the widening happens in a layout effect after first paint.
+    await expect.poll(async () => (await heading.boundingBox())?.width ?? 0).toBeGreaterThan(210);
 
-    // Polled, for the reason the test above records: the floor is applied in a
-    // layout effect, so asserting on first paint races it.
-    await expect
-      .poll(async () => (await heading.boundingBox())?.width ?? 0)
-      .toBe(264);
-
-    const handle = heading.getByRole('button', { name: /Resize/ });
-    const drag = async (by: number) => {
-      const grip = (await handle.boundingBox())!;
-      await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(grip.x + grip.width / 2 + by, grip.y + grip.height / 2, {
-        steps: 10,
-      });
-      await page.mouse.up();
-    };
-
-    await drag(-300);
-    expect((await heading.boundingBox())!.width).toBe(264);
-
-    // And it is a floor rather than a fixed width: the reader can still make
-    // the column as wide as they like. A column that refused both directions
-    // would pass the assertion above for the wrong reason.
-    await drag(120);
-    expect((await heading.boundingBox())!.width).toBeGreaterThan(264);
+    const cut = await page.locator('td[data-col="email"]').evaluateAll((tds) =>
+      tds.some((td) =>
+        [td, ...td.querySelectorAll<HTMLElement>('*')].some(
+          (el) => el.scrollWidth - el.clientWidth > 1,
+        ),
+      ),
+    );
+    expect(cut).toBe(false);
+    // A column that fits keeps its stated width.
+    expect(Math.round((await page.locator('th[data-col="phone"]').boundingBox())!.width)).toBe(150);
   });
 });
 
@@ -635,26 +581,20 @@ test.describe('the furniture columns', () => {
   });
 
   /**
-   * And neither offers a resize handle, on either kind of table.
-   *
-   * A handle on a column whose contents cannot overflow is a control with no
-   * outcome, and dragging it narrower only hides the checkbox or the button.
-   * True by construction today, because handles are rendered from `columns` and
-   * neither of these is in it; asserted so that stays true.
+   * No table offers a resize handle. Column resizing was removed from every
+   * table on 9 October 2026, on request: a handle let a column be dragged down
+   * to almost nothing. Checked on every fixture that used to carry one.
    */
-  test('offer no resize handle', async ({ page }) => {
+  test('no table offers a resize handle', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 800 });
-
-    for (const variant of ['plainwide=1', 'wide=1']) {
-      await page.goto(`/preview/record-table?${variant}`);
-      const handles = page.getByRole('button', { name: /^Resize / });
-      // Every handle names a real data column; none names the furniture.
-      const names = await handles.evaluateAll((els) =>
-        els.map((el) => el.getAttribute('aria-label')),
-      );
-      expect(names.length).toBeGreaterThan(0);
-      expect(names).not.toContain('Resize Actions column');
-      expect(names.some((n) => /checkbox|select/i.test(n ?? ''))).toBe(false);
+    for (const url of [
+      '/preview/record-table?wide=1',
+      '/preview/record-table?plainwide=1',
+      '/preview/clients',
+    ]) {
+      await page.goto(url);
+      await page.locator('tbody tr').first().waitFor();
+      expect(await page.getByRole('button', { name: /^Resize / }).count()).toBe(0);
     }
   });
 });

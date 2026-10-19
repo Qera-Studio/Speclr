@@ -3,18 +3,18 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Archive, ArchiveRestore, Download, Trash2 } from 'lucide-react';
-import { AddButton } from '@/components/ui/add-button';
+import { AddButton } from '@/components/patterns/AddAction';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { Field, FieldLabel, FieldSet } from '@/components/ui/field';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import IconAction from '@/components/ui/icon-action';
+import { IconAction } from '@/components/patterns/IconAction';
 import { DrawerSheet } from '@/components/ui/drawer-sheet';
-import { DrawerToolbar } from '@/components/ui/drawer-toolbar';
+import { DrawerToolbar } from '@/components/patterns/DrawerToolbar';
 import ClauseBodyEditor, { ClauseBodyActions, useClauseBody } from './ClauseBodyEditor';
 import ClauseCitations from './ClauseCitations';
 import { useClauseAutosave } from './useClauseAutosave';
@@ -24,9 +24,9 @@ import type { ClauseInput } from '@/lib/domain/contract/msa';
 import { cn, NIL } from '@/lib/utils';
 import type { ActionResult } from '@/lib/domain/types';
 import { addClause, destroyClause, removeClause, updateClause } from '@/server/actions/clauses';
-import { EditButton } from '@/components/admin/RowActions';
-import { PageHeader } from '@/components/admin/Page';
-import RecordTable from '@/components/admin/RecordTable';
+import { EditButton } from '@/components/patterns/RowActions';
+import { PageHeader } from '@/components/patterns/Page';
+import RecordTable from '@/components/patterns/RecordTable';
 
 /**
  * The Master Agreement's clause library: a table of every clause, and a drawer
@@ -117,7 +117,7 @@ export default function ClauseLibrary({
     <div className="flex flex-col gap-6">
       <PageHeader title="Clauses">
         <AddButton
-          variant="outline"
+          variant="secondary"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
@@ -267,7 +267,7 @@ export default function ClauseLibrary({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
+                      size="sm" icon
                       disabled={pending}
                       aria-label={`Restore ${clause.heading}`}
                       onClick={() =>
@@ -298,7 +298,7 @@ export default function ClauseLibrary({
               */
               <ConfirmActionButton
                 variant="ghost"
-                size="icon"
+                size="sm"
                 disabled={pending}
                 icon={<Archive className="size-4" />}
                 label={`Archive ${clause.heading}`}
@@ -608,7 +608,7 @@ function ClauseDrawer({
             */}
             <ConfirmActionButton
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               disabled={pending}
               label="Delete this clause"
               // The one control in the row that said nothing on hover, because
@@ -648,7 +648,7 @@ function ClauseDrawer({
         <p
           role="status"
           aria-live="polite"
-          className="px-4 py-2 text-xs text-muted-foreground tabular-nums empty:hidden"
+          className="px-4 py-2 text-meta text-muted-foreground tabular-nums empty:hidden"
         >
           {autosave.state === 'saving'
             ? 'Saving…'
@@ -673,7 +673,7 @@ function ClauseDrawer({
             <FieldLabel htmlFor="clause-heading">Heading</FieldLabel>
             <Input
               id="clause-heading"
-              size="md"
+              size="form"
               value={draft.heading}
               onChange={(e) => setDraft({ ...draft, heading: e.target.value })}
             />
@@ -693,7 +693,7 @@ function ClauseDrawer({
             />
             <Input
               id="clause-summary"
-              size="md"
+              size="form"
               value={draft.summary ?? ''}
               placeholder="What this clause does"
               onChange={(e) => setDraft({ ...draft, summary: e.target.value })}

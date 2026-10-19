@@ -32,6 +32,33 @@ const RAW_PALETTE_CLASS = new RegExp(
 
 const HEX_LITERAL = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/g;
 
+/**
+ * The three ways past the two rules above that were actually taken:
+ * `text-[var(--gray-400)]` reaches the ramp the tokens exist to hide,
+ * `text-[oklch(…)]` is a colour nobody measured, and `rgba(` is a shadow
+ * colour the hex rule cannot see.
+ */
+const PALETTE_ESCAPE = /\[(?:var\(--gray-|oklch\(|rgba?\()/g;
+
+/**
+ * The tokens the rest of the system is built on. Each is named here so that
+ * deleting one from `globals.css` fails the build rather than silently
+ * reverting every `text-body` in the app to Tailwind's default.
+ */
+const REQUIRED_TOKENS = [
+  ...['caption', 'meta', 'control', 'body', 'lead', 'section', 'title', 'display'].map(
+    (t) => `--text-${t}:`,
+  ),
+  ...['caption', 'meta', 'control', 'body', 'lead', 'section', 'title', 'display'].map(
+    (t) => `--text-${t}--line-height:`,
+  ),
+  '--shadow-raised:', '--shadow-overlay:', '--shadow-modal:',
+  '--radius-sm:', '--radius-md:', '--radius-lg:', '--radius-xl:',
+  '--z-sticky:', '--z-rail:', '--z-overlay:', '--z-modal:', '--z-toast:',
+  '--success:', '--success-foreground:',
+  '@utility focus-ring',
+];
+
 describe('design tokens', () => {
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
@@ -45,39 +72,42 @@ describe('design tokens', () => {
     expect(violations(HEX_LITERAL)).toEqual([]);
   });
 
+  it('never reaches the ramp, a raw oklch() or an rgba() through an arbitrary value', () => {
+    expect(violations(PALETTE_ESCAPE, [], /\.tsx?$/)).toEqual([]);
+  });
+
+  it('defines every token the system is built on', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    expect(REQUIRED_TOKENS.filter((t) => !css.includes(t))).toEqual([]);
+  });
+
+  it('never defines a radius past xl or a multiplier base', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    expect(css).not.toMatch(/--radius-[234]xl|--radius:\s/);
+  });
+
   /**
-   * The neutrals are slate, and all of one slate.
+   * The neutrals are achromatic: white, black and grey.
    *
    * A near-neutral is any token under 0.05 chroma: it reads as a surface or as
-   * text on one, not as a signal. Every one of those must sit in slate's own
-   * band, since two surfaces at unrelated hues is the drift this replaced,
-   * arrived at one token at a time by somebody eyeballing a single line.
-   * Pure achromatic is allowed and is what the alpha-white hairlines use.
-   *
-   * The band is a range rather than one number because the ramp is Tailwind's
-   * published slate taken verbatim, and its hue drifts along the ramp (247.858
-   * at the top to 265.755 at 900). That drift is the ramp's own and is what
-   * keeps its dark end from reading flat; what this guards is a token wandering
-   * *outside* it — the old hue-40 taupe, or a warm grey somebody typed by hand.
-   *
-   * In practice almost nothing should reach this check any more: a neutral is
-   * an alias (`var(--slate-N)`), so the only literals it sees are the eleven
-   * ramp steps themselves.
+   * text on one, not as a signal. Every one of those must be chroma 0, because
+   * a hint of hue on a surface is a tint (slate's blue was, before 4 October
+   * 2026), and a tint arrives one token at a time from somebody eyeballing a
+   * single line.
    *
    * The two exemptions are the pale blues that sit *on* `--primary`. They are
    * low-chroma by lightness rather than by role: a foreground on a chromatic
    * fill belongs to that fill's hue.
    */
-  it('keeps every near-neutral token in the slate hue band', () => {
+  it('keeps every near-neutral token achromatic', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     const strays: string[] = [];
     for (const [, name, C, h] of css.matchAll(
       /(--[a-z0-9-]+):\s*oklch\([\d.]+\s+([\d.]+)\s+([\d.]+)/g,
     )) {
       if (name.endsWith('primary-foreground')) continue;
-      if (Number(C) >= 0.05 || Number(C) === 0) continue;
-      if (Number(h) < 245 || Number(h) > 270) {
-        strays.push(`${name}: chroma ${C} at hue ${h}, outside slate's 245-270`);
+      if (Number(C) > 0 && Number(C) < 0.05) {
+        strays.push(`${name}: chroma ${C} at hue ${h}; a neutral is chroma 0`);
       }
     }
     expect(strays).toEqual([]);
@@ -104,14 +134,14 @@ describe('design tokens', () => {
   it('defines neutral roles as ramp aliases, not as raw values', () => {
     const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     const CHROMATIC =
-      /^--(sidebar-)?(primary|destructive|warning|chart-\d|accent-[a-z]+)(-foreground)?$/;
+      /^--(sidebar-)?(primary|destructive|warning|success|chart-\d|accent-[a-z]+(?:-ink)?)(-foreground)?$/;
     const strays: string[] = [];
     for (const [, name, C] of css.matchAll(
       /^\s*(--[a-z0-9-]+):\s*oklch\((?:[\d.]+)\s+([\d.]+)\s+[\d.]+\)/gm,
     )) {
-      if (name.startsWith('--slate-') || CHROMATIC.test(name)) continue;
+      if (name.startsWith('--gray-') || CHROMATIC.test(name)) continue;
       if (Number(C) === 0) continue;
-      strays.push(`${name} is a raw oklch(); use var(--slate-N)`);
+      strays.push(`${name} is a raw oklch(); use var(--gray-N)`);
     }
     expect(strays).toEqual([]);
   });

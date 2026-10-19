@@ -2,7 +2,7 @@
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
-import FieldInfo from '@/components/form/FieldInfo';
+import FieldInfo from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Combobox } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -86,7 +86,7 @@ export default function ClientPhase({
         shrinking. Measured: the three controls are 240 + 240 + 196 = 676, and
         two 32px gaps put the row at 740 inside a 700px panel, which is the
         40px the term field hung past the combobox above it. 16px lands the row
-        at 708, and `CLIENT_PHASE_WIDTH` is derived from that rather than the
+        at 704, and `CLIENT_PHASE_WIDTH` is derived from that rather than the
         gap being taken off the scale (`docs/design.md` §1.2).
       */}
       <FieldRow columns={3} fit className="gap-4">
@@ -115,7 +115,10 @@ export default function ClientPhase({
           />
         </Field>
 
-        <Field>
+        {/* Declared, not content-sized: a `fit` row would size this cell from
+            its label's metrics, and a tracking change once moved the row's end
+            5px off the combobox above it. 192 is what the label needs. */}
+        <Field className="w-48">
           <FieldInfo
             htmlFor="con-term-months"
             label="Term in months"
@@ -146,10 +149,10 @@ export default function ClientPhase({
  *
  * The row below is two calendar-wide date fields (240px each, see
  * `CALENDAR_WIDTH`), two 16px gaps, and a term field wide enough for a label
- * reading "Term in months optional", which comes to 708. This is 788, because
- * it caps the **panel** and the panel carries `p-10`: 40px of padding on each
+ * reading "Term in months optional", which comes to 704. This is 768, because
+ * it caps the **panel** and the panel carries `p-8`: 32px of padding on each
  * side that the form inside does not get. Capping at the row's own width left
- * it 80px short and squeezed the very fields this exists to fit.
+ * it 64px short and squeezed the very fields this exists to fit.
  *
  * **The gaps are the row's, not this arithmetic's**, and that is what went
  * wrong once: `FieldRow` defaults to `gap-8`, so the row measured 740 inside a
@@ -164,8 +167,10 @@ export default function ClientPhase({
  * `w-fit` and `w-max` both collapse the pair to the padding alone. See
  * `FlowShell`'s `width`.
  *
- * Checked by measurement, not by this arithmetic: `e2e/contract-flow.spec.ts`
- * asserts the combobox and the row below it end together, which is the thing
- * actually worth holding.
+ * The sum, for the record: 240 + 16 + 240 + 16 + 192 for the row, plus 64 of
+ * panel padding (`p-8`, which was 40px a side until the spacing scale
+ * dropped `p-10` on 16 October 2026; the cap moved from 784 with it). Checked by measurement, not by this arithmetic:
+ * `e2e/contract-flow.spec.ts` asserts the combobox and the row below it end
+ * together, which is the thing actually worth holding.
  */
-export const CLIENT_PHASE_WIDTH = 'max-w-[788px]';
+export const CLIENT_PHASE_WIDTH = 'max-w-[768px]';

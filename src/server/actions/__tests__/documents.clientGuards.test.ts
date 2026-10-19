@@ -17,6 +17,7 @@ const getDocument = jest.fn();
 const saveDocument = jest.fn((_doc: AdminDocument) => Promise.resolve());
 const getClient = jest.fn();
 const claimSerial = jest.fn();
+const getStudioSettings = jest.fn();
 
 jest.mock('@/lib/auth/session', () => ({
   requireAuthorizedUser: () => requireAuthorizedUser(),
@@ -26,7 +27,7 @@ jest.mock('@/db/store', () => ({
   saveDocument: (...a: unknown[]) => saveDocument(a[0] as AdminDocument),
   getClient: (...a: unknown[]) => getClient(...a),
   getEmployee: () => Promise.resolve(null),
-  getStudioSettings: () => Promise.resolve(undefined),
+  getStudioSettings: () => getStudioSettings(),
   deleteDraft: () => Promise.resolve(),
   listFinalizedInvoicesForClient: () => Promise.resolve([]),
 }));
@@ -42,6 +43,7 @@ jest.mock('@/server/pdf/url', () => ({
 }));
 
 import { finalizeDocument } from '../documents';
+import { STUDIO_INFO } from '@/lib/domain/studio';
 import { PARTS } from '@/lib/domain/seed/parts';
 import { contractComplete } from '@/lib/domain/contract/completeness';
 
@@ -91,6 +93,66 @@ beforeEach(() => {
   claimSerial.mockResolvedValue(1);
   getClient.mockResolvedValue(client());
   getDocument.mockResolvedValue(invoice());
+  getStudioSettings.mockResolvedValue(STUDIO_INFO);
+});
+
+/**
+ * A zero-rated invoice rests on the studio's LUT, which lapses every 31 March.
+ * Checked against the studio snapshot about to be frozen, and before the number
+ * is claimed, so a refusal burns nothing.
+ */
+describe('the LUT guard on a zero-rated invoice', () => {
+  const abroad = client({
+    address: '2 Crab Apple Lane, Rouse Hill NSW 2155, Australia',
+    addressParts: { line1: '2 Crab Apple Lane', city: 'Rouse Hill', state: 'NSW', pincode: '2155', country: 'AU' },
+  });
+  const exportInvoice = invoice({ gstRatePercent: 0, placeOfSupplyStateCode: '96' });
+
+  beforeEach(() => {
+    getClient.mockResolvedValue(abroad);
+    getDocument.mockResolvedValue(exportInvoice);
+  });
+
+  it('finalizes under a live LUT', async () => {
+    getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutValidTo: '2027-03-31' });
+    expect((await finalizeDocument('doc-1')).success).toBe(true);
+  });
+
+  /**
+   * The Rule 46 statements are defaulted from the place of supply, and
+   * finalize freezes them. Resolved without it, an export froze the domestic
+   * wording: no export endorsement and the reverse-charge line without its
+   * export sentence, on a document that may never change again.
+   */
+  it('freezes the export wording, not the domestic', async () => {
+    getStudioSettings.mockResolvedValue(STUDIO_INFO);
+    await finalizeDocument('doc-1');
+    const frozen = saveDocument.mock.calls[0][0];
+    expect(frozen.content?.exportEndorsement).toMatch(/SUPPLY MEANT FOR EXPORT/);
+    expect(frozen.content?.reverseChargeLine).toMatch(/own jurisdiction/);
+  });
+
+  it('refuses with no LUT recorded, and claims no number', async () => {
+    getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutArn: undefined });
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/LUT/);
+    expect(claimSerial).not.toHaveBeenCalled();
+  });
+
+  it('refuses an invoice dated after the LUT lapsed', async () => {
+    getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutValidTo: '2026-03-31' });
+    const result = await finalizeDocument('doc-1');
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/lapsed on 2026-03-31/);
+  });
+
+  it('does not ask a taxed domestic invoice for one', async () => {
+    getClient.mockResolvedValue(client());
+    getDocument.mockResolvedValue(invoice());
+    getStudioSettings.mockResolvedValue({ ...STUDIO_INFO, lutArn: undefined });
+    expect((await finalizeDocument('doc-1')).success).toBe(true);
+  });
 });
 
 describe('the place-of-supply override guard', () => {

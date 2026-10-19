@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
 import { Input } from '@/components/ui/input';
-import { RemoveButton } from '@/components/ui/remove-button';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
 import { Textarea } from '@/components/ui/textarea';
 import { partSectionLabel } from '@/lib/domain/contract/completeness';
 import type { ContractService, ServiceRow } from '@/lib/domain/service';
@@ -80,7 +80,7 @@ function RowsEditor({
         </FieldSet>
       ))}
       <div>
-        <Button type="button" variant="outline" onClick={() => append({ label: '', value: '' })}>
+        <Button type="button" variant="secondary" onClick={() => append({ label: '', value: '' })}>
           <Plus aria-hidden="true" />
           Add a {lower}
         </Button>
@@ -138,7 +138,7 @@ export default function WordingForm({ service }: { service: ContractService }) {
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       {/* Not `FieldDescription` (CONTEXT §5e): a standing note about the whole
           form, said once, rather than a description under each field. */}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         One paragraph per line. Anything in [brackets] becomes a blank the contract fills
         in, labelled by the sentence it sits in.
       </p>
@@ -178,8 +178,8 @@ export default function WordingForm({ service }: { service: ContractService }) {
       ) : null}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save wording'}
+        <Button variant="primary" type="submit" pending={pending}>
+          Save wording
         </Button>
       </div>
     </form>

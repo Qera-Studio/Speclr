@@ -4,8 +4,8 @@ import "@/lib/zod-config";
 import { useCallback, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AddButton } from "@/components/ui/add-button";
-import { RemoveButton } from "@/components/ui/remove-button";
+import { AddButton } from "@/components/patterns/AddAction";
+import { RemoveButton } from "@/components/patterns/ConfirmAction";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Field,
@@ -13,7 +13,7 @@ import {
   FieldSet,
   FieldLegend,
 } from "@/components/ui/field";
-import FieldInfo from "@/components/form/FieldInfo";
+import FieldInfo from "@/components/patterns/FieldInfo";
 import { FieldRow } from "@/components/ui/field-row";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -115,7 +115,7 @@ export default function AccessStep({
       </Alert>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           Nothing here yet. Add the accounts this engagement will touch — the
           domain, the DNS, the hosting, the analytics — so nobody has to go
           looking when the work starts.

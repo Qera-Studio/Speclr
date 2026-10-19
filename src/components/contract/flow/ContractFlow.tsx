@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
-import { CycleArrowIcon } from '@/components/ui/tray-arrow-icon';
-import FlowShell, { useActionsSlot } from '@/components/flow/FlowShell';
-import { DocumentCrumbLabel } from '@/components/admin/DocumentCrumb';
-import { resumeStep, stepIndex } from '@/components/flow/steps';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
+import FlowShell, { useActionsSlot } from '@/components/patterns/flow/FlowShell';
+import { DocumentCrumbLabel } from '@/components/shell/DocumentCrumb';
+import { resumeStep, stepIndex } from '@/components/patterns/flow/steps';
 import { deleteDraftAction, finalizeDocument } from '@/server/actions/documents';
 import { todayISO } from '@/lib/domain/dates';
 import { DELETE_DRAFT_CONSEQUENCE, DOC_TYPES } from '@/lib/domain/registry';
@@ -214,7 +213,6 @@ export default function ContractFlow({
   );
   const active = stepIndex(CONTRACT_PHASES, requested ?? landed);
   const phase = CONTRACT_PHASES[active];
-  const [forward, setForward] = useState(true);
 
   /**
    * Put the phase in the URL once the draft has an id.
@@ -248,7 +246,6 @@ export default function ContractFlow({
     (index: number) => {
       const key = CONTRACT_PHASES[index]?.key;
       if (!key) return;
-      setForward(index >= active);
       const base = docId ? `/${profile}/docs/${docId}` : `/${profile}/docs/new/contract`;
       router.replace(`${base}?phase=${key}`, { scroll: false });
     },
@@ -426,15 +423,15 @@ export default function ContractFlow({
    */
   const advance =
     active < CONTRACT_PHASES.length - 1 ? (
-      <Button
+      <Button variant="primary"
         type="button"
-        size="lg"
+        size="md"
         className="group/tray hover:bg-primary"
         disabled={!phase.isComplete(draft)}
         onClick={() => goTo(active + 1)}
       >
         {CONTRACT_PHASES[active + 1].short}
-        <CycleArrowIcon />
+        <ArrowRight aria-hidden="true" />
       </Button>
     ) : null;
 
@@ -490,17 +487,17 @@ export default function ContractFlow({
       {serverError ? (
         <div
           role="alert"
-          className="pointer-events-auto max-w-lg rounded-lg border border-destructive/50 bg-card/95 px-3 py-2 text-sm text-destructive shadow-lg backdrop-blur"
+          className="pointer-events-auto max-w-lg rounded-lg border border-destructive/50 bg-card/95 px-3 py-2 text-body text-destructive shadow-modal backdrop-blur"
         >
           {serverError}
         </div>
       ) : null}
-      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border bg-card/95 p-2 shadow-modal backdrop-blur">
         {back ? (
           <Button
             type="button"
             variant="ghost"
-            size="icon"
+            size="sm" icon
             aria-label={back.label}
             onClick={back.go}
           >
@@ -512,8 +509,8 @@ export default function ContractFlow({
           title="Finalize this contract?"
           description="The contract becomes immutable and takes its number. Corrections after this mean duplicating it as a new draft."
           confirmLabel="Finalize"
-          variant="default"
-          size="lg"
+          variant="primary"
+          size="md"
           className="px-6"
           onConfirm={onFinalize}
           /*
@@ -533,7 +530,7 @@ export default function ContractFlow({
         <ConfirmActionButton
           label="Delete draft"
           icon={<Trash2 />}
-          size="icon"
+          size="sm"
           title="Delete this draft?"
           description={DELETE_DRAFT_CONSEQUENCE}
           confirmLabel="Delete"
@@ -584,7 +581,6 @@ export default function ContractFlow({
         back={back}
         onSelect={goTo}
         onActionsSlot={setActions}
-        slideFrom={forward ? 'right' : 'left'}
         fill={phase.key === 'preview'}
         // The client phase's controls carry their own widths, so its panel
         // narrows to them rather than the form floating in a wider card.

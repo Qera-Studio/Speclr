@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import ClientRequestChecklist from '@/components/tools/ClientRequestChecklist';
-import { PageBody, PageHeader } from '@/components/admin/Page';
+import { PageBody, PageHeader } from '@/components/patterns/Page';
 
 export const metadata: Metadata = {
   title: 'What to request — speclr',

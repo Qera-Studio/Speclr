@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditorPanelProvider, EditorPanelContent } from '../../EditorPanel';
+import { EditorPanelProvider, EditorPanelContent } from '@/components/shell/EditorPanel';
 import EmployeeManager from '../EmployeeManager';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
@@ -137,7 +137,7 @@ describe('EmployeeManager', () => {
 
     // The switch is held back until the user decides.
     expect(
-      screen.getByRole('alertdialog', { name: /discard unsaved changes/i }),
+      screen.getByRole('alertdialog', { name: /discard changes/i }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Person edited');
 
@@ -153,7 +153,7 @@ describe('EmployeeManager', () => {
     await user.type(screen.getByLabelText(/^name$/i), ' edited');
 
     await user.click(screen.getByRole('button', { name: /edit beta person/i }));
-    await user.click(screen.getByRole('button', { name: /keep editing/i }));
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
 
     expect(screen.getByLabelText(/^name$/i)).toHaveValue('Acme Person edited');
   });

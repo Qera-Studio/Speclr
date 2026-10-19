@@ -6,6 +6,11 @@ import {
   SCHEMA_PRIMITIVES,
   UI_PRIMITIVES,
 } from './policedSource';
+import {
+  RAW_BUTTON_MIGRATED_LATER,
+  RESPONSIVE_MIGRATED_LATER,
+  SPACING_MIGRATED_LATER,
+} from './migratedLater';
 
 /**
  * The other half of the enforcement layer.
@@ -27,7 +32,7 @@ import {
 /**
  * An icon-only button with nothing to announce.
  *
- * A `size="icon"` button draws a glyph and no text, so unless it says its own
+ * An `icon` button draws a glyph and no text, so unless it says its own
  * name it reaches a screen reader as "button" and nothing else. Every one of
  * them in this app already had a name when the rule was written; the rule
  * exists because the *next* one is written in a hurry, the glyph is obvious to
@@ -40,8 +45,18 @@ import {
  * This is a guard against a forgotten label, not a parser, and a rule that
  * argues with formatting is a rule people delete.
  */
-const ICON_BUTTON = /size=\{?["']icon(-sm)?["']/g;
+const ICON_BUTTON = /<(?:Button|ConfirmActionButton|AddButton)\b[^>]*?(?<![\w-])icon(?:\s|=\{true\}|\/?>)[^>]*?>/g;
 const NAMES_ITSELF = /aria-label|sr-only|\blabel=/;
+
+/**
+ * The button API before 16 October 2026: eight fills and five sizes. `default`
+ * is `primary` now and is no longer the default; `outline` is `secondary` and
+ * is; `raised` and `neutral` are gone; `icon` is a shape rather than a size;
+ * `form` is `lg`. cva rejects the old names at the type level, but a tag with
+ * `{...props}` spread or a string built at runtime would not be caught there.
+ */
+const BUTTON_TAG = /<(?:Button|AlertDialogAction|AlertDialogCancel|ConfirmActionButton|AddButton|AddLink)\b[^>]*?>/g;
+const OLD_BUTTON_API = /\b(?:variant=["'](?:default|outline|raised|neutral)["']|size=["'](?:icon|icon-sm|default|form)["'])/;
 
 /**
  * Standing muted text under a field.
@@ -174,7 +189,7 @@ const HAND_ROLLED_PAGE_INSET = /className="[^"]*\bp-9\b[^"]*"/g;
 const HAND_ROLLED_PAGE_TITLE = /<h1[^>]*\btext-2xl\b/g;
 
 /** `PageBody` and `PageHeader` are the primitives these two rules point at. */
-const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
+const PAGE_PRIMITIVE = ['src/components/patterns/Page.tsx'];
 
 /**
  * A transition duration outside the three-tier scale.
@@ -197,10 +212,41 @@ const PAGE_PRIMITIVE = ['src/components/admin/Page.tsx'];
  * sliding at 1500ms. Nobody chose those; they are shadcn defaults that were
  * never read. One control, three speeds, and no test that could see it.
  */
-const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b|400\b)\[?[0-9]+m?s?\]?/g;
-const SIGNATURE_MOTION = [
-  'src/components/ui/tray-arrow-icon.tsx',
-  'src/components/spec/ResetProgressButton.tsx',
+const OFF_SCALE_DURATION = /\bduration-(?!75\b|100\b|200\b)\[?[0-9]+m?s?\]?/g;
+
+/**
+ * Decorative motion, by the forms it actually took here (`docs/design.md`
+ * §1.6, 16 October 2026): a spring library, a shared-layout pill, an icon
+ * that transforms on hover, a transform transition anywhere a panel is not
+ * sliding, a ring that pulses when a field fills, a popup that zooms as it
+ * fades, and anything that animates in on mount. None carried information.
+ */
+const MOTION_LIB = /from ['"]motion(?:\/react)?['"]/g;
+const LAYOUT_ID = /\blayoutId=/g;
+const ICON_TRANSFORM = /\b(?:group-)?hover(?:\/[\w-]+)?:-?(?:rotate|scale|translate)-/g;
+const TRANSITION_TRANSFORM = /\btransition-(?:transform|all)\b/g;
+/** The three things that really do slide: the sheet, the nav rail, the profile track. */
+const PANELS_THAT_SLIDE = [
+  'src/components/ui/sheet.tsx',
+  'src/components/ui/sidebar.tsx',
+  'src/components/ui/switch.tsx',
+  'src/components/shell/AdminSidebar.tsx',
+];
+const FILL_FLASH = /animate-fill-flash/g;
+const ZOOMING_POPUP = /\bzoom-(?:in|out)-\d+/g;
+const MOUNT_ANIMATION = /\b(?:animate-in|slide-in-from-[a-z]+-\d+)\b/g;
+/** The overlay atoms fade in at the Overlay tier; the skeleton's delayed fade stops a flash on fast loads. */
+const OVERLAYS = [
+  'src/components/ui/alert-dialog.tsx',
+  'src/components/ui/combobox.tsx',
+  'src/components/ui/dialog.tsx',
+  'src/components/ui/dropdown-menu.tsx',
+  'src/components/ui/popover.tsx',
+  'src/components/ui/select.tsx',
+  'src/components/ui/tooltip.tsx',
+  'src/app/(app)/loading.tsx',
+  'src/app/(app)/client/clients/new/loading.tsx',
+  'src/app/(app)/client/clients/[id]/loading.tsx',
 ];
 
 /**
@@ -225,11 +271,11 @@ const TABLE_TAG = /<Table>/;
 const TABLE_BODY_TAG = /<TableBody[\s/>]/;
 const RECORD_TABLE_PRIMITIVES = [
   ...UI_PRIMITIVES,
-  'src/components/admin/RecordTable.tsx',
+  'src/components/patterns/RecordTable.tsx',
   // The loading skeleton is a real TableCard holding real rows, on purpose:
   // its geometry has to match the table it stands in front of, or the page
   // jumps twice. See its note in Page.tsx.
-  'src/components/admin/Page.tsx',
+  'src/components/patterns/Page.tsx',
 ];
 const TABLE_CARD = /<TableCard[\s>]/;
 
@@ -368,7 +414,7 @@ const GROWN_LATER = [
  * button sits — none of which is visible as a bug in either flow alone.
  */
 const HAND_ROLLED_STEP_NAV = /aria-current=\{?["']step["']/;
-const FLOW_PRIMITIVE = ['src/components/flow/'];
+const FLOW_PRIMITIVE = ['src/components/patterns/flow/'];
 
 /**
  * A table that sorts, and the toggle that has to come with it.
@@ -405,7 +451,7 @@ const SORTS_UNDER_A_PARENTS_TOGGLE = [
     that owns the eye; this row exists only because the table and its bar sit
     one directory apart, which is the case the note above anticipates.
   */
-  'src/components/library/table/TemplateTable.tsx',
+  'src/components/design/table/TemplateTable.tsx',
 ];
 
 /**
@@ -465,7 +511,7 @@ const HAND_FORMATTED_DATE = /formatDisplayDate\(/;
  * each wrote `status === 'finalized' ? 'Finalized' : 'Draft'` with their own
  * badge variant, which is two places to disagree about a fact with legal weight:
  * finalized means immutable, retained 72 months, correctable only by
- * duplication. `ui/status-badge.tsx` owns the word, the icon and the fill, and
+ * duplication. `ui/badge.tsx`'s `status` prop owns the word, the icon and the fill, and
  * the icon is why the rule is worth enforcing rather than merely tidy: colour
  * alone was carrying "sealed" and colour alone is not a message.
  *
@@ -537,7 +583,226 @@ const POPUP_FLOOR_LOWERED = /\bmin-w-(max|fit|min|auto)\b/g;
 const HAND_WRITTEN_OPTIONAL =
   /(label|title)=["'][^"']*\(optional\)["']|placeholder=["']Optional["']/gi;
 
+
+/**
+ * A data attribute handed a boolean.
+ *
+ * React writes `data-empty={false}` as `data-empty="false"`, and Tailwind's
+ * `data-empty:` variant matches the attribute's **presence**, not its value. So
+ * the style applies in both states. That is how every filled DatePicker in the
+ * app came to print its date in the placeholder colour: the trigger carried
+ * `data-empty={!selected}`, which never once removed the attribute. It went
+ * unseen while the empty colour was the darker muted grey and surfaced the day
+ * the placeholder was lightened.
+ *
+ * Write the attribute as present-or-absent: `cond ? '' : undefined`.
+ */
+const BOOLEAN_DATA_ATTR = /data-[a-z-]+=\{(?![^}]*(?:\?|undefined))(?:!|[^}]*[=!]==?)[^}]*\}/g;
+
+
+/**
+ * The molecules in `patterns/` each replaced something that was written by
+ * hand in several places (`docs/design.md` §2.6, 16 October 2026): nine
+ * confirmations with three different cancel labels, two spinners, a `<p
+ * role="alert">` where `FieldError` was, `font-mono` sprinkled on strings, and
+ * a `disabled={pending}` that spun nothing. Each rule here points at the one.
+ */
+const OWN_ALERT_DIALOG = /<AlertDialog\b/g;
+// The *working* button: a submit, a primary or a destructive, disabled by a
+// pending flag and showing nothing for it. A secondary sibling disabled while
+// its neighbour works is right as it is.
+const DISABLED_NOT_PENDING =
+  /<Button\b(?![^>]*\bpending=)(?=[^>]*(?:type="submit"|variant="(?:primary|destructive)"))[^>]*?disabled=\{(?:is)?(?:pending|saving|submitting|busy)\}[^>]*>/g;
+const RAW_ALERT = /<p\b[^>]*role=["']alert["']/g;
+const OWN_MONO = /\bfont-mono\b/g;
+const MONO_PRIMITIVE = ['src/components/patterns/Mono.tsx'];
+const OWN_SPINNER = /\bLoader2\b/g;
+const SPINNER_PRIMITIVE = ['src/components/ui/spinner.tsx'];
+const COPY_PASTED_EMPTY = /No \w+ match these filters/g;
+/**
+ * A `<button>` written by hand. `Button` and `IconAction` carry the height,
+ * the fill, the focus ring and the name rule; a raw element carries none of
+ * them and is how a 24px unnamed control gets back in. The primitives and
+ * patterns are exempt because they are where the element is built.
+ */
+const RAW_BUTTON = /<button\b/g;
+const QUESTION_TITLE = /<ConfirmDialog\b[^>]*?title=["'][^"']*\?["']/g;
+
+/**
+ * A text size outside the type scale.
+ *
+ * `globals.css` defines eight sizes (`text-caption` … `text-display`), each
+ * carrying its own line-height, weight and tracking, so a call site says one
+ * word. The audit that produced the scale found ten distinct sizes in use
+ * against a rulebook that said four: 11px written two ways, 13px written as a
+ * rem, 10px inside two primitives. None of them looked wrong on its own.
+ * Tailwind's `text-xs`…`text-2xl` are banned with the arbitrary ones because
+ * they are a second scale with different line-heights, and
+ * `leading-*` / `tracking-*` / `text-x/y` are banned because the token
+ * already answered that question. See `docs/design.md` §1.4.
+ */
+const ARBITRARY_TEXT = /\btext-\[[0-9.]+(?:px|rem|em)\]/g;
+const OFF_SCALE_TEXT = /(?<![\w-])text-(?:xs|sm|base|lg|xl|[2-9]xl)\b/g;
+const OWN_LINE_HEIGHT =
+  /\btext-(?:caption|meta|control|body|lead|section|title|display|xs|sm|base|lg|xl|\dxl)\/[\w.]+|\bleading-[\w.[\]]+|\btracking-[\w.[\]-]+/g;
+
+/**
+ * A third weight. Regular and medium are the two on every screen; 600 exists
+ * only inside `--text-title` and `--text-display`, where the token applies
+ * it, so nothing outside `globals.css` writes `font-semibold`. Bold is not a
+ * level: a third level is colour or size (§1.4).
+ */
+const HEAVY_WEIGHT = /\bfont-(?:semibold|bold|extrabold|black)\b/g;
+
+/**
+ * Spacing off the grid.
+ *
+ * Seven gaps: 4, 6, 8, 12, 16, 24, 32 (`gap-1` … `gap-8`), and the same set
+ * for padding. The audit found `gap-3` was the second most used value in the
+ * app and not in the house vocabulary, which is how a rulebook loses: a value
+ * everybody needs and nobody wrote down gets written by hand at every site.
+ * Margin is banned outright (except `*-auto`, which is alignment): spacing
+ * belongs to the parent as a `gap`, because a child with a margin carries a
+ * decision about its neighbours into every place it is reused. §1.2.
+ */
+const OFF_SCALE_SPACING =
+  // 9 (36px) is the form control's height, so an inset that aligns to one
+  // (the table footer's count under the first column, an icon in a field).
+  /\b(?:gap|p|px|py|pt|pb|pl|pr)-(?:[xy]-)?(?!(?:0|1|1\.5|2|3|4|6|8|9|10|12|16)\b)[0-9.]+\b/g;
+const MARGIN = /(?<![\w-])-?m[trblxy]?-(?!auto\b)(?:[0-9.]+|px)\b/g;
+const SPACE_BETWEEN = /(?<!-)\bspace-[xy]-[\w.]+/g;
+const ARBITRARY_SPACE = /\b(?:gap|p|m)[xytrbl]?-\[[^\]]*\]/g;
+
+/**
+ * A corner off the radius scale. Four integers (4, 6, 8, 12) and `full`;
+ * `rounded-xl` belongs to the two dialogs and nothing else, because a 12px
+ * corner on a 28px control is a pill. §1.3.
+ */
+const OFF_SCALE_RADIUS = /\brounded-(?:[2-4]xl|\[[^\]]*\])/g;
+const DIALOG_RADIUS = /\brounded-xl\b/g;
+const DIALOG_PRIMITIVES = ['src/components/ui/dialog.tsx', 'src/components/ui/alert-dialog.tsx'];
+
+/**
+ * A shadow written by hand. Three tokens (`shadow-raised`, `shadow-overlay`,
+ * `shadow-modal`), each with a dark value twice the weight of the light one,
+ * replaced fourteen distinct arbitrary shadows, two of them in `rgba()` where
+ * the colour test could not see them. §1.7.
+ */
+const ARBITRARY_SHADOW = /\bshadow-(?:\[[^\]]*\]|2?xs\b|sm\b|md\b|lg\b|xl\b|2xl\b)/g;
+
+/**
+ * A focus ring of its own. `focus-ring` in `globals.css` is the one
+ * indicator; the audit found rings at 30%, 40%, 50% and solid, and one
+ * control (`InfoTip`) with none. §1.8.
+ */
+/**
+ * A neutral text colour faded with an opacity modifier. `contrast.test.ts`
+ * measures the tokens, not what an opacity does to them, so a `/50` puts text
+ * under 4.5:1 where nothing can see it. The quiet answer is `text-tab-label`,
+ * which is measured. Found by the launch gate, 18 October 2026.
+ */
+const FADED_TEXT = /\btext-(?:foreground|muted-foreground|tab-label)\/\d+\b/g;
+
+const OWN_FOCUS_RING = /focus-visible:ring-(?!destructive|0\b)[\w/[\]]+|\bring-ring\b/g;
+
+/**
+ * Motion outside the three tiers, in the places the duration rule could not
+ * see: a second easing curve, an inline `style` transition, a `motion` spring.
+ * One easing (`ease-standard`), and it is the default, so nothing names one.
+ */
+const OWN_EASING = /\bease-(?!standard\b)[a-z[][\w.,()[\]-]*/g;
+// A CSS duration inside a JS string: `"transform 300ms ease-out"` in a
+// `style` prop is a transition the class-based rules never see.
+const INLINE_TRANSITION = /\btransition\s*:\s*["'][^"']*\d+m?s\b/g;
+
+/**
+ * A bare z-index. `--z-sticky` … `--z-toast` in `globals.css` name the five
+ * layers; `z-(--z-overlay)` says what a thing is above, `z-50` does not.
+ */
+// Only the page-level layers are named: z-0 to z-30 inside an `isolate`
+// ancestor is local stacking and says nothing about the page.
+const RAW_Z = /\bz-(?:\[[^\]]*\]|[4-9]\d|\d{3,})\b/g;
+
+/**
+ * A breakpoint outside the shell. The app is desktop-first and the shell is
+ * the one thing that responds (nav collapses, rail becomes a sheet); a page
+ * that carries `md:` is a page with a second layout nobody tests. §B10.
+ */
+const RESPONSIVE = /(?<![\w-])(?:sm|md|lg|xl|2xl):/g;
+const SHELL = [
+  'src/components/shell/AdminShell.tsx',
+  'src/components/shell/AdminSidebar.tsx',
+  'src/components/shell/TopPanel.tsx',
+  'src/components/shell/AdminHeader.tsx',
+  'src/components/shell/EditorSidebar.tsx',
+];
+
+/**
+ * Every allowlist in `migratedLater.ts`, paired with the patterns it defers,
+ * so the "only shrinks" rule is a test rather than a comment: a listed file
+ * that no longer violates is reported, and leaves the list.
+ */
+const MIGRATIONS: Array<[string, string[], RegExp[], string[]]> = [
+  ['TYPE', [], [ARBITRARY_TEXT, OFF_SCALE_TEXT, OWN_LINE_HEIGHT], []],
+  ['PENDING', [], [DISABLED_NOT_PENDING], []],
+  ['RAW_ALERT', [], [RAW_ALERT], []],
+  ['MONO', [], [OWN_MONO], MONO_PRIMITIVE],
+  ['RAW_BUTTON', RAW_BUTTON_MIGRATED_LATER, [RAW_BUTTON], UI_PRIMITIVES],
+  ['WEIGHT', [], [HEAVY_WEIGHT], []],
+  ['SPACING', SPACING_MIGRATED_LATER, [OFF_SCALE_SPACING, MARGIN, SPACE_BETWEEN, ARBITRARY_SPACE], []],
+  ['RADIUS', [], [OFF_SCALE_RADIUS, DIALOG_RADIUS], DIALOG_PRIMITIVES],
+  ['SHADOW', [], [ARBITRARY_SHADOW], []],
+  ['RING', [], [OWN_FOCUS_RING], []],
+  ['FADED_TEXT', [], [FADED_TEXT], []],
+  ['EASING', [], [OWN_EASING], []],
+  ['INLINE_TRANSITION', [], [INLINE_TRANSITION], []],
+  ['Z', [], [RAW_Z], []],
+  ['RESPONSIVE', RESPONSIVE_MIGRATED_LATER, [RESPONSIVE], SHELL],
+];
+
+/** `violations` over every pattern of a migration, minus its allowlist. */
+function outstanding(name: string) {
+  const row = MIGRATIONS.find(([n]) => n === name);
+  if (!row) throw new Error(`no migration named ${name}`);
+  const [, later, patterns, exempt] = row;
+  return patterns.flatMap((p) => violations(p, [...later, ...exempt], /\.tsx?$/));
+}
+
+/**
+ * The layers, as import rules (`docs/design.md` §0): `ui/` is atoms and
+ * imports nothing above it; `patterns/` is molecules and organisms and never
+ * imports the shell or a domain screen; `shell/` never imports a domain
+ * screen. A pattern that reaches into `admin/clients/` is a screen wearing a
+ * pattern's name.
+ */
+const LAYER_RULES: Array<[string, RegExp]> = [
+  ['src/components/ui/', /from ['"]@\/components\/(?:patterns|shell|admin|docs|contract|form|flow|spec|tools|library)\//],
+  ['src/components/patterns/', /from ['"]@\/components\/(?:shell|admin|docs|contract|spec|tools|library)\//],
+  ['src/components/shell/', /from ['"]@\/components\/admin\/(?:clients|employees|services|clauses|settings)\//],
+];
+
 describe('design system', () => {
+  it('keeps the layers in order: ui imports no pattern, patterns import no shell or screen', () => {
+    const root = join(__dirname, '..', '..');
+    const crossed: string[] = [];
+    for (const [layer, banned] of LAYER_RULES) {
+      for (const file of policedFiles([], /\.tsx?$/).filter((f) => f.startsWith(layer))) {
+        // A type crosses no layer: it is erased before anything runs.
+        const source = readFileSync(join(root, file), 'utf8')
+          .split('\n')
+          .filter((line) => !/^\s*import type\b/.test(line))
+          .join('\n');
+        const hit = banned.exec(source);
+        if (hit) crossed.push(`${file}: ${hit[0]}`);
+      }
+    }
+    expect(crossed).toEqual([]);
+  });
+
+  it('writes a boolean data attribute as present or absent, never as "false"', () => {
+    expect(violations(BOOLEAN_DATA_ATTR)).toEqual([]);
+  });
+
   it('finds source files to police (guards against the walker silently matching nothing)', () => {
     expect(policedFiles().length).toBeGreaterThan(50);
   });
@@ -588,7 +853,17 @@ describe('design system', () => {
   });
 
   it('takes every duration from the three-tier motion scale', () => {
-    expect(violations(OFF_SCALE_DURATION, SIGNATURE_MOTION)).toEqual([]);
+    expect(violations(OFF_SCALE_DURATION)).toEqual([]);
+  });
+
+  it('has no decorative motion: no spring library, no sliding pill, no icon that moves on hover', () => {
+    expect(violations(MOTION_LIB, [], /\.tsx?$/)).toEqual([]);
+    expect(violations(LAYOUT_ID)).toEqual([]);
+    expect(violations(ICON_TRANSFORM)).toEqual([]);
+    expect(violations(TRANSITION_TRANSFORM, PANELS_THAT_SLIDE)).toEqual([]);
+    expect(violations(FILL_FLASH)).toEqual([]);
+    expect(violations(ZOOMING_POPUP)).toEqual([]);
+    expect(violations(MOUNT_ANIMATION, OVERLAYS)).toEqual([]);
   });
 
   it('puts every table in a TableCard', () => {
@@ -732,6 +1007,45 @@ describe('design system', () => {
     expect(own).toEqual([]);
   });
 
+  it('builds every confirmation on ConfirmDialog, with a title that states rather than asks', () => {
+    expect(violations(OWN_ALERT_DIALOG, UI_PRIMITIVES)).toEqual([]);
+    expect(violations(QUESTION_TITLE)).toEqual([]);
+  });
+
+  it('shows a spinner on every working button, and takes it from Spinner', () => {
+    expect(outstanding('PENDING')).toEqual([]);
+    expect(violations(OWN_SPINNER, SPINNER_PRIMITIVE)).toEqual([]);
+  });
+
+  it('draws every empty state from EmptyState, never a copy of its copy', () => {
+    expect(violations(COPY_PASTED_EMPTY, ['src/components/ui/empty.tsx'])).toEqual([]);
+  });
+
+  it('reports a field error through FieldError, never a raw alert paragraph', () => {
+    expect(outstanding('RAW_ALERT')).toEqual([]);
+  });
+
+  it('builds every clickable thing from Button or IconAction, never a raw button', () => {
+    expect(outstanding('RAW_BUTTON')).toEqual([]);
+  });
+
+  it('sets identity strings in Mono, never font-mono by hand', () => {
+    expect(outstanding('MONO')).toEqual([]);
+  });
+
+  it('writes every button in the five-fill, three-height API', () => {
+    const root = join(__dirname, '..', '..');
+    const stale: string[] = [];
+    for (const file of policedFiles(['src/components/ui/button.tsx'])) {
+      const source = readFileSync(join(root, file), 'utf8');
+      for (const tag of source.matchAll(BUTTON_TAG)) {
+        const old = OLD_BUTTON_API.exec(tag[0]);
+        if (old) stale.push(`${file}: ${old[0]}`);
+      }
+    }
+    expect(stale).toEqual([]);
+  });
+
   it('gives every icon-only button a name to announce', () => {
     const root = join(__dirname, '..', '..');
     const unnamed: string[] = [];
@@ -757,7 +1071,7 @@ describe('design system', () => {
     expect(violations(HAND_WRITTEN_OPTIONAL, UI_PRIMITIVES)).toEqual([]);
   });
 
-  it('says a document’s status through StatusBadge, never a ternary label', () => {
+  it('says a document’s status through Badge status, never a ternary label', () => {
     expect(violations(HAND_ROLLED_STATUS_BADGE, UI_PRIMITIVES)).toEqual([]);
   });
 
@@ -779,5 +1093,60 @@ describe('design system', () => {
     const all = policedFiles([], /\.tsx?$/);
     expect(all).toContain('src/lib/domain/registry.ts');
     expect(all.length).toBeGreaterThan(policedFiles().length);
+  });
+  it('takes every text size from the type scale, never Tailwind’s or a pixel value', () => {
+    expect(outstanding('TYPE')).toEqual([]);
+  });
+
+  it('sets at most two weights; 600 lives only in the title and display tokens', () => {
+    expect(outstanding('WEIGHT')).toEqual([]);
+  });
+
+  it('keeps every gap and inset on the spacing scale, and never uses margin', () => {
+    expect(outstanding('SPACING')).toEqual([]);
+  });
+
+  it('keeps every corner on the radius scale; xl is the dialogs’ alone', () => {
+    expect(outstanding('RADIUS')).toEqual([]);
+  });
+
+  it('takes every shadow from the three elevation tokens', () => {
+    expect(outstanding('SHADOW')).toEqual([]);
+  });
+
+  it('takes the focus ring from focus-ring, never drawing its own', () => {
+    expect(outstanding('RING')).toEqual([]);
+  });
+
+  it('never fades neutral text with opacity, where the contrast test cannot see it', () => {
+    expect(outstanding('FADED_TEXT')).toEqual([]);
+  });
+
+  it('uses the one easing and never an inline transition', () => {
+    expect(outstanding('EASING')).toEqual([]);
+    expect(outstanding('INLINE_TRANSITION')).toEqual([]);
+  });
+
+  it('names every z-index layer, never a bare number', () => {
+    expect(outstanding('Z')).toEqual([]);
+  });
+
+  it('keeps breakpoints inside the shell', () => {
+    expect(outstanding('RESPONSIVE')).toEqual([]);
+  });
+
+  it('keeps every migration allowlist honest: a listed file still violates, or it leaves the list', () => {
+    const root = join(__dirname, '..', '..');
+    const stale: string[] = [];
+    for (const [name, later, patterns, exempt] of MIGRATIONS) {
+      for (const file of later) {
+        if (exempt.includes(file)) stale.push(`${name}: ${file} is already exempt`);
+        const source = readFileSync(join(root, file), 'utf8');
+        if (!patterns.some((p) => new RegExp(p.source, p.flags.replace('g', '')).test(source))) {
+          stale.push(`${name}: ${file} no longer violates; remove it from migratedLater.ts`);
+        }
+      }
+    }
+    expect(stale).toEqual([]);
   });
 });

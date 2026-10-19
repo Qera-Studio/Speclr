@@ -169,7 +169,7 @@ export default function ClauseBodyEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div ref={list} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <div ref={list} className="min-h-0 flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
         {parts.map((part, index) => (
           <Row
             // Index as the key, deliberately. These rows have no id of their
@@ -357,15 +357,15 @@ export function ClauseBodyActions({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="default" onClick={() => add('point')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('point')}>
         <Plus className="size-3.5" />
         Point
       </Button>
-      <Button type="button" variant="outline" size="default" onClick={() => add('item')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('item')}>
         <Plus className="size-3.5" />
         Sub-item
       </Button>
-      <Button type="button" variant="outline" size="default" onClick={() => add('text')}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => add('text')}>
         <Plus className="size-3.5" />
         Unnumbered
       </Button>
@@ -430,7 +430,7 @@ function Row({
       */}
       <span
         aria-hidden="true"
-        className="w-10 shrink-0 pt-2 text-right text-[11px] text-muted-foreground tabular-nums"
+        className="w-10 shrink-0 pt-2 text-right text-caption text-muted-foreground tabular-nums"
       >
         {marker}
       </span>
@@ -463,7 +463,7 @@ function Row({
           paragraphs in a row without looking away.
         */
         onFocus={onFocus}
-        className="min-h-9 flex-1 py-1.5 font-normal leading-relaxed"
+        className="min-h-9 flex-1 py-1.5 font-normal "
       />
 
       <DragHandle
@@ -487,7 +487,7 @@ function Row({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="sm" icon
               aria-label={`Remove ${label}`}
               onClick={onRemove}
               className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
@@ -536,7 +536,7 @@ function DragHandle({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="sm" icon
             aria-label={label}
             onPointerDown={onPointerDown}
             onKeyDown={(e) => {

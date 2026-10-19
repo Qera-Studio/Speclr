@@ -111,11 +111,11 @@ export default function PageThumbnails({
             onClick={() => onGoToPage(i)}
             aria-label={`Page ${i + 1}`}
             aria-current={current ? 'page' : undefined}
-            className="group/thumb flex cursor-pointer flex-col items-center gap-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="group/thumb flex cursor-pointer flex-col items-center gap-1 rounded-md focus-ring"
           >
             <span
               className={[
-                'block overflow-hidden rounded-[2px] border bg-white transition-colors',
+                'block overflow-hidden rounded-sm border bg-white transition-colors',
                 current ? 'border-primary ring-1 ring-primary' : 'border-border',
               ].join(' ')}
               style={{ width: SHEET_WIDTH * SCALE, height: SHEET_HEIGHT * SCALE }}
@@ -160,7 +160,7 @@ export default function PageThumbnails({
             </span>
             <span
               className={[
-                'text-[10px] tabular-nums transition-colors',
+                'text-caption tabular-nums transition-colors',
                 current ? 'text-foreground' : 'text-muted-foreground',
               ].join(' ')}
             >

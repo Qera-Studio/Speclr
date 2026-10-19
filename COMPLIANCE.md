@@ -108,6 +108,12 @@ Until (1) ships, the field should say on the page that it is not yet printed.
 
 ## 2.2 The LUT is real but unrecorded, and it expires 31 March 2027
 
+**Closed 19 October 2026.** `lutArn` and `lutValidTo` are on the studio record
+(Settings), frozen by `studioSnapshot`, printed as "LUT ARN" beside the
+endorsement on every zero-rated invoice, and `lutError` refuses to finalize one
+dated after the LUT lapses, before a number is claimed. The 60-day warning
+below is not built. What follows is the finding as it was written.
+
 **Cases:** 31, 32, 33; classification spec "Additional fields".
 
 **Confirmed 2 September 2026: Qera holds an LUT for FY 2026-27.** So the

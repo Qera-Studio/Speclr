@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, ClipboardCheck, Hammer, Plus, RefreshCw, Settings2, X } from 'lucide-react';
+import { Check, Plus, X } from 'lucide-react';
+import { SCHEDULE_ICONS } from '@/components/contract/scheduleIcons';
 import { SCHEDULES, type ScheduleKey } from '@/lib/domain/contract/schedules';
 import { cn } from '@/lib/utils';
 import type { ContractService } from '@/lib/domain/service';
@@ -17,12 +18,6 @@ import type { ClientRecord, ContractData } from '@/lib/domain/types';
  * it. Nothing here is decorative: these four are the only tiles on the screen,
  * so each one is carrying the distinction on its own.
  */
-const SCHEDULE_ICONS: Record<ScheduleKey, typeof Hammer> = {
-  setup: Settings2,
-  build: Hammer,
-  retainer: RefreshCw,
-  audit: ClipboardCheck,
-};
 
 /**
  * What the contract covers, seeded from the client record.
@@ -84,7 +79,7 @@ export default function ServicesPhase({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         {engaged.size > 0
           ? 'Taken from what this client is engaged for. Add or remove what this contract covers.'
           : 'This client has no services on their record yet. Add what this contract covers.'}
@@ -134,7 +129,7 @@ export default function ServicesPhase({
                     aria-controls={open ? 'schedule-services' : undefined}
                     onClick={() => setBrowsing(open ? null : schedule.key)}
                     className={cn(
-                      'group flex h-full w-full flex-col items-center gap-2 rounded-lg border px-3 py-5 text-center transition-colors focus-visible:border-ring focus-visible:outline-none',
+                      'group flex h-full w-full flex-col items-center gap-2 rounded-lg border px-3 py-4 text-center transition-colors focus-visible:border-ring focus-visible:outline-none',
                       // Three states, and they are on two different axes, which
                       // is why `chosen` colours the border and `open` fills the
                       // tile rather than both competing for the background. A
@@ -164,8 +159,8 @@ export default function ServicesPhase({
                       )}
                       aria-hidden
                     />
-                    <span className="text-sm font-medium">{schedule.name}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-body font-medium">{schedule.name}</span>
+                    <span className="text-meta text-muted-foreground tabular-nums">
                       {count} service{count === 1 ? '' : 's'}
                     </span>
                     {/*
@@ -254,7 +249,7 @@ export default function ServicesPhase({
                           : 'bg-card hover:border-ring/60',
                       )}
                     >
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      <span className="min-w-0 flex-1 truncate text-body font-medium">
                         {service.name}
                       </span>
                       {chosen ? (

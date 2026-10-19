@@ -127,6 +127,20 @@
       "when": 1789862400000,
       "tag": "0017_client_industry_and_team",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789948800000,
+      "tag": "0018_leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790035200000,
+      "tag": "0019_lead_stages",
+      "breakpoints": true
     }
   ]
 }

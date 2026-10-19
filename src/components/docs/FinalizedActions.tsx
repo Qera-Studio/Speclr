@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Lock, Printer } from 'lucide-react';
-import { TrayArrowIcon } from '@/components/ui/tray-arrow-icon';
+import { Download, Lock, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,7 +10,7 @@ import {
   duplicateDocument,
 } from '@/server/actions/documents';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { ConfirmActionButton } from '@/components/ui/confirm-action-button';
+import { ConfirmActionButton } from '@/components/patterns/ConfirmAction';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DEV_UNLIMITED } from '@/lib/devMode';
 import { useProfile } from '@/lib/useProfile';
@@ -120,7 +119,7 @@ export default function FinalizedActions({
     button that will never be there.
   */
   const card = (
-    <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+    <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-meta text-muted-foreground">
       <Lock className="mt-px size-3.5 shrink-0" aria-hidden="true" />
       <p>
         <span className="font-medium text-foreground">Finalized and sealed.</span> This document is
@@ -147,22 +146,12 @@ export default function FinalizedActions({
                 the row reads as one primary among three solid actions instead
                 of three competing ones. */}
             {onDownload ? (
-              // `group/tray` is what arms the arrow: `TrayArrowIcon` animates on
-              // its container's hover, and it is the house download icon
-              // everywhere else in the app (its own docstring says to use it
-              // instead of the raw Lucide one). This row was the last raw
-              // `Download` left.
-              <Button
-                type="button"
-                onClick={onDownload}
-                pending={downloading}
-                className="group/tray"
-              >
-                <TrayArrowIcon />
+              <Button variant="primary" type="button" onClick={onDownload} pending={downloading}>
+                <Download aria-hidden="true" />
                 Download PDF
               </Button>
             ) : null}
-            <Button type="button" variant="neutral" onClick={onPrint}>
+            <Button type="button" variant="secondary" onClick={onPrint}>
               <Printer aria-hidden="true" />
               Print
             </Button>
@@ -170,7 +159,7 @@ export default function FinalizedActions({
         ) : (
           <Link
             href={`/${profile}/docs/${docId}/print`}
-            className={buttonVariants({ variant: 'outline' })}
+            className={buttonVariants({ variant: 'secondary' })}
           >
             Open print view
           </Link>
@@ -178,7 +167,7 @@ export default function FinalizedActions({
         {/* The primary action on a slip is next month's slip — correcting an
             issued one is the rarer case. */}
         {isSlip ? (
-          <Button type="button" onClick={onCopyNextMonth} pending={copying}>
+          <Button variant="primary" type="button" onClick={onCopyNextMonth} pending={copying}>
             Copy for next month
           </Button>
         ) : null}
@@ -192,7 +181,7 @@ export default function FinalizedActions({
         */}
         <Button
           type="button"
-          variant={isSlip || onPrint ? 'outline' : 'default'}
+          variant={isSlip || onPrint ? 'secondary' : 'primary'}
           onClick={onDuplicate}
           pending={duplicating}
         >

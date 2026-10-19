@@ -55,9 +55,9 @@ export default function PartCard({
   const body = (
     <>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
-        <span className="min-w-0 truncate text-sm font-medium">{title}</span>
+        <span className="min-w-0 truncate text-body font-medium">{title}</span>
         {subtitle ? (
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{subtitle}</span>
+          <span className="min-w-0 truncate text-meta text-muted-foreground">{subtitle}</span>
         ) : null}
       </span>
       {unfilled > 0 ? (
@@ -83,7 +83,7 @@ export default function PartCard({
    */
   const row =
     'group/part flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-2.5 text-left';
-  const focus = 'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
+  const focus = 'focus-ring focus-visible:outline-none';
   const shell = cn(
     'rounded-lg border',
     interactive ? 'bg-card' : 'border-dashed bg-muted/40',
@@ -120,7 +120,7 @@ export default function PartCard({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="sm" icon
           className="mr-2 shrink-0"
           onClick={onRemove}
         >

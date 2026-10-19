@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { AddButton } from '@/components/ui/add-button';
-import RecordPanel from '../RecordPanel';
-import { useRecordPanel } from '../useRecordPanel';
+import { AddButton } from '@/components/patterns/AddAction';
+import RecordPanel from '@/components/shell/RecordPanel';
+import { useRecordPanel } from '@/components/shell/useRecordPanel';
 import EmployeeForm from './EmployeeForm';
 import EmployeesTable from './EmployeesTable';
 import { deleteEmployeeAction } from '@/server/actions/employees';
 import type { EmployeeRecord } from '@/lib/domain/employee';
-import { PageHeader } from '@/components/admin/Page';
+import { PageHeader } from '@/components/patterns/Page';
 
 export default function EmployeeManager({ employees }: { employees: EmployeeRecord[] }) {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function EmployeeManager({ employees }: { employees: EmployeeReco
       {/* The create CTA lives here whether or not the list is empty — a control
           that moves depending on state is a control you have to look for. */}
       <PageHeader title="Employees">
-        <AddButton variant="outline" onClick={() => guardedSelect(null)}>
+        <AddButton variant="secondary" onClick={() => guardedSelect(null)}>
           Add employee
         </AddButton>
       </PageHeader>

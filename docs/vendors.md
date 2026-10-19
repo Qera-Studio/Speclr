@@ -130,7 +130,7 @@ the free option cannot in principle produce the answer.
 | **Why** | The list needs seven currencies and the RBI/FBIL reference rate publishes four (USD, EUR, GBP, JPY), so for a display figure a market-rate source is the right tool. A failed fetch costs the toggle and never the figure: the INR total is the stored answer and is always on the page. |
 | **Industry substitute** | **Open Exchange Rates** or **Fixer** for a keyed, SLA-backed market rate; the **RBI reference rate** for anything a tax return depends on. |
 | **Cost** | Open Exchange Rates: free tier 1,000 calls/month (USD base only), **$12/month** for other bases, $47/month for hourly rates. Fixer: similar. RBI reference rate: free, published daily. |
-| **Beats its two closest competitors** | vs **Frankfurter** (ECB reference rates, no key, institutional): it does not publish AED, and the UAE is a plausible client. vs **`@fawazahmed0/currency-api`** (jsDelivr CDN, no key, no attribution, 200+ currencies): the more robust delivery, but a personal project; it is the substitute the day the open endpoint changes its terms. **Never for a document**: Indian tax treatment of an export invoice keys off the notified rate, not the spot rate, so a market-rate API there would be the wrong tool bought for the right-sounding reason. |
+| **Beats its two closest competitors** | vs **Frankfurter** (ECB reference rates, no key, institutional): it does not publish AED, and the UAE is a plausible client. vs **`@fawazahmed0/currency-api`** (jsDelivr CDN, no key, no attribution, 200+ currencies): the more robust delivery, but a personal project; it is the substitute the day the open endpoint changes its terms. **Never for a document**: an export invoice states its rupee equivalent at the bank's TT buying rate on the date of supply (CGST Rule 34(2)), typed per invoice, so a market-rate API there would be the wrong tool bought for the right-sounding reason. No compliant API exists for it: FBIL publishes four currencies and Kotak publishes no rate feed. |
 
 ### 1.6 Email delivery
 
@@ -417,6 +417,15 @@ whatever happens to be in Neon.
 interaction tests stay in Jest, where they are faster and where roles are
 already the idiom. Anything that is not a *measurement* does not belong here.
 
+### 6.1b axe-core (`@axe-core/playwright`)
+
+| | |
+|---|---|
+| **Why** | The launch gate asks for an automated accessibility scan, and nothing here could run one. `e2e/a11y.spec.ts` scans six working screens against WCAG 2.1 A and AA and fails on critical or serious violations. Added 18 October 2026; seen to fail on the dev gallery's unnamed button before it was trusted. Dev only. |
+| **Industry substitute** | **Lighthouse** (its accessibility audit is axe underneath), **Pa11y**, or **WAVE**. Paid: **Deque axe DevTools Pro**. |
+| **Cost** | **Free** (MPL 2.0). axe DevTools Pro is **about $40/month per seat**. |
+| **Beats its two closest competitors** | vs **Lighthouse**: the same rules engine, but Lighthouse scores a page rather than failing a test, so a regression shows as a number dropping instead of a red build. vs **Pa11y**: a second browser driver and runner beside Playwright, for checks this suite can already run in the browser it has. |
+
 ### 6.2 drizzle-kit, tsx, ts-node, dotenv
 
 | | |
@@ -449,7 +458,7 @@ argued in full in `PRINCIPLES.md` §4 or `CONTEXT.md`.
 | **A payroll engine** | EPF needs 20+ employees, ESI 10+ and gross ≤ ₹21,000, UP has no Professional Tax. The only live deduction is TDS. | RazorpayX Payroll **from ₹100/employee/month**; Keka/greytHR similar. |
 | **E-invoicing (IRP/IRN)** | Mandatory above ₹5 crore turnover. Not applicable. | ClearTax / Masters India: **from ₹5,000/year**. |
 | **A jurisdiction pack / second country** | `PRINCIPLES.md` §4. One interface, one implementation, and the interface is not built yet either. | Engineering time only. |
-| **Multi-currency invoicing** | A GST document must show tax in INR. See `domain/currency.ts`. | See §1.5. |
+| **Multi-currency invoicing** | A GST document must show tax in INR. A zero-rated export is the one exception and carries its own typed rate, not a feed. See `domain/currency.ts`. | See §1.5. |
 | **A CDN or image service** | No public traffic and no images to optimise. | Cloudinary free tier; Vercel's own optimisation is included. |
 | **Secret storage / a vault** | speclr stores *where a credential lives*, never the credential. If a field starts holding secrets, that is an incident. | Doppler **$8/user/month**, Infisical free tier, AWS Secrets Manager $0.40/secret/month. |
 

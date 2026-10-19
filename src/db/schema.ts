@@ -46,6 +46,7 @@ import type {
 } from "@/lib/domain/client";
 import type { EmployeeRecord } from "@/lib/domain/employee";
 import type { StudioInfo } from "@/lib/domain/studio";
+import type { LeadDetails, LeadStage } from "@/lib/domain/lead";
 import type {
   ClientSnapshot,
   ContractData,
@@ -354,6 +355,33 @@ export const clientInputs = pgTable("client_inputs", {
 });
 
 // ─── Studio settings ──────────────────────────────────────────────────────────
+
+/**
+ * Leads: people who might become clients, kept apart from `clients` because a
+ * client is a full onboarded record that documents derive from, and a lead is
+ * a name and a first conversation (`domain/lead.ts`).
+ *
+ * `name` and `stage` are real columns because the list groups and sorts on
+ * them; the rest is one JSONB group, validated by `leadInputSchema` on write.
+ * Deleting a lead removes the row: it holds a third party's contact details,
+ * and erasure under the DPDP Act 2023 means gone, not flagged.
+ */
+export const leads = pgTable(
+  "leads",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    stage: text("stage").notNull().$type<LeadStage>(),
+    details: jsonb("details").notNull().$type<LeadDetails>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("leads_stage_idx").on(t.stage)],
+);
 
 /**
  * The studio's own identity block ("from:", bank, GSTIN, CIN), editable at

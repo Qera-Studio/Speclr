@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ItemsManager from '../ItemsManager';
 import type { ContractService } from '@/lib/domain/service';
@@ -66,24 +67,41 @@ const service = {
   ],
 } as unknown as ContractService;
 
-const show = () =>
-  render(<ItemsManager service={service} />);
+/** The page owns which item is open; this stands in for it. */
+function Harness({ service }: { service: ContractService }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  return (
+    <>
+      {/* The page header's button, which opens the same panel. */}
+      <button type="button" onClick={() => setEditingId('')}>
+        Add item
+      </button>
+      <ItemsManager service={service} editingId={editingId} onEditingChange={setEditingId} />
+    </>
+  );
+}
+
+const show = (s: ContractService = service) => render(<Harness service={s} />);
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('the items table', () => {
-  /**
-   * The rate prints its symbol in a chip and its digits beside it
-   * (`AmountCell`), so the figure is two nodes rather than one string. There is
-   * no unit column: every item in the catalogue but a handful reads 'fixed',
-   * and a column that says the same word fifty times down is a column spending
-   * width on nothing. What a rate is per is on the item and in its editor.
-   */
-  it('lists every live item with its rate', () => {
+describe('the price list', () => {
+  /** Every live item, by name, with its price as the row prints it. */
+  it('lists every live item with its price and unit', () => {
     show();
-    const table = screen.getByRole('table');
-    expect(within(table).getByText('Core website setup (5 pages)')).toBeInTheDocument();
-    expect(within(table).getByText('25,000.00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Core website setup (5 pages)'})).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Change the price of Core website setup \(5 pages\), now ₹ 25,000$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Change the price of Additional standard page, now ₹ 4,000 per page$/ })).toBeInTheDocument();
+  });
+
+  /**
+   * Grouped under the rate card's headings and never paginated: the old table
+   * cut fifty-two items into pages of ten and split the groups across them.
+   */
+  it('groups items under their heading, with no pager', () => {
+    show();
+    expect(screen.getByRole('heading', { name: /Foundation system/ })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: /pag/i })).not.toBeInTheDocument();
   });
 
   /** An archived item keeps its id and stays readable, but leaves the list. */
@@ -92,50 +110,115 @@ describe('the items table', () => {
     show();
     expect(screen.queryByText('Retired line')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /show 1 archived/ }));
+    await user.click(screen.getByRole('button', { name: /^Archived 1/ }));
     expect(screen.getByText('Retired line')).toBeInTheDocument();
   });
 
-  /**
-   * The count lives in the table's own footer and nowhere else.
-   *
-   * There was a second one above the table saying the same figure; it went on
-   * 20 September 2026, because `RecordTable` already prints "1-2 of 2 items"
-   * beside the pager and that one also says where in the list you are. Two
-   * places printing one number is two places for it to disagree.
-   */
-  it('counts what is on screen, not what is stored', () => {
+  /** The count beside the heading is the live items, not what is stored. */
+  it('counts the live items', () => {
     show();
-    // Two live of the three stored: the archived one is not on screen, so it
-    // is not in the count either.
-    // `rowCountLabel` prints the range only when a page is a slice of the
-    // whole; two of two rows is simply "2 items".
-    expect(screen.getByText('2 items')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Item count')).not.toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: 'Price list' });
+    expect(heading.parentElement).toHaveTextContent(/^Price list2/);
   });
 
-  /**
-   * Absent is "quoted per engagement", a real answer rather than a missing
-   * one, so the cell says so instead of printing a dash.
-   */
+  it('finds items by name', async () => {
+    const user = userEvent.setup();
+    show();
+    await user.type(screen.getByRole('searchbox', { name: 'Search the price list' }), 'additional');
+    expect(screen.getByRole('button', { name: 'Additional standard page'})).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Core website setup (5 pages)'})).not.toBeInTheDocument();
+  });
+
+  /** Absent is "quoted per engagement", a real answer, not a missing one. */
   it('says Quoted for an item with no rate', () => {
-    render(
-      <ItemsManager
-        service={
-          {
-            ...service,
-            items: [{ id: 'I1', name: 'Domain transfer', unit: 'fixed', archived: false }],
-          } as unknown as ContractService
-        }
-      />,
-    );
+    show({
+      ...service,
+      items: [{ id: 'I1', name: 'Domain transfer', unit: 'fixed', archived: false }],
+    } as unknown as ContractService);
     expect(screen.getByText('Quoted')).toBeInTheDocument();
+  });
+
+  /** A new service has nothing to list, and says what an item is. */
+  it('explains what an item is when there are none', () => {
+    show({ ...service, items: [] } as unknown as ContractService);
+    expect(screen.getByText('No items yet')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The price is edited where it is read. The most frequent edit on the page,
+ * so it takes no panel; and it still posts one item, never the list.
+ */
+describe('editing a price in place', () => {
+  const price = (name: string) => screen.getByRole('button', { name: new RegExp(`^Change the price of ${name.replace(/[()]/g, '\\$&')}`) });
+
+  it('saves the new price, in paise, on Enter', async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(price('Core website setup (5 pages)'));
+    const input = screen.getByRole('textbox', { name: 'Price of Core website setup (5 pages), in rupees' });
+    await user.clear(input);
+    await user.type(input, '28000{Enter}');
+
+    expect(saveServiceItem).toHaveBeenCalledTimes(1);
+    expect(saveServiceItem).toHaveBeenCalledWith(
+      'WEB',
+      expect.objectContaining({ id: 'I4', name: 'Core website setup (5 pages)', ratePaise: 28_00_000 }),
+    );
+  });
+
+  it('refuses letters as they are typed', async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(price('Core website setup (5 pages)'));
+    const input = screen.getByRole('textbox', { name: /^Price of Core website setup/ });
+    await user.clear(input);
+    await user.type(input, '2a8b0');
+    expect(input).toHaveValue('280');
+  });
+
+  it('cancels on Escape without saving', async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(price('Core website setup (5 pages)'));
+    const input = screen.getByRole('textbox', { name: /^Price of Core website setup/ });
+    await user.clear(input);
+    await user.type(input, '1{Escape}');
+
+    expect(saveServiceItem).not.toHaveBeenCalled();
+    expect(price('Core website setup (5 pages)')).toHaveAccessibleName(/now ₹ 25,000$/);
+  });
+
+  /** Blank is "quoted", which posts no rate rather than zero. */
+  it('posts no rate when the price is cleared', async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(price('Core website setup (5 pages)'));
+    await user.clear(screen.getByRole('textbox', { name: /^Price of Core website setup/ }));
+    await user.keyboard('{Enter}');
+
+    expect(saveServiceItem).toHaveBeenCalledWith('WEB', expect.objectContaining({ id: 'I4', ratePaise: undefined }));
+  });
+
+  /** Shown at once, and put back if the server refuses it. */
+  it('puts the old price back when the save is refused', async () => {
+    (saveServiceItem as jest.Mock).mockResolvedValueOnce({ success: false, error: 'Nope.' });
+    const user = userEvent.setup();
+    show();
+    await user.click(price('Core website setup (5 pages)'));
+    const input = screen.getByRole('textbox', { name: /^Price of Core website setup/ });
+    await user.clear(input);
+    await user.type(input, '28000{Enter}');
+
+    await waitFor(() =>
+      expect(price('Core website setup (5 pages)')).toHaveAccessibleName(/now ₹ 25,000$/),
+    );
   });
 });
 
 describe('editing one item', () => {
   const openItem = async (user: ReturnType<typeof userEvent.setup>, name: string) =>
-    user.click(screen.getByRole('button', { name: `Open ${name}` }));
+    user.click(screen.getByRole('button', { name}));
 
   it('opens the panel on the item that was clicked', async () => {
     const user = userEvent.setup();
@@ -143,7 +226,7 @@ describe('editing one item', () => {
     await openItem(user, 'Core website setup (5 pages)');
 
     expect(screen.getByLabelText('Name')).toHaveValue('Core website setup (5 pages)');
-    expect(screen.getByLabelText('Rate (₹)')).toHaveValue('25000.00');
+    expect(screen.getByLabelText('Price')).toHaveValue('25000.00');
   });
 
   /**
@@ -155,8 +238,8 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.clear(screen.getByLabelText('Rate (₹)'));
-    await user.type(screen.getByLabelText('Rate (₹)'), '28000');
+    await user.clear(screen.getByLabelText('Price'));
+    await user.type(screen.getByLabelText('Price'), '28000');
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     expect(saveServiceItem).toHaveBeenCalledWith(
@@ -223,7 +306,7 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.clear(screen.getByLabelText('Rate (₹)'));
+    await user.clear(screen.getByLabelText('Price'));
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     const posted = (saveServiceItem as jest.Mock).mock.calls[0][1];
@@ -235,7 +318,7 @@ describe('editing one item', () => {
     show();
     await openItem(user, 'Core website setup (5 pages)');
 
-    await user.type(screen.getByLabelText('Up to (₹)'), '8000');
+    await user.type(screen.getByLabelText('Up to'), '8000');
     await user.click(screen.getByRole('button', { name: 'Save item' }));
 
     expect(saveServiceItem).not.toHaveBeenCalled();
@@ -251,7 +334,7 @@ describe('editing one item', () => {
   it('keeps an archived item archived through an edit', async () => {
     const user = userEvent.setup();
     show();
-    await user.click(screen.getByRole('button', { name: /show 1 archived/ }));
+    await user.click(screen.getByRole('button', { name: /^Archived 1/ }));
     await openItem(user, 'Retired line');
 
     await user.click(screen.getByRole('button', { name: 'Save item' }));
@@ -282,7 +365,7 @@ describe('editing one item', () => {
  */
 describe('archiving an item', () => {
   const openItem = async (user: ReturnType<typeof userEvent.setup>, name: string) =>
-    user.click(screen.getByRole('button', { name: `Open ${name}` }));
+    user.click(screen.getByRole('button', { name}));
 
   it('archives the open item from the sheet', async () => {
     const user = userEvent.setup();
@@ -300,7 +383,7 @@ describe('archiving an item', () => {
   it('offers to restore an archived one', async () => {
     const user = userEvent.setup();
     show();
-    await user.click(screen.getByRole('button', { name: /show 1 archived/ }));
+    await user.click(screen.getByRole('button', { name: /^Archived 1/ }));
 
     await openItem(user, 'Retired line');
     await user.click(screen.getByRole('button', { name: 'Restore Retired line' }));
@@ -316,7 +399,7 @@ describe('archiving an item', () => {
   it('puts no archive control on the row', () => {
     show();
     expect(
-      screen.getByRole('button', { name: 'Edit Core website setup (5 pages)' }),
+      screen.getByRole('button', { name: 'Core website setup (5 pages)'}),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Archive Core website setup (5 pages)' }),
@@ -335,7 +418,7 @@ describe('archiving an item', () => {
  */
 describe('removing a group', () => {
   const openGroups = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'Open Core website setup (5 pages)' }));
+    await user.click(screen.getByRole('button', { name: 'Core website setup (5 pages)'}));
     await user.click(screen.getByLabelText('Group'));
   };
 

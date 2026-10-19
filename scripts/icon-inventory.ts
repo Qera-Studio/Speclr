@@ -23,7 +23,7 @@ const ROOT = join(__dirname, '..');
 const SRC = join(ROOT, 'src');
 
 /** Where the generated list is written. */
-export const GENERATED = join(SRC, 'components/library/iconInventory.generated.ts');
+export const GENERATED = join(SRC, 'components/design/iconInventory.generated.ts');
 
 /**
  * Named imports from `lucide-react`, per statement.

@@ -20,7 +20,9 @@ jest.mock('@/db/store', () => ({
   saveDocument: (...a: unknown[]) => saveDocument(a[0] as AdminDocument),
   getClient: (...a: unknown[]) => getClient(...a),
   getEmployee: () => Promise.resolve(null),
-  getStudioSettings: () => Promise.resolve(undefined),
+  // The real store falls back to the constant; it never returns nothing.
+  getStudioSettings: () =>
+    Promise.resolve(jest.requireActual('@/lib/domain/studio').STUDIO_INFO),
   deleteDraft: () => Promise.resolve(),
   listFinalizedInvoicesForClient: () => Promise.resolve([]),
 }));

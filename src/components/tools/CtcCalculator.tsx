@@ -12,7 +12,7 @@ import { Field, FieldLabel, FieldGroup, FieldSet, FieldLegend } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { InfoTip } from '@/components/form/FieldInfo';
+import { InfoTip } from '@/components/patterns/FieldInfo';
 
 /**
  * Annual CTC in, a monthly salary structure out.
@@ -73,14 +73,14 @@ function Row({
         total ? 'mt-1 border-t border-border pt-2 font-medium' : ''
       }`}
     >
-      <span className={total ? 'text-sm' : 'text-sm text-muted-foreground'}>
+      <span className={total ? 'text-body' : 'text-body text-muted-foreground'}>
         {label}
-        {note ? <span className="ml-1.5 text-xs text-muted-foreground/70">{note}</span> : null}
+        {note ? <span className="ml-1.5 text-meta text-tab-label">{note}</span> : null}
       </span>
-      <span className="w-12 text-right text-xs tabular-nums text-muted-foreground/70">
+      <span className="w-12 text-right text-meta tabular-nums text-tab-label">
         {total || share === undefined ? '' : pct(Math.abs(paise), share)}
       </span>
-      <span className="text-sm tabular-nums">
+      <span className="text-body tabular-nums">
         {minus ? '−' : ''}
         {money(paise)}
       </span>
@@ -127,14 +127,14 @@ function Headline({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs tracking-[0.01em] text-muted-foreground">{label}</span>
+      <span className="text-meta text-muted-foreground">{label}</span>
       <span
-        className={`text-2xl font-semibold tabular-nums ${muted ? 'text-muted-foreground' : ''}`}
+        className={`text-display tabular-nums ${muted ? 'text-muted-foreground' : ''}`}
       >
         {money(monthlyPaise)}
-        <span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+        <span className="ml-1 text-body font-normal text-muted-foreground">/ month</span>
       </span>
-      <span className="text-xs text-muted-foreground">{note}</span>
+      <span className="text-meta text-muted-foreground">{note}</span>
     </div>
   );
 }
@@ -276,7 +276,7 @@ export default function CtcCalculator() {
               the distance between them.
             */}
             <Card>
-              <CardContent className="grid gap-6 py-5 sm:grid-cols-2">
+              <CardContent className="grid gap-6 py-4 sm:grid-cols-2">
                 {/* The annual figure here is the one that was quoted, not the
                     monthly one multiplied back up — twelfths do not divide
                     cleanly, and a headline reading ₹8,49,999.96 against a
@@ -382,7 +382,7 @@ export default function CtcCalculator() {
                   paise={s.inHandPaise}
                   total
                 />
-                <p className="pt-1 text-xs text-muted-foreground">
+                <p className="pt-1 text-meta text-muted-foreground">
                   ESI does not apply above ₹21,000 gross, and Uttar Pradesh
                   levies no professional tax — so provident fund and TDS are the
                   only deductions Qera has to make.
@@ -392,7 +392,7 @@ export default function CtcCalculator() {
           </>
         ) : (
           <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            <CardContent className="py-8 text-center text-body text-muted-foreground">
               Enter an annual CTC to see the structure it implies.
             </CardContent>
           </Card>

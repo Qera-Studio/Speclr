@@ -171,7 +171,7 @@ export default function PreviewPhase({
 
         <SaveError autosave={autosave} />
         {saveState === 'idle' ? null : (
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="text-body text-muted-foreground">
             {saveState === 'saving' ? 'Saving…' : 'Saved'}
           </p>
         )}
@@ -192,7 +192,7 @@ export default function PreviewPhase({
             </FieldGroup>
           </div>
           <DialogFooter>
-            <Button type="button" onClick={() => setClausesOpen(false)}>
+            <Button variant="primary" type="button" onClick={() => setClausesOpen(false)}>
               Done
             </Button>
           </DialogFooter>

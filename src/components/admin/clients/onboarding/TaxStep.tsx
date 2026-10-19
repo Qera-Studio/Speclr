@@ -19,8 +19,8 @@ import { FieldLabel } from "@/components/ui/field";
 import { DerivedNote } from "@/components/ui/derived-note";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import FieldInfo, { InfoTip, LegendInfo } from "@/components/form/FieldInfo";
-import FieldCheck from "@/components/form/FieldCheck";
+import FieldInfo, { InfoTip, LegendInfo } from "@/components/patterns/FieldInfo";
+import FieldCheck from "@/components/patterns/FieldCheck";
 import {
   CinField,
   GstinField,
@@ -397,14 +397,14 @@ export default function TaxStep({
         */
         <>
           {/*
-            `gap-x-10` rather than the row's default 12px. These two columns are
+            `gap-x-8` rather than the row's default 12px. These two columns are
             separate sections with their own headings and their own switch, not
             two fields of one thing, and at 12px the GSTIN and the TDS section
             read as one four-field row. Column gap only: stacked on a narrow
             screen they are consecutive sections and the vertical rhythm should
             not change.
           */}
-          <FieldRow className="gap-x-10">
+          <FieldRow className="gap-x-8">
             <FieldSet>
               <LegendInfo
                 info="An unregistered client is billed without GST. A registered one's GSTIN is where the place of supply on every invoice comes from."
@@ -432,7 +432,7 @@ export default function TaxStep({
                 // appears: a field that pops into a form the eye has already
                 // measured reads as a redraw, and the same field sliding down
                 // reads as a response.
-                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
                   <GstinField
                     control={control}
                     name="gstin"
@@ -465,7 +465,7 @@ export default function TaxStep({
               </LegendInfo>
 
               {tdsApplicable ? (
-                <FieldRow className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <FieldRow >
                   <Field>
                     <FieldLabel htmlFor="client-tds-section">
                       Section
@@ -535,7 +535,6 @@ export default function TaxStep({
                 name="pan"
                 id="client-pan"
                 info="Ten characters. The 4th encodes the holder type, so it is checked against the entity type chosen on the previous step: a Private Limited's PAN is a C, an individual's a P. A GSTIN contains it verbatim, so a registered client's PAN is read from there rather than typed."
-                inputClassName={panAutofilled ? "animate-fill-flash" : undefined}
                 readOnly={Boolean(derivedPan)}
               />
               {/* The flash says something happened; this says what. A field that
@@ -617,7 +616,7 @@ export default function TaxStep({
               {offerEntityType ? (
                 <Alert
                   variant="warning"
-                  className="animate-in fade-in slide-in-from-top-1"
+                  
                 >
                   <TriangleAlert aria-hidden />
                   <AlertDescription className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -628,7 +627,7 @@ export default function TaxStep({
                     </span>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       pending={switching}
                       onClick={acceptCinEntityType}
                     >
@@ -661,7 +660,7 @@ export default function TaxStep({
             >
               Tax registration
             </LegendInfo>
-            <p className="-mt-2 text-xs text-muted-foreground">
+            <p className="-mt-2 text-meta text-muted-foreground">
               Recorded and printed on their documents. Nothing is computed from
               it.
             </p>
@@ -854,7 +853,7 @@ export default function TaxStep({
             {tdsApplicable ? (
               <FieldRow
                 columns={3}
-                className="animate-in fade-in slide-in-from-top-2 duration-200"
+                
               >
                 <Field>
                   <FieldLabel htmlFor="client-withholding-rate">

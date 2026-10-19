@@ -1,10 +1,10 @@
 'use client';
 
 import { IdCard } from 'lucide-react';
-import { RemoveButton } from '@/components/ui/remove-button';
-import { EditButton } from '../RowActions';
-import RecordTable from '../RecordTable';
-import { CopyCell } from '../CopyCell';
+import { RemoveButton } from '@/components/patterns/ConfirmAction';
+import { EditButton } from '@/components/patterns/RowActions';
+import RecordTable from '@/components/patterns/RecordTable';
+import { CopyCell } from '@/components/patterns/CopyCell';
 import type { EmployeeRecord } from '@/lib/domain/employee';
 
 /**

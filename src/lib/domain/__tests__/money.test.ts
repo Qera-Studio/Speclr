@@ -1,6 +1,11 @@
 import {
   computeTotals,
   discountPaiseOf,
+  discountablePaiseOf,
+  foreignMinorOf,
+  formatRate4,
+  inrPaiseOf,
+  parseRate4,
   formatINR,
   groupRupeeInput,
   lineAmountPaise,
@@ -137,6 +142,41 @@ describe("computeTotals with a discount", () => {
 
   it("is absent, not zero-shaped, when nothing is passed", () => {
     expect(computeTotals([item(100000, 1)], 18).discountPaise).toBe(0);
+  });
+});
+
+/**
+ * A line the discount does not reach, as on the Clayora export invoice:
+ * 35% off the build and the retainer, hosting passed through at cost.
+ */
+describe("computeTotals with a discount-exempt line", () => {
+  const lines = [
+    item(61486, 1),
+    item(78453, 1),
+    { ...item(4309, 1), discountExempt: true as const },
+  ];
+
+  it("takes the percentage of the discounted lines only", () => {
+    expect(discountablePaiseOf(lines)).toBe(139939);
+    expect(computeTotals(lines, 0, { discountPercent: 35 })).toEqual({
+      subtotalPaise: 144248,
+      // 35% of 1,399.39, not of 1,442.48.
+      discountPaise: 48979,
+      taxablePaise: 95269,
+      gstPaise: 0,
+      totalPaise: 95269,
+    });
+  });
+
+  it("clamps an amount to the discounted lines, never into the exempt one", () => {
+    const totals = computeTotals(lines, 18, { discountPaise: 10000000 });
+    expect(totals.discountPaise).toBe(139939);
+    expect(totals.taxablePaise).toBe(4309);
+  });
+
+  it("discounts nothing when every line is exempt", () => {
+    const allExempt = lines.map((l) => ({ ...l, discountExempt: true as const }));
+    expect(computeTotals(allExempt, 18, { discountPercent: 50 }).discountPaise).toBe(0);
   });
 });
 
@@ -305,5 +345,38 @@ describe("slipTotals", () => {
 
   it("treats absent deductions as none", () => {
     expect(slipTotals([item(100000, 1)], undefined).netPaise).toBe(100000);
+  });
+});
+
+/** An export's rupee figure, at the rate stated on it, never via a float. */
+describe("export conversion", () => {
+  it("states the INR equivalent at the stated rate", () => {
+    // A$952.69 at ₹66.60.
+    expect(inrPaiseOf(95269, 666000)).toBe(6344915);
+  });
+
+  it("survives an amount and rate whose product passes 2^53", () => {
+    expect(inrPaiseOf(9_000_000_000_00, 9_999_999)).toBe(899_999_910_000_000);
+  });
+
+  it("converts a rupee price on the client record into the billing currency", () => {
+    // ₹40,950 at ₹66.60 is the A$614.86 on the Clayora invoice.
+    expect(foreignMinorOf(4095000, 666000)).toBe(61486);
+  });
+
+  it("reads a typed rate to four places, and nothing else", () => {
+    expect(parseRate4("66.60")).toBe(666000);
+    expect(parseRate4("66.6025")).toBe(666025);
+    expect(parseRate4("66")).toBe(660000);
+    expect(parseRate4("66.60251")).toBeNull();
+    expect(parseRate4("0")).toBeNull();
+    expect(parseRate4("abc")).toBeNull();
+  });
+
+  it("prints a rate with at least two places and no trailing noise", () => {
+    expect(formatRate4(666000)).toBe("66.60");
+    expect(formatRate4(666025)).toBe("66.6025");
+    expect(formatRate4(660000)).toBe("66.00");
+    expect(formatRate4(666500)).toBe("66.65");
   });
 });

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { requireAuthorizedUser } from '@/lib/auth/session';
 import type { Profile } from '@/lib/profile';
-import { NAV_BY_PROFILE } from '@/components/admin/nav';
-import NavIndex from '@/components/admin/NavIndex';
+import { NAV_BY_PROFILE } from '@/components/shell/nav';
+import NavIndex from '@/components/patterns/NavIndex';
 
 /**
  * `/<profile>/docs` and `/<profile>/tools` — the index page behind a flattened

@@ -145,3 +145,26 @@ export function gstTreatmentMismatch(
     `Change the rate in the editing rail, or record a reason for the departure before finalizing.`
   );
 }
+
+/**
+ * Why a zero-rated invoice cannot be issued under the studio's LUT, or null.
+ *
+ * A supply goes out without IGST only under a Letter of Undertaking
+ * (IGST Act s.16(3)(a)), and one covers a single financial year. An invoice
+ * dated after it lapses, or issued with none recorded, would claim a
+ * zero-rating the studio is not entitled to: the IGST is owed either way, and
+ * the document would say it was not. Read from the studio snapshot about to be
+ * frozen, so the ARN that prints is the one that was checked.
+ */
+export function lutError(
+  issueDate: string,
+  studio: { lutArn?: string; lutValidTo?: string },
+): string | null {
+  if (!studio.lutArn || !studio.lutValidTo) {
+    return "A zero-rated invoice needs this year's LUT. Record its ARN and the date it is valid to in Settings first.";
+  }
+  if (issueDate > studio.lutValidTo) {
+    return `The LUT on record lapsed on ${studio.lutValidTo}. Furnish this year's (RFD-11) and record its ARN in Settings before issuing a zero-rated invoice.`;
+  }
+  return null;
+}

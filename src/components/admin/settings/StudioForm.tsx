@@ -15,7 +15,7 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { FieldRow } from '@/components/ui/field-row';
-import FieldInfo, { LegendInfo } from '@/components/form/FieldInfo';
+import FieldInfo, { LegendInfo } from '@/components/patterns/FieldInfo';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,8 @@ import IfscField from '@/components/form/IfscField';
 import { CinField, EmailField, GstinField } from '@/components/form/fields';
 import { GST_STATES } from '@/lib/domain/gstStates';
 import { studioInputSchema, type StudioInfo } from '@/lib/domain/studio';
-import { IBAN_MAX, SWIFT_MAX } from '@/lib/domain/fields';
+import { IBAN_MAX, LUT_ARN_MAX, SWIFT_MAX } from '@/lib/domain/fields';
+import { DatePicker } from '@/components/ui/date-picker';
 import { updateStudioSettings } from '@/server/actions/studio';
 import { numericField, uppercaseField } from '@/components/form/inputFilters';
 
@@ -71,6 +72,8 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
       cin: studio.cin,
       queryEmailHr: studio.queryEmailHr,
       stateCode: studio.stateCode,
+      lutArn: studio.lutArn ?? '',
+      lutValidTo: studio.lutValidTo ?? '',
       bank: { ...studio.bank },
     },
   });
@@ -195,6 +198,46 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             />
             <FieldError errors={[errors.stateCode]} />
           </Field>
+          <FieldRow>
+            <Field>
+              <FieldInfo
+                htmlFor="studio-lut-arn"
+                label="LUT ARN"
+                info="The acknowledgement number of this year's Letter of Undertaking (RFD-11). It lets an export or an SEZ supply go out without IGST, and prints on those invoices. It lapses every 31 March and has to be furnished again."
+                infoLabel="What is the LUT ARN?"
+              />
+              <Input
+                id="studio-lut-arn"
+                size="form"
+                autoComplete="off"
+                maxLength={LUT_ARN_MAX}
+                placeholder="AD090826065953E"
+                {...uppercaseField(register('lutArn'))}
+              />
+              <FieldError errors={[errors.lutArn]} />
+            </Field>
+            <Field>
+              <FieldInfo
+                htmlFor="studio-lut-valid-to"
+                label="LUT valid to"
+                info="The 31 March closing the financial year the LUT was furnished for. A zero-rated invoice dated after it cannot be finalized: without a live LUT, IGST is payable."
+                infoLabel="Why does the LUT expire?"
+              />
+              <Controller
+                control={control}
+                name="lutValidTo"
+                render={({ field }) => (
+                  <DatePicker
+                    id="studio-lut-valid-to"
+                    size="form"
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                  />
+                )}
+              />
+              <FieldError errors={[errors.lutValidTo]} />
+            </Field>
+          </FieldRow>
         </FieldSet>
 
         <FieldSeparator />
@@ -254,6 +297,17 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
             <Input id="studio-bank-upi" size="form" autoComplete="off" {...register('bank.upiId')} />
             <FieldError errors={[errors.bank?.upiId]} />
           </Field>
+          <Field>
+            <FieldLabel htmlFor="studio-bank-account-name">Account holder</FieldLabel>
+            <Input
+              id="studio-bank-account-name"
+              size="form"
+              autoComplete="off"
+              placeholder="The name the account is held in"
+              {...register('bank.accountName')}
+            />
+            <FieldError errors={[errors.bank?.accountName]} />
+          </Field>
         </FieldSet>
 
         <FieldSeparator />
@@ -261,7 +315,7 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         <FieldSet>
           <LegendInfo
             label="When are these printed?"
-            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, in place of the IFSC and the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
+            info="What a bank outside India asks for. Printed only on a document whose recipient is overseas, with the branch, in place of the UPI QR, which neither their bank nor their accounts department can use. Leave it empty if you do not invoice abroad."
           >
             Wire transfer
           </LegendInfo>
@@ -290,27 +344,6 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
               <FieldError errors={[errors.bank?.iban]} />
             </Field>
           </FieldRow>
-          <Field>
-            <FieldLabel htmlFor="studio-bank-account-name">Account name</FieldLabel>
-            <Input
-              id="studio-bank-account-name"
-              size="form"
-              autoComplete="off"
-              placeholder="The name the account is held in"
-              {...register('bank.accountName')}
-            />
-            <FieldError errors={[errors.bank?.accountName]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="studio-bank-address">Bank address</FieldLabel>
-            <Textarea
-              id="studio-bank-address"
-              rows={3}
-              autoComplete="off"
-              {...register('bank.bankAddress')}
-            />
-            <FieldError errors={[errors.bank?.bankAddress]} />
-          </Field>
         </FieldSet>
 
         <FieldSeparator />
@@ -359,12 +392,12 @@ export default function StudioForm({ studio }: { studio: StudioInfo }) {
         </Alert>
       ) : null}
       {saved ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="text-body text-muted-foreground">
           Saved. Documents already issued keep the details they were issued with.
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="self-start" pending={isSubmitting}>
+      <Button variant="primary" type="submit" size="md" className="self-start" pending={isSubmitting}>
         Save settings
       </Button>
     </form>

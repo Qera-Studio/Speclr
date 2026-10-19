@@ -1,9 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { requireAuthorizedUser } from '@/lib/auth/session';
-import { getService, listClientInputs, listExclusions } from '@/db/store';
+import { listClientInputs, listExclusions, listServices } from '@/db/store';
+import { servicePageData } from '@/lib/domain/service';
 import ServicePage from '@/components/admin/services/ServicePage';
-import { PageBody } from '@/components/admin/Page';
 
 export const metadata: Metadata = {
   title: 'speclr',
@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /**
- * One Service: its items, its wording and its libraries, editable in the app.
+ * One Service: its price list, its description, and the contract terms it
+ * links to. See `ServicePage` for what the page is for.
  *
  * The two libraries are loaded **with** their archived rows: an archived line
  * this Service still cites has to stay on its list, or there is no way to
@@ -33,16 +34,15 @@ export default async function ServiceDetailPage({
   }
 
   const { code } = await params;
-  const [service, exclusions, clientInputs] = await Promise.all([
-    getService(code),
+  // Every service, archived included: the terms a service names are archived
+  // rows, and so may be the services sharing them.
+  const [all, exclusions, clientInputs] = await Promise.all([
+    listServices(true),
     listExclusions(true),
     listClientInputs(true),
   ]);
-  if (!service) notFound();
+  const data = servicePageData(code, all);
+  if (!data) notFound();
 
-  return (
-    <PageBody>
-      <ServicePage service={service} exclusions={exclusions} clientInputs={clientInputs} />
-    </PageBody>
-  );
+  return <ServicePage {...data} exclusions={exclusions} clientInputs={clientInputs} />;
 }
